@@ -1,0 +1,794 @@
+{
+  "environment": "Component fixture: the real Analytics form and save region (before: main; after: this branch) with the real design system and EN/AR catalogs; fictional site; the config PATCH answered by interception with a one-level analytics merge like the API; trusted CDP key events in headless Chromium; not the signed-in dashboard, not production, not a screen-reader test",
+  "baseline": "a72e5f398a9eb5adff1167bc71d4dea56ea4ad4b",
+  "head": "0a78bd3748675135d2e0f242e0d3ede2b9f36476",
+  "uncommitted": [],
+  "swappedForBefore": [
+    "apps/app/src/features/site-analytics-settings/components/analytics-settings.tsx"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "enter-saved-before-en-1440.png",
+      "phase": "before",
+      "scene": "saved",
+      "locale": "en",
+      "width": 1440,
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"docs.yoursite.com\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "docs.handbook.example" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N",
+                "plausible": "docs.handbook.example"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "afterFirstEnter": { "status": "", "requests": 1 },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-saved-after-en-1440.png",
+      "phase": "after",
+      "scene": "saved",
+      "locale": "en",
+      "width": 1440,
+      "status": "Saved",
+      "statusLog": ["", "Saved", "", "Saved"],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"docs.yoursite.com\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "docs.handbook.example" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N",
+                "plausible": "docs.handbook.example"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "afterFirstEnter": { "status": "Saved", "requests": 1 },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-invalid-before-en-1440.png",
+      "phase": "before",
+      "scene": "invalid",
+      "locale": "en",
+      "width": 1440,
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"][aria-invalid]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "UA-1234-1", "plausible": "docs.handbook.example" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "file": "enter-invalid-after-en-1440.png",
+      "phase": "after",
+      "scene": "invalid",
+      "locale": "en",
+      "width": 1440,
+      "status": "Fix the highlighted fields to save.",
+      "statusLog": ["", "Fix the highlighted fields to save."],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"][aria-invalid]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "UA-1234-1", "plausible": "docs.handbook.example" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "file": "enter-saved-before-en-390.png",
+      "phase": "before",
+      "scene": "saved",
+      "locale": "en",
+      "width": 390,
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"docs.yoursite.com\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "docs.handbook.example" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N",
+                "plausible": "docs.handbook.example"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "afterFirstEnter": { "status": "", "requests": 1 },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-saved-after-en-390.png",
+      "phase": "after",
+      "scene": "saved",
+      "locale": "en",
+      "width": 390,
+      "status": "Saved",
+      "statusLog": ["", "Saved", "", "Saved"],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"docs.yoursite.com\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "docs.handbook.example" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N",
+                "plausible": "docs.handbook.example"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "afterFirstEnter": { "status": "Saved", "requests": 1 },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-invalid-before-en-390.png",
+      "phase": "before",
+      "scene": "invalid",
+      "locale": "en",
+      "width": 390,
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"][aria-invalid]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "UA-1234-1", "plausible": "docs.handbook.example" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "file": "enter-invalid-after-en-390.png",
+      "phase": "after",
+      "scene": "invalid",
+      "locale": "en",
+      "width": 390,
+      "status": "Fix the highlighted fields to save.",
+      "statusLog": ["", "Fix the highlighted fields to save."],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"][aria-invalid]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "UA-1234-1", "plausible": "docs.handbook.example" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "file": "enter-saved-before-ar-1440.png",
+      "phase": "before",
+      "scene": "saved",
+      "locale": "ar",
+      "width": 1440,
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"docs.yoursite.com\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "docs.handbook.example" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N",
+                "plausible": "docs.handbook.example"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "afterFirstEnter": { "status": "", "requests": 1 },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-saved-after-ar-1440.png",
+      "phase": "after",
+      "scene": "saved",
+      "locale": "ar",
+      "width": 1440,
+      "status": "تم الحفظ",
+      "statusLog": ["", "تم الحفظ", "", "تم الحفظ"],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"docs.yoursite.com\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "docs.handbook.example" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N",
+                "plausible": "docs.handbook.example"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "afterFirstEnter": { "status": "تم الحفظ", "requests": 1 },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-invalid-before-ar-1440.png",
+      "phase": "before",
+      "scene": "invalid",
+      "locale": "ar",
+      "width": 1440,
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"][aria-invalid]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "UA-1234-1", "plausible": "docs.handbook.example" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "file": "enter-invalid-after-ar-1440.png",
+      "phase": "after",
+      "scene": "invalid",
+      "locale": "ar",
+      "width": 1440,
+      "status": "صحح الحقول المميزة للحفظ.",
+      "statusLog": ["", "صحح الحقول المميزة للحفظ."],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"][aria-invalid]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "UA-1234-1", "plausible": "docs.handbook.example" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "file": "enter-saved-before-ar-390.png",
+      "phase": "before",
+      "scene": "saved",
+      "locale": "ar",
+      "width": 390,
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"docs.yoursite.com\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "docs.handbook.example" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N",
+                "plausible": "docs.handbook.example"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "afterFirstEnter": { "status": "", "requests": 1 },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-saved-after-ar-390.png",
+      "phase": "after",
+      "scene": "saved",
+      "locale": "ar",
+      "width": 390,
+      "status": "تم الحفظ",
+      "statusLog": ["", "تم الحفظ", "", "تم الحفظ"],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"docs.yoursite.com\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "docs.handbook.example" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N",
+                "plausible": "docs.handbook.example"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "afterFirstEnter": { "status": "تم الحفظ", "requests": 1 },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-invalid-before-ar-390.png",
+      "phase": "before",
+      "scene": "invalid",
+      "locale": "ar",
+      "width": 390,
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"][aria-invalid]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "UA-1234-1", "plausible": "docs.handbook.example" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "file": "enter-invalid-after-ar-390.png",
+      "phase": "after",
+      "scene": "invalid",
+      "locale": "ar",
+      "width": 390,
+      "status": "صحح الحقول المميزة للحفظ.",
+      "statusLog": ["", "صحح الحقول المميزة للحفظ."],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"][aria-invalid]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "UA-1234-1", "plausible": "docs.handbook.example" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    }
+  ],
+  "checks": [
+    {
+      "name": "Shift+Enter in GA4 does not save",
+      "locale": "en",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Control+Enter in GA4 does not save",
+      "locale": "en",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Alt+Enter in GA4 does not save",
+      "locale": "en",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Meta+Enter in GA4 does not save",
+      "locale": "en",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Enter with the server refusing keeps the edit and does not say Saved",
+      "locale": "en",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Enter twice during a slow save sends one request; Saved only once it ends",
+      "locale": "en",
+      "status": "Saved",
+      "statusLog": ["", "Saved"],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Enter while clean sends nothing and says nothing",
+      "locale": "en",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-4H7K2M9Q1Z", "plausible": "" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Ctrl+S still saves and says Saved",
+      "locale": "en",
+      "status": "Saved",
+      "statusLog": ["", "Saved"],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Shift+Enter in GA4 does not save",
+      "locale": "ar",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Control+Enter in GA4 does not save",
+      "locale": "ar",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Alt+Enter in GA4 does not save",
+      "locale": "ar",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Meta+Enter in GA4 does not save",
+      "locale": "ar",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Enter with the server refusing keeps the edit and does not say Saved",
+      "locale": "ar",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": true,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Enter twice during a slow save sends one request; Saved only once it ends",
+      "locale": "ar",
+      "status": "تم الحفظ",
+      "statusLog": ["", "تم الحفظ"],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Enter while clean sends nothing and says nothing",
+      "locale": "ar",
+      "status": "",
+      "statusLog": [""],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-4H7K2M9Q1Z", "plausible": "" },
+      "requests": [],
+      "overflow": false,
+      "pageErrors": []
+    },
+    {
+      "name": "Ctrl+S still saves and says Saved",
+      "locale": "ar",
+      "status": "تم الحفظ",
+      "statusLog": ["", "تم الحفظ"],
+      "statusPolite": "polite",
+      "focused": "input[placeholder=\"G-XXXXXXXXXX\"]",
+      "saveBarShown": false,
+      "inputs": { "ga4": "G-7RJ2KD4P8N", "plausible": "" },
+      "requests": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-1",
+          "body": {
+            "config": {
+              "analytics": {
+                "campaignDimensions": false,
+                "storePublicSearchTerms": false,
+                "ga4": "G-7RJ2KD4P8N"
+              }
+            }
+          }
+        }
+      ],
+      "overflow": false,
+      "pageErrors": []
+    }
+  ]
+}
