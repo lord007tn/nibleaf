@@ -29,7 +29,6 @@ import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import type { PageConfig, PageNode } from '@/hooks/api';
 import { friendlyErrorMessage, useReorderPages, useUpdatePage } from '@/hooks/api';
 import { usePageSearchDescription } from '@/hooks/api/page-search-description';
-import { deepEqual } from '@/lib/forms/server-draft';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 
 type PageMode = 'default' | 'wide' | 'center';
@@ -220,7 +219,7 @@ export function PageSettingsDialog({
       }
       try {
         const result = await update.mutateAsync({ pageId: page.id, body: pageSettingsBody(value) });
-        outcome.succeeded();
+        const settled = outcome.succeeded();
         // The dialog moved on (closed, another page) while saving: report nothing to it.
         if (!outcome.isCurrent()) return 'saved';
         toast.success(
@@ -234,9 +233,9 @@ export function PageSettingsDialog({
             : t('editor.pageSettings.saved'),
         );
         if (result.documentsSkipped) toast.warning(t('editor.pageSettings.linksSkipped', { count: result.documentsSkipped }));
-        // Close only when nothing newer than what was saved remains. An edit made
-        // during the save stays as an unsaved draft, so it is never thrown away.
-        if (deepEqual(form.state.values, value)) onOpenChange(false);
+        // Close only when the draft settled clean. An edit made during the save, or
+        // a conflict with someone else's change, stays open to resolve, never thrown away.
+        if (settled) onOpenChange(false);
         return 'saved';
       } catch (error) {
         outcome.failed();

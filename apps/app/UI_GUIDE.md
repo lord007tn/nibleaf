@@ -69,7 +69,8 @@ return (
   before or after the response, and is reconciled there for edits and conflicts. A refetched value that is neither
   what the save started from, nor what it sent, nor what the response confirms can't be ordered against the response
   (another writer, before or after the save, or different server normalization). The response never overrides it
-  silently: the person's value stays, dirty, against it, with the conflict.
+  silently: the person's value stays, dirty, against it, with the conflict. `succeeded` returns whether the draft
+  settled clean: close a dialog, collapse an editor or move on only when it did.
 - **Always submit through `draft.submit()`**, never `form.handleSubmit()`. Only one save runs at a time, and a second
   Save, Enter or Cmd+S during a save is refused. Map a server field error only if the field still holds the value that
   was sent, and only while `save.isCurrent()`.

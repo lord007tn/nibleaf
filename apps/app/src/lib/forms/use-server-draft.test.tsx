@@ -446,6 +446,22 @@ describe('useServerDraftForm: a response that arrives after a refetch already la
     });
   }
 
+  it('tells the submit handler whether the save settled, so it closes or moves on only then', async () => {
+    const settle = async (draft: Awaited<ReturnType<typeof mount>>) => {
+      let settled: boolean | undefined;
+      await act(async () => {
+        settled = draft.saves[0]?.save.succeeded(sent);
+        draft.saves[0]?.finish('saved');
+      });
+      return settled;
+    };
+    expect(await settle(await race('no edit'))).toBe(false);
+    const clean = await mount('site', old);
+    await clean.set('name', 'Sent');
+    await clean.submit();
+    expect(await settle(clean)).toBe(true);
+  });
+
   it('keeps a value typed away and back to the sent one during the save', async () => {
     const { set, succeed, api } = await race('refetch then edit');
     await set('name', 'Sent');
