@@ -116,3 +116,58 @@ export const exportContentHazardCases = (): string[] => {
         cases.push(wrap(`<${tag}>\n${body}\n\n    CODE`));
   return cases;
 };
+
+export const exportInertContextCases = (): string[] => {
+  const payload = '<img onerror="ATTACK()"><a href="data:text/html,ATTACK">LINK</a>';
+  const result: string[] = [];
+  for (const tag of targets)
+    for (const wrap of wrappers) {
+      for (const close of ['', '-->', '--!>'])
+        for (const gap of ['\n', '\n\n', '\n    CODE\n\n']) result.push(wrap(`<${tag}>\n> <!--\n${gap}> ${payload}\n${close}\n</${tag}>`));
+      for (const content of [
+        `<!-- ${payload} -->`,
+        `<!--\n\n${payload}`,
+        `<textarea>\n\n${payload}`,
+        `<title>\n${payload}</title>`,
+        `<xmp>\n${payload}`,
+        `<svg><![CDATA[${payload}]]></svg>`,
+        `<?review ${payload} ?>`,
+        `<!DOCTYPE html>\n${payload}`,
+        `<!DOCTYPE html PUBLIC "\n\n<img onerror=ATTACK()><a href=javascript:ATTACK()>LINK</a>`,
+        `<?review\n\n${payload}`,
+        `<![CDATA[\n\n${payload}`,
+        `<div title="\n\n<img onerror=ATTACK()><a href=data:text/html,ATTACK>LINK</a>`,
+        `<a title="\n\n<img onerror=ATTACK()>`,
+        ...['script', 'style', 'textarea', 'title', 'xmp', 'iframe', 'noembed', 'noframes', 'noscript', 'plaintext'].flatMap((name) => [
+          `<${name}>\n\n${payload}\n</${name}>`,
+          `<${name}>\n\n${payload}`,
+        ]),
+      ])
+        result.push(wrap(`<${tag}>\n${content}\n</${tag}>`));
+    }
+  for (const tag of targets)
+    for (const prefix of ['- > ', '> - ', '> ', '- '])
+      for (const indent of ['    ', '\t', '      '])
+        for (const gap of ['', '\n']) result.push(`${prefix}<${tag}>\n</${tag}>\n${gap}${indent}<img onerror="ATTACK()">`);
+  for (const tag of targets)
+    for (const [first, continuation] of [
+      ['- ', '  '],
+      ['12. ', '    '],
+      ['> ', '> '],
+      ['- > ', '  > '],
+      ['> - ', '>   '],
+      ['12. > ', '    > '],
+    ])
+      for (const closed of [false, true]) {
+        const close = closed ? '-->\nAFTER' : '';
+        result.push(`${first}<${tag}>BODY</${tag}>\n${continuation}FOLLOW\n${continuation}<!--\n${payload}\n${close}`);
+        result.push(
+          `${first}<div>\n${continuation}<!--\n\n${continuation}</div>\n${closed ? `${continuation}-->` : ''}<${tag}>BODY</${tag}>\n${payload}`,
+        );
+      }
+  for (const tag of targets)
+    for (const context of ['svg', 'math', 'select', 'template', 'table'])
+      for (const wrap of [wrappers[0], wrappers[1], wrappers[3]])
+        if (wrap) result.push(wrap(`<${context}><${tag}>BODY</${tag}>\n\n<![CDATA[\n${payload}\n]]>\n</${context}>`));
+  return result;
+};

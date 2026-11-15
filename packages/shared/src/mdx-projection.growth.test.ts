@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { normalizePublicMarkdownContent as md, portablePublicMdxMarkdown as portable } from './public-markdown-content';
 import { exportCodeSamples, renderedActiveHtml } from './testing/export-guard';
+import { inspectExport } from './testing/export-oracle';
 import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growth';
 
 // Timing bounds, run on their own (pnpm test:growth; see testing/growth). Linear
@@ -48,7 +49,9 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
       const [small, large] = growthMs(project, build(n), build(4 * n), { minMs: 20 });
       expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
       if (label === 'bounded tight-list export') {
-        expect(exportCodeSamples(portable(build(n)))).toHaveLength(n);
+        const output = inspectExport(portable(build(n)));
+        expect(output.elements).toBe(0);
+        expect(output.text).toContain(build(n));
         console.info(`Bounded export growth: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
       }
       if (label === 'unclosed raw-text content') {

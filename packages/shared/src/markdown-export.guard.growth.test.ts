@@ -27,6 +27,7 @@ describe.runIf(growthTestsEnabled)('export guard growth', () => {
           code: baseline.code.slice(0, count),
           codeTokens: baseline.codeTokens.slice(0, count),
           structure: baseline.structure.slice(0, count),
+          htmlFeatures: baseline.htmlFeatures.slice(0, count),
         },
       };
     };

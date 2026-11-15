@@ -1,85 +1,110 @@
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import MarkdownIt from 'markdown-it';
-import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 import { expect, it, vi } from 'vitest';
-import { captureExportStructure, compareExportStructure } from './export-structure';
+import { captureExportStructure, compareExportStructure, exportSourceLines } from './export-structure';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
-import { expandedExportStructureCases, exportContentHazardCases } from './testing/export-structure-cases';
+import { inspectExport as inspect, newlyLiveFeatures, visibleExportText } from './testing/export-oracle';
+import { reviewedExportCases } from './testing/export-review-cases';
+import { expandedExportStructureCases, exportContentHazardCases, exportInertContextCases } from './testing/export-structure-cases';
 import { markdownCorpus } from './testing/markdown-corpus';
+
+const ceilings = JSON.parse(readFileSync(new URL('./__fixtures__/markdown-export.fallback-ceilings.json', import.meta.url), 'utf8')) as Record<
+  string,
+  { ceiling: number; expandedCeiling: number; indices: number[]; expandedIndices: number[] }
+>;
 
 const mode = vi.hoisted(() => ({ main: false }));
 vi.mock('./export-html', async (original) => {
   const actual = await original<typeof import('./export-html')>();
   return { ...actual, escapeDisallowedExportHtml: (source: string) => (mode.main ? source : actual.escapeDisallowedExportHtml(source)) };
 });
-const md = new MarkdownIt({ html: true });
-const active = ['script', 'style', 'iframe', 'object', 'embed'];
-const inspect = (source: string) => {
-  const tokens = md.parse(source, {});
-  const pending: DefaultTreeAdapterTypes.Node[] = [parseFragment(md.renderer.render(tokens, md.options, {}))];
-  const features: string[] = [];
-  let elements = 0;
-  while (pending.length) {
-    const node = pending.pop();
-    if (!node) continue;
-    if ('tagName' in node) {
-      if (active.includes(node.tagName)) elements++;
-      for (const attribute of node.attrs) {
-        const value = Array.from(attribute.value.toLowerCase())
-          .filter((c) => c.charCodeAt(0) > 32 && c.charCodeAt(0) !== 127)
-          .join('');
-        if (
-          attribute.name.startsWith('on') ||
-          (['href', 'src', 'xlink:href'].includes(attribute.name) && ['javascript:', 'vbscript:', 'data:'].some((scheme) => value.startsWith(scheme)))
-        )
-          features.push(`${node.tagName}:${attribute.name}:${attribute.value}`);
-      }
-    }
-    if ('childNodes' in node) for (const child of node.childNodes) pending.push(child);
-  }
-  return { tokens, features, elements };
-};
-
 it.each([
-  ['expanded HTML classes 1-7, seed 0x633652bb', expandedExportStructureCases, 19_800],
-  ['inert content, closing injections, case and inline hazards', exportContentHazardCases, 3030],
+  ['expanded', expandedExportStructureCases, 19_800],
+  ['hazards', exportContentHazardCases, 3030],
+  ['contexts', exportInertContextCases, 2415],
+  ['review', reviewedExportCases, 17_090],
   // The repository corpus grows whenever docs are added, so its count is a
   // floor (the 352 pages reviewed in #652); docs edits never fail CI on count.
-  [
-    'repository corpus (at least 352 pages)',
-    () => markdownCorpus(fileURLToPath(new URL('../../..', import.meta.url))).map(([, source]) => source),
-    352,
-  ],
+  ['corpus', () => markdownCorpus(fileURLToPath(new URL('../../..', import.meta.url))).map(([, source]) => source), 352],
 ] as const)(
   'preserves structure, source text and inert content: %s',
   (_label, build, count) => {
     const cases = build();
     const failures: unknown[] = [];
-    const totals = { exports: 0, live: 0, newFeatures: 0, structure: 0, textLoss: 0, inactiveChanges: 0, bounded: 0 };
-    for (const source of cases)
-      for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) {
+    const totals = {
+      exports: 0,
+      live: 0,
+      newFeatures: 0,
+      structure: 0,
+      textLoss: 0,
+      inactiveChanges: 0,
+      bounded: 0,
+      unpreservable: 0,
+      expanded: 0,
+      codeChanges: 0,
+      throws: 0,
+    };
+    const allowedFallbacks = new Set(ceilings[_label]?.indices ?? []);
+    const allowedExpanded = new Set(ceilings[_label]?.expandedIndices ?? []);
+    for (const [index, source] of cases.entries())
+      for (const [target, project] of [normalizePublicMarkdownContent, portablePublicMdxMarkdown].entries()) {
         mode.main = true;
         const baseline = project(source);
         mode.main = false;
-        const output = project(source);
+        let output: string;
+        try {
+          output = project(source);
+        } catch (error) {
+          totals.throws++;
+          if (failures.length < 8) failures.push({ index, target, error: String(error) });
+          continue;
+        }
         const before = inspect(baseline);
         const after = inspect(output);
-        const comparison = compareExportStructure(captureExportStructure(baseline, before.tokens), output, after.tokens);
-        const allowed = [...before.features];
-        let newlyLive = 0;
-        for (const feature of after.features) {
-          const at = allowed.indexOf(feature);
-          if (at < 0) newlyLive++;
-          else allowed.splice(at, 1);
+        const model = captureExportStructure(baseline, before.tokens);
+        const comparison = compareExportStructure(model, output, after.tokens);
+        const newlyLive = newlyLiveFeatures(before.features, after.features);
+        if (comparison.unpreservable) {
+          totals.unpreservable++;
+          totals.expanded += Number(comparison.expanded);
+          if (comparison.expanded && !allowedExpanded.has(index * 2 + target) && failures.length < 8)
+            failures.push({ index, target, reason: 'new expanded rescue' });
+          if (!allowedFallbacks.has(index * 2 + target) && failures.length < 8) failures.push({ index, target, reason: 'new unpreservable shape' });
+          for (const range of model.rescue ?? model.literal ?? [])
+            if (!after.text.includes(visibleExportText(baseline.slice(range.from, range.to)))) {
+              totals.textLoss++;
+              if (failures.length < 8) failures.push({ index, target, reason: 'fallback lost visible text' });
+            }
+        }
+        if (model.risky && !comparison.unpreservable) {
+          const lines = exportSourceLines(baseline);
+          for (const range of model.literal ?? []) {
+            const run = model.runs[range.run];
+            const expected =
+              run && range.from === lines[run.start]?.start && range.to === (lines[run.end]?.start ?? baseline.length)
+                ? before.tokens
+                    .slice(run.first, run.last + 1)
+                    .map((token) => token.content)
+                    .join('')
+                : baseline.slice(range.from, range.to);
+            if (!after.text.includes(visibleExportText(expected))) {
+              totals.textLoss++;
+              if (failures.length < 8) failures.push({ index, target, reason: 'literal run lost visible text' });
+            }
+          }
         }
         totals.exports++;
         totals.live += after.elements;
         totals.newFeatures += newlyLive;
-        totals.structure += Number(!comparison.equal);
+        totals.codeChanges += Number(comparison.unpreservable && !comparison.outsideCodeStable);
+        totals.structure += Number(!comparison.equal && !comparison.unpreservable);
         totals.textLoss += Number(!comparison.preserved);
         totals.inactiveChanges += Number(!before.elements && baseline !== output);
-        totals.bounded += Number(comparison.boundaryCount > 0);
-        if ((after.elements || newlyLive || !comparison.equal || (!before.elements && baseline !== output)) && failures.length < 8)
+        totals.bounded += comparison.unpreservable ? (model.rescue ?? model.literal ?? []).length * 2 : comparison.boundaryCount;
+        if (
+          (after.elements || newlyLive || (!comparison.equal && !comparison.unpreservable) || (!before.elements && baseline !== output)) &&
+          failures.length < 8
+        )
           failures.push({ source, baseline, output, live: after.elements, newlyLive, structure: comparison.equal, preserved: comparison.preserved });
       }
     console.info(_label, totals);
@@ -90,12 +115,18 @@ it.each([
       structure: totals.structure,
       textLoss: totals.textLoss,
       inactiveChanges: totals.inactiveChanges,
-    }).toEqual({ failures: [], live: 0, newFeatures: 0, structure: 0, textLoss: 0, inactiveChanges: 0 });
+      throws: totals.throws,
+      codeChanges: totals.codeChanges,
+    }).toEqual({ failures: [], live: 0, newFeatures: 0, structure: 0, textLoss: 0, inactiveChanges: 0, throws: 0, codeChanges: 0 });
+    expect(totals.unpreservable).toBeLessThanOrEqual(ceilings[_label]?.ceiling ?? -1);
+    expect(totals.expanded).toBeLessThanOrEqual(ceilings[_label]?.expandedCeiling ?? -1);
+    if (_label === 'corpus') expect([totals.unpreservable, totals.expanded]).toEqual([0, 0]);
     // Generated matrices are exact; the repository corpus only has a floor.
-    if (build === expandedExportStructureCases || build === exportContentHazardCases) expect(cases.length).toBe(count);
+    if (_label !== 'corpus') expect(cases.length).toBe(count);
     else expect(cases.length).toBeGreaterThanOrEqual(count);
   },
-  240_000,
+  // The full 39,600-export row took 8.7s locally; CI has shown 28x slowdown.
+  300_000,
 );
 
 const reviewedBoundaries = [
@@ -123,5 +154,6 @@ it.each(
   const before = inspect(baseline),
     after = inspect(output);
   expect(after.elements).toBe(0);
-  expect(compareExportStructure(captureExportStructure(baseline, before.tokens), output, after.tokens).equal).toBe(true);
+  const comparison = compareExportStructure(captureExportStructure(baseline, before.tokens), output, after.tokens);
+  expect(comparison.equal || comparison.unpreservable).toBe(true);
 });

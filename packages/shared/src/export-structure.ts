@@ -1,4 +1,5 @@
 import type Token from 'markdown-it/lib/token.mjs';
+import { readExportHtml } from './export-html-source';
 
 type LineMap = [number, number] | null;
 type Code = [string, string, string, string];
@@ -23,6 +24,9 @@ export interface ExportStructure {
   source: string;
   blocks: Block[];
   runs: ExportHtmlRun[];
+  literal?: Array<{ from: number; to: number; run: number }>;
+  risky?: boolean;
+  rescue?: Array<{ from: number; to: number; run: number }>;
 }
 
 /** Markdown's line maps count CR, CRLF and LF as one line ending. Keep the
@@ -46,7 +50,11 @@ const container = (type: string) =>
 
 /** Capture main once. Adjacent HTML blocks form a run only without a blank
  * line or any intervening container/non-HTML token. No tree recursion. */
-export const captureExportStructure = (source: string, tokens: Token[]): ExportStructure => {
+export const captureExportStructure = (
+  source: string,
+  tokens: Token[],
+  state: ReturnType<typeof readExportHtml> | null = readExportHtml(source),
+): ExportStructure => {
   const lines = exportSourceLines(source).map((line) => line.text);
   const runs: ExportHtmlRun[] = [];
   const blocks: Block[] = [];
@@ -96,21 +104,92 @@ export const captureExportStructure = (source: string, tokens: Token[]): ExportS
     for (let row = token.map[0]; row < token.map[1]; row++)
       if (Array.from(content[row - token.map[0]] ?? '').every((c) => c === ' ' || c === '\t')) run.blanks.push(row);
   }
-  return { source, blocks, runs };
+  const records = exportSourceLines(source);
+  const streams = [
+    runs.map((run, index) => ({ from: records[run.start]?.start ?? 0, to: records[run.end]?.start ?? source.length, run: index, active: false })),
+    (state?.inert ?? []).map(([from, to]) => ({ from, to, run: -1, active: false })),
+    (state?.active ?? []).map(([from, to]) => ({ from, to, run: -1, active: true })),
+  ];
+  const merge = (streams: Array<Array<{ from: number; to: number; run: number; active: boolean }>>) => {
+    const cursors = streams.map(() => 0);
+    const literal: Array<{ from: number; to: number; run: number }> = [];
+    let component: { from: number; to: number; run: number; active: boolean } | undefined;
+    for (;;) {
+      let selected = -1;
+      for (let at = 0; at < streams.length; at++) {
+        const candidate = streams[at]?.[cursors[at] ?? 0];
+        if (candidate && (selected < 0 || candidate.from < (streams[selected]?.[cursors[selected] ?? 0]?.from ?? Number.POSITIVE_INFINITY)))
+          selected = at;
+      }
+      if (selected < 0) break;
+      const range = streams[selected]?.[cursors[selected] ?? 0];
+      cursors[selected] = (cursors[selected] ?? 0) + 1;
+      if (!range) continue;
+      if (component && range.from < component.to) {
+        component.to = Math.max(component.to, range.to);
+        component.active ||= range.active;
+        if (component.run < 0 && range.run >= 0) component.run = range.run;
+      } else {
+        if (component?.active) literal.push({ from: component.from, to: component.to, run: component.run });
+        component = { ...range };
+      }
+    }
+    if (component?.active) literal.push({ from: component.from, to: component.to, run: component.run });
+    return literal;
+  };
+  const literal = merge(streams);
+  const roots = tokens
+    .filter((token) => token.level === 0 && token.map)
+    .map((token) => ({
+      from: records[token.map?.[0] ?? 0]?.start ?? 0,
+      to: records[token.map?.[1] ?? 0]?.start ?? source.length,
+      run: -1,
+      active: false,
+    }));
+  // An outdent can terminate a fence inside a container without a closing
+  // delimiter. A separator at that boundary would become part of its code.
+  // Own the overlapping fence and its containing root before literalization.
+  const fenceBoundaries = tokens
+    .filter((token) => token.type === 'fence' && token.map && token.map[1] - token.map[0] === token.content.split('\n').length)
+    .map((token) => ({
+      from: records[token.map?.[0] ?? 0]?.start ?? 0,
+      to: Math.min(source.length, (records[token.map?.[1] ?? 0]?.start ?? source.length) + 1),
+      run: -1,
+      active: false,
+    }));
+  const rescue = merge([...streams, roots, fenceBoundaries]);
+  return { source, blocks, runs, literal, rescue, risky: state?.risky ?? false };
 };
 
-const literalLine = (source: string, output: string, escapes: boolean): boolean => {
+/** Canonical last-resort output. Outside the owned ranges bytes are untouched.
+ * Separators occur only at their root-block boundaries. Encoding code
+ * points (rather than UTF-16 units) also preserves non-BMP author characters. */
+export const literalExportText = (main: ExportStructure): string => {
+  const chunks: string[] = [];
+  let cursor = 0;
+  for (const range of main.rescue ?? main.literal ?? []) {
+    chunks.push(main.source.slice(cursor, range.from));
+    const value = Array.from(main.source.slice(range.from, range.to), (c) =>
+      (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || (c.codePointAt(0) ?? 0) > 127 ? c : `&#${c.codePointAt(0)};`,
+    ).join('');
+    // A whole root block is owned here: the literal paragraph starts and ends
+    // outside its unproven containers. Following code keeps its root context.
+    chunks.push(`\n${value}\n\n`);
+    cursor = range.to;
+  }
+  chunks.push(main.source.slice(cursor));
+  return chunks.join('');
+};
+
+const literalLine = (source: string, output: string, owned: Uint8Array, offset: number): boolean => {
+  if (source === output) return true;
   let at = 0;
   for (let index = 0; index < source.length; index++) {
     const c = source[index];
-    if (c === output[at]) {
-      at++;
-      continue;
-    }
-    if (!escapes || !c || !'<[]`~\\*_{>+-#=.) \t'.includes(c)) return false;
-    const entity = c === '<' ? '&lt;' : `&#${source.charCodeAt(index)};`;
-    if (!output.startsWith(entity, at)) return false;
-    at += entity.length;
+    const entity = c === '<' ? '&lt;' : c === '&' ? '&amp;' : `&#${source.charCodeAt(index)};`;
+    if (owned[offset + index] && c && '<&[]`~\\*_{>+-#=.) \t'.includes(c) && output.startsWith(entity, at)) at += entity.length;
+    else if (c === output[at]) at++;
+    else return false;
   }
   return at === output.length;
 };
@@ -160,6 +239,8 @@ const snapshot = (blocks: Block[], regions: ExportHtmlRun[], origins: readonly (
  * the regions remain exact; literalization escapes never discard prose. */
 export const compareExportStructure = (main: ExportStructure, output: string, tokens: Token[]) => {
   const originalLines = exportSourceLines(main.source);
+  const editable = new Uint8Array(main.source.length);
+  for (const range of main.literal ?? []) editable.fill(1, range.from, range.to);
   const outputLines = exportSourceLines(output);
   const source = originalLines.map((line) => line.text);
   const lines = outputLines.map((line) => line.text);
@@ -200,7 +281,7 @@ export const compareExportStructure = (main: ExportStructure, output: string, to
       while (lines[outputEnd] === line) outputEnd++;
       extra = outputEnd - at > mainEnd - row;
     }
-    if (boundary && line === `${end.continuation}***` && extra) {
+    if (boundary && end.inList && line === `${end.continuation}***` && extra) {
       origins.push(null);
       separators.add(at);
       after.add(row);
@@ -216,7 +297,7 @@ export const compareExportStructure = (main: ExportStructure, output: string, to
     if (first && before.has(first.start)) original = first.continuation + original.slice(first.prefix.length);
     const padding = blanks.has(row) && line.endsWith('&#32;');
     const actual = padding ? line.slice(0, -5) : line;
-    if (literalLine(original, actual, true)) {
+    if (literalLine(original, actual, editable, originalLines[row]?.start ?? 0)) {
       if (originalLines[row]?.ending !== outputLines[at]?.ending) preserved = false;
       origins.push(row);
       if (source[row] !== line && run) changed.add(run);
@@ -224,7 +305,7 @@ export const compareExportStructure = (main: ExportStructure, output: string, to
       row++;
       continue;
     }
-    if (first && !before.has(row) && line === `${first.prefix}***`) {
+    if (first?.inList && !before.has(row) && line === `${first.prefix}***`) {
       origins.push(null);
       separators.add(at);
       before.add(row);
@@ -237,7 +318,7 @@ export const compareExportStructure = (main: ExportStructure, output: string, to
       changed.add(first);
       continue;
     }
-    if (boundary && line === `${end.continuation}***`) {
+    if (boundary && end.inList && line === `${end.continuation}***`) {
       origins.push(null);
       separators.add(at);
       after.add(row);
@@ -257,8 +338,37 @@ export const compareExportStructure = (main: ExportStructure, output: string, to
   if (row !== source.length) preserved = false;
   for (const run of changed) if (!escaped.has(run)) preserved = false;
   const regions = main.runs.filter((run) => escaped.has(run));
-  const current = captureExportStructure(output, tokens);
+  const current = captureExportStructure(output, tokens, null);
   const identity = source.map((_, index) => index);
   const equal = snapshot(main.blocks, regions, identity, new Set()) === snapshot(current.blocks, regions, origins, separators);
-  return { equal: equal && preserved, preserved, regions, origins, separators, boundaryCount: before.size + after.size };
+  const unpreservable = !equal || !preserved ? Boolean(main.literal?.length && output === literalExportText(main)) : false;
+  let outsideCodeStable = true;
+  if (unpreservable) {
+    const owners = main.rescue ?? main.literal ?? [];
+    const expected: Code[] = [];
+    let owner = 0;
+    for (const block of main.blocks) {
+      if (!block.code?.length || !block.map) continue;
+      const from = originalLines[block.map[0]]?.start ?? main.source.length;
+      const to = originalLines[block.map[1]]?.start ?? main.source.length;
+      while (owners[owner] && (owners[owner]?.to ?? 0) <= from) owner++;
+      const range = owners[owner];
+      if (range && from >= range.from && to <= range.to) continue;
+      if (range && from < range.to && to > range.from) outsideCodeStable = false;
+      for (const code of block.code) expected.push(code);
+    }
+    outsideCodeStable &&= JSON.stringify(expected) === JSON.stringify(current.blocks.flatMap((block) => block.code ?? []));
+  }
+  const expanded = unpreservable && JSON.stringify(main.rescue ?? []) !== JSON.stringify(main.literal ?? []);
+  return {
+    equal: equal && preserved,
+    preserved: preserved || unpreservable,
+    unpreservable,
+    expanded,
+    outsideCodeStable,
+    regions,
+    origins,
+    separators,
+    boundaryCount: before.size + after.size,
+  };
 };

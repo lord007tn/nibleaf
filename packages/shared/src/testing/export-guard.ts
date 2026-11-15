@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto';
 import MarkdownIt from 'markdown-it';
 import type Token from 'markdown-it/lib/token.mjs';
-import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
@@ -12,6 +11,7 @@ import { mayHaveActiveExportHtml } from '../export-html';
 import { captureExportStructure, compareExportStructure, type ExportStructure, exportSourceLines } from '../export-structure';
 import { normalizeMdxBlocks } from '../reader-markdown';
 import { readerSanitizeSchema } from '../reader-sanitize';
+import { inspectRenderedExport, newlyLiveFeatures, visibleExportText } from './export-oracle';
 
 /** @public Used by `__fixtures__/markdown-export.guard.generate.mjs`, which knip.jsonc keeps out of analysis. */
 export const EXPORT_BASELINE_REVISION = '2cf12d3fe325057c586fd1f6abd05247a1af6813';
@@ -31,6 +31,7 @@ export interface ExportGuardBaseline {
   /** Hashes of ordered [role, content, markup, info] token tuples. */
   codeTokens: [string, string][];
   structure: [string | null, string | null][];
+  htmlFeatures: [string[], string[]][];
 }
 export type ExportProjectors = readonly [(source: string) => string, (source: string) => string];
 const exportHash = (source: string) => createHash('sha256').update(source).digest('hex');
@@ -82,29 +83,20 @@ const analyzeExport = (source: string, render: boolean) => {
         if (child) pending.push(child);
       }
   }
+  const html = render ? inspectRenderedExport(parser.renderer.render(tokens, parser.options, env)) : undefined;
   return {
     tokens,
     code,
     codeTokens,
-    active: render ? countElements(parseFragment(parser.renderer.render(tokens, parser.options, env))) : 0,
+    active: html?.elements ?? 0,
+    features: html?.features ?? [],
+    visible: html?.text ?? '',
     literal: parser.utils.unescapeAll(source),
   };
 };
 export const exportCodeSamples = (source: string): string[] => analyzeExport(source, false).code;
 
 const activeTags = ['script', 'style', 'iframe', 'object', 'embed'];
-const countElements = (root: DefaultTreeAdapterTypes.Node): number => {
-  const pending = [root];
-  let count = 0;
-  while (pending.length) {
-    const node = pending.pop();
-    if (!node) continue;
-    if ('tagName' in node && activeTags.includes(node.tagName)) count++;
-    if ('childNodes' in node) for (const child of node.childNodes) pending.push(child);
-  }
-  return count;
-};
-
 /** Render with raw HTML enabled, then count only the five active elements. Handler/URL hardening is tracked in #664.
  * Code literals are inert. */
 export const renderedActiveHtml = (source: string): number => analyzeExport(source, true).active;
@@ -145,6 +137,7 @@ export const recordExportBaseline = (
         ],
     ),
     active: analyses.map((pair) => pair.map((analysis) => analysis.active) as [number, number]),
+    htmlFeatures: analyses.map((pair) => pair.map((analysis) => analysis.features) as [string[], string[]]),
     outputs: outputs.map((pair) => pair.map(exportHash) as [string, string]),
     code: analyses.map((pair) => pair.map((analysis) => analysis.code) as [string[], string[]]),
     codeTokens: analyses.map((pair) => pair.map((analysis) => exportHash(JSON.stringify(analysis.codeTokens))) as [string, string]),
@@ -197,6 +190,10 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
     reordered: 0,
     changedCode: 0,
     structuralChanges: 0,
+    unpreservable: 0,
+    expanded: 0,
+    fallbackTextLoss: 0,
+    newlyLiveFeatures: 0,
     exceptions: 0,
     inactiveChanged: 0,
     inactiveChecks: 0,
@@ -208,6 +205,8 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
   }));
   const failures: Array<{ index: number; target: number; reason: string }> = [];
   const metadata: string[] = [];
+  const unpreservableCases: number[] = [],
+    expandedCases: number[] = [];
   if (baseline.revision !== EXPORT_BASELINE_REVISION) metadata.push('wrong main revision');
   if (baseline.sources !== exportSourcesHash(cases)) metadata.push('generated sources changed');
   if (
@@ -218,6 +217,7 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       baseline.code?.length,
       baseline.codeTokens?.length,
       baseline.structure?.length,
+      baseline.htmlFeatures?.length,
     ].some((count) => count !== cases.length)
   )
     metadata.push('missing baseline cases');
@@ -249,7 +249,7 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       const mayBeActive = mayHaveActiveExportHtml(output);
       // Any changed output is parsed: an empty code baseline must still reject
       // code that the change introduced.
-      const analysis = !unchanged || mayBeActive || code.length ? analyzeExport(output, mayBeActive) : undefined;
+      const analysis = !unchanged || mayBeActive || code.length ? analyzeExport(output, !unchanged || mayBeActive) : undefined;
       const outputCode = analysis?.code ?? [];
       const expectedTokens = baseline.codeTokens[index]?.[target];
       const actualTokens = analysis?.codeTokens ?? [];
@@ -259,7 +259,30 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
         tally.structuralChanges++;
         failures.push({ index, target, reason: 'missing structural baseline' });
       }
-      if (structure && analysis && !compareExportStructure(structure, output, analysis.tokens).equal) {
+      const comparison = structure && analysis ? compareExportStructure(structure, output, analysis.tokens) : undefined;
+      if (comparison?.unpreservable && structure && analysis) {
+        tally.unpreservable++;
+        unpreservableCases.push(index * 2 + target);
+        if (comparison.expanded) {
+          tally.expanded++;
+          expandedCases.push(index * 2 + target);
+        }
+        for (const range of structure.rescue ?? structure.literal ?? [])
+          if (!analysis.visible.includes(visibleExportText(structure.source.slice(range.from, range.to)))) {
+            tally.fallbackTextLoss++;
+            failures.push({ index, target, reason: 'fallback lost visible source text' });
+          }
+      }
+      const newFeatures = analysis ? newlyLiveFeatures(baseline.htmlFeatures?.[index]?.[target] ?? [], analysis.features) : 0;
+      if (newFeatures) {
+        tally.newlyLiveFeatures += newFeatures;
+        failures.push({ index, target, reason: 'newly live HTML handler or URL' });
+      }
+      if (comparison?.unpreservable && !comparison.outsideCodeStable) {
+        tally.changedCode++;
+        failures.push({ index, target, reason: 'code outside the expanded rescue changed role or content' });
+      }
+      if (comparison && !comparison.equal && !comparison.unpreservable) {
         tally.structuralChanges++;
         failures.push({ index, target, reason: 'formatting changed outside the HTML run and its bounded separators' });
       }
@@ -268,7 +291,11 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       // main had no code, accept revealed samples only as contiguous source
       // spans in order, removing at most one uniform container prefix.
       const revealed = code.length === 0 && active > 0 && isSourceText(outputCode, source);
-      if (!revealed && (JSON.stringify(outputCode) !== JSON.stringify(code) || exportHash(JSON.stringify(actualTokens)) !== expectedTokens)) {
+      if (
+        !comparison?.unpreservable &&
+        !revealed &&
+        (JSON.stringify(outputCode) !== JSON.stringify(code) || exportHash(JSON.stringify(actualTokens)) !== expectedTokens)
+      ) {
         tally.changedCode++;
         failures.push({ index, target, reason: 'code tokens changed (bytes, role, content, order or occurrences)' });
       }
@@ -326,5 +353,5 @@ export const checkExportBaseline = (cases: readonly ExportGuardCase[], baseline:
       }
     }
   }
-  return { metadata, stats, failures };
+  return { metadata, stats, failures, unpreservableCases, expandedCases };
 };

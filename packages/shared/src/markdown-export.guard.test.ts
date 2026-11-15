@@ -31,6 +31,17 @@ it.each(matrices)(
       public: report.stats[0],
       portable: report.stats[1],
     });
+    const limits = JSON.parse(readFileSync(new URL('./__fixtures__/markdown-export.fallback-ceilings.json', import.meta.url), 'utf8')) as Record<
+      string,
+      { ceiling: number; expandedCeiling: number; indices: number[]; expandedIndices: number[] }
+    >;
+    expect(report.stats.reduce((sum, stats) => sum + stats.unpreservable, 0)).toBeLessThanOrEqual(limits[`guard${matrix.count}`]?.ceiling ?? -1);
+    const limit = limits[`guard${matrix.count}`];
+    expect(report.stats.reduce((sum, stats) => sum + stats.expanded, 0)).toBeLessThanOrEqual(limit?.expandedCeiling ?? -1);
+    const known = new Set(limit?.indices),
+      knownExpanded = new Set(limit?.expandedIndices);
+    expect(report.unpreservableCases.every((id) => known.has(id))).toBe(true);
+    expect(report.expandedCases.every((id) => knownExpanded.has(id))).toBe(true);
     // One aggregated assertion, never expect() inside the marker loop. Hashes
     // report output changes for review; payload/order/activity are the gate.
     expect({ metadata: report.metadata, failures: report.failures.slice(0, 12) }, `${report.failures.length} invariant failures`).toEqual({
@@ -115,4 +126,22 @@ it('retains CRLF and literal quote characters when removing one uniform revealed
   const output = quoted.replaceAll('<style>', '&lt;style>').replaceAll('</style>', '&lt;/style>');
   const report = checkExportBaseline(cases, baseline, [() => output, () => output]);
   expect(report.failures).toEqual([]);
+});
+
+it.each([
+  ['<script>ACTIVE</script>\n\nKeep *emphasis* here.', '&lt;script>ACTIVE&lt;/script>\n\nKeep &#42;emphasis&#42; here.'],
+  ['<script>ACTIVE</script>\n\nTEXT', '***\n&lt;script>ACTIVE&lt;/script>\n\nTEXT'],
+])('rejects round-11 forbidden edits in the full guard: %s', (source, output) => {
+  const cases = [{ index: 0, source, markers: [] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const report = checkExportBaseline(cases, baseline, [() => output, () => output]);
+  expect(report.stats.map((stats) => stats.structuralChanges)).toEqual([1, 1]);
+});
+
+it('rejects changed bytes after an expanded rescue in the full guard', () => {
+  const source = '- <script>BODY</script>\n  FOLLOW\n\nOutside *emphasis* here.';
+  const cases = [{ index: 0, source, markers: [] }];
+  const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
+  const output = portablePublicMdxMarkdown(source).replaceAll('Outside *emphasis* here.', 'Outside &#42;emphasis&#42; here.');
+  expect(checkExportBaseline(cases, baseline, [() => output, () => output]).stats.map((stats) => stats.structuralChanges)).toEqual([1, 1]);
 });
