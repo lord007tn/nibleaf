@@ -37,6 +37,9 @@ describe.runIf(growthTestsEnabled)('growth bounds', () => {
 
   // The setting the editor's longest rows use (one large call of tens of ms):
   // spreading a pause over more calls and samples must not let quadratic work by.
+  // Five samples of four large calls, for two measurements, run past Vitest's 5 s
+  // default on a loaded CI runner (6.4 s seen on #695's merge run); each
+  // measurement may take its 20 s budget, so the test gets room for both (#658).
   it('pass linear work and fail quadratic work with four large calls per sample and medians of five', () => {
     const options = { samples: 5, largeRuns: 4, budgetMs: 20_000 };
     const [linearSmall, linearLarge] = growthMs(linear, 'a'.repeat(50_000), 'a'.repeat(200_000), options);
@@ -44,7 +47,7 @@ describe.runIf(growthTestsEnabled)('growth bounds', () => {
     // About 4 ms a call on the small input: the regime where the default leaves one large call per sample.
     const [quadraticSmall, quadraticLarge] = growthMs(quadratic, 'a'.repeat(3000), 'a'.repeat(12_000), options);
     expect(quadraticLarge).toBeGreaterThan(linearGrowthLimit(quadraticSmall));
-  });
+  }, 60_000);
 });
 
 /** Busy work for about `ms` milliseconds. */
