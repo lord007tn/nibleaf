@@ -45,6 +45,7 @@ announced status and overflow at each step:
 5. The only tab is removed, and both CTA texts are cleared.
 6. Ctrl+S is refused by the server: one "Could not save" toast, the draft kept, the tab's Undo still offered, no
    "Saved".
-7. Ctrl+S again: the same body is sent (`ctaLabel: ""`, `ctaUrl: ""`, `tabs: []`, the new link last, `external` and
-   the icon kept), a refetch follows, the bar says "Saved" and closes, and the stale Undo is gone.
+7. Ctrl+S again: the same body is sent, and it holds only what changed: `ctaLabel: ""`, `ctaUrl: ""`, the links (the
+   new one last, Blog's `external` kept) and `tabs: []`. The anchors and both switches are left out, and the server
+   keeps them. A refetch follows, the bar says "Saved" and closes, and the stale Undo is gone.
 8. The search switch alone dirties the form; **Discard** turns it back on and closes the bar.
