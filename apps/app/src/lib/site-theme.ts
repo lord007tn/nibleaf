@@ -1,8 +1,12 @@
 import {
   ACCENT_TEXT_CONTRAST,
+  accentTextContrast,
+  channelsContrast,
+  channelsHex,
   contrastRatio,
-  mixOklab,
+  mixOklabChannels,
   type ResolvedTheme,
+  type RgbChannels,
   readableAccentText,
   readableCodeAccent,
   readableOnAccent,
@@ -119,20 +123,27 @@ const legacyTokenDeclarations = (accent: string, codeAccent: string): string =>
  * with on-accent text that still reads on the shade; null when the canvas
  * shade already reads there, so most sites' CSS is unchanged. */
 type DrawerTokens = Pick<ThemeColorTokens, 'accent' | 'accentForeground' | 'surfaceRaised'>;
-const drawerAccent = (tokens: DrawerTokens): { primary: string; foreground: string } | null => {
+type DrawerShade = { primary: string; foreground: string } | null;
+/** The drawer's shade `primary`, with the palette's on-accent text when it still reads on it. */
+const drawerShade = (primary: string, accentForeground: string): DrawerShade => ({
+  primary,
+  foreground: contrastRatio(accentForeground, primary) >= ACCENT_TEXT_CONTRAST ? accentForeground : readableOnAccent(primary),
+});
+const drawerAccent = (tokens: DrawerTokens): DrawerShade => {
   const primary = readableAccentText(tokens.accent, tokens.surfaceRaised);
-  if (primary === tokens.accent) return null;
-  const foreground = contrastRatio(tokens.accentForeground, primary) >= ACCENT_TEXT_CONTRAST ? tokens.accentForeground : readableOnAccent(primary);
-  return { primary, foreground };
+  return primary === tokens.accent ? null : drawerShade(primary, tokens.accentForeground);
 };
 
 /** The drawer's accent rules, light then dark. Both are written when either mode
  * needs a shade, since the light rule would otherwise apply in dark too. */
-const drawerAccentRules = (light: DrawerTokens, dark: DrawerTokens): string[] => {
-  const lightShade = drawerAccent(light);
-  const darkShade = drawerAccent(dark);
+const drawerAccentRules = (
+  light: DrawerTokens,
+  dark: DrawerTokens,
+  lightShade: DrawerShade = drawerAccent(light),
+  darkShade: DrawerShade = drawerAccent(dark),
+): string[] => {
   if (!lightShade && !darkShade) return [];
-  const declarations = (tokens: DrawerTokens, shade: { primary: string; foreground: string } | null) =>
+  const declarations = (tokens: DrawerTokens, shade: DrawerShade) =>
     `--primary:${shade?.primary ?? tokens.accent};--primary-foreground:${shade?.foreground ?? tokens.accentForeground}`;
   return [
     `[data-site-drawer]{${declarations(light, lightShade)}}`,
@@ -151,25 +162,44 @@ const LEGACY_DARK_SURFACE = '#171717';
 /** The legacy code surface (`--theme-code`). */
 const LEGACY_CODE = '#0d1117';
 
+/** A shipped `color-mix()` is kept only when its unrounded colour clears AA by
+ * this much: the browser keeps the fraction, and rendering mustn't land under the
+ * line (#2d25e3 mixes to #5874f1, 4.5003:1 on its tint, but 4.4760:1 unrounded). */
+const MIX_MARGIN = 0.01;
+const mixReads = (ratio: number): boolean => ratio >= ACCENT_TEXT_CONTRAST + MIX_MARGIN;
+
 /** Pre-v1 dark mode mixes the brand towards white, as it always has. That reads
  * for most brands, so their CSS keeps the `color-mix()` exactly as it shipped;
  * a dark brand (OKLab lightness below about 0.41: black, navy, forest green)
  * mixes to a colour that doesn't read on the #0a0a0a canvas (#000000 gave
- * #292929, 1.36:1). Each value is checked as the browser renders it (mixOklab)
- * and only one that falls short is replaced, by its nearest shade that reads
- * (#744). */
+ * #292929, 1.36:1). Each mix is judged by its unrounded colour as the browser
+ * renders it (mixOklabChannels); one that falls short is replaced by the nearest
+ * shade that reads, emitted as a hex, whose contrast is then exact (#744). */
 const legacyDarkPalette = (brand: string) => {
-  const mix = `color-mix(in oklab,${brand} 72%,white)`;
-  const mixed = mixOklab(brand, '#ffffff', 0.72);
-  const shade = readableAccentText(mixed, LEGACY_DARK_CANVAS);
-  const accent = shade === mixed ? mix : shade;
-  const foreground = contrastRatio(LEGACY_DARK_ON_ACCENT, shade) >= ACCENT_TEXT_CONTRAST ? LEGACY_DARK_ON_ACCENT : readableOnAccent(shade);
-  const codeMix = mixOklab(brand, '#ffffff', 0.55);
-  const codeAccent =
-    contrastRatio(codeMix, LEGACY_CODE) >= ACCENT_TEXT_CONTRAST
-      ? `color-mix(in oklab,${brand} 55%,white)`
-      : readableOnBackground(codeMix, LEGACY_CODE);
-  return { accent, foreground, codeAccent, drawer: { accent: shade, accentForeground: foreground, surfaceRaised: LEGACY_DARK_SURFACE } };
+  const mixed = mixOklabChannels(brand, '#ffffff', 0.72) as RgbChannels;
+  const onCanvas = accentTextContrast(mixed, LEGACY_DARK_CANVAS);
+  const keepsMix = mixReads(onCanvas.canvas) && mixReads(onCanvas.tint) && mixReads(channelsContrast(LEGACY_DARK_ON_ACCENT, mixed));
+  let accent: string;
+  let foreground: string;
+  let drawer: DrawerShade;
+  if (keepsMix) {
+    accent = `color-mix(in oklab,${brand} 72%,white)`;
+    foreground = LEGACY_DARK_ON_ACCENT;
+    const onSurface = accentTextContrast(mixed, LEGACY_DARK_SURFACE);
+    drawer =
+      mixReads(onSurface.canvas) && mixReads(onSurface.tint)
+        ? null
+        : drawerShade(readableAccentText(channelsHex(mixed), LEGACY_DARK_SURFACE), LEGACY_DARK_ON_ACCENT);
+  } else {
+    accent = readableAccentText(channelsHex(mixed), LEGACY_DARK_CANVAS);
+    foreground = contrastRatio(LEGACY_DARK_ON_ACCENT, accent) >= ACCENT_TEXT_CONTRAST ? LEGACY_DARK_ON_ACCENT : readableOnAccent(accent);
+    drawer = drawerAccent({ accent, accentForeground: foreground, surfaceRaised: LEGACY_DARK_SURFACE });
+  }
+  const codeMix = mixOklabChannels(brand, '#ffffff', 0.55) as RgbChannels;
+  const codeAccent = mixReads(channelsContrast(codeMix, LEGACY_CODE))
+    ? `color-mix(in oklab,${brand} 55%,white)`
+    : readableOnBackground(channelsHex(codeMix), LEGACY_CODE);
+  return { accent, foreground, codeAccent, drawer };
 };
 
 const radiusValue = (radius: ResolvedTheme['layout']['radius']): string =>
@@ -202,6 +232,13 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
   const legacyAccentForeground = readableOnAccent(legacyAccent);
   const legacyDark = legacyDarkPalette(legacyBrand);
   const legacyDarkAccent = legacyDark.accent;
+  const legacyLightDrawer = { accent: legacyAccent, accentForeground: legacyAccentForeground, surfaceRaised: LEGACY_LIGHT_SURFACE };
+  const legacyDrawerRules = drawerAccentRules(
+    legacyLightDrawer,
+    { accent: legacyDarkAccent, accentForeground: legacyDark.foreground, surfaceRaised: LEGACY_DARK_SURFACE },
+    drawerAccent(legacyLightDrawer),
+    legacyDark.drawer,
+  );
   const colorRules = config?.theme
     ? [
         `:root,.nibleaf-site-chrome{${tokenDeclarations(light, authored.light)};--radius:${radiusValue(theme.layout.radius)}}`,
@@ -221,10 +258,7 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
         `:root,.nibleaf-site-chrome{${legacyTokenDeclarations(legacyAccent, legacyDark.codeAccent)};--primary:${legacyAccent};--primary-foreground:${legacyAccentForeground};--theme-accent-foreground:${legacyAccentForeground};--ring:${legacyAccent};--radius:${radiusValue(theme.layout.radius)}}`,
         `:root.dark,:root.dark .nibleaf-site-chrome,.nibleaf-site-chrome.dark{--theme-accent:${legacyDarkAccent};--theme-focus:${legacyDarkAccent};--theme-info:${legacyDarkAccent};--primary:${legacyDarkAccent};--primary-foreground:${legacyDark.foreground};--theme-accent-foreground:${legacyDark.foreground};--ring:${legacyDarkAccent};--theme-footer-muted:var(--muted-foreground)}`,
         // The drawer draws on the lighter #171717 popover, where a shade that reads on the canvas can fall short.
-        ...drawerAccentRules(
-          { accent: legacyAccent, accentForeground: legacyAccentForeground, surfaceRaised: LEGACY_LIGHT_SURFACE },
-          legacyDark.drawer,
-        ),
+        ...legacyDrawerRules,
       ];
   return [
     ...colorRules,

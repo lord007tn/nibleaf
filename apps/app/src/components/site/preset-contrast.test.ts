@@ -409,11 +409,14 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
   const POPOVER = '#171717';
   const CODE = '#0d1117';
   const toHex = (channels: number[]) => `#${channels.map((value) => Math.round(value).toString(16).padStart(2, '0')).join('')}`;
-  /** A declared colour as the browser draws it: a `color-mix(in oklab,…,white)` worked out independently, or a hex. */
-  const drawn = (value: string) => {
+  /** A declared colour as the browser draws it, as sRGB channels: a `color-mix(in oklab,…,white)`
+   * worked out independently and left UNROUNDED (the browser keeps the fraction), or a hex. */
+  const drawn = (value: string): number[] => {
     const mix = value.match(/^color-mix\(in oklab,(#[0-9a-f]{6}) (\d+)%,white\)$/);
-    return mix ? toHex(hoverMixOklab(hoverRgb(mix[1] as string), [255, 255, 255], Number(mix[2]) / 100)) : value;
+    return mix ? hoverMixOklab(hoverRgb(mix[1] as string), [255, 255, 255], Number(mix[2]) / 100) : hoverRgb(value);
   };
+  /** Contrast on the colour's own `weight` tint over `background`, composited without rounding. */
+  const onOwnTint = (color: number[], background: string, weight = 0.1) => hoverContrast(color, hoverOver(hoverRgb(background), color, weight));
   const declarations = (rule: string): Record<string, string> =>
     Object.fromEntries(
       rule.split(';').map((declaration) => [declaration.slice(0, declaration.indexOf(':')), declaration.slice(declaration.indexOf(':') + 1)]),
@@ -429,28 +432,30 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
     return {
       css,
       page,
+      light,
       primary: drawn(page['--primary'] as string),
-      onPrimary: page['--primary-foreground'] as string,
+      onPrimary: hoverRgb(page['--primary-foreground'] as string),
       drawerPrimary: drawn(drawerTokens['--primary'] ?? (page['--primary'] as string)),
-      drawerOnPrimary: drawerTokens['--primary-foreground'] ?? (page['--primary-foreground'] as string),
+      drawerOnPrimary: hoverRgb(drawerTokens['--primary-foreground'] ?? (page['--primary-foreground'] as string)),
       codeAccent: drawn(light['--theme-code-accent'] as string),
     };
   };
-  /** Every target in #744 the brand misses, with its ratio (empty when it meets them all). */
+  /** Every target in #744 the brand misses, with its ratio (empty when it meets them all), on fractional channels. */
   const shortfalls = (brand: string) => {
     const dark = legacyDark(brand);
+    const [canvas, popover, code] = [CANVAS, POPOVER, CODE].map(hoverRgb) as [number[], number[], number[]];
     const checks: [string, number, number][] = [
-      ['--primary on the canvas', contrastRatio(dark.primary, CANVAS), 4.5],
-      ['--primary on its tint', onStackedTint(dark.primary, CANVAS, 0.1, 1), 4.5],
-      ['--ring on the canvas', contrastRatio(drawn(dark.page['--ring'] as string), CANVAS), 3],
-      ['--theme-focus on the canvas', contrastRatio(drawn(dark.page['--theme-focus'] as string), CANVAS), 3],
-      ['--primary-foreground on --primary', contrastRatio(dark.onPrimary, dark.primary), 4.5],
-      ['drawer --primary on the popover', contrastRatio(dark.drawerPrimary, POPOVER), 4.5],
-      ['drawer --primary on its tint', onStackedTint(dark.drawerPrimary, POPOVER, 0.1, 1), 4.5],
-      ['drawer --primary-foreground on its --primary', contrastRatio(dark.drawerOnPrimary, dark.drawerPrimary), 4.5],
-      ['--theme-code-accent on the code surface', contrastRatio(dark.codeAccent, CODE), 4.5],
+      ['--primary on the canvas', hoverContrast(dark.primary, canvas), 4.5],
+      ['--primary on its tint', onOwnTint(dark.primary, CANVAS), 4.5],
+      ['--ring on the canvas', hoverContrast(drawn(dark.page['--ring'] as string), canvas), 3],
+      ['--theme-focus on the canvas', hoverContrast(drawn(dark.page['--theme-focus'] as string), canvas), 3],
+      ['--primary-foreground on --primary', hoverContrast(dark.onPrimary, dark.primary), 4.5],
+      ['drawer --primary on the popover', hoverContrast(dark.drawerPrimary, popover), 4.5],
+      ['drawer --primary on its tint', onOwnTint(dark.drawerPrimary, POPOVER), 4.5],
+      ['drawer --primary-foreground on its --primary', hoverContrast(dark.drawerOnPrimary, dark.drawerPrimary), 4.5],
+      ['--theme-code-accent on the code surface', hoverContrast(dark.codeAccent, code), 4.5],
     ];
-    return checks.filter(([, ratio, target]) => ratio < target).map(([name, ratio]) => `${name}: ${ratio.toFixed(2)}:1`);
+    return checks.filter(([, ratio, target]) => ratio < target).map(([name, ratio]) => `${name}: ${ratio.toFixed(4)}:1`);
   };
 
   it.each([
@@ -466,10 +471,32 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
     // One shade, in place of the mix, for the accent, info and focus.
     for (const token of ['--theme-accent', '--theme-info', '--theme-focus', '--ring']) expect(dark.page[token], token).toBe(dark.page['--primary']);
     expect(dark.page['--primary']).toMatch(/^#[0-9a-f]{6}$/);
-    expect(dark.page['--theme-accent-foreground']).toBe(dark.onPrimary);
+    expect(dark.page['--theme-accent-foreground']).toBe(dark.page['--primary-foreground']);
   });
 
-  it('meets every target for any brand, and keeps each mix wherever it already read', () => {
+  // The browser keeps a mix's fractional channels; rounding them first can lift a
+  // colour just under AA over the line. These two did, and kept their mix.
+  it('judges a mix by its unrounded colour: #2d25e3 read 4.5003:1 on its tint rounded, 4.4760:1 as drawn', () => {
+    const fractional = hoverMixOklab(hoverRgb('#2d25e3'), [255, 255, 255], 0.72);
+    expect(toHex(fractional)).toBe('#5874f1');
+    expect(onOwnTint(hoverRgb('#5874f1'), CANVAS)).toBeCloseTo(4.5003, 4);
+    expect(onOwnTint(fractional, CANVAS)).toBeCloseTo(4.476, 4);
+    const dark = legacyDark('#2d25e3');
+    expect(dark.page['--primary']).toMatch(/^#[0-9a-f]{6}$/);
+    expect(shortfalls('#2d25e3')).toEqual([]);
+  });
+
+  it("judges the code accent the same way: #3a1408's 55% mix read 4.5041:1 rounded, 4.4812:1 as drawn", () => {
+    const fractional = hoverMixOklab(hoverRgb('#3a1408'), [255, 255, 255], 0.55);
+    expect(hoverContrast(hoverRgb(toHex(fractional)), hoverRgb(CODE))).toBeCloseTo(4.5041, 4);
+    expect(hoverContrast(fractional, hoverRgb(CODE))).toBeCloseTo(4.4812, 4);
+    const dark = legacyDark('#3a1408');
+    expect(dark.light['--theme-code-accent']).toMatch(/^#[0-9a-f]{6}$/);
+    expect(shortfalls('#3a1408')).toEqual([]);
+  });
+
+  it('meets every target for any brand, and keeps each mix wherever it reads with room to spare', () => {
+    const clears = (ratio: number) => ratio >= 4.51;
     const levels = [0, 36, 73, 109, 146, 182, 219, 255];
     for (const r of levels)
       for (const g of levels)
@@ -477,11 +504,12 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
           const brand = toHex([r, g, b]);
           expect(shortfalls(brand), brand).toEqual([]);
           const { page, css } = legacyDark(brand);
-          const mixed = legacyDarkAccent(brand);
-          if (contrastRatio(mixed, CANVAS) >= 4.5 && onStackedTint(mixed, CANVAS, 0.1, 1) >= 4.5)
+          const mixed = hoverMixOklab([r, g, b], [255, 255, 255], 0.72);
+          if (clears(hoverContrast(mixed, hoverRgb(CANVAS))) && clears(onOwnTint(mixed, CANVAS)) && clears(hoverContrast(hoverRgb(POPOVER), mixed)))
             expect(page['--primary'], brand).toBe(`color-mix(in oklab,${brand} 72%,white)`);
-          const code = toHex(hoverMixOklab([r, g, b], [255, 255, 255], 0.55));
-          if (contrastRatio(code, CODE) >= 4.5) expect(css, brand).toContain(`--theme-code-accent:color-mix(in oklab,${brand} 55%,white);`);
+          const code = hoverMixOklab([r, g, b], [255, 255, 255], 0.55);
+          if (clears(hoverContrast(code, hoverRgb(CODE))))
+            expect(css, brand).toContain(`--theme-code-accent:color-mix(in oklab,${brand} 55%,white);`);
         }
   });
 

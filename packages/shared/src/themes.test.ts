@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   ACCENT_TEXT_CONTRAST,
+  accentTextContrast,
   applyThemeTemplateConfig,
   canonicalThemeTemplateJson,
+  channelsContrast,
+  channelsHex,
   contrastRatio,
   inspectThemeTemplateInput,
   mixOklab,
+  mixOklabChannels,
   previewThemeConfigChanges,
   readableAccentText,
   readableCodeAccent,
@@ -48,6 +52,19 @@ describe('mixOklab', () => {
     expect(mixOklab('#b96a3d', '#ffffff', 0)).toBe('#ffffff');
     expect(mixOklab('#abc', '#ffffff', 1)).toBe('#aabbcc');
     expect(mixOklab('var(--x)', '#ffffff', 0.5)).toBe('var(--x)');
+  });
+
+  it('keeps the fraction the browser keeps, so a colour just under AA is not rounded over the line (#744)', () => {
+    const channels = mixOklabChannels('#2d25e3', '#ffffff', 0.72);
+    expect(channels).not.toBeNull();
+    const mixed = channels as NonNullable<typeof channels>;
+    expect(channelsHex(mixed)).toBe('#5874f1');
+    expect(mixed.some((value) => !Number.isInteger(value))).toBe(true);
+    // On its own 10% tint over #0a0a0a: AA once rounded, short of it as drawn.
+    expect(accentTextContrast([0x58, 0x74, 0xf1], '#0a0a0a').tint).toBeGreaterThanOrEqual(ACCENT_TEXT_CONTRAST);
+    expect(accentTextContrast(mixed, '#0a0a0a').tint).toBeLessThan(ACCENT_TEXT_CONTRAST);
+    expect(channelsContrast(mixed, '#0a0a0a')).toBeCloseTo(contrastRatio('#5874f1', '#0a0a0a'), 1);
+    expect(mixOklabChannels('var(--x)', '#ffffff', 0.5)).toBeNull();
   });
 });
 

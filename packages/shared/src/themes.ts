@@ -399,31 +399,60 @@ const toOklab = (hex: string): [number, number, number] => {
   ];
 };
 
-/** `color-mix(in oklab, <color> <share>, <other>)` for opaque colours, as the
- * browser draws it: mixed in OKLab, back to sRGB, clipped to the gamut and
- * rounded to a hex. Used to check what a mix the CSS ships actually renders. */
-export const mixOklab = (color: string, other: string, share: number): string => {
+/** sRGB channels (0–255) that may be fractional, as a mix computes them before any rounding. */
+export type RgbChannels = readonly [number, number, number];
+
+/** `color-mix(in oklab, <color> <share>, <other>)` for opaque colours: mixed in
+ * OKLab and converted back to sRGB, with each channel clipped to 0–255 (not the
+ * full CSS gamut mapping, which mixes towards white never need: they stay in
+ * gamut) and NOT rounded. The browser keeps this fractional colour, so any
+ * pass/fail decision about a shipped mix is made on these channels; null when
+ * either input isn't a hex. */
+export const mixOklabChannels = (color: string, other: string, share: number): RgbChannels | null => {
   const a = normalizeHex(color);
   const b = normalizeHex(other);
-  if (!/^#[0-9a-f]{6}$/i.test(a) || !/^#[0-9a-f]{6}$/i.test(b)) return color;
+  if (!/^#[0-9a-f]{6}$/i.test(a) || !/^#[0-9a-f]{6}$/i.test(b)) return null;
   const first = toOklab(a);
   const second = toOklab(b);
   const [L, A, B] = first.map((value, index) => value * share + (second[index] ?? 0) * (1 - share)) as [number, number, number];
   const l = (L + 0.396_337_777_4 * A + 0.215_803_757_3 * B) ** 3;
   const m = (L - 0.105_561_345_8 * A - 0.063_854_172_8 * B) ** 3;
   const s = (L - 0.089_484_177_5 * A - 1.291_485_548 * B) ** 3;
-  const rgb = [
+  return [
     4.076_741_662_1 * l - 3.307_711_591_3 * m + 0.230_969_929_2 * s,
     -1.268_438_004_6 * l + 2.609_757_401_1 * m - 0.341_319_396_5 * s,
     -0.004_196_086_3 * l - 0.703_418_614_7 * m + 1.707_614_701 * s,
-  ];
-  return `#${rgb
-    .map((value) =>
-      Math.round(Math.min(255, Math.max(0, linearToSrgb(value))))
-        .toString(16)
-        .padStart(2, '0'),
-    )
-    .join('')}`;
+  ].map((value) => Math.min(255, Math.max(0, linearToSrgb(value)))) as unknown as RgbChannels;
+};
+
+/** Channels as a `#rrggbb` hex, rounded: only for emitting a colour, never for deciding whether one reads. */
+export const channelsHex = (channels: RgbChannels): string => `#${channels.map((value) => Math.round(value).toString(16).padStart(2, '0')).join('')}`;
+
+/** `mixOklabChannels` rounded to a hex: the colour a replacement is emitted as. */
+export const mixOklab = (color: string, other: string, share: number): string => {
+  const channels = mixOklabChannels(color, other, share);
+  return channels ? channelsHex(channels) : color;
+};
+
+const hexChannels = (hex: string): RgbChannels => {
+  const value = normalizeHex(hex);
+  return [1, 3, 5].map((start) => Number.parseInt(value.slice(start, start + 2), 16)) as unknown as RgbChannels;
+};
+const channelsLuminance = ([r, g, b]: RgbChannels): number => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+
+/** WCAG contrast between two colours given as (possibly fractional) channels or hexes. */
+export const channelsContrast = (foreground: RgbChannels | string, background: RgbChannels | string): number => {
+  const first = channelsLuminance(typeof foreground === 'string' ? hexChannels(foreground) : foreground);
+  const second = channelsLuminance(typeof background === 'string' ? hexChannels(background) : background);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+};
+
+/** Contrast of `color` as accent text on the canvas and on its own 10% tint
+ * (`bg-primary/10`), composited in sRGB without rounding (contrastOnTint). */
+export const accentTextContrast = (color: RgbChannels, canvas: string): { canvas: number; tint: number } => {
+  const background = hexChannels(canvas);
+  const tint = background.map((value, index) => value * (1 - ACCENT_TINT) + (color[index] ?? 0) * ACCENT_TINT) as unknown as RgbChannels;
+  return { canvas: channelsContrast(color, background), tint: channelsContrast(color, tint) };
 };
 
 /** Nudge `color` towards white or black until it reads against `background`.
