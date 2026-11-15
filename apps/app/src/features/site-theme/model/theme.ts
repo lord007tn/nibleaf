@@ -110,17 +110,28 @@ export function withPart<S extends 'layout' | 'components'>(
 const SECTIONS = ['colors', 'layout', 'components'] as const;
 
 /**
- * The authored theme as a save sends it. The theme is one unit: the API merges
- * `config.theme` one level deep, so each part the draft holds replaces the
- * stored one whole, and a part the draft doesn't hold would be kept from the
- * server. A part the baseline has and the draft doesn't (only after "Keep
- * mine" over someone else's theme) is sent empty, so the site stores the
- * draft's theme, not a mix of the two. Optional parts the baseline doesn't
+ * The authored theme as a save sends it. The API merges `config.theme` one
+ * level deep: each part sent replaces the stored one, and a part left out is
+ * kept from the server. So that "Keep mine" over someone else's theme stores
+ * the draft's look, not a mix:
+ * - a colour, layout or component part the baseline has and the draft doesn't
+ *   is sent empty (`{}`);
+ * - a preset the baseline has and the draft doesn't is sent as the draft's
+ *   effective preset (Harbor, the default), so another writer's preset never
+ *   replaces it.
+ * `version` and descriptive `metadata` the draft doesn't hold stay as stored
+ * (neither changes how the site looks). Optional parts the baseline doesn't
  * have are never added.
  */
 function sentTheme(theme: NibleafThemeConfig, baseline: NibleafThemeConfig | undefined): NibleafThemeConfig {
   const emptied = SECTIONS.filter((part) => baseline?.[part] !== undefined && theme[part] === undefined);
-  return emptied.length === 0 ? theme : { ...theme, ...Object.fromEntries(emptied.map((part) => [part, {}])) };
+  const keepPreset = baseline?.preset !== undefined && theme.preset === undefined;
+  if (emptied.length === 0 && !keepPreset) return theme;
+  return {
+    ...theme,
+    ...(keepPreset ? { preset: resolveTheme({ theme }).id } : {}),
+    ...Object.fromEntries(emptied.map((part) => [part, {}])),
+  };
 }
 
 /**
@@ -137,9 +148,15 @@ export function themeConfigPatch(values: ThemeValues, baseline: ThemeValues): Pi
   return patch;
 }
 
-/** What a save of `values` stores, read back as the draft reads it: the draft hook's `toSent`. */
+/**
+ * What a save of `values` stores, read back as the draft reads it: the draft
+ * hook's `toSent`. A sent theme is merged one level deep over the baseline's,
+ * as the API stores it, so the parts it keeps (`version`, `metadata`) are
+ * part of what the save is judged by.
+ */
 export function sentThemeValues(values: ThemeValues, baseline: ThemeValues): ThemeValues {
-  return { theme: themeConfigPatch(values, baseline).theme ?? values.theme, appearance: values.appearance };
+  const sent = themeConfigPatch(values, baseline).theme;
+  return { theme: sent ? { ...baseline.theme, ...sent } : values.theme, appearance: values.appearance };
 }
 
 /** The authored colours' contrast problems: what blocks a save (the API checks the same pairs). */
@@ -179,6 +196,24 @@ export function usableHistory(history: readonly HistoryEntry[], baseline: ThemeV
       deepEqual(entry.baseline, baseline) ||
       (entry.save !== undefined && entry.save === mark?.id && mark.reached.some((reached) => deepEqual(reached, baseline))),
   );
+}
+
+/**
+ * The history once the baseline has moved to `baseline`. Entries made on it
+ * stay. Entries made during the save that reached it (its echo or its answer)
+ * move onto it, so a later save that fails can't hide them. Every other entry
+ * is retired for good: a server that later returns to an old value never
+ * brings back the Undo made against it.
+ */
+export function settleHistory(history: HistoryEntry[], baseline: ThemeValues, mark?: SaveMark): HistoryEntry[] {
+  let changed = false;
+  const next = history.flatMap((entry) => {
+    if (deepEqual(entry.baseline, baseline)) return [entry];
+    changed = true;
+    const reached = entry.save !== undefined && entry.save === mark?.id && mark.reached.some((value) => deepEqual(value, baseline));
+    return reached ? [{ ...entry, baseline }] : [];
+  });
+  return changed ? next : history;
 }
 
 /** The draft one Undo restores, and the history left after it; `undefined` when nothing usable is left. */

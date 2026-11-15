@@ -5,7 +5,7 @@ import { translateFn, useT } from '@nibleaf/i18n/react';
 import { resolveTheme, THEME_COLOR_KEYS, THEME_PRESET_IDS, type ThemeColorKey } from '@nibleaf/shared/themes';
 import { useStore } from '@tanstack/react-form';
 import { LayoutTemplate, RotateCcw, Undo2 } from 'lucide-react';
-import { useCallback, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { accentTextAdjustments } from '@/components/project-settings/accent-text-adjustments';
@@ -26,6 +26,7 @@ import {
   recordHistory,
   type SaveMark,
   sentThemeValues,
+  settleHistory,
   shownAppearance,
   type ThemeValues,
   themeProblems,
@@ -35,7 +36,7 @@ import {
   withColor,
   withPart,
 } from '../model/theme';
-import { ThemeExchange } from './theme-exchange';
+import { type Operation, ThemeExchange } from './theme-exchange';
 import { ThemeOptionSelect, ThemePresetThumbnail, ThemePreview } from './theme-preview';
 import { useMounted } from './use-mounted';
 
@@ -95,11 +96,10 @@ function ThemeForm({ project }: { project: Project }) {
       setMark({ id, reached: [sent] });
       try {
         const confirmed = await saveTheme(value, save.baseline);
+        // Before the answer becomes the baseline, so edits made during this save move onto it.
+        if (save.isCurrent()) setMark((current) => (current?.id === id ? { id, reached: [sent, confirmed] } : current));
         settled.current = save.succeeded(confirmed);
-        if (save.isCurrent()) {
-          setMark((current) => (current?.id === id ? { id, reached: [sent, confirmed] } : current));
-          if (mounted.current) toast.success(t('settings.theme.savedDraft'));
-        }
+        if (save.isCurrent() && mounted.current) toast.success(t('settings.theme.savedDraft'));
         return 'saved';
       } catch (error) {
         save.failed();
@@ -128,9 +128,27 @@ function ThemeForm({ project }: { project: Project }) {
     setSubmitted(false);
     setMark(undefined);
   }
-  const applyingNow = useRef(false);
-  applyingNow.current = applying;
   const edits = useRef(0);
+
+  // Save and Apply both write the theme: one at a time, owned synchronously so
+  // neither can start between the other's check and its request. Each releases
+  // only its own operation, and one still running for another site never
+  // blocks this one.
+  const identityNow = useRef(identityKey);
+  identityNow.current = identityKey;
+  const operation = useRef<Operation | null>(null);
+  const busy = useCallback(() => operation.current !== null && operation.current.identity === identityNow.current, []);
+  const acquire = useCallback(
+    (kind: Operation['kind']) => {
+      if (busy()) return null;
+      operation.current = { kind, identity: identityNow.current };
+      return operation.current;
+    },
+    [busy],
+  );
+  const release = useCallback((owned: Operation) => {
+    if (operation.current === owned) operation.current = null;
+  }, []);
 
   const [previewMode, setPreviewMode] = useState<ColorMode>(() => (source.appearance === 'dark' ? 'dark' : 'light'));
   const [previewArabic, setPreviewArabic] = useState(false);
@@ -175,6 +193,11 @@ function ThemeForm({ project }: { project: Project }) {
   };
   const canUndo = usableHistory(history, draft.baseline, mark).length > 0;
 
+  // Edits the person agreed to discard for an import whose readback failed: discarded once a read brings the import.
+  const discardOnReadback = useRef<{ since: number; identity: string } | undefined>(undefined);
+  const markNow = useRef(mark);
+  markNow.current = mark;
+
   const retire = useCallback(() => {
     setHistory([]);
     setLeft(NOTHING_LEFT);
@@ -185,40 +208,67 @@ function ThemeForm({ project }: { project: Project }) {
   // Save, Enter and Ctrl+S all come through here. The page's save bar disables
   // Save while saving, so 'busy' only means "nothing new to report".
   const submit = useCallback(async () => {
-    // An import being applied is a write too: one at a time.
-    if (applyingNow.current) return 'failed' as const;
-    settled.current = true;
-    setSubmitted(true);
-    const outcome = await submitDraft();
-    if (outcome === 'invalid') {
-      // Mark the failing colours now, in a mode that has one, so the bar can focus it.
-      const failing = themeProblems(previewConfig(config, form.state.values as ThemeValues));
-      flushSync(() => {
-        setSubmitted(true);
-        setColorMode((mode) => (failing.some((issue) => issue.mode === mode) ? mode : (failing[0]?.mode ?? mode)));
-      });
+    // An import being applied is a write too: the save waits its turn.
+    const owned = acquire('save');
+    if (!owned) return 'failed' as const;
+    try {
+      settled.current = true;
+      setSubmitted(true);
+      const outcome = await submitDraft();
+      if (outcome === 'invalid') {
+        // Mark the failing colours now, in a mode that has one, so the bar can focus it.
+        const failing = themeProblems(previewConfig(config, form.state.values as ThemeValues));
+        flushSync(() => {
+          setSubmitted(true);
+          setColorMode((mode) => (failing.some((issue) => issue.mode === mode) ? mode : (failing[0]?.mode ?? mode)));
+        });
+      }
+      // A settled save leaves nothing to undo or show. An unsettled one (edits
+      // made during it, or a value changed elsewhere) keeps the draft, its
+      // conflict, its shown problems and the Undo made during it.
+      if (outcome === 'saved' && settled.current) retire();
+      return outcome === 'busy' ? 'failed' : outcome;
+    } finally {
+      release(owned);
     }
-    // A settled save leaves nothing to undo or show. An unsettled one (edits
-    // made during it, or a value changed elsewhere) keeps the draft, its
-    // conflict, its shown problems and the Undo made during it.
-    if (outcome === 'saved' && settled.current) retire();
-    return outcome === 'busy' ? 'failed' : outcome;
-  }, [config, form, retire, submitDraft]);
+  }, [acquire, config, form, release, retire, submitDraft]);
   const discard = useCallback(() => {
-    if (isSaving || applyingNow.current) return;
+    if (isSaving || busy()) return;
     discardDraft();
     retire();
-  }, [discardDraft, isSaving, retire]);
+  }, [busy, discardDraft, isSaving, retire]);
   const formProps = useSaveRegionForm('site-theme', { isDirty: draft.isDirty, isSubmitting: isSaving || applying, submit, discard });
 
-  const discardIfUntouched = useCallback(
-    (since: number) => {
+  /**
+   * An import was written over edits the person agreed to discard. They go once
+   * the form shows the import (a read after the write), and only if nothing
+   * was edited since; until then the draft stays as it is.
+   */
+  const discardAfterApply = useCallback(
+    (since: number, refreshed: boolean) => {
+      if (!refreshed) {
+        discardOnReadback.current = { since, identity: identityNow.current };
+        return;
+      }
       if (edits.current !== since) return;
       discardDraft();
       retire();
     },
     [discardDraft, retire],
   );
+
+  // The baseline moved (a read, a save's echo or answer): retire the Undo it
+  // overtakes, and drop the edits waiting for an import's readback.
+  useEffect(() => {
+    setHistory((items) => settleHistory(items, draft.baseline, markNow.current));
+    const waiting = discardOnReadback.current;
+    if (!waiting) return;
+    discardOnReadback.current = undefined;
+    // Another site's baseline brings nothing of this import; an edit since keeps the draft.
+    if (waiting.identity !== identityNow.current || edits.current !== waiting.since) return;
+    discardDraft();
+    retire();
+  }, [discardDraft, draft.baseline, retire]);
   const leave = (key: string) => setLeft((previous) => (previous.has(key) ? previous : new Set(previous).add(key)));
 
   return (
@@ -462,13 +512,15 @@ function ThemeForm({ project }: { project: Project }) {
       </div>
 
       <ThemeExchange
-        discardIfUntouched={discardIfUntouched}
+        acquire={acquire}
+        discardAfterApply={discardAfterApply}
         editMark={() => edits.current}
         isDirty={draft.isDirty}
         isSaving={isSaving}
         key={project.id}
         onApplyingChange={setApplying}
         projectId={project.id}
+        release={release}
         slug={project.slug}
       />
     </form>

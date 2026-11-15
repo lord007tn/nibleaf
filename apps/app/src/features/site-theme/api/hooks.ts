@@ -21,11 +21,13 @@ export function useSaveTheme(projectId: string) {
 /**
  * The template exchange, on the existing endpoints:
  * - `preview` validates a template against the stored config and writes nothing;
- * - `apply` writes it at once (a server write, not part of the draft) and
- *   resolves after the project has been read again, so the form's source
- *   already holds what was applied. The import can change typography, branding
- *   and Styling's sections too; the project query, not this result, brings
- *   those to their own forms;
+ * - `apply` writes it at once (a server write, not part of the draft), then
+ *   reads the project again. It resolves the server's answer and `refreshed`:
+ *   whether that read succeeded after the write, so the form's source holds
+ *   what was applied. A failed read never rejects: the write stands. The
+ *   import can change typography, branding and Styling's sections too; the
+ *   project query, not this result, brings those to their own forms;
+ * - `refresh` reads the project again (after a failed read);
  * - `exportTemplate` downloads what the server stores, never the draft.
  */
 export function useThemeExchange(projectId: string) {
@@ -34,13 +36,18 @@ export function useThemeExchange(projectId: string) {
   const queryClient = useQueryClient();
 
   const preview = (template: unknown, mode: 'merge' | 'replace') => importTheme.mutateAsync({ template, mode, apply: false });
+  const queryKey = queryKeys.projects.detail(projectId);
   const apply = async (template: unknown, mode: 'merge' | 'replace') => {
+    const askedAt = Date.now();
     const result = await importTheme.mutateAsync({ template, mode, apply: true });
-    // The mutation already started this read; join it rather than start another.
-    await queryClient.refetchQueries({ queryKey: queryKeys.projects.detail(projectId), type: 'active' }, { cancelRefetch: false });
-    return result;
+    // The mutation's invalidation cancelled any older read and started this one; join it.
+    await queryClient.refetchQueries({ queryKey, type: 'active' }, { cancelRefetch: false });
+    // Read back only if the last read succeeded, and answered after the write was asked for.
+    const read = queryClient.getQueryState(queryKey);
+    return { result, refreshed: read?.status === 'success' && read.dataUpdatedAt >= askedAt };
   };
+  const refresh = () => queryClient.refetchQueries({ queryKey, type: 'active' });
   const exportTemplate = () => exportTheme.mutateAsync();
 
-  return { preview, apply, exportTemplate };
+  return { preview, apply, refresh, exportTemplate };
 }

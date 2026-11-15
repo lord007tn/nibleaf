@@ -21,7 +21,7 @@ import type { Project } from '@/hooks/api';
 import { projectQueryOptions } from '@/hooks/api/query-options';
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, translateFn: (key: string) => key }));
-vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }));
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn(), warning: vi.fn() } }));
 vi.mock('@tanstack/react-router', () => ({ useBlocker: () => undefined }));
 vi.mock('@/services/api-origin', () => ({ apiOrigin: () => 'http://dashboard.test' }));
 vi.mock('@/lib/site-theme', () => ({
@@ -719,6 +719,167 @@ describe('theme templates', () => {
     expect(exported.config.theme.preset).toBe('signal');
     expect(server.exports).toBe(1);
     expect(server.patches).toHaveLength(0);
+  });
+});
+
+describe('review round: ownership, readback, Undo and legacy presets', () => {
+  const ctrlS = () =>
+    act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
+    });
+  const applies = () => server.imports.filter((entry) => entry.apply);
+  const previewTemplate = async (preset = 'manuscript') => {
+    await typeTemplate(template(preset));
+    await click(buttonNamed('settings.theme.previewImport'));
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('preview'));
+  };
+  const chooseFile = (file: { size: number; text: () => Promise<string> }) =>
+    act(async () => {
+      const input = container.querySelector<HTMLInputElement>('input[type="file"]') as HTMLInputElement;
+      Object.defineProperty(input, 'files', { value: [file], configurable: true });
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+  const slowFile = (size = 10) => {
+    let resolve!: (text: string) => void;
+    let reject!: (error: unknown) => void;
+    const file = {
+      size,
+      text: () =>
+        new Promise<string>((res, rej) => {
+          resolve = res;
+          reject = rej;
+        }),
+    };
+    return { file, resolve: (text: string) => act(async () => resolve(text)), reject: () => act(async () => reject(new Error('NotReadableError'))) };
+  };
+
+  it('Keep mine on a legacy theme without a preset keeps Harbor over another writer’s Signal, and settles clean', async () => {
+    const legacy = { version: 1, colors: { light: { canvas: '#fdfdfd' } } };
+    await open({ styling: { theme: 'dark' }, theme: structuredClone(legacy) });
+    expect(activePreset()).toBe('harbor');
+    await setColor('canvas', '#fafafa');
+    await elsewhere((config) => ({ ...config, theme: { ...legacy, preset: 'signal' } }));
+    expect(conflict()).toBe(true);
+    await click(buttonNamed('forms.keepMine'));
+    await save();
+    expect(lastPatch()).toStrictEqual({ theme: { version: 1, colors: { light: { canvas: '#fafafa' } }, preset: 'harbor' } });
+    expect(resolveTheme({ theme: storedTheme() as never }).id).toBe('harbor');
+    expect(activePreset()).toBe('harbor');
+    expect(region()).toBeNull();
+  });
+
+  it('Ctrl+S while the Apply confirmation is open owns the write: confirming afterwards dispatches no import', async () => {
+    await open();
+    await previewTemplate();
+    await preset('harbor');
+    await click(buttonNamed('settings.theme.applyImport'));
+    expect(dialog()).not.toBeNull();
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await ctrlS();
+    await vi.waitFor(() => expect(server.patches).toHaveLength(1));
+    await answer('discard');
+    await patch.open();
+    await finished();
+    expect(applies()).toHaveLength(0);
+    expect(storedTheme()).toMatchObject({ preset: 'harbor' });
+    // The save is done: Apply can be chosen again, on a clean draft, without asking.
+    await click(buttonNamed('settings.theme.applyImport'));
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('applied'));
+    expect(applies()).toHaveLength(1);
+  });
+
+  it('a file read that lands while the confirmation is open retires the preview, and confirming dispatches nothing', async () => {
+    await open();
+    await previewTemplate();
+    await preset('harbor');
+    const read = slowFile();
+    await chooseFile(read.file);
+    await click(buttonNamed('settings.theme.applyImport'));
+    await read.resolve(template('signal'));
+    await answer('discard');
+    await settle();
+    expect(applies()).toHaveLength(0);
+    expect(importResult()).toBeNull();
+    expect(activePreset()).toBe('harbor');
+  });
+
+  it('an import written but not read back keeps the draft, says so, and discards it once a read brings the import', async () => {
+    await open();
+    await previewTemplate();
+    await setColor('canvas', '#fdfdfd');
+    const held = gate();
+    server.holdImport = held.promise;
+    await click(buttonNamed('settings.theme.applyImport'));
+    await answer('discard');
+    await vi.waitFor(() => expect(applies()).toHaveLength(1));
+    server.failReads.add('site-1');
+    await held.open();
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('applied'));
+    await finished();
+    expect(storedTheme()).toMatchObject({ preset: 'manuscript' });
+    expect(toast.success).not.toHaveBeenCalledWith('settings.theme.import.applied');
+    expect(toast.warning).toHaveBeenCalledWith(
+      'settings.theme.import.applied',
+      expect.objectContaining({ description: 'settings.git.workflow.loadErrorHint' }),
+    );
+    expect(toast.error).not.toHaveBeenCalled();
+    // The form still shows what it had, the edit included.
+    expect(color('canvas').value).toBe('#fdfdfd');
+    expect(activePreset()).toBe('signal');
+    server.failReads.delete('site-1');
+    await elsewhere((config) => config);
+    expect(activePreset()).toBe('manuscript');
+    expect(region()).toBeNull();
+  });
+
+  it('Undo made against a server value never comes back when the server returns to it (A → B → A)', async () => {
+    await open();
+    await appearance('light');
+    await elsewhere((config) => ({ ...config, theme: { version: 1, preset: 'harbor' } }));
+    expect(undoButton().disabled).toBe(true);
+    await elsewhere((config) => ({ ...config, theme: structuredClone(AUTHORED) }));
+    expect(undoButton().disabled).toBe(true);
+  });
+
+  it('an edit made during a save stays undoable through a later save that fails', async () => {
+    await open();
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await preset('manuscript');
+    await startSave();
+    await appearance('light');
+    await patch.open();
+    await finished();
+    server.holdPatch = undefined;
+    expect(undoButton().disabled).toBe(false);
+    server.failPatch = true;
+    await save();
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    expect(undoButton().disabled).toBe(false);
+    await undo();
+    expect(shownAppearance()).toBe('settings.styling.theme.dark');
+    expect(activePreset()).toBe('manuscript');
+    expect(region()).toBeNull();
+  });
+
+  it('an unreadable or too large file keeps the text there was; a stale failed read says nothing', async () => {
+    await open();
+    await typeTemplate('kept');
+    const unreadable = slowFile();
+    await chooseFile(unreadable.file);
+    await unreadable.reject();
+    expect(textarea().value).toBe('kept');
+    expect(toast.error).toHaveBeenCalledTimes(1);
+    await chooseFile({ size: 10 ** 9, text: () => Promise.resolve('never read') });
+    expect(textarea().value).toBe('kept');
+    expect(toast.error).toHaveBeenLastCalledWith('settings.theme.import.tooLarge');
+    const stale = slowFile();
+    await chooseFile(stale.file);
+    await typeTemplate('typed since');
+    await stale.reject();
+    expect(textarea().value).toBe('typed since');
+    expect(toast.error).toHaveBeenCalledTimes(2);
   });
 });
 

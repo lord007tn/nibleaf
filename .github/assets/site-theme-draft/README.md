@@ -16,8 +16,12 @@ answered by interception on the fixture origin:
 
 - the project `GET` is served from an in-page store;
 - the project `PATCH` merges each config section one level deep, as the API does;
-- the template preview, apply and export run the shared theme functions `apps/server/src/actions/themes.ts` uses
-  (template validation is not repeated: the fixture's template is valid);
+- the template preview, apply and export run the shared theme functions `apps/server/src/actions/themes.ts` uses,
+  without its schema steps: the pasted template is not validated, and the stored theme-owned sections are merged
+  as stored instead of as `parsedThemeOwnedConfig` parses them. For this fixture that is the same input: its
+  `theme`, `styling` and `typography` parse to deep-equal values under `themeTemplateV1Schema` and it has no
+  `branding` (checked with the validators package, review round of #764). A fixture with sections the schema
+  normalizes would need the parse;
 - one save and one apply are refused with a 500, on purpose.
 
 No server or database was used, and 0 requests left the fixture origin. "Before" swaps in main's `theme-section.tsx`;

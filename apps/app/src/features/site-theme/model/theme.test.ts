@@ -10,6 +10,7 @@ import {
   readTemplateText,
   recordHistory,
   sentThemeValues,
+  settleHistory,
   type ThemeValues,
   themeConfigPatch,
   themeProblems,
@@ -111,6 +112,21 @@ describe('the changed-field patch', () => {
     expect(sentThemeValues(values(mine, 'dark'), values(theirs))).toStrictEqual(values({ ...mine, layout: {}, components: {} }, 'dark'));
   });
 
+  it('a legacy theme without a preset keeps its effective preset over another writer’s (Keep mine)', () => {
+    const mine = { version: 1 as const, colors: { light: { canvas: '#fafafa' } } };
+    const theirs = {
+      version: 1 as const,
+      preset: 'signal' as const,
+      colors: { light: { canvas: '#fdfdfd' } },
+      metadata: { name: 'Theirs', description: 'Kept' },
+    };
+    expect(themeConfigPatch(values(mine), values(theirs))).toStrictEqual({ theme: { ...mine, preset: 'harbor' } });
+    // Stored as the API merges it one level deep: the descriptive metadata stays.
+    expect(sentThemeValues(values(mine), values(theirs))).toStrictEqual(values({ ...theirs, ...mine, preset: 'harbor' }));
+    // Without a baseline preset nothing is added.
+    expect(themeConfigPatch(values(mine), values({ version: 1, colors: {} }))).toStrictEqual({ theme: mine });
+  });
+
   it('`toSent` is the stored shape: unchanged values are what the baseline already holds', () => {
     expect(sentThemeValues(baseline, baseline)).toStrictEqual(baseline);
   });
@@ -151,6 +167,36 @@ describe('Undo history', () => {
     expect(usableHistory(history, sent, { id: 8, reached: [sent] })).toStrictEqual([entry(3, sent, 7)]);
     // A failed save leaves the baseline where it was: everything stays usable.
     expect(usableHistory(history, B0, { id: 7, reached: [sent] })).toStrictEqual([entry(1), entry(2, B0, 7)]);
+  });
+});
+
+describe('settling Undo when the baseline moves', () => {
+  const A = values(AUTHORED, 'dark');
+  const B = values({ ...AUTHORED, preset: 'harbor' }, 'dark');
+  const edit = (n: number, baseline: ThemeValues, save?: number): HistoryEntry => ({
+    values: values({ ...AUTHORED, layout: { density: n % 2 ? 'compact' : 'relaxed' } }, 'light'),
+    baseline,
+    save,
+  });
+
+  it('retires entries a server change overtakes for good: A → B → A brings none back', () => {
+    const history = [edit(1, A), edit(2, A)];
+    const onB = settleHistory(history, B);
+    expect(onB).toStrictEqual([]);
+    expect(settleHistory(onB, A)).toStrictEqual([]);
+    expect(settleHistory(history, A)).toBe(history);
+  });
+
+  it('moves edits made during a save onto the baseline it reached, so a failed retry keeps them', () => {
+    const sent = values(AUTHORED, 'light');
+    const history = [edit(1, A), edit(2, A, 7)];
+    const saved = settleHistory(history, sent, { id: 7, reached: [sent] });
+    expect(saved).toStrictEqual([edit(2, sent, 7)]);
+    // A second save (id 8) fails: the baseline stays, so the moved entry stays usable.
+    expect(usableHistory(saved, sent, { id: 8, reached: [values(AUTHORED, 'system')] })).toStrictEqual(saved);
+    // The server's answer differing from what was sent moves it once more.
+    const answered = values({ ...AUTHORED, metadata: { name: 'Normalized', description: 'By the server' } }, 'light');
+    expect(settleHistory(saved, answered, { id: 7, reached: [sent, answered] })).toStrictEqual([edit(2, answered, 7)]);
   });
 });
 

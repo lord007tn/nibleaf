@@ -14,6 +14,9 @@ import { useMounted } from './use-mounted';
 
 type ImportMode = 'merge' | 'replace';
 
+/** The one theme write in flight (a save or an import), for the site it started on. */
+export type Operation = { kind: 'save' | 'apply'; identity: string };
+
 /** A server answer, with the template it was for. Shown only while the text and mode it was asked with are unchanged. */
 type Shown = { template: unknown; result: ProjectThemeImportResult };
 
@@ -32,11 +35,12 @@ const downloadText = (fileName: string, contents: string) => {
  * writes nothing. "Apply to draft" then writes it at once, as main did: unlike
  * picking a preset it is not part of this form's draft, and Save is not needed.
  *
- * Writers take turns: Apply waits while a save is in flight (`isSaving`), and
- * the form refuses to save while an apply is (`onApplyingChange`). With unsaved
- * edits, Apply asks first; they are discarded only once the server confirms,
- * and only if nothing was edited meanwhile. Otherwise they stay, against the
- * applied theme, with the form's Use theirs / Keep mine.
+ * Writers take turns through the form's operation (`acquire`/`release`): an
+ * apply starts only if no save holds it, and a save started meanwhile (Ctrl+S
+ * while the confirmation is open) wins; Apply can be chosen again after it.
+ * With unsaved edits, Apply asks first; they are discarded only once the form
+ * has read the import back, and only if nothing was edited meanwhile.
+ * Otherwise they stay, against the applied theme, with Use theirs / Keep mine.
  *
  * Render one per site (`key` it by the site): a late answer for another site
  * then has nowhere to land.
@@ -47,7 +51,9 @@ export function ThemeExchange({
   isDirty,
   isSaving,
   editMark,
-  discardIfUntouched,
+  acquire,
+  release,
+  discardAfterApply,
   onApplyingChange,
 }: {
   projectId: string;
@@ -56,7 +62,11 @@ export function ThemeExchange({
   isSaving: boolean;
   /** Counts the person's edits to the draft, so a discard asked for earlier never takes a newer one. */
   editMark: () => number;
-  discardIfUntouched: (mark: number) => void;
+  /** Takes the form's write operation, or `null` while another write holds it. */
+  acquire: (kind: Operation['kind']) => Operation | null;
+  release: (owned: Operation) => void;
+  /** After an import was written over edits agreed to be discarded: `refreshed` says whether the form read it back. */
+  discardAfterApply: (mark: number, refreshed: boolean) => void;
   onApplyingChange: (applying: boolean) => void;
 }) {
   const t = useT();
@@ -113,21 +123,31 @@ export function ThemeExchange({
     setShown(undefined);
   };
 
+  /**
+   * A chosen file replaces the text only once it was read: one too large or
+   * unreadable leaves the text, mode and preview as they were. A read that
+   * answers after newer text (typed, or another file) says nothing.
+   */
   const handleFile = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
     const isCurrentText = nextText();
-    nextRequest();
-    setText('');
-    setShown(undefined);
     if (file.size > MAX_THEME_TEMPLATE_BYTES) {
       toast.error(t('settings.theme.import.tooLarge'));
       return;
     }
-    const contents = await file.text();
+    let contents: string;
+    try {
+      contents = await file.text();
+    } catch {
+      if (isCurrentText()) toast.error(t('settings.theme.import.invalidJson'));
+      return;
+    }
     if (!isCurrentText()) return;
+    nextRequest();
     setText(contents);
+    setShown(undefined);
     const read = readTemplateText(contents);
     if ('error' in read) toast.error(t(read.error === 'tooLarge' ? 'settings.theme.import.tooLarge' : 'settings.theme.import.invalidJson'));
   };
@@ -154,6 +174,9 @@ export function ThemeExchange({
   const apply = async () => {
     if (!shown || pending !== undefined || isSaving) return;
     const asked = shown;
+    // The inputs the shown preview belongs to: any change retires it, and this apply with it.
+    const askedWith = requests.current;
+    const stillAsked = () => mounted.current && requests.current === askedWith;
     const mark = isDirty ? editMark() : undefined;
     if (mark !== undefined) {
       const discard = await confirm({
@@ -163,27 +186,40 @@ export function ThemeExchange({
         confirmLabel: t('settings.chrome.scope.discardConfirm'),
         destructive: true,
       });
-      if (!discard || !mounted.current) return;
+      if (!(discard && stillAsked())) return;
     }
+    // Taken before the request goes out: a save started while the dialog was open keeps it.
+    const owned = acquire('apply');
+    if (!owned) return;
     nextText();
     const request = nextRequest();
     setPending(request.id);
     setApplying(true);
+    let written: Awaited<ReturnType<typeof exchange.apply>> | undefined;
     try {
-      const result = await exchange.apply(asked.template, asked.result.mode);
-      if (!mounted.current) return;
-      // The server holds the template now. The edits the person agreed to
-      // discard go; any made since stay, against the applied theme.
-      if (mark !== undefined) discardIfUntouched(mark);
-      if (request.current()) setShown({ template: asked.template, result });
-      toast.success(t('settings.theme.import.applied'));
+      written = await exchange.apply(asked.template, asked.result.mode);
     } catch {
       // Nothing was written: the draft, the text and the preview all stay.
       if (mounted.current) toast.error(t('settings.theme.import.applyError'));
     } finally {
+      release(owned);
       if (mounted.current) setApplying(false);
       settle(request.id);
     }
+    if (!(written && mounted.current)) return;
+    // The server holds the template now. The edits the person agreed to discard
+    // go once the form shows it; any made since stay, against the applied theme.
+    if (mark !== undefined) discardAfterApply(mark, written.refreshed);
+    if (request.current()) setShown({ template: asked.template, result: written.result });
+    if (written.refreshed) {
+      toast.success(t('settings.theme.import.applied'));
+      return;
+    }
+    // Written, but the site could not be read back: the form still shows what it had.
+    toast.warning(t('settings.theme.import.applied'), {
+      description: t('settings.git.workflow.loadErrorHint'),
+      action: { label: t('common.refresh'), onClick: () => void exchange.refresh() },
+    });
   };
 
   const exportTheme = async () => {

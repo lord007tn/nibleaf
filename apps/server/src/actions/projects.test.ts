@@ -767,6 +767,15 @@ describe('updateProject: saving the theme and appearance from Theme Studio', () 
     expect(resolveTheme({ theme: stored.theme as never }).layout).toStrictEqual(THEME_PRESETS.harbor.layout);
   });
 
+  it('a preset left out is kept from the server: why Keep mine on a theme without one sends its effective preset', async () => {
+    stored = { styling: { theme: 'dark' }, theme: { version: 1, preset: 'signal', colors: { light: { canvas: '#fdfdfd' } } } };
+    await save({ theme: { version: 1, colors: { light: { canvas: '#fafafa' } } } });
+    expect(resolveTheme({ theme: stored.theme as never }).id).toBe('signal');
+    await save({ theme: { version: 1, colors: { light: { canvas: '#fafafa' } }, preset: 'harbor' } });
+    expect(stored.theme).toStrictEqual({ version: 1, preset: 'harbor', colors: { light: { canvas: '#fafafa' } } });
+    expect(resolveTheme({ theme: stored.theme as never }).id).toBe('harbor');
+  });
+
   it('a site with no appearance keeps none after a theme save', async () => {
     stored = { styling: { primaryColor: '#5546e8' } };
     await save({ theme: { version: 1, preset: 'manuscript' } });
