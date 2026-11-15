@@ -7,7 +7,7 @@
 //                                                           rewrite untranslated/de.json's pending list
 //                                                           from the catalog (only ever to shrink it)
 //
-// A string is untranslated when its value is exactly the English one, unless
+// A string is untranslated when its value is the current or changed base English one, unless
 // nothing translatable is left once {placeholders}, glossary doNotTranslate
 // terms, numbers and punctuation are taken out ("GitHub", "{count} MB").
 // untranslated/<locale>.json lists the exceptions: `sameAsEnglish` (identical
@@ -36,6 +36,19 @@ export const exceptions = (locale) => {
   }
 };
 
+const git = (...args) => execFileSync('git', args, { cwd: new URL('../../', root), encoding: 'utf8' });
+
+/** Local PR base, or HEAD before the first origin/main fetch (including initial adoption). */
+export function baseCatalog(base) {
+  let revision = base;
+  if (!revision) {
+    const main = git('for-each-ref', '--format=%(refname)', 'refs/remotes/origin/main').trim();
+    revision = main ? git('merge-base', 'HEAD', main).trim() : 'HEAD';
+  }
+  const { $schema: _schema, ...messages } = JSON.parse(git('show', `${revision}:packages/i18n/messages/en.json`));
+  return messages;
+}
+
 /** Existing catalog keys may leave pending, but cannot be added back in a PR. */
 export function pendingGrowth(baseEnglish, basePending, pending) {
   const previous = new Set(basePending);
@@ -43,15 +56,22 @@ export function pendingGrowth(baseEnglish, basePending, pending) {
 }
 
 function checkBase(base) {
-  const git = (...args) => execFileSync('git', args, { cwd: new URL('../../', root), encoding: 'utf8' });
-  const english = JSON.parse(git('show', `${base}:packages/i18n/messages/en.json`));
+  const previousEnglish = baseCatalog(base);
+  const english = catalog('en');
+  const keep = keepTerms();
   for (const locale of locales().filter((value) => value !== 'en')) {
     const path = `packages/i18n/untranslated/${locale}.json`;
+    const { sameAsEnglish, pending } = exceptions(locale);
     // The first guard PR establishes the baseline; later PRs must shrink it.
-    if (!git('ls-tree', '--name-only', base, '--', path).trim()) continue;
-    const previous = JSON.parse(git('show', `${base}:${path}`));
-    const grown = pendingGrowth(english, previous.pending ?? [], exceptions(locale).pending);
-    if (grown.length) throw new Error(`${locale}: pending grew from ${base}: ${grown.join(', ')}`);
+    if (git('ls-tree', '--name-only', base, '--', path).trim()) {
+      const previous = JSON.parse(git('show', `${base}:${path}`));
+      const grown = pendingGrowth(previousEnglish, previous.pending ?? [], pending);
+      if (grown.length) throw new Error(`${locale}: pending grew from ${base}: ${grown.join(', ')}`);
+    }
+    const unlisted = untranslatedKeys(english, catalog(locale), keep, previousEnglish).filter(
+      (key) => !sameAsEnglish.includes(key) && !pending.includes(key),
+    );
+    if (unlisted.length) throw new Error(`${locale}: untranslated keys not listed against ${base}: ${unlisted.join(', ')}`);
   }
 }
 
@@ -90,15 +110,19 @@ export function onlyKeptTerms(text, keep) {
 /** Text compared for sameness: whitespace runs collapse and the ends trim, so a stray space is no translation. */
 const comparable = (value) => texts(value).map((text) => text.replace(/\s+/g, ' ').trim());
 
-/** Keys whose value is the English one (up to whitespace) and still has something to translate. */
-export function untranslatedKeys(english, messages, keep) {
-  return Object.keys(english).filter(
-    (key) =>
-      key in messages &&
-      typeof messages[key] === typeof english[key] &&
-      JSON.stringify(comparable(messages[key])) === JSON.stringify(comparable(english[key])) &&
-      !texts(english[key]).every((text) => onlyKeptTerms(text, keep)),
-  );
+/** Copies of current English, or of the base value for a key changed in this PR. */
+export function untranslatedKeys(english, messages, keep, previousEnglish = {}) {
+  return Object.keys(english).filter((key) => {
+    if (!(key in messages)) return false;
+    const sources = [english[key]];
+    if (key in previousEnglish && JSON.stringify(english[key]) !== JSON.stringify(previousEnglish[key])) sources.push(previousEnglish[key]);
+    return sources.some(
+      (source) =>
+        typeof messages[key] === typeof source &&
+        JSON.stringify(comparable(messages[key])) === JSON.stringify(comparable(source)) &&
+        !texts(source).every((text) => onlyKeptTerms(text, keep)),
+    );
+  });
 }
 
 const placeholders = (value) => [...new Set(texts(value).flatMap((text) => [...text.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((m) => m[1])))].sort();
@@ -136,12 +160,13 @@ function main(argv) {
     return;
   }
   const english = catalog('en');
+  const previousEnglish = baseCatalog();
   const keep = keepTerms();
   const rewrite = argv.includes('--baseline');
   const chosen = argv.filter((arg) => !arg.startsWith('--'));
   const targets = chosen.length ? chosen : locales().filter((locale) => locale !== 'en');
   for (const locale of targets) {
-    const leftovers = untranslatedKeys(english, catalog(locale), keep);
+    const leftovers = untranslatedKeys(english, catalog(locale), keep, previousEnglish);
     const { sameAsEnglish, pending, exists } = exceptions(locale);
     if (rewrite) {
       let nextPendingKeys;

@@ -29,6 +29,14 @@ the generated Paraglide runtime from that stage. Translation JSON is unchanged.
   empty one. Pull-request CI also compares pending lists with the base revision:
   existing English keys cannot be added back, while new English keys can start
   pending. Malformed baseline files fail instead of being reset.
+  When English changes, copies of its base-revision value also remain untranslated:
+  `--baseline` retains them in `pending` unless `sameAsEnglish` deliberately allows
+  the key. Local counts, tests and baseline rewrites use the merge base with the
+  fetched `origin/main` (or `HEAD` when that ref is absent); fetch main before
+  running them on a PR. CI's `--check-base <revision>` uses the supplied PR base
+  and rejects removing an untranslated copy from the lists. This comparison
+  catches the current PR transition; it does not establish translation quality
+  or detect every older stale translation.
   The same test checks that every locale keeps every key, never
   uses a `{placeholder}` English doesn't have, and keeps every placeholder in a
   plain string. Plural messages are checked as a whole (a form may spell its
