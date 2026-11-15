@@ -699,10 +699,10 @@
       "open": false
     },
     "CHANGELOG.md": {
-      "source": "2fdaf4ca4342653a",
-      "lines": "c8d8148ad3291538",
+      "source": "d81c33043014b6d1",
+      "lines": "348246c56fdfd19d",
       "headings": "ccd82938951b3dfd",
-      "sections": "9e3aa6975c2e26e9",
+      "sections": "08e7aec6334528a6",
       "open": false
     },
     "CODE_OF_CONDUCT.md": {
@@ -797,8 +797,8 @@
       "open": false
     },
     "apps/app/src/components/editor/__fixtures__/README.md": {
-      "source": "b61cfc68b027ab2f",
-      "lines": "af53aaf87656940f",
+      "source": "c830886027b0e9ad",
+      "lines": "2616b5d75f586c05",
       "headings": "4f53cda18c2baa0c",
       "sections": "4f53cda18c2baa0c",
       "open": false
@@ -1266,21 +1266,21 @@
       "open": false
     },
     "docs/ar/product/ai-assistant.mdx": {
-      "source": "a110f257eb9731bf",
+      "source": "8ce7dad357a77628",
       "lines": "423287f827f0d569",
       "headings": "0913343b8cee9746",
       "sections": "fca4c6f588c92d8c",
       "open": false
     },
     "docs/ar/product/ai-assistants.mdx": {
-      "source": "df7cd0cf5357cca8",
+      "source": "ea9ad0946049d8c1",
       "lines": "31154305f75da492",
       "headings": "8872a8f3360ece9c",
       "sections": "43274c73b64ac8d1",
       "open": false
     },
     "docs/ar/product/analytics.mdx": {
-      "source": "e0d1a89393f0e362",
+      "source": "d62c3d2e2b0e4cc1",
       "lines": "6e47dc4bfc7fe81c",
       "headings": "32f2e14e7e083f24",
       "sections": "0a2def7155d5cff8",
@@ -1392,7 +1392,7 @@
       "open": false
     },
     "docs/ar/reference/mcp.mdx": {
-      "source": "7e321a831ec4ffbd",
+      "source": "d43d1f2815ba75c2",
       "lines": "29781c208b853908",
       "headings": "43fb18bc23758103",
       "sections": "d1509e651aac5948",
@@ -1455,7 +1455,7 @@
       "open": false
     },
     "docs/ar/self-hosting/mcp.mdx": {
-      "source": "97583c7d3d3aa150",
+      "source": "7e8e6517f3fac321",
       "lines": "667893b17b446ff8",
       "headings": "a3422b5a8be31611",
       "sections": "21a022c41ecc421f",
@@ -1469,7 +1469,7 @@
       "open": false
     },
     "docs/ar/self-hosting/search-ai.mdx": {
-      "source": "554146dc2d67321e",
+      "source": "b9c5916e6ec2a8c4",
       "lines": "1c41e6a2ffe41496",
       "headings": "e7fdeaf7cd7352d2",
       "sections": "53a2d28630b92e16",
@@ -1546,21 +1546,21 @@
       "open": false
     },
     "docs/product/ai-assistant.mdx": {
-      "source": "a8edf5cf6eb095d5",
+      "source": "9a244c0bd09f1fbc",
       "lines": "738caa42efcf154d",
       "headings": "7aeb28ceb4fd4b3e",
       "sections": "3ac81b2dac259c0c",
       "open": false
     },
     "docs/product/ai-assistants.mdx": {
-      "source": "3c1c97dedfd7b5f9",
+      "source": "b56188f0e989f0a0",
       "lines": "c52d1df251595276",
       "headings": "5ba20ccf8836904f",
       "sections": "d0ae2dd0a626e423",
       "open": false
     },
     "docs/product/analytics.mdx": {
-      "source": "312d450058016026",
+      "source": "7432ab6d80597941",
       "lines": "37b322ffb509a620",
       "headings": "185033a4925827d8",
       "sections": "ac3ee8c09aa64657",
@@ -1672,7 +1672,7 @@
       "open": false
     },
     "docs/reference/mcp.mdx": {
-      "source": "2ea1460997bae210",
+      "source": "d45e3af944a7abf9",
       "lines": "db7b2173fc5c17c5",
       "headings": "c643b5cf6a4cc48a",
       "sections": "57afd9c3ac675652",
@@ -1735,7 +1735,7 @@
       "open": false
     },
     "docs/self-hosting/mcp.mdx": {
-      "source": "2796aff1a6862236",
+      "source": "30bf543164bc359b",
       "lines": "e589e2c46c380a74",
       "headings": "cfc4e31780b20945",
       "sections": "837696b7419cdedb",
@@ -1749,7 +1749,7 @@
       "open": false
     },
     "docs/self-hosting/search-ai.mdx": {
-      "source": "95fa78fa54d2340c",
+      "source": "2ce4552d9ecc8e10",
       "lines": "d3b1520d553fadcb",
       "headings": "67f6455e0112184a",
       "sections": "ccdcafc731d9036e",
@@ -1965,6 +1965,13 @@
       "sections": "506156f261775b51",
       "open": false
     },
+    "operations/ci-performance.md": {
+      "source": "020bbac9f7bd4907",
+      "lines": "8841162c3f40d60f",
+      "headings": "74a0188db27a37cd",
+      "sections": "b51492ff3cd8decc",
+      "open": false
+    },
     "operations/clickhouse-analytics.md": {
       "source": "3407b49a00827d6c",
       "lines": "6c0ed5afd5c3980f",
@@ -2092,10 +2099,10 @@
       "open": false
     },
     "packages/i18n/README.md": {
-      "source": "eb938e5beddc07c0",
-      "lines": "f7b11509f4d675c3",
-      "headings": "495463f0ef6be53d",
-      "sections": "d244f0271c1ff9af",
+      "source": "43a1dcc919af938a",
+      "lines": "45f5ca02f4bb4d38",
+      "headings": "ebc042cf4ae18da8",
+      "sections": "4421e49c362d82bb",
       "open": false
     },
     "packages/search/ARABIC_MORPHOLOGY.md": {
@@ -2162,7 +2169,7 @@
       "open": false
     },
     "packages/shared/src/__fixtures__/public-markdown/__golden__/component-tour.export.md": {
-      "source": "233787ffe516e63d",
+      "source": "430a64e06b14575b",
       "lines": "a0223caff62c4413",
       "headings": "01835bc2508b9e13",
       "sections": "a3e857eb0f7b1b24",
@@ -2336,6 +2343,13 @@
       "sections": "293416810c84560a",
       "open": false
     },
+    "tests/integration/dash-locale-screens/README.md": {
+      "source": "e8317b306644dd58",
+      "lines": "a5a7b893a165244f",
+      "headings": "2d7aeafb77b49388",
+      "sections": "e448adff12c6c0b9",
+      "open": false
+    },
     "tests/integration/editor-p2/README.md": {
       "source": "6bfffcaa3237d5e1",
       "lines": "c85bfdc3e4c8333f",
@@ -2383,6 +2397,13 @@
       "lines": "4bf5fa41550d09fd",
       "headings": "fee5d12cb7ea3089",
       "sections": "ba106636cab893d9",
+      "open": false
+    },
+    "tests/integration/reader-search-latency/README.md": {
+      "source": "a49ae90720be5f9b",
+      "lines": "6545043201faa2b7",
+      "headings": "434c3d729e24dacd",
+      "sections": "ebcda9d87c6e55c9",
       "open": false
     },
     "tests/integration/reader-video-embeds/README.md": {

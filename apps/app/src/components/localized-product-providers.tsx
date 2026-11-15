@@ -1,10 +1,10 @@
 import { ConfirmProvider as DesignConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
 import { DialogLabelsProvider } from '@nibleaf/design-system/components/ui/dialog';
 import { DirectionProvider } from '@nibleaf/design-system/components/ui/direction';
-import { Toaster } from '@nibleaf/design-system/components/ui/sonner';
 import { TooltipProvider } from '@nibleaf/design-system/components/ui/tooltip';
 import { isRtl } from '@nibleaf/i18n/locales';
 import type { ReactNode } from 'react';
+import { DeferredToaster } from '@/components/deferred-toaster';
 import { useAuthLocale, useAuthT } from '@/lib/auth-messages';
 
 export function LocalizedProductProviders({ children }: { children: ReactNode }) {
@@ -15,7 +15,7 @@ export function LocalizedProductProviders({ children }: { children: ReactNode })
     <DirectionProvider direction={isRtl(locale) ? 'rtl' : 'ltr'}>
       <LocalizedSurfaces>
         <TooltipProvider>{children}</TooltipProvider>
-        <Toaster position={isRtl(locale) ? 'bottom-left' : 'bottom-right'} richColors />
+        <DeferredToaster position={isRtl(locale) ? 'bottom-left' : 'bottom-right'} richColors />
       </LocalizedSurfaces>
     </DirectionProvider>
   );
