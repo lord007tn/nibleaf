@@ -18,8 +18,9 @@ export function useSaveNavbar(projectId: string) {
   const updateProject = useUpdateProjectConfig(projectId);
   const updateLanguage = useUpdateLanguage(projectId);
 
-  const saveProject = async (values: NavbarValues) => {
-    const project = await updateProject.mutateAsync({ config: { navbar: projectNavbarPatch(values) } });
+  /** Sends the fields the draft changed from `baseline`, the server's values when the save started. */
+  const saveProject = async (values: NavbarValues, baseline: NavbarValues) => {
+    const project = await updateProject.mutateAsync({ config: { navbar: projectNavbarPatch(values, baseline) } });
     return navbarValues(project.config?.navbar);
   };
 

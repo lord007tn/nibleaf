@@ -57,11 +57,20 @@ const SAVED: NavbarConfig = {
 /** A site as the project query returns it, other sections riding along. */
 const site = (navbar: NavbarConfig | undefined = SAVED, id = 'site-a') =>
   ({ id, name: 'Acme', config: { theme: { preset: 'nib' }, footer: { copyright: '© Acme' }, ...(navbar ? { navbar } : {}) } }) as unknown as Project;
-/** The server stores the navbar patch as the API merges it (one level deep) and answers with the whole project. */
-const storeWhatWasSent = (stored: NavbarConfig | undefined = SAVED, id = 'site-a') =>
-  mocks.updateProject.mockImplementation(async ({ config }: { config: { navbar: NavbarConfig } }) =>
-    site({ ...stored, ...JSON.parse(JSON.stringify(config.navbar)) }, id),
-  );
+/**
+ * A server that keeps what it stores: each navbar patch merges into it one
+ * level deep (a key the patch leaves out is kept), as the API does, and the
+ * answer is the whole project. A test can change `server.navbar` itself, as
+ * another writer would.
+ */
+const storeWhatWasSent = (stored: NavbarConfig | undefined = SAVED, id = 'site-a') => {
+  const server = { navbar: structuredClone(stored ?? {}) };
+  mocks.updateProject.mockImplementation(async ({ config }: { config: { navbar: NavbarConfig } }) => {
+    server.navbar = { ...server.navbar, ...JSON.parse(JSON.stringify(config.navbar)) };
+    return site(structuredClone(server.navbar), id);
+  });
+  return server;
+};
 
 const language = (overrides: Partial<Language>) =>
   ({ code: 'en', direction: 'LTR', enabled: true, isDefault: false, position: 0, config: null, ...overrides }) as Language;
@@ -264,53 +273,90 @@ describe('NavbarSettings — fields and names', () => {
 });
 
 describe('NavbarSettings — the project scope saves', () => {
-  it('a cleared stored CTA is sent as "", so the server drops it instead of keeping the old text', async () => {
-    storeWhatWasSent();
+  it('sends only what changed: a cleared CTA text as "", an untouched field not at all', async () => {
+    const server = storeWhatWasSent();
     await render(site());
     await type(ctaLabel(), '');
+    await save();
+    expect(sentNavbar()).toStrictEqual({ ctaLabel: '' });
+    expect(server.navbar).toStrictEqual({ ...SAVED, ctaLabel: '' });
     await type(ctaUrl(), '   ');
     await save();
-    expect(sentNavbar()).toMatchObject({ ctaLabel: '', ctaUrl: '' });
+    expect(sentNavbar()).toStrictEqual({ ctaUrl: '' });
   });
 
-  it('a site without a CTA sends "" for both texts, which the reader shows as no CTA, like before', async () => {
-    storeWhatWasSent({ links: [] });
+  it("another writer's CTA, set during this save whose refetch then fails, survives a later link-only save", async () => {
+    const server = storeWhatWasSent({ links: [] });
     await render(site({ links: [] }));
-    await click(changelogSwitch());
+    await click(addButton('links'));
+    await type(labelInput('links', 0), 'Docs');
+    await type(hrefInput('links', 0), '/docs');
+    const pending = deferred<void>();
+    mocks.updateProject.mockImplementationOnce(async ({ config }: { config: { navbar: NavbarConfig } }) => {
+      await pending.promise;
+      server.navbar = { ...server.navbar, ...JSON.parse(JSON.stringify(config.navbar)) };
+      const answer = site(structuredClone(server.navbar));
+      // Someone else sets the CTA right after this save; the refetch that would show it fails.
+      server.navbar = { ...server.navbar, ctaLabel: 'Talk to sales', ctaUrl: '/sales' };
+      return answer;
+    });
     await save();
-    expect(sentNavbar()).toStrictEqual({ ctaLabel: '', ctaUrl: '', links: [], tabs: [], anchors: [], showSearch: true, changelog: true });
+    await act(async () => pending.resolve());
+    expect(sentNavbar()).toStrictEqual({ links: [{ label: 'Docs', href: '/docs' }] });
+    // The form never saw their CTA. Editing only a link sends only the links.
+    await type(labelInput('links', 0), 'Documentation');
+    await save();
+    expect(sentNavbar()).toStrictEqual({ links: [{ label: 'Documentation', href: '/docs' }] });
+    expect(server.navbar).toMatchObject({ ctaLabel: 'Talk to sales', ctaUrl: '/sales' });
   });
 
-  it("CTA saved, its refetch fails, a scope round trip, then cleared: '' is sent, with no record of what was stored", async () => {
+  it('CTA saved and its refetch fails: clearing it in the same scope sends "", judged against the confirmed save', async () => {
+    const server = storeWhatWasSent({ links: [] });
+    await render(site({ links: [] }));
+    await type(ctaLabel(), 'Start');
+    await save();
+    // The project query still shows no CTA; the form's baseline is what the PATCH confirmed.
+    await type(ctaLabel(), '');
+    await save();
+    expect(sentNavbar()).toStrictEqual({ ctaLabel: '' });
+    expect(server.navbar).toStrictEqual({ links: [], ctaLabel: '' });
+  });
+
+  it('CTA saved, its refetch fails, a scope round trip: an edit elsewhere leaves the stored CTA alone', async () => {
     mocks.languages = [ENGLISH, arabic()];
     // The PATCH stores the CTA; the project query keeps the old navbar because its refetch failed.
-    storeWhatWasSent({ links: [] });
+    const server = storeWhatWasSent({ links: [] });
     await render(site({ links: [] }));
     await type(ctaLabel(), 'Start');
     await type(ctaUrl(), '/start');
     await save();
-    expect(sentNavbar()).toMatchObject({ ctaLabel: 'Start', ctaUrl: '/start' });
+    expect(sentNavbar()).toStrictEqual({ ctaLabel: 'Start', ctaUrl: '/start' });
     await chooseScope('العربية');
     await chooseScope('settings.chrome.scope.default');
-    // The stale query shows no CTA, so clearing means saving: the draft is the same either way.
+    // Back on the stale query, the form shows no CTA: typing and clearing it is no change from that read...
     await type(ctaLabel(), 'x');
     await type(ctaLabel(), '');
+    expect(region()).toBeNull();
+    // ...so another edit leaves the CTA out, and the server keeps the stored one rather than losing it.
     await click(changelogSwitch());
     await save();
-    expect(sentNavbar()).toMatchObject({ ctaLabel: '', ctaUrl: '' });
+    expect(sentNavbar()).toStrictEqual({ changelog: true });
+    expect(server.navbar).toMatchObject({ ctaLabel: 'Start', ctaUrl: '/start' });
   });
 
-  it('a newer read without the CTA wins over an earlier save: editing another field sends what that read shows', async () => {
-    storeWhatWasSent({ links: [] });
+  it('a newer read without the CTA wins over an earlier save: editing another field sends only that field', async () => {
+    const server = storeWhatWasSent({ links: [] });
     await render(site({ links: [] }));
     await type(ctaLabel(), 'Start');
     await save();
     // Someone else cleared the CTA afterwards; the form is clean, so it shows their read.
+    server.navbar = { links: [], ctaLabel: '' };
     await render(site({ links: [], ctaLabel: '' }));
     expect(ctaLabel().value).toBe('');
     await click(searchSwitch());
     await save();
-    expect(sentNavbar()).toMatchObject({ ctaLabel: '', ctaUrl: '', showSearch: false });
+    expect(sentNavbar()).toStrictEqual({ showSearch: false });
+    expect(server.navbar).toStrictEqual({ links: [], ctaLabel: '', showSearch: false });
   });
 
   it("a late save for one site never reaches another site's form or payload (A → B → A)", async () => {
@@ -328,23 +374,24 @@ describe('NavbarSettings — the project scope saves', () => {
     storeWhatWasSent({ ctaLabel: 'B', links: [] }, 'site-b');
     await click(changelogSwitch());
     await save();
-    expect(sentNavbar()).toMatchObject({ ctaLabel: 'B', changelog: true });
+    expect(sentNavbar()).toStrictEqual({ changelog: true });
     // Back on site A: its own read, clean.
     await render(site({ ctaLabel: 'Start', links: [] }, 'site-a'));
     expect([ctaLabel().value, region()]).toEqual(['Start', null]);
   });
 
   it('removing the last row of every list sends [] for each; kept rows keep their metadata', async () => {
-    storeWhatWasSent();
+    const server = storeWhatWasSent();
     await render(site());
     await click(removeButton('tabs', 0));
     await click(removeButton('anchors', 0));
     await click(removeButton('links', 0));
     await save();
-    expect(sentNavbar()).toMatchObject({ links: [{ label: 'Blog', href: 'https://blog.example.com', external: true }], tabs: [], anchors: [] });
+    expect(sentNavbar()).toStrictEqual({ links: [{ label: 'Blog', href: 'https://blog.example.com', external: true }], tabs: [], anchors: [] });
     await click(removeButton('links', 0));
     await save();
-    expect(sentNavbar()).toMatchObject({ links: [], tabs: [], anchors: [] });
+    expect(sentNavbar()).toStrictEqual({ links: [] });
+    expect(server.navbar).toStrictEqual({ ...SAVED, links: [], tabs: [], anchors: [] });
   });
 
   it('sends row text as typed, drops only fully blank rows, sends half-filled ones and trims the icon', async () => {
@@ -358,13 +405,12 @@ describe('NavbarSettings — the project scope saves', () => {
     await click(addButton('anchors'));
     await type(iconInput(1), 'ghost');
     await save();
-    expect(sentNavbar()).toMatchObject({
+    expect(sentNavbar()).toStrictEqual({
       links: [
         { label: '  Docs  ', href: '/docs' },
         { label: 'Blog', href: 'https://blog.example.com', external: true },
         { label: 'Half', href: '' },
       ],
-      tabs: [{ label: 'Guides', href: '/guides', external: false }],
       anchors: [{ label: 'Community', href: 'https://community.example.com', icon: 'users' }],
     });
     // Its own echo: the trimmed icon and the filtered rows are not "changed elsewhere", and nothing is left to save.
@@ -384,7 +430,7 @@ describe('NavbarSettings — the project scope saves', () => {
     expect(region()).toBeNull();
     await click(searchSwitch());
     await save();
-    expect(sentNavbar()).toMatchObject({ showSearch: false, changelog: false });
+    expect(sentNavbar()).toStrictEqual({ showSearch: false });
     expect(region()).toBeNull();
     expect(checked(searchSwitch())).toBe(false);
   });

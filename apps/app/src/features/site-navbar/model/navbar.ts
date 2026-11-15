@@ -1,4 +1,5 @@
 import { languageConfigSchema, projectConfigUpdateSchema } from '@nibleaf/validators';
+import { deepEqual } from '@/lib/forms/server-draft';
 
 /**
  * Site configuration → Navbar, as pure logic. One form edits the active
@@ -91,29 +92,31 @@ export const cleanRows = (rows: readonly NavRow[]): StoredLink[] => rows.filter(
 export const cleanAnchors = (rows: readonly AnchorRow[]): StoredAnchor[] =>
   rows.filter((row) => !isBlankRow(row)).map((row) => ({ ...navRow(row), ...(row.icon.trim() ? { icon: row.icon.trim() } : {}) }));
 
+const FIELDS = ['ctaLabel', 'ctaUrl', 'links', 'tabs', 'anchors', 'showSearch', 'changelog'] as const;
+
 /**
- * The project scope's `config.navbar` patch: every field, so the save states
- * the whole navbar.
+ * The project scope's `config.navbar` patch: only the fields the draft
+ * changed from `baseline` (what the server last confirmed). The API merges
+ * `navbar` key by key and keeps every key a patch leaves out, so a field this
+ * draft never touched keeps whatever the server holds, including another
+ * writer's newer value.
  *
- * The lists are always sent, so removing the last row sends `[]`, and both
- * switches are sent as chosen. Both CTA texts are always sent, trimmed, a
- * blank one as `''`: the API merges `navbar` key by key and keeps any key a
- * patch leaves out, so an omitted text would come back after the save. No
- * reader tells `''` from a CTA never set: the published navbar shows the CTA
- * only when both texts are non-empty, and a language's override only lays its
- * non-empty texts over the project's. So nothing needs to know whether the
- * server held a text before.
+ * A changed CTA text is sent trimmed, a cleared one as `''` (the reader shows
+ * the CTA only when both texts are non-empty). A changed list is sent whole,
+ * without its blank rows, so removing the last row sends `[]`. A changed
+ * switch is sent as chosen.
  */
-export function projectNavbarPatch(values: NavbarValues): NavbarConfig {
-  return {
-    ctaLabel: values.ctaLabel.trim(),
-    ctaUrl: values.ctaUrl.trim(),
-    links: cleanRows(values.links),
-    tabs: cleanRows(values.tabs),
-    anchors: cleanAnchors(values.anchors),
-    showSearch: values.showSearch,
-    changelog: values.changelog,
-  };
+export function projectNavbarPatch(values: NavbarValues, baseline: NavbarValues): NavbarConfig {
+  const patch: NavbarConfig = {};
+  const changed = (key: (typeof FIELDS)[number]) => !deepEqual(values[key], baseline[key]);
+  if (changed('ctaLabel')) patch.ctaLabel = values.ctaLabel.trim();
+  if (changed('ctaUrl')) patch.ctaUrl = values.ctaUrl.trim();
+  if (changed('links')) patch.links = cleanRows(values.links);
+  if (changed('tabs')) patch.tabs = cleanRows(values.tabs);
+  if (changed('anchors')) patch.anchors = cleanAnchors(values.anchors);
+  if (changed('showSearch')) patch.showSearch = values.showSearch;
+  if (changed('changelog')) patch.changelog = values.changelog;
+  return patch;
 }
 
 /**
@@ -140,11 +143,16 @@ export function languageNavbarConfig(values: NavbarValues): { navbar: LanguageNa
  * The values a save of `values` stores in its scope, read back as the form
  * reads them. The draft hook records this as what the save sent, so the
  * server echoing trimmed text, an omitted icon or a list without its blank
- * rows is recognised as the save's own echo. A language save leaves the
- * global fields as they are.
+ * rows is recognised as the save's own echo. A project save leaves the fields
+ * it doesn't send as `baseline` has them; a language save leaves the global
+ * fields as they are.
  */
-export function sentNavbarValues(scope: 'project' | 'language', values: NavbarValues): NavbarValues {
-  if (scope === 'project') return navbarValues(projectNavbarPatch(values));
+export function sentNavbarValues(scope: 'project' | 'language', values: NavbarValues, baseline: NavbarValues): NavbarValues {
+  if (scope === 'project') {
+    const patch = projectNavbarPatch(values, baseline);
+    const sent = navbarValues(patch);
+    return Object.fromEntries(FIELDS.map((key) => [key, key in patch ? sent[key] : baseline[key]])) as NavbarValues;
+  }
   const { ctaLabel, links, tabs, anchors } = languageNavbarValues(languageNavbarConfig(values).navbar, null);
   return { ...values, ctaLabel, links, tabs, anchors };
 }
@@ -192,10 +200,10 @@ const keptRows = (rows: readonly NavRow[]) => rows.flatMap((row, index) => (isBl
  * Each problem points at the draft fields that fix it. Too many rows names no
  * row, so it points at the rows past the cap.
  */
-export function navbarProblems(scope: 'project' | 'language', values: NavbarValues): NavbarProblem[] {
+export function navbarProblems(scope: 'project' | 'language', values: NavbarValues, baseline: NavbarValues): NavbarProblem[] {
   const result =
     scope === 'project'
-      ? projectNavbarSchema.safeParse(projectNavbarPatch(values))
+      ? projectNavbarSchema.safeParse(projectNavbarPatch(values, baseline))
       : languageNavbarSchema.safeParse(languageNavbarConfig(values).navbar);
   if (result.success) return [];
   return result.error.issues.map((issue) => {

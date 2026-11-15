@@ -666,6 +666,11 @@ describe('updateProject: clearing saved navbar values', () => {
     expect((stored.navbar as typeof NAVBAR).links).toStrictEqual(links);
   });
 
+  it('keeps every field and list a patch leaves out: the form sends only what changed', async () => {
+    await save({ ctaLabel: 'Talk to sales' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, navbar: { ...NAVBAR, ctaLabel: 'Talk to sales' } });
+  });
+
   it('keeps a CTA text the patch leaves out: why a cleared one must be sent as ""', async () => {
     await save({ ...NAVBAR, ctaLabel: undefined, showSearch: true });
     expect(stored.navbar).toStrictEqual({ ...NAVBAR, showSearch: true });

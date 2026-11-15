@@ -333,6 +333,7 @@ createRoot(document.getElementById('root')!).render(
     const patches = requests.filter(({ call }) => call.startsWith('PATCH'));
     assert.equal(patches.length, 2, 'one refused save, then one saved');
     assert.deepEqual(patches[0].body, patches[1].body, 'the refused draft was kept and sent again unchanged');
+    // Only what changed: the cleared CTA texts as '', and the two lists that changed, whole. The anchors and switches are left out.
     assert.deepEqual(patches[1].body, {
       config: {
         navbar: {
@@ -340,12 +341,10 @@ createRoot(document.getElementById('root')!).render(
           ctaUrl: '',
           links: [...savedNavbar.links, { label: 'Pricing', href: '/pricing' }],
           tabs: [],
-          anchors: savedNavbar.anchors,
-          showSearch: true,
-          changelog: false,
         },
       },
     });
+    assert.deepEqual(server.navbar, { ...savedNavbar, ...patches[1].body.config.navbar });
     assert.ok(requests.filter(({ call }) => call === 'GET /api/app/projects/site-1').length >= 2, 'the save is followed by a refetch');
     const [opened, added, removed, undone, , refused, saved, toggled, discarded] = steps;
     assert.equal(opened.saveBar, false);

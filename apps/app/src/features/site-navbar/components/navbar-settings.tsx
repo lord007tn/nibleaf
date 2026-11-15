@@ -107,19 +107,21 @@ function NavbarForm({ project }: { project: Project }) {
 
   // Whether the last confirmed save left nothing to save or resolve (`succeeded`'s answer).
   const settled = useRef(true);
+  // The baseline the next save is judged against: a project save sends only what differs from it.
+  const baselineNow = useRef(source);
   const { form, ...draft } = useServerDraftForm<NavbarValues>({
     identity,
     source,
     // The save sends trimmed CTA text, lists without blank rows and trimmed icons
     // (from a language, the CTA label and lists only); judge its echo by that.
-    toSent: (value) => sentNavbarValues(scopeKind, value),
+    toSent: (value) => sentNavbarValues(scopeKind, value, baselineNow.current),
     onSubmit: async (value, save) => {
-      if (navbarProblems(scopeKind, value).length > 0) {
+      if (navbarProblems(scopeKind, value, save.baseline).length > 0) {
         save.failed();
         return 'invalid';
       }
       try {
-        const confirmed = activeLanguage ? await saveLanguage(activeLanguage.id, value, projectNavbar) : await saveProject(value);
+        const confirmed = activeLanguage ? await saveLanguage(activeLanguage.id, value, projectNavbar) : await saveProject(value, save.baseline);
         settled.current = save.succeeded(confirmed);
         return 'saved';
       } catch (error) {
@@ -130,6 +132,8 @@ function NavbarForm({ project }: { project: Project }) {
       }
     },
   });
+
+  baselineNow.current = draft.baseline;
 
   // Fields and rows that were left: their problems show, as a field's do once blurred.
   const [left, setLeft] = useState<ReadonlySet<string>>(NOTHING_LEFT);
@@ -169,7 +173,7 @@ function NavbarForm({ project }: { project: Project }) {
   const values = useStore(form.store, (state) => state.values);
   const submitted = useStore(form.store, (state) => state.submissionAttempts > 0);
   const problemId = useId();
-  const problems = navbarProblems(scopeKind, values);
+  const problems = navbarProblems(scopeKind, values, draft.baseline);
   const shown = problems
     .map((problem, index) => ({ ...problem, id: `${problemId}-${index}` }))
     .filter(

@@ -52,9 +52,13 @@ const mergeConfig = (existing: Record<string, unknown>, incoming: Record<string,
   }
   return merged;
 };
-/** A project save as the API takes it: through real JSON and `updateProjectBody`, merged into what is stored, refetched. */
-const saveProject = (stored: NavbarConfig | undefined, values: NavbarValues) => {
-  const body = updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { navbar: projectNavbarPatch(values) } })));
+/**
+ * A project save as the API takes it: the patch against `baseline` (by default
+ * what is stored), through real JSON and `updateProjectBody`, merged into what
+ * is stored, refetched.
+ */
+const saveProject = (stored: NavbarConfig | undefined, values: NavbarValues, baseline = navbarValues(stored)) => {
+  const body = updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { navbar: projectNavbarPatch(values, baseline) } })));
   const config = JSON.parse(JSON.stringify(mergeConfig(stored ? { navbar: stored } : {}, body.config ?? {}))) as { navbar: NavbarConfig };
   return config.navbar;
 };
@@ -95,19 +99,21 @@ describe('navbarValues', () => {
 });
 
 describe('projectNavbarPatch', () => {
-  it('sends every list, so removing the last row of each sends []', () => {
-    const patch = projectNavbarPatch({ ...navbarValues(STORED), links: [], tabs: [], anchors: [] });
-    expect(patch).toMatchObject({ links: [], tabs: [], anchors: [] });
-    expect(saveProject(STORED, { ...navbarValues(STORED), links: [], tabs: [], anchors: [] })).toMatchObject({ links: [], tabs: [], anchors: [] });
+  const baseline = navbarValues(STORED);
+
+  it('sends only the fields the draft changed; an untouched field is left out', () => {
+    expect(projectNavbarPatch({ ...baseline, ctaLabel: 'Start' }, baseline)).toStrictEqual({ ctaLabel: 'Start' });
+    expect(projectNavbarPatch(baseline, baseline)).toStrictEqual({});
   });
 
-  it('always sends both CTA texts, trimmed, a blank one as ""', () => {
-    expect(projectNavbarPatch({ ...navbarValues(STORED), ctaLabel: '  Start  ', ctaUrl: '   ' })).toMatchObject({
-      ctaLabel: 'Start',
-      ctaUrl: '',
-    });
-    // Whether or not the server ever held one: a site without a CTA sends '' too.
-    expect(projectNavbarPatch(navbarValues(undefined))).toMatchObject({ ctaLabel: '', ctaUrl: '' });
+  it('a changed list is sent whole, so removing the last row of each sends []', () => {
+    const patch = projectNavbarPatch({ ...baseline, links: [], tabs: [], anchors: [] }, baseline);
+    expect(patch).toStrictEqual({ links: [], tabs: [], anchors: [] });
+    expect(saveProject(STORED, { ...baseline, links: [], tabs: [], anchors: [] })).toMatchObject({ links: [], tabs: [], anchors: [] });
+  });
+
+  it('a changed CTA text is trimmed, and a cleared one is sent as ""', () => {
+    expect(projectNavbarPatch({ ...baseline, ctaLabel: '  Start  ', ctaUrl: '   ' }, baseline)).toStrictEqual({ ctaLabel: 'Start', ctaUrl: '' });
   });
 
   it('keeps row text as typed, in order, with `external` true, false or absent; only fully blank rows are left out', () => {
@@ -140,12 +146,9 @@ describe('projectNavbarPatch', () => {
     ]);
   });
 
-  it('sends both switches as chosen, so a switch-only edit saves', () => {
-    expect(projectNavbarPatch({ ...navbarValues(STORED), showSearch: true, changelog: false })).toMatchObject({
-      showSearch: true,
-      changelog: false,
-    });
-    expect(saveProject(STORED, { ...navbarValues(STORED), showSearch: true })).toMatchObject({ showSearch: true, changelog: true });
+  it('a switch-only edit sends that switch, explicitly', () => {
+    expect(projectNavbarPatch({ ...baseline, showSearch: true }, baseline)).toStrictEqual({ showSearch: true });
+    expect(saveProject(STORED, { ...baseline, showSearch: true })).toStrictEqual({ ...STORED, showSearch: true });
   });
 });
 
@@ -157,13 +160,22 @@ describe('a save through the real validator and merge', () => {
     expect(Boolean(navbar.ctaLabel && navbar.ctaUrl)).toBe(false);
   });
 
-  it('why "" is needed: an omitted CTA text comes back after the merge', () => {
+  it('why a cleared text is sent as "": an omitted one comes back after the merge', () => {
     const body = updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { navbar: { ctaLabel: undefined, links: [] } } })));
     expect((mergeConfig({ navbar: STORED }, body.config ?? {}) as { navbar: NavbarConfig }).navbar.ctaLabel).toBe('Book a demo');
   });
 
+  it("an untouched field keeps another writer's newer value; so does an untouched list", () => {
+    const baseline = navbarValues(STORED);
+    // Someone else changed the CTA and the tabs after this draft's baseline was read.
+    const theirs = { ...STORED, ctaLabel: 'Talk to sales', tabs: [{ label: 'Theirs', href: '/theirs' }] };
+    const stored = saveProject(theirs, { ...baseline, links: [{ label: 'Docs', href: '/docs' }] }, baseline);
+    expect(stored).toStrictEqual({ ...theirs, links: [{ label: 'Docs', href: '/docs' }] });
+  });
+
   it('what a save stores reads back as `sentNavbarValues` says, for a mixed draft', () => {
     const draft: NavbarValues = {
+      ...navbarValues(STORED),
       ctaLabel: '  Start ',
       ctaUrl: '',
       links: [
@@ -171,26 +183,26 @@ describe('a save through the real validator and merge', () => {
         { label: '', href: '' },
         { label: 'Half', href: '' },
       ],
-      tabs: [],
       anchors: [
         { label: 'A', href: '/a', icon: ' users ', external: false },
         { label: '', href: '', icon: 'ghost' },
       ],
-      showSearch: true,
       changelog: false,
     };
     const stored = saveProject(STORED, draft);
-    expect(navbarValues(stored)).toStrictEqual(sentNavbarValues('project', draft));
-    // Saving what was read back sends the same thing again.
-    expect(saveProject(stored, navbarValues(stored))).toStrictEqual(stored);
+    expect(navbarValues(stored)).toStrictEqual(sentNavbarValues('project', draft, navbarValues(STORED)));
+    // Saving what was read back sends nothing more.
+    expect(projectNavbarPatch(navbarValues(stored), navbarValues(stored))).toStrictEqual({});
   });
 
-  it('keeps the other config sections; a CTA never set is stored as "" and reads the same', () => {
-    const body = updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { navbar: projectNavbarPatch(navbarValues(undefined)) } })));
-    const merged = mergeConfig({ footer: { copyright: '© Acme' } }, body.config ?? {});
-    expect(merged).toStrictEqual({
+  it('keeps the other config sections, and a site without a navbar stores only what changed', () => {
+    const fresh = navbarValues(undefined);
+    const body = updateProjectBody.parse(
+      JSON.parse(JSON.stringify({ config: { navbar: projectNavbarPatch({ ...fresh, changelog: true }, fresh) } })),
+    );
+    expect(mergeConfig({ footer: { copyright: '© Acme' } }, body.config ?? {})).toStrictEqual({
       footer: { copyright: '© Acme' },
-      navbar: { ctaLabel: '', ctaUrl: '', links: [], tabs: [], anchors: [], showSearch: true, changelog: false },
+      navbar: { changelog: true },
     });
   });
 });
@@ -226,7 +238,7 @@ describe('languageNavbarConfig', () => {
 
   it("`sentNavbarValues` for a language: the cleaned pieces, the project's global fields untouched", () => {
     const draft = { ...projectValues, ctaLabel: ' احجز ', links: [{ label: '', href: '' }], tabs: [{ label: 'أدلة', href: '/guides' }], anchors: [] };
-    expect(sentNavbarValues('language', draft)).toStrictEqual({
+    expect(sentNavbarValues('language', draft, projectValues)).toStrictEqual({
       ...projectValues,
       ctaLabel: 'احجز',
       links: [],
@@ -244,7 +256,7 @@ describe('navbarProblems', () => {
       ...clean,
       links: [...clean.links, { label: 'Half', href: '' }, { label: '', href: '' }, { label: 'Call', href: 'tel:+15550100' }],
     };
-    expect(navbarProblems('project', values)).toStrictEqual([]);
+    expect(navbarProblems('project', values, clean)).toStrictEqual([]);
   });
 
   it('refuses a dangerous scheme at the draft row that has it, past blank rows', () => {
@@ -253,28 +265,28 @@ describe('navbarProblems', () => {
       { label: 'Docs', href: '/docs' },
       { label: 'Bad', href: ' javascript:alert(1)' },
     ];
-    const [problem, ...rest] = navbarProblems('project', { ...clean, links });
+    const [problem, ...rest] = navbarProblems('project', { ...clean, links }, clean);
     expect(rest).toStrictEqual([]);
     expect(problem).toMatchObject({ key: 'links', rows: [2], fields: ['href'], message: 'Unsupported URL scheme.' });
   });
 
   it('refuses a dangerous CTA URL in the project scope; a language scope never sends it', () => {
     const values = { ...clean, ctaUrl: 'data:text/html,hi' };
-    expect(navbarProblems('project', values)).toMatchObject([{ key: 'ctaUrl', rows: [], fields: [] }]);
-    expect(navbarProblems('language', values)).toStrictEqual([]);
+    expect(navbarProblems('project', values, clean)).toMatchObject([{ key: 'ctaUrl', rows: [], fields: [] }]);
+    expect(navbarProblems('language', values, clean)).toStrictEqual([]);
   });
 
   it('too many rows point at the rows past the cap', () => {
     const tabs = Array.from({ length: 12 }, (_, index) => ({ label: `Tab ${index}`, href: `/t${index}` }));
-    expect(navbarProblems('project', { ...clean, tabs: [{ label: '', href: '' }, ...tabs] })).toMatchObject([
+    expect(navbarProblems('project', { ...clean, tabs: [{ label: '', href: '' }, ...tabs] }, clean)).toMatchObject([
       { key: 'tabs', rows: [11, 12], fields: ['label', 'href'] },
     ]);
-    expect(navbarProblems('language', { ...clean, tabs })).toMatchObject([{ key: 'tabs', rows: [10, 11] }]);
+    expect(navbarProblems('language', { ...clean, tabs }, clean)).toMatchObject([{ key: 'tabs', rows: [10, 11] }]);
   });
 
   it('an anchor icon over 40 characters is refused on its icon', () => {
     const anchors = [{ label: 'A', href: '/a', icon: 'x'.repeat(41) }];
-    expect(navbarProblems('project', { ...clean, anchors })).toMatchObject([{ key: 'anchors', rows: [0], fields: ['icon'] }]);
+    expect(navbarProblems('project', { ...clean, anchors }, clean)).toMatchObject([{ key: 'anchors', rows: [0], fields: ['icon'] }]);
   });
 });
 
