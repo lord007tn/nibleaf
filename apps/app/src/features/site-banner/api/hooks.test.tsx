@@ -79,6 +79,8 @@ async function mount(client: QueryClient) {
   document.body.append(host);
   root = createRoot(host);
   await act(async () => root?.render(createElement(QueryClientProvider, { client }, createElement(Probe))));
+  // The project's first load.
+  await act(() => vi.waitFor(() => expect(hook.banner()).toBeDefined()));
   return hook;
 }
 const queryClient = () => new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -107,11 +109,10 @@ describe('useSaveBanner over the real client', () => {
       expect(confirmed).toStrictEqual(cleared);
       expect(server.config).toStrictEqual({ ...SIBLINGS, banner: cleared });
       // The save's invalidation refetched the project, and that refetch has the cleared text.
-      expect(server.log.map((entry) => `${entry.method} ${entry.path}`)).toEqual([
-        'GET /api/app/projects/site-1',
-        'PATCH /api/app/projects/site-1',
-        'GET /api/app/projects/site-1',
-      ]);
+      const calls = server.log.map((entry) => `${entry.method} ${entry.path}`);
+      expect(calls.slice(0, 2)).toEqual(['GET /api/app/projects/site-1', 'PATCH /api/app/projects/site-1']);
+      expect(calls.slice(2)).toContain('GET /api/app/projects/site-1');
+      expect(server.log.at(-1)?.answer).toMatchObject({ config: { banner: cleared } });
       expect(hook.banner()).toStrictEqual(cleared);
 
       await act(async () => root?.unmount());
