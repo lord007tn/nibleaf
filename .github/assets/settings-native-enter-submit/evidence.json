@@ -1,0 +1,1037 @@
+{
+  "environment": "Component fixture: the real General and Search settings screens (before: main; after: this branch) with the real design system and EN/AR catalogs; fictional site; API answered by interception, every request recorded; site access fixed to Admin; trusted CDP key events in headless Chromium; not the signed-in dashboard or production",
+  "baseline": "94296fda439ae40193b270a874e470f8373972e8",
+  "head": "29f474b22960be016e993e17daa9703c36076dd7",
+  "uncommitted": [],
+  "swappedForBefore": [
+    "apps/app/src/lib/forms/save-region.tsx",
+    "apps/app/src/features/site-general/components/general-settings.tsx",
+    "apps/app/src/features/site-search/components/search-settings.tsx"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "enter-general-before-en-1440.png",
+      "screen": "general",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "dir": "ltr",
+      "overflow": false,
+      "field": "Name",
+      "owningForm": { "submitButtons": 0, "singleLineFields": 3 },
+      "typed": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Fieldnotes Field Guide"
+      },
+      "afterEnter": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": []
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-general-after-en-1440.png",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "dir": "ltr",
+      "overflow": false,
+      "field": "Name",
+      "owningForm": { "submitButtons": 1, "singleLineFields": 3 },
+      "typed": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Fieldnotes Field Guide"
+      },
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes",
+            "body": { "name": "Fieldnotes Field Guide" }
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-general-before-en-390.png",
+      "screen": "general",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "dir": "ltr",
+      "overflow": false,
+      "field": "Name",
+      "owningForm": { "submitButtons": 0, "singleLineFields": 3 },
+      "typed": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Fieldnotes Field Guide"
+      },
+      "afterEnter": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": []
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-general-after-en-390.png",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "dir": "ltr",
+      "overflow": false,
+      "field": "Name",
+      "owningForm": { "submitButtons": 1, "singleLineFields": 3 },
+      "typed": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Fieldnotes Field Guide"
+      },
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes",
+            "body": { "name": "Fieldnotes Field Guide" }
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-general-before-ar-1440.png",
+      "screen": "general",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "dir": "rtl",
+      "overflow": false,
+      "field": "الاسم",
+      "owningForm": { "submitButtons": 0, "singleLineFields": 3 },
+      "typed": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Fieldnotes Field Guide"
+      },
+      "afterEnter": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": []
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-general-after-ar-1440.png",
+      "screen": "general",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "dir": "rtl",
+      "overflow": false,
+      "field": "الاسم",
+      "owningForm": { "submitButtons": 1, "singleLineFields": 3 },
+      "typed": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Fieldnotes Field Guide"
+      },
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "تم الحفظ",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes",
+            "body": { "name": "Fieldnotes Field Guide" }
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-general-before-ar-390.png",
+      "screen": "general",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "dir": "rtl",
+      "overflow": false,
+      "field": "الاسم",
+      "owningForm": { "submitButtons": 0, "singleLineFields": 3 },
+      "typed": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Fieldnotes Field Guide"
+      },
+      "afterEnter": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": []
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-general-after-ar-390.png",
+      "screen": "general",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "dir": "rtl",
+      "overflow": false,
+      "field": "الاسم",
+      "owningForm": { "submitButtons": 1, "singleLineFields": 3 },
+      "typed": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Fieldnotes Field Guide"
+      },
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "تم الحفظ",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes",
+            "body": { "name": "Fieldnotes Field Guide" }
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-search-before-en-1440.png",
+      "screen": "search",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "dir": "ltr",
+      "overflow": false,
+      "field": "Placeholder",
+      "owningForm": { "submitButtons": 0, "singleLineFields": 5 },
+      "typed": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Search the field guide"
+      },
+      "afterEnter": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": []
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-search-after-en-1440.png",
+      "screen": "search",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "dir": "ltr",
+      "overflow": false,
+      "field": "Placeholder",
+      "owningForm": { "submitButtons": 1, "singleLineFields": 5 },
+      "typed": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Search the field guide"
+      },
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/settings/search",
+            "body": { "placeholder": "Search the field guide" }
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-search-before-en-390.png",
+      "screen": "search",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "dir": "ltr",
+      "overflow": false,
+      "field": "Placeholder",
+      "owningForm": { "submitButtons": 0, "singleLineFields": 5 },
+      "typed": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Search the field guide"
+      },
+      "afterEnter": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": []
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-search-after-en-390.png",
+      "screen": "search",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "dir": "ltr",
+      "overflow": false,
+      "field": "Placeholder",
+      "owningForm": { "submitButtons": 1, "singleLineFields": 5 },
+      "typed": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Search the field guide"
+      },
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/settings/search",
+            "body": { "placeholder": "Search the field guide" }
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-search-before-ar-1440.png",
+      "screen": "search",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "dir": "rtl",
+      "overflow": false,
+      "field": "النص النائب",
+      "owningForm": { "submitButtons": 0, "singleLineFields": 5 },
+      "typed": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Search the field guide"
+      },
+      "afterEnter": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": []
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-search-after-ar-1440.png",
+      "screen": "search",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "dir": "rtl",
+      "overflow": false,
+      "field": "النص النائب",
+      "owningForm": { "submitButtons": 1, "singleLineFields": 5 },
+      "typed": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Search the field guide"
+      },
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "تم الحفظ",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/settings/search",
+            "body": { "placeholder": "Search the field guide" }
+          }
+        ]
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-search-before-ar-390.png",
+      "screen": "search",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "dir": "rtl",
+      "overflow": false,
+      "field": "النص النائب",
+      "owningForm": { "submitButtons": 0, "singleLineFields": 5 },
+      "typed": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Search the field guide"
+      },
+      "afterEnter": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": []
+      },
+      "pageErrors": []
+    },
+    {
+      "file": "enter-search-after-ar-390.png",
+      "screen": "search",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "dir": "rtl",
+      "overflow": false,
+      "field": "النص النائب",
+      "owningForm": { "submitButtons": 1, "singleLineFields": 5 },
+      "typed": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "value": "Search the field guide"
+      },
+      "afterEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "تم الحفظ",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/settings/search",
+            "body": { "placeholder": "Search the field guide" }
+          }
+        ]
+      },
+      "pageErrors": []
+    }
+  ],
+  "behaviours": [
+    {
+      "name": "tab stops (general, before)",
+      "screen": "general",
+      "phase": "before",
+      "locale": "en",
+      "tabStops": [
+        "button[type=button]",
+        "input",
+        "textarea",
+        "input",
+        "a",
+        "input",
+        "textarea"
+      ],
+      "exposedSubmitButtons": 0,
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "tab stops (general, after)",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "tabStops": [
+        "button[type=button]",
+        "input",
+        "textarea",
+        "input",
+        "a",
+        "input",
+        "textarea"
+      ],
+      "exposedSubmitButtons": 0,
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "tab stops (search, before)",
+      "screen": "search",
+      "phase": "before",
+      "locale": "en",
+      "tabStops": [
+        "input",
+        "input",
+        "button[type=button][role=combobox]",
+        "input[type=number]",
+        "span[role=switch]",
+        "a[role=button]",
+        "span[role=switch]",
+        "textarea"
+      ],
+      "exposedSubmitButtons": 0,
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "tab stops (search, after)",
+      "screen": "search",
+      "phase": "after",
+      "locale": "en",
+      "tabStops": [
+        "input",
+        "input",
+        "button[type=button][role=combobox]",
+        "input[type=number]",
+        "span[role=switch]",
+        "a[role=button]",
+        "span[role=switch]",
+        "textarea"
+      ],
+      "exposedSubmitButtons": 0,
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Enter in a clean form sends nothing",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": [],
+      "saveBarShown": false,
+      "status": "",
+      "focused": "input",
+      "mutations": [],
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Enter in a translation field saves only that language",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": [],
+      "saveBarShown": false,
+      "status": "Saved",
+      "focused": "input",
+      "mutations": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-fieldnotes/languages/lang-ar",
+          "body": {
+            "translation": { "name": "دليل فيلدنوتس ٢", "description": "" }
+          }
+        }
+      ],
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Enter with an invalid field sends nothing and focuses it",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": ["_r_h_"],
+      "saveBarShown": true,
+      "status": "Fix the highlighted fields to save.",
+      "focused": "input[aria-invalid]",
+      "mutations": [],
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "A failed save keeps the edits",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": ["_r_h_"],
+      "saveBarShown": true,
+      "status": "",
+      "focused": "input",
+      "mutations": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-fieldnotes",
+          "body": { "name": "Fieldnotes Field Guide" }
+        }
+      ],
+      "nameValue": "Fieldnotes Field Guide",
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Enter, Enter, Ctrl+S and Save during one slow save send one write",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": [],
+      "saveBarShown": false,
+      "status": "Saved",
+      "focused": "body",
+      "mutations": [
+        {
+          "method": "PATCH",
+          "path": "/api/app/projects/site-fieldnotes",
+          "body": { "name": "Fieldnotes Field Guide" }
+        }
+      ],
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Enter in the description textarea adds a line and sends nothing",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": ["_r_h_"],
+      "saveBarShown": true,
+      "status": "",
+      "focused": "textarea",
+      "mutations": [],
+      "description": "How the Fieldnotes crew works.\nSecond line",
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Enter on \"Change icon\" opens the choices; Enter on an icon choice picks it and sends nothing",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "radioFocused": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": []
+      },
+      "afterEnterOnRadio": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": []
+      },
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Shift+Enter in a single-line field",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": ["_r_h_"],
+      "saveBarShown": true,
+      "status": "",
+      "focused": "input",
+      "mutations": [],
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Control+Enter in a single-line field",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": ["_r_h_"],
+      "saveBarShown": true,
+      "status": "",
+      "focused": "input",
+      "mutations": [],
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Alt+Enter in a single-line field",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": ["_r_h_"],
+      "saveBarShown": true,
+      "status": "",
+      "focused": "input",
+      "mutations": [],
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Meta+Enter in a single-line field",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": ["_r_h_"],
+      "saveBarShown": true,
+      "status": "",
+      "focused": "input",
+      "mutations": [],
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Enter while an IME composition is open does not save; Enter after the text is committed does",
+      "screen": "general",
+      "phase": "after",
+      "locale": "en",
+      "composing": {
+        "dirtySources": ["_r_h_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "input",
+        "mutations": [],
+        "keydowns": [{ "key": "Enter", "isComposing": true }],
+        "nameValue": "Fieldnotes Handbookか"
+      },
+      "afterNextEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes",
+            "body": { "name": "Fieldnotes Handbookか" }
+          }
+        ],
+        "keydowns": [
+          { "key": "Enter", "isComposing": true },
+          { "key": "Enter", "isComposing": false }
+        ],
+        "nameValue": "Fieldnotes Handbookか"
+      },
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Enter opens and picks a hotkey in the Select and toggles a switch; nothing is sent until Enter in a field, which saves both",
+      "screen": "search",
+      "phase": "after",
+      "locale": "en",
+      "afterSelect": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "button",
+        "mutations": []
+      },
+      "afterSwitchEnter": {
+        "dirtySources": ["_r_13_"],
+        "saveBarShown": true,
+        "status": "",
+        "focused": "span",
+        "mutations": []
+      },
+      "afterFieldEnter": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/app/projects/site-fieldnotes/settings/search",
+            "body": { "versionFilterEnabled": false, "hotkey": "slash" }
+          }
+        ]
+      },
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Two forms under one save bar: Enter saves its own form only; Ctrl+S then saves the other",
+      "screen": "pair",
+      "phase": "after",
+      "locale": "en",
+      "afterEnterInA": {
+        "dirtySources": ["_r_6_"],
+        "saveBarShown": true,
+        "status": "Saved",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/fixture/form-a",
+            "body": { "first": "Edited A", "second": "" }
+          }
+        ]
+      },
+      "afterCtrlS": {
+        "dirtySources": [],
+        "saveBarShown": false,
+        "status": "Saved",
+        "focused": "input",
+        "mutations": [
+          {
+            "method": "PATCH",
+            "path": "/api/fixture/form-a",
+            "body": { "first": "Edited A", "second": "" }
+          },
+          {
+            "method": "PATCH",
+            "path": "/api/fixture/form-b",
+            "body": { "first": "Edited B", "second": "" }
+          }
+        ]
+      },
+      "pageErrors": [],
+      "unanswered": []
+    },
+    {
+      "name": "Two dirty forms: Save in the bar saves both, in order",
+      "screen": "pair",
+      "phase": "after",
+      "locale": "en",
+      "dirtySources": [],
+      "saveBarShown": false,
+      "status": "Saved",
+      "focused": "body",
+      "mutations": [
+        {
+          "method": "PATCH",
+          "path": "/api/fixture/form-a",
+          "body": { "first": "Edited A", "second": "" }
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/fixture/form-b",
+          "body": { "first": "Form B", "second": "Edited B" }
+        }
+      ],
+      "pageErrors": [],
+      "unanswered": []
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-general-after-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "steps": [
+        {
+          "step": "typed in the name: dirty, save bar shown",
+          "dirtySources": ["_r_h_"],
+          "saveBarShown": true,
+          "status": "",
+          "focused": "input",
+          "mutations": []
+        },
+        {
+          "step": "Enter twice: one write in flight",
+          "dirtySources": ["_r_h_"],
+          "saveBarShown": true,
+          "status": "",
+          "focused": "input",
+          "mutations": [
+            {
+              "method": "PATCH",
+              "path": "/api/app/projects/site-fieldnotes",
+              "body": { "name": "Fieldnotes Handbook Guide" }
+            }
+          ]
+        },
+        {
+          "step": "saved: clean, bar gone, \"Saved\" announced",
+          "dirtySources": [],
+          "saveBarShown": false,
+          "status": "Saved",
+          "focused": "input",
+          "mutations": [
+            {
+              "method": "PATCH",
+              "path": "/api/app/projects/site-fieldnotes",
+              "body": { "name": "Fieldnotes Handbook Guide" }
+            }
+          ]
+        },
+        {
+          "step": "Enter in the description: a new line, nothing sent",
+          "dirtySources": ["_r_h_"],
+          "saveBarShown": true,
+          "status": "Saved",
+          "focused": "textarea",
+          "mutations": [
+            {
+              "method": "PATCH",
+              "path": "/api/app/projects/site-fieldnotes",
+              "body": { "name": "Fieldnotes Handbook Guide" }
+            }
+          ]
+        },
+        {
+          "step": "Ctrl+S: the description saved",
+          "dirtySources": [],
+          "saveBarShown": false,
+          "status": "Saved",
+          "focused": "textarea",
+          "mutations": [
+            {
+              "method": "PATCH",
+              "path": "/api/app/projects/site-fieldnotes",
+              "body": { "name": "Fieldnotes Handbook Guide" }
+            },
+            {
+              "method": "PATCH",
+              "path": "/api/app/projects/site-fieldnotes",
+              "body": {
+                "description": "How the Fieldnotes crew works.\nSecond line"
+              }
+            }
+          ]
+        }
+      ],
+      "pageErrors": []
+    },
+    {
+      "file": "flow-general-after-ar-390.webm",
+      "locale": "ar",
+      "width": 390,
+      "steps": [
+        {
+          "step": "typed in the name: dirty, save bar shown",
+          "dirtySources": ["_r_h_"],
+          "saveBarShown": true,
+          "status": "",
+          "focused": "input",
+          "mutations": []
+        },
+        {
+          "step": "Enter twice: one write in flight",
+          "dirtySources": ["_r_h_"],
+          "saveBarShown": true,
+          "status": "",
+          "focused": "input",
+          "mutations": [
+            {
+              "method": "PATCH",
+              "path": "/api/app/projects/site-fieldnotes",
+              "body": { "name": "Fieldnotes Handbook Guide" }
+            }
+          ]
+        },
+        {
+          "step": "saved: clean, bar gone, \"Saved\" announced",
+          "dirtySources": [],
+          "saveBarShown": false,
+          "status": "تم الحفظ",
+          "focused": "input",
+          "mutations": [
+            {
+              "method": "PATCH",
+              "path": "/api/app/projects/site-fieldnotes",
+              "body": { "name": "Fieldnotes Handbook Guide" }
+            }
+          ]
+        },
+        {
+          "step": "Enter in the description: a new line, nothing sent",
+          "dirtySources": ["_r_h_"],
+          "saveBarShown": true,
+          "status": "تم الحفظ",
+          "focused": "textarea",
+          "mutations": [
+            {
+              "method": "PATCH",
+              "path": "/api/app/projects/site-fieldnotes",
+              "body": { "name": "Fieldnotes Handbook Guide" }
+            }
+          ]
+        },
+        {
+          "step": "Ctrl+S: the description saved",
+          "dirtySources": [],
+          "saveBarShown": false,
+          "status": "تم الحفظ",
+          "focused": "textarea",
+          "mutations": [
+            {
+              "method": "PATCH",
+              "path": "/api/app/projects/site-fieldnotes",
+              "body": { "name": "Fieldnotes Handbook Guide" }
+            },
+            {
+              "method": "PATCH",
+              "path": "/api/app/projects/site-fieldnotes",
+              "body": {
+                "description": "How the Fieldnotes crew works.\nSecond line"
+              }
+            }
+          ]
+        }
+      ],
+      "pageErrors": []
+    }
+  ]
+}

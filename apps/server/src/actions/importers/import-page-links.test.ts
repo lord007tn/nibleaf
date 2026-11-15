@@ -2,11 +2,12 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { componentLinkFixtures } from './fixtures/component-links';
+import { extendedImportWrappers } from './fixtures/link-discovery-extended';
 import { linkDiscoveryRepros } from './fixtures/link-discovery-repros';
-import { traceLinkDiscovery } from './fixtures/link-discovery-trace';
+import { traceLinkDiscovery, withMainLinkScanner } from './fixtures/link-discovery-trace';
 import { rewriteMainInternalLinks } from './fixtures/page-links.main-reference';
 import corpus from './fixtures/page-links-corpus.json';
-import { convertGitBookMarkdown } from './gitbook-markdown';
+import { convertGitBookMarkdown as convertHeadGitBookMarkdown } from './gitbook-markdown';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
@@ -19,6 +20,13 @@ const routes = new Map([
   ['getting-started', '/getting-started-2'],
 ]);
 
+const convertGitBookMarkdown = (source: string) => {
+  const convert = () => convertHeadGitBookMarkdown(source, { resolveFile: () => undefined });
+  const head = convert();
+  expect(head, 'GitBook conversion and fidelity must equal main').toEqual(withMainLinkScanner(convert));
+  return head;
+};
+
 const assertDiscoveryParity = (
   source: string,
   page: string,
@@ -28,9 +36,10 @@ const assertDiscoveryParity = (
   const main = traceLinkDiscovery(rewriteMainInternalLinks, source, page, mapping, options);
   const head = traceLinkDiscovery(rewriteMintlifyInternalLinks, source, page, mapping, options);
   expect(head.visits, `${page}: source byte offsets and original destinations`).toEqual(main.visits);
+  expect(head.rewrites, `${page}: exact rewritten destination set`).toEqual(main.rewrites);
   expect(head.output, `${page}: only main's target spans may change`).toBe(main.output);
   expect(rewriteMintlifyInternalLinks(source, page, mapping, options), `${page}: rewrite-only fast path`).toBe(main.output);
-  expect(head.reports, `${page}: fidelity reports must include main's`).toEqual(expect.arrayContaining(main.reports));
+  expect(head.reports, `${page}: exact fidelity reports`).toEqual(main.reports);
   const encoded = Buffer.from(source);
   for (const visit of head.visits)
     expect(encoded.subarray(visit.byteOffset, visit.byteOffset + Buffer.byteLength(visit.original)).toString()).toBe(visit.original);
@@ -46,7 +55,7 @@ describe('main discovery: named repros from every review round', () => {
     expect(head.visits).toEqual(main.visits);
     expect(main.output).toBe(prose.replaceAll('(/next', '(/topic/next') + code);
     expect(head.output).toBe(prose.replaceAll('(/next', '(/topic-2/next') + code);
-    expect(head.reports).toEqual(expect.arrayContaining(main.reports));
+    expect(head.reports).toEqual(main.reports);
   });
   it.each(linkDiscoveryRepros)('$name: identical source byte offsets, output and reports', ({ content }) => {
     assertDiscoveryParity(content, 'intro', routes, { sourceUrl: 'https://help.test', languageCode: 'en' });
@@ -84,12 +93,14 @@ it.each(['mintlify', 'gitbook'] as const)('%s: 291-doc corpus, every earlier rep
     ...linkDiscoveryRepros.map((f) => ({ ...f, source: 'intro' })),
   ];
   let destinations = 0;
+  let rewrittenLinks = 0;
   for (const input of inputs) {
-    const body = kind === 'mintlify' ? input.content : convertGitBookMarkdown(input.content, { resolveFile: () => undefined }).content;
+    const body = kind === 'mintlify' ? input.content : convertGitBookMarkdown(input.content).content;
     const observed = assertDiscoveryParity(body, input.source, input.source === 'intro' ? routes : mappings);
     const finish = kind === 'mintlify' ? normalizeMintlifyMdx : (value: string) => value;
     expect(finish(observed.head.output), input.name).toBe(finish(observed.main.output));
     destinations += observed.head.visits.length;
+    rewrittenLinks += observed.head.rewrites.length;
   }
   console.info('corpus source-offset differential', {
     kind,
@@ -97,6 +108,7 @@ it.each(['mintlify', 'gitbook'] as const)('%s: 291-doc corpus, every earlier rep
     repros: linkDiscoveryRepros.length,
     componentFixtures: componentLinkFixtures.length,
     destinations,
+    rewrittenLinks,
     offsetMismatches: 0,
     exceptions: [],
   });
@@ -138,6 +150,7 @@ it('seed 0x663618: 512 documents retain every main rewrite and all code bytes', 
   ];
   const failures: Array<{ i: number; source: string; main: string; head: string }> = [];
   let codeChanges = 0;
+  let rewrittenLinks = 0;
   const routes = new Map([
     ['next', '/topic-2/next'],
     ['other/next', '/other-2/next'],
@@ -148,17 +161,18 @@ it('seed 0x663618: 512 documents retain every main rewrite and all code bytes', 
     const body = bodies[rand() % bodies.length];
     const source = `${a + body + b}\n\n\`[Code](/next)\`\n\n~~~md\n[Code](/next)\n~~~\n\n[Sentinel](/next)`;
     const observed = assertDiscoveryParity(source, 'docs/intro', routes);
+    rewrittenLinks += observed.head.rewrites.length;
     const expected = observed.main.output;
     const actual = observed.head.output;
     if (!actual.includes('`[Code](/next)`') || !actual.includes('~~~md\n[Code](/next)\n~~~')) codeChanges++;
     if (actual !== expected) failures.push({ i, source, main: expected, head: actual });
   }
-  console.info('seeded document differential', { seed: '0x663618', cases: 512, misses: failures.length, codeChanges });
+  console.info('seeded document differential', { seed: '0x663618', cases: 512, rewrittenLinks, misses: failures.length, codeChanges });
   expect(failures.slice(0, 1)).toEqual([]);
   expect(codeChanges).toBe(0);
 });
 
-it('seed 0x618663: fidelity reports are a superset of main with and without rewrite candidates', () => {
+it('seed 0x618663: fidelity reports equal main with and without rewrite candidates', () => {
   let state = 0x61_86_63;
   const random = () => {
     state ^= state << 13;
@@ -191,7 +205,6 @@ it('seed 0x618663: fidelity reports are a superset of main with and without rewr
     ['<Steps>\n<Step>\n', '\n</Step>\n</Steps>'],
   ];
   const mappings = [new Map<string, string>(), new Map([['unrelated', '/guides/unrelated']]), routes];
-  const failures: Array<{ index: number; source: string; missing: string[] }> = [];
   let mainReports = 0;
   let headReports = 0;
   for (let index = 0; index < 1024; index++) {
@@ -204,12 +217,42 @@ it('seed 0x618663: fidelity reports are a superset of main with and without rewr
     const options = { sourceUrl: 'https://help.test', languageCode: 'en' };
     rewriteMainInternalLinks(source, 'docs/intro', mapping, { ...options, onUnresolved: (href) => baseline.push(href) });
     rewriteMintlifyInternalLinks(source, 'docs/intro', mapping, { ...options, onUnresolved: (href) => actual.push(href) });
-    const missing = [...new Set(baseline)].filter((href) => !actual.includes(href));
+    expect(actual, `fidelity case ${index}`).toEqual(baseline);
     mainReports += baseline.length;
     headReports += actual.length;
-    if (missing.length) failures.push({ index, source, missing });
   }
-  console.info('fidelity differential', { seed: '0x618663', cases: 1024, mainReports, headReports, misses: failures.length });
+  console.info('fidelity differential', { seed: '0x618663', cases: 1024, mainReports, headReports, mismatches: 0 });
   expect(mainReports).toBeGreaterThan(0);
-  expect(failures.slice(0, 1)).toEqual([]);
+});
+
+it('round 7: extended discovery and adversarial angle destinations exactly equal main', () => {
+  let documents = 0;
+  let rewrittenLinks = 0;
+  const shapes: string[] = [];
+  for (const depth of [1, 2, 3, 8, 32, 128])
+    for (const gap of ['', 'x'.repeat(257), 'x'.repeat(4097)]) {
+      shapes.push(
+        `${'[a](<b)'.repeat(depth)}${gap}`,
+        `${'['.repeat(depth)}[a](<${gap})`,
+        `${'[a](<b'.repeat(depth)}${gap}${')'.repeat(depth)}`,
+        `[a](<${'<'.repeat(depth)}${gap})`,
+        `[a](<${gap}\\>) [Real](</next>)`,
+        `[a](<${gap}\\)>) [Real](</next>)`,
+        `[a](<${gap}\n/next>) [Real](/next)`,
+        `[a](<${gap}\r\n/next>) [Real](/next)`,
+        `[a](<${gap})${gap}> [Real](/next)`,
+        `[a](<${gap}[nested](/next)) [Real](/next)`,
+        `[a](<${gap}(nested)) [Real](/next)`,
+        `![outer [a](<${gap})](/next) [Real](/next)`,
+      );
+    }
+  const links = ['[Go](/next?x=1#part)', '[Missing](/missing)', '[Go](</next>)', '[Go](/next?lang=ar)'];
+  for (const [open, close] of [['', ''], ...extendedImportWrappers])
+    for (const shape of [...shapes, ...links]) {
+      const source = `${open}${shape} [Valid](/next)${close}\n\n\`[Code](/next)\`\n\n<Note>\n[Following](/next)\n</Note>`;
+      const { head } = assertDiscoveryParity(source, 'docs/intro', routes, { sourceUrl: 'https://help.test', languageCode: 'en' });
+      rewrittenLinks += head.rewrites.length;
+      documents++;
+    }
+  console.info('round-7 exact differential', { documents, rewrittenLinks, mismatches: 0, fidelityMismatches: 0 });
 });
