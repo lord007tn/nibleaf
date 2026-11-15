@@ -709,3 +709,73 @@ describe('updateProject: clearing saved footer values', () => {
     expect(stored.footer).toStrictEqual({ ...FOOTER, madeWithBadge: true });
   });
 });
+
+// The dashboard's Styling form sends `config.styling` with only the keys the
+// person changed: a color always as `#` and six lowercase digits (a short
+// `#abc` is expanded first), a radius only when chosen. It never sends the
+// appearance (`styling.theme`) or `config.theme`.
+describe('updateProject: saving styling from the dashboard form', () => {
+  /** A modern theme with its own dark accent and layout radius: the reader prefers both to the legacy styling where they apply. */
+  const THEME = { version: 1, preset: 'harbor', colors: { dark: { accent: '#0f766e' } }, layout: { radius: 'pill' } };
+  const SIBLINGS = { theme: THEME, seo: { metaTitle: 'Docs' }, navbar: { ctaLabel: 'Start' } };
+  let stored: Record<string, unknown>;
+
+  const startWith = (styling: Record<string, unknown>) => {
+    stored = { ...structuredClone(SIBLINGS), styling };
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    startWith({});
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  const save = (styling: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { styling } }))));
+
+  it('stores a short color the form expanded (#abc → #aabbcc) as sent, and reads it back', async () => {
+    const readback = await save({ primaryColor: '#aabbcc' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, styling: { primaryColor: '#aabbcc' } });
+    expect(readback).toMatchObject({ config: { styling: { primaryColor: '#aabbcc' } } });
+  });
+
+  it('refuses partial or unprefixed text, which the form therefore never sends', () => {
+    for (const primaryColor of ['#', '#ab', '#abcd', 'aabbcc', 'teal']) {
+      expect(updateProjectBody.safeParse({ config: { styling: { primaryColor } } }).success).toBe(false);
+    }
+  });
+
+  it('a color-only patch keeps the stored radius and appearance, and the modern theme config', async () => {
+    startWith({ primaryColor: '#5546e8', theme: 'dark', radius: 'sharp' });
+    const readback = await save({ primaryColor: '#0ea5e9' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, styling: { primaryColor: '#0ea5e9', theme: 'dark', radius: 'sharp' } });
+    expect(readback).toMatchObject({ config: { theme: THEME, styling: { primaryColor: '#0ea5e9', theme: 'dark', radius: 'sharp' } } });
+  });
+
+  it('a radius-only patch over an unset color and appearance leaves both unset', async () => {
+    await save({ radius: 'rounded' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, styling: { radius: 'rounded' } });
+  });
+
+  it('a color-only patch over an unset radius keeps it unset, so the reader keeps the theme’s corners and its own dark accent', async () => {
+    await save({ primaryColor: '#db2777' });
+    expect(stored.styling).toStrictEqual({ primaryColor: '#db2777' });
+    const theme = resolveTheme(stored as Parameters<typeof resolveTheme>[0], { authoredAccent: true });
+    expect(theme.layout.radius).toBe('pill');
+    expect(theme.colors.dark.accent).toBe('#0f766e');
+    expect(theme.colors.light.accent).not.toBe(THEME_PRESETS.harbor.colors.light.accent);
+  });
+
+  it('why the form sends only what changed: main’s full payload wrote back a radius and appearance it never edited', async () => {
+    // Another writer set the appearance and radius after main's form had read the site.
+    startWith({ primaryColor: '#5546e8', theme: 'dark', radius: 'pill' });
+    // Main sent its mount-time radius (or the 'rounded' default) and the query's old appearance with every save.
+    await save({ primaryColor: '#0ea5e9', radius: 'rounded', theme: 'light' });
+    expect(stored.styling).toStrictEqual({ primaryColor: '#0ea5e9', theme: 'light', radius: 'rounded' });
+  });
+});
