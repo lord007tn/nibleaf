@@ -39,3 +39,24 @@ only.
 - the front toast's wrapped line count and clipping, where focus is, that the edit is still in the field, that there is
   one toast host and it sits inside the dashboard scope, page and console errors (none), and horizontal overflow
   (none).
+
+## Checking the placement again, without media
+
+`node .github/assets/dashboard-mobile-toast-placement/capture.mjs --verify` uses the same fixture on the current tree
+only. It makes no screenshots or videos and leaves `evidence.json` and the images above untouched; it writes
+`verify.json`. Run it after a Sonner upgrade. In EN and AR, at 390, 844×390 (touch, landscape) and 1440, with three
+failed saves expanded, it fails with a list of problems when:
+
+- the front toast is not at the host's own offset variable from its edge (`--mobile-offset-top` at 390, `--offset-top`
+  at 844×390, plus the safe area), or at `--offset-bottom` on desktop, or a variable is empty or not a px length;
+- the stack does not grow away from that edge, sits on the wrong side for the language, or there is more than one host;
+- a toast overlaps Save or Discard, or a hit-test or tap at either misses it;
+- on the auth pages' providers (no dashboard scope), toasts are not at Sonner's unchanged bottom, or a dashboard rule
+  reaches them;
+- a 390 → 1440 → 390 resize leaves the stack at the wrong edge, or unmounting leaves a host, a rule or root styles
+  behind.
+
+Sonner keeps reporting `data-y-position="bottom"` throughout: #715 moves the stack with CSS, which selects on it.
+`verify.json` records the Sonner version and whether the deferred toast host (#703) is on the tree; while #703 is
+unmerged, the rows measure the eager host, and the file says so. The jsdom side of the same contract, reading Sonner's
+rendered host and its own stylesheet, is in `apps/app/src/components/app-providers.test.tsx`.
