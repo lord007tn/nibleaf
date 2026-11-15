@@ -1112,7 +1112,7 @@ describe('the save bar says "Saved" only when nothing is left (#759 settlement)'
     expect(region()).not.toBeNull();
     neverSaved();
     server.failReads.delete('site-1');
-    const options = vi.mocked(toast.warning).mock.calls.at(-1)?.[1] as { action: { onClick: () => void } };
+    const options = vi.mocked(toast.warning).mock.calls.at(-1)?.[1] as unknown as { action: { onClick: () => void } };
     await act(async () => options.action.onClick());
     await finished();
     expect(region()).toBeNull();
