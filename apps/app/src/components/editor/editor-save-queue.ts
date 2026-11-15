@@ -11,44 +11,82 @@ export interface PageDraft {
 export const samePageDraft = (a: PageDraft, b: PageDraft): boolean =>
   a.id === b.id && a.title === b.title && a.content === b.content && a.expectedUpdatedAt === b.expectedUpdatedAt;
 
+/** What a write's response says the server stored. */
+export interface StoredPage {
+  id: string;
+  title: string;
+  content: string;
+}
+
+/** The same title and content for the same page, whatever revision each was based on. */
+const sameStoredText = (a: StoredPage, b: StoredPage): boolean => a.id === b.id && a.title === b.title && a.content === b.content;
+
 /** Serialize writes so an older request can never overwrite a newer draft. */
-export function createEditorSaveQueue<T>(save: (draft: PageDraft) => Promise<T>, revisionOf?: (saved: T) => string | undefined) {
+export function createEditorSaveQueue<T>(
+  save: (draft: PageDraft) => Promise<T>,
+  revisionOf?: (saved: T) => string | undefined,
+  storedOf?: (saved: T) => StoredPage | undefined,
+) {
   let tail: Promise<unknown> = Promise.resolve();
   let latest: { draft: PageDraft; result: Promise<T> } | undefined;
   let pending = 0;
   const revisions = new Map<string, { revision: string; bases: Set<string> }>();
   const conflicts = new Map<string, unknown>();
+  /** The revisions this queue's own writes produced, per page. */
+  const produced = new Map<string, Set<string>>();
+  const ownRevision = (id: string, revision: string | undefined) => revision !== undefined && produced.get(id)?.has(revision) === true;
 
   return {
     save(draft: PageDraft): Promise<T> {
       if (latest && samePageDraft(latest.draft, draft)) return latest.result;
-      const result = tail
-        .catch(() => undefined)
-        .then(async () => {
-          if (conflicts.has(draft.id)) throw conflicts.get(draft.id);
-          const acknowledged = revisions.get(draft.id);
-          const ownBase = acknowledged && (!draft.expectedUpdatedAt || acknowledged.bases.has(draft.expectedUpdatedAt));
-          const expectedUpdatedAt = ownBase ? acknowledged.revision : draft.expectedUpdatedAt;
-          try {
-            const saved = await save({ ...draft, ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}) });
-            const revision = revisionOf?.(saved);
-            if (revision) {
-              const bases = ownBase ? acknowledged.bases : new Set<string>();
-              if (expectedUpdatedAt) bases.add(expectedUpdatedAt);
-              bases.add(revision);
-              // Evicted old bases fail closed with their original precondition.
-              if (bases.size > 128) {
-                const oldest = bases.values().next().value;
-                if (oldest) bases.delete(oldest);
-              }
-              revisions.set(draft.id, { revision, bases });
+      const send = async (): Promise<T> => {
+        if (conflicts.has(draft.id)) throw conflicts.get(draft.id);
+        const acknowledged = revisions.get(draft.id);
+        const ownBase = acknowledged && (!draft.expectedUpdatedAt || acknowledged.bases.has(draft.expectedUpdatedAt));
+        const expectedUpdatedAt = ownBase ? acknowledged.revision : draft.expectedUpdatedAt;
+        try {
+          const saved = await save({ ...draft, ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}) });
+          const revision = revisionOf?.(saved);
+          if (revision) {
+            const bases = ownBase ? acknowledged.bases : new Set<string>();
+            if (expectedUpdatedAt) bases.add(expectedUpdatedAt);
+            bases.add(revision);
+            // Evicted old bases fail closed with their original precondition.
+            if (bases.size > 128) {
+              const oldest = bases.values().next().value;
+              if (oldest) bases.delete(oldest);
             }
-            return saved;
-          } catch (error) {
-            if (isEditorRevisionConflict(error)) conflicts.set(draft.id, error);
-            throw error;
+            revisions.set(draft.id, { revision, bases });
+            const mine = produced.get(draft.id) ?? new Set<string>();
+            mine.add(revision);
+            if (mine.size > 128) mine.delete(mine.values().next().value as string);
+            produced.set(draft.id, mine);
           }
-        });
+          return saved;
+        } catch (error) {
+          if (isEditorRevisionConflict(error)) conflicts.set(draft.id, error);
+          throw error;
+        }
+      };
+      // The last write still pending carries this very text, only from another
+      // base (a flush ran before it was acknowledged, another after: #735). This
+      // draft waits for it, and is skipped only if, once it settles, the server
+      // holds exactly this draft from a revision this queue knows: the draft's
+      // base is that write's own or one this queue's writes produced (never a
+      // foreign server copy), and the response shows this page, title and
+      // content stored. Otherwise the draft is sent after it, as before.
+      const previous = latest && sameStoredText(latest.draft, draft) ? latest : undefined;
+      const storedThisDraft = (saved: T) => {
+        const ownBase = draft.expectedUpdatedAt === previous?.draft.expectedUpdatedAt || ownRevision(draft.id, draft.expectedUpdatedAt);
+        const stored = storedOf?.(saved);
+        return ownBase && stored !== undefined && sameStoredText(stored, draft);
+      };
+      const result = previous
+        ? previous.result.then(
+            (saved) => (storedThisDraft(saved) ? saved : send()),
+            () => send(),
+          )
+        : tail.catch(() => undefined).then(send);
       const entry = { draft, result };
       pending += 1;
       latest = entry;
