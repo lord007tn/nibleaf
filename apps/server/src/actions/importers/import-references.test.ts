@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { markdownReferences as mainReferences } from './fixtures/page-links.main-references';
 import { markdownReferences, remoteImageSources, replaceImportReferences } from './import-references';
 
 const references = (source: string) => markdownReferences(source).map(({ value, image }) => ({ value, image }));
@@ -82,4 +83,20 @@ it('ends an angle destination at its own parenthesis', () => {
     { value: 'd>', image: false },
     { value: 'f g', image: false },
   ]);
+});
+
+it('retains main pairing on generated malformed, nested and escaped angles (seed 0x663)', () => {
+  let state = 0x6_63;
+  const fragments = ['[a]', '[', ']', '(', ')', '<', '>', '\\', '\n', ' ', '/next', '![b]', '[c](/next)'];
+  for (let document = 0; document < 4096; document++) {
+    let source = '[a](<';
+    for (let part = 0; part < 16; part++) {
+      state ^= state << 13;
+      state ^= state >>> 17;
+      state ^= state << 5;
+      source += fragments[(state >>> 0) % fragments.length];
+    }
+    source += ') [Valid](/next)';
+    expect(markdownReferences(source), source).toEqual(mainReferences(source));
+  }
 });
