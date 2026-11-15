@@ -1,6 +1,7 @@
 import { useForm, useStore } from '@tanstack/react-form';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  agreesWith,
   type DraftValues,
   deepEqual,
   isDraftDirty,
@@ -141,10 +142,14 @@ export function useServerDraftForm<T extends DraftValues>({
     [form],
   );
 
-  /** Keeps a conflict until it is resolved or the draft agrees with the server again; adds new ones. */
-  const mergeConflicts = useCallback((found: Array<keyof T & string>, current: T, nextBaseline: T) => {
+  /**
+   * Keeps a conflict until it is resolved or the draft agrees with the server
+   * again (judged as the save in flight judges its keys); adds new ones.
+   */
+  const mergeConflicts = useCallback((found: Array<keyof T & string>, current: T, nextBaseline: T, save?: PendingSave<T>) => {
+    const agrees = agreesWith(current, nextBaseline, save);
     setConflicts((previous) => {
-      const kept = previous.filter((key) => !deepEqual(current[key], nextBaseline[key]));
+      const kept = previous.filter((key) => !agrees(key));
       const merged = [...new Set([...kept, ...found])];
       return merged.length === previous.length && merged.every((key, index) => key === previous[index]) ? previous : merged;
     });
@@ -182,7 +187,7 @@ export function useServerDraftForm<T extends DraftValues>({
     if (save && change.save) save.pending = change.save;
     setBaseline(change.baseline);
     applyValues(change.current);
-    mergeConflicts(change.conflicts, change.current, change.baseline);
+    mergeConflicts(change.conflicts, change.current, change.baseline, change.save);
   }, [applyValues, form, identityKey, mergeConflicts, setBaseline, source]);
 
   const succeeded = (save: ActiveSave<T>, confirmed?: T) => {

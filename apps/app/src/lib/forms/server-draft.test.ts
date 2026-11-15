@@ -175,6 +175,18 @@ describe('a successful save after refetches (rule 3 with the save’s state)', (
   });
 });
 
+describe('a save without toSent', () => {
+  it('restores an explicitly undefined key the form dropped, as before toSent', () => {
+    type Optional = { x?: string; y: string; z: string };
+    const baseline: Optional = { x: undefined, y: 'O', z: 'O' };
+    const submitted: Optional = { y: 'O', z: 'S' };
+    const next: Optional = { x: undefined, y: 'T', z: 'S' };
+    const change = reconcileServerChange({ baseline, current: submitted, next, save: startSave(baseline, submitted) });
+    expect(change.current).toStrictEqual(next);
+    expect(isDraftDirty(change.current, change.baseline)).toBe(false);
+  });
+});
+
 describe('a save of a transformed payload (toSent)', () => {
   const trim = (values: Values): Values => ({ ...values, name: values.name.trim() });
   const save = startSave(base, { ...base, name: 'Help  ', slug: 'help' }, trim);
