@@ -1,0 +1,72 @@
+# The branch's styling-settings.source.test.tsx run against main's component (origin/main 7aeb6eab
+# apps/app/src/components/project-settings/styling-section.tsx, copied to a scratch file and imported in place of
+# StylingSettings). Three of its failures, with the exact behaviour; the same tests pass on this branch.
+# Command: npx vitest run <scratch copy> -t "color-only save sends|clean refetch|pending edits survive"
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/site-styling/components/styling-settings.source.test.tsx (main component) > StylingSettings over the project query: a save sends only what changed > a color-only save sends the color alone: the unset radius and appearance stay unset, the theme stays as stored
+AssertionError: expected { styling: { …(2) } } to strictly equal { Object (styling) }
+
+- Expected
++ Received
+
+  {
+    "styling": {
+      "primaryColor": "#0ea5e9",
++     "radius": "rounded",
+    },
+  }
+
+ ❯ src/features/site-styling/components/styling-settings.source.test.tsx (main component):156:33
+    154|     await click('#0ea5e9');
+    155|     await save();
+    156|     expect(lastPatch()?.config).toStrictEqual({ styling: { primaryColo…
+       |                                 ^
+    157|     expect(server.config['site-1']).toStrictEqual({ theme: THEME, seo:…
+    158|     expect(region()).toBeNull();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  src/features/site-styling/components/styling-settings.source.test.tsx (main component) > StylingSettings follows the server > main regression: a clean refetch shows the other writer’s color and radius (main kept the mount-time controls)
+AssertionError: expected '#5546E8' to be '#EF4444' // Object.is equality
+
+Expected: "#EF4444"
+Received: "#5546E8"
+
+ ❯ src/features/site-styling/components/styling-settings.source.test.tsx (main component):210:25
+    208|     elsewhere('site-1', (config) => ({ ...config, styling: { primaryCo…
+    209|     await read();
+    210|     expect(hex().value).toBe('#EF4444');
+       |                         ^
+    211|     expect(slider('hue').value).toBe('0');
+    212|     expect(radius()).toBe('settings.styling.radius.pill');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  src/features/site-styling/components/styling-settings.source.test.tsx (main component) > StylingSettings follows the server > pending edits survive a refetch; another writer’s untouched radius and appearance survive the later color save
+AssertionError: expected 'settings.styling.radius.rounded' to be 'settings.styling.radius.pill' // Object.is equality
+
+Expected: "settings.styling.radius.pill"
+Received: "settings.styling.radius.rounded"
+
+ ❯ src/features/site-styling/components/styling-settings.source.test.tsx (main component):222:22
+    220|     await read();
+    221|     expect(hex().value).toBe('#DB2777');
+    222|     expect(radius()).toBe('settings.styling.radius.pill');
+       |                      ^
+    223|     expect(conflict()).toBe(false);
+    224|     await save();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 10 skipped (13)
+   Start at  22:44:37
+   Duration  2.97s (environment 37%, import 28%, transform 24%, tests 11%)
+
+
+# This branch, same file:
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
