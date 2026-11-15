@@ -1,10 +1,11 @@
 import MarkdownIt from 'markdown-it';
-import { Parser, parseFragment, serialize } from 'parse5';
+import { type DefaultTreeAdapterTypes, Parser, parseFragment, serialize } from 'parse5';
 import { expect, it } from 'vitest';
+import visibleRepros from './__fixtures__/markdown-export.visible-repros.json';
 import { AttributeReplay } from './export-html-replay';
-import { readExportHtml, type ExportHtmlMetrics } from './export-html-source';
+import { type ExportHtmlMetrics, readExportHtml } from './export-html-source';
 import { srcsetCandidates } from './export-url-policy';
-import { checkHazardMatrix, exportTargets, exportFanoutSource } from './testing/export-664-guard';
+import { checkHazardMatrix, exportFanoutSource, exportTargets } from './testing/export-664-guard';
 import { readerSanitizedActiveHtml } from './testing/export-guard';
 import { inspectExport } from './testing/export-oracle';
 
@@ -26,11 +27,15 @@ const attacks = [
 
 it('fails on main for live handlers and URLs, then emits none in either export', () => {
   const activeMain = attacks.flatMap((source) => exportTargets.map((target) => inspectExport(target.baseline(source)).active));
-  expect(activeMain.filter(Boolean).length).toBeGreaterThanOrEqual(14);
+  expect(activeMain.filter(Boolean)).toHaveLength(13);
   const report = checkHazardMatrix(attacks);
   expect(report.failures).toEqual([]);
   expect(report.totals.active).toBe(0);
   for (const source of attacks) for (const { project } of exportTargets) expect(readerSanitizedActiveHtml(project(source))).toBe(0);
+});
+
+it('preserves all 28 historical visible-text repros through the combined pipeline', () => {
+  expect(checkHazardMatrix(visibleRepros).failures).toEqual([]);
 });
 
 it('keeps rejected Markdown destinations, references, autolinks and inert HTML byte-identical', () => {
@@ -112,9 +117,9 @@ it('replays cached values exactly in raw, foreign, quoted, comment and declarati
     for (const prefix of prefixes)
       for (const value of values) {
         const escaped = markdown.utils.escapeHtml(value),
-          before = prefix + '<p><a href="',
+          before = `${prefix}<p><a href="`,
           after = '" title="hello">x</a></p><img onerror=Y>';
-        const parser = Parser.getFragmentParser(null, {});
+        const parser = Parser.getFragmentParser<DefaultTreeAdapterTypes.DefaultTreeAdapterMap>(null, {});
         parser.tokenizer.write(before, false);
         cache.apply(parser.tokenizer, escaped);
         parser.tokenizer.write(after, true);

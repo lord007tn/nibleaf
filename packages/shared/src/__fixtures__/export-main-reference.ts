@@ -1,7 +1,8 @@
 // Frozen main at ec2d10d8; do not update with the implementation.
-import { escapeDisallowedExportHtml } from './export-main-reference-code/export-html';
+
 import { markdownCodeSpans } from '../markup-scan';
 import { buildMdxTree, type MdxNode, tokenizeMdx } from '../mdx-tokens';
+import { escapeDisallowedExportHtml } from './export-main-reference-code/export-html';
 
 /** A character reference a Markdown renderer decodes to text: named,
  *  decimal or hexadecimal. */
@@ -344,4 +345,3 @@ export const normalizePublicMarkdownContent = (markdown: string): string => {
   }
   return escapeDisallowedExportHtml(parts.join('').trim());
 };
-

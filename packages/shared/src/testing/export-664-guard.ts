@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
 import { checkOutside } from '../__fixtures__/export-664-outside.mjs';
-import { authoredExportText, exportTextEnd, mayHaveActiveExportHtml, readExportHtml, type ExportHtmlMetrics } from '../export-html-source';
+import * as main from '../__fixtures__/export-main-reference';
+import { authoredExportText, type ExportHtmlMetrics, exportTextEnd, mayHaveActiveExportHtml, readExportHtml } from '../export-html-source';
 import { captureExportStructure, compareExportStructure, literalExportText } from '../export-structure';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from '../public-markdown-content';
-import * as main from '../__fixtures__/export-main-reference';
 import { inspectExport } from './export-oracle';
 
 export const exportTargets = [
@@ -115,4 +115,4 @@ export const checkHazardMatrix = (sources: Iterable<string>) => {
 
 /** Both definition length and reference count grow together. */
 export const exportFanoutSource = (n: number, prefix: string): string =>
-  prefix + '\n\nOn this page:\n\n[ref]: https://example.test/' + 'a'.repeat(n) + ' "' + 'b'.repeat(n) + '"\n\n' + '[x][ref] '.repeat(n);
+  `${prefix}\n\nOn this page:\n\n[ref]: https://example.test/${'a'.repeat(n)} "${'b'.repeat(n)}"\n\n${'[x][ref] '.repeat(n)}`;

@@ -1,5 +1,11 @@
 export const dangerous = (value: string): boolean => {
-  const normalized = value.toLowerCase().replace(/[\u0000-\u0020\u007f]/g, '');
+  let normalized = '';
+  for (const character of value) {
+    const code = character.charCodeAt(0);
+    if (code <= 32 || code === 127) continue;
+    normalized += character.toLowerCase();
+    if (normalized.length >= 11) break;
+  }
   return ['javascript:', 'vbscript:', 'data:'].some((s) => normalized.startsWith(s));
 };
 const white = (c: string | undefined) => c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f';

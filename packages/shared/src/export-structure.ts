@@ -164,7 +164,7 @@ export const captureExportStructure = (
 /** Canonical last-resort output. Outside the owned ranges bytes are untouched.
  * Separators occur only at their root-block boundaries. Encoding code
  * points (rather than UTF-16 units) also preserves non-BMP author characters. */
-export const exportBoundaryEnding = (source: string, at: number): string => {
+const exportBoundaryEnding = (source: string, at: number): string => {
   if (source[at - 1] === '\r') return '\r';
   if (source[at - 1] === '\n') return source[at - 2] === '\r' ? '\r\n' : '\n';
   for (let i = at; i < source.length; i++) {

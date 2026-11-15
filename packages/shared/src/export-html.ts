@@ -2,7 +2,7 @@ import type Token from 'markdown-it/lib/token.mjs';
 import {
   authoredExportText,
   exportTextEnd,
-  mayHaveActiveExportHtml,
+  mayHaveActiveExportElements,
   parseExportTokens,
   readExportHtml,
   renderedExportText,
@@ -30,7 +30,7 @@ const neutralize = (source: string, remaining = false, state = readExportHtml(so
   for (const [from, to] of state.inert) mark(from, to);
   if (remaining)
     for (const span of spans)
-      if (mayHaveActiveExportHtml(span.token.content)) {
+      if (mayHaveActiveExportElements(span.token.content)) {
         const first = span.positions[0];
         const last = span.positions.at(-1);
         if (first !== undefined && last !== undefined) mark(first, last + 1);

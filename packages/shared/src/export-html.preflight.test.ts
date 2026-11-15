@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
 import { escapeDisallowedExportHtml, mayHaveActiveExportHtml } from './export-html';
 import { renderedActiveHtml } from './testing/export-guard';
-import { inspectExport } from './testing/export-oracle';
 import { htmlExportBoundaryCases, seededExportCases } from './testing/export-guard-cases';
+import { inspectExport } from './testing/export-oracle';
 
 it.each(['<div>text</div>', '<sup>2</sup><sub>x</sub><u>y</u>'])('bypasses HTML without candidate hazards: %s', (source) => {
   expect(mayHaveActiveExportHtml(source)).toBe(false);

@@ -4,7 +4,7 @@ import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 const markdown = new MarkdownIt({ html: true });
 // Independent of the production policy: scan candidate URLs with sticky token
 // patterns and skip entire descriptor parentheses before accepting a comma.
-export const exportUrlCandidates = (value: string, name: string, tag = ''): string[] => {
+const exportUrlCandidates = (value: string, name: string, tag = ''): string[] => {
   if (['ping', 'profile', 'itemtype', 'attributionsrc', 'archive'].includes(name))
     return value.split(name === 'archive' && tag === 'applet' ? /[\t\n\f\r ,]+/ : /[\t\n\f\r ]+/);
   if (name !== 'srcset' && name !== 'imagesrcset') return [value];
@@ -62,7 +62,13 @@ const urlAttributes = new Set([
 export const oracleUnsafeAttribute = (name: string, value: string, tag = ''): boolean =>
   name.startsWith('on') ||
   (urlAttributes.has(name) &&
-    exportUrlCandidates(value, name, tag).some((candidate) => /^(javascript|vbscript|data):/i.test(candidate.replace(/[\x00-\x20\x7f]/g, ''))));
+    exportUrlCandidates(value, name, tag).some((candidate) =>
+      /^(javascript|vbscript|data):/i.test(
+        Array.from(candidate)
+          .filter((character) => character.charCodeAt(0) > 32 && character.charCodeAt(0) !== 127)
+          .join(''),
+      ),
+    ));
 export const inspectRenderedExport = (html: string) => {
   const pending: DefaultTreeAdapterTypes.Node[] = [parseFragment(html)];
   const features: string[] = [],

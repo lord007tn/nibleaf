@@ -4,11 +4,11 @@ import limits from './__fixtures__/export-664-ceilings.json';
 import { compoundShapes } from './__fixtures__/export-664-compound.mjs';
 import { newShapes } from './__fixtures__/export-664-generator.mjs';
 import { round7, round12 } from './__fixtures__/export-664-review-generators.mjs';
+import { export664Corpus } from './testing/export-664-corpus';
 import { checkHazardMatrix } from './testing/export-664-guard';
 import { htmlExportBoundaryCases, seededExportCases } from './testing/export-guard-cases';
 import { reviewedExportCases } from './testing/export-review-cases';
 import { expandedExportStructureCases, exportContentHazardCases, exportInertContextCases } from './testing/export-structure-cases';
-import { markdownCorpus } from './testing/markdown-corpus';
 
 const matrices = {
   expanded: expandedExportStructureCases,
@@ -21,14 +21,14 @@ const matrices = {
   round12,
   generator: newShapes,
   compound: compoundShapes,
-  corpus: () => markdownCorpus(fileURLToPath(new URL('../../..', import.meta.url))).map(([, source]) => source),
+  corpus: () => export664Corpus(fileURLToPath(new URL('../../..', import.meta.url))).approved.map(([, source]) => source),
 };
 
 it.each(Object.keys(matrices) as Array<keyof typeof matrices>)(
   'renders every output and preserves inert main bytes, visible author text and outside structure: %s',
   (name) => {
     const report = checkHazardMatrix(matrices[name]());
-    console.info(name, report.totals, report.inactiveHash);
+    console.info(JSON.stringify({ matrix: name, ...report.totals, inactiveHash: report.inactiveHash }));
     const ceiling = limits.matrices[name];
     expect(report.totals.exports).toBe(ceiling.exports);
     expect(report.failures, JSON.stringify(report.failures)).toEqual([]);
@@ -41,3 +41,10 @@ it.each(Object.keys(matrices) as Array<keyof typeof matrices>)(
   },
   300_000,
 );
+
+it('checks additional corpus pages without weakening the two approved fallback exceptions', () => {
+  const pages = export664Corpus(fileURLToPath(new URL('../../..', import.meta.url))).additional;
+  const report = checkHazardMatrix(pages.map(([, source]) => source));
+  expect(report.failures).toEqual([]);
+  expect(report.totals.fallbacks).toBe(0);
+});

@@ -34,7 +34,7 @@ interface Plan {
 // into the HTML buffer once per reference. Tree construction still runs on the
 // real parser, in its current context; duplicate attributes are resolved there.
 export class AttributeReplay {
-  private plans = new Map<string, Map<number, Plan>>();
+  private readonly plans = new Map<string, Map<number, Plan>>();
   analyses = 0;
   bytes = 0;
 
@@ -43,7 +43,10 @@ export class AttributeReplay {
     // the differential replay matrix checks this boundary against full parsing.
     const target = tokenizer as unknown as ReplayTokenizer;
     let contexts = this.plans.get(value);
-    if (!contexts) this.plans.set(value, (contexts = new Map()));
+    if (!contexts) {
+      contexts = new Map();
+      this.plans.set(value, contexts);
+    }
     const context = target.state * 256 + target.returnState * 2 + Number(target.inForeignNode);
     let plan = contexts.get(context);
     if (!plan) {
@@ -73,7 +76,9 @@ export class AttributeReplay {
           },
         );
       };
-      const noop = () => {};
+      const noop = () => {
+        /* Compilation records operations without building a tree. */
+      };
       const compiler = new Tokenizer(
         { sourceCodeLocationInfo: false },
         {
@@ -130,7 +135,10 @@ export class AttributeReplay {
           const prefix = String(object[operation.field] ?? '');
           if (operation.names) {
             let combined = operation.names.get(prefix);
-            if (combined === undefined) operation.names.set(prefix, (combined = prefix + operation.value));
+            if (combined === undefined) {
+              combined = prefix + operation.value;
+              operation.names.set(prefix, combined);
+            }
             object[operation.field] = combined;
           } else object[operation.field] = prefix + operation.value;
           break;
@@ -149,6 +157,8 @@ export class AttributeReplay {
           break;
         case 'characters':
           target._appendCharToCurrentCharacterToken(operation.type, operation.value);
+          break;
+        default:
           break;
       }
     }
