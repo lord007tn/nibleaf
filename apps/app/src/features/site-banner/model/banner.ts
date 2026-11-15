@@ -75,6 +75,24 @@ export function inheritedPlaceholders(projectBanner: BannerConfig | null | undef
   return placeholders;
 }
 
+/**
+ * What is wrong with the link address: empty is fine (no link, or the
+ * project's in a language scope); otherwise it must be an absolute http(s)
+ * URL. The reader links to it as stored, so a relative or bare path would
+ * resolve against whatever page shows the banner.
+ */
+export function linkUrlProblem(value: string): 'invalid' | undefined {
+  const address = value.trim();
+  if (!address) return undefined;
+  let url: URL;
+  try {
+    url = new URL(address);
+  } catch {
+    return 'invalid';
+  }
+  return (url.protocol === 'http:' || url.protocol === 'https:') && url.hostname ? undefined : 'invalid';
+}
+
 /** The project scope's `config.banner` patch: both toggles, and each text trimmed or left out when empty. */
 export function projectBannerPatch(values: BannerValues): BannerConfig {
   return {

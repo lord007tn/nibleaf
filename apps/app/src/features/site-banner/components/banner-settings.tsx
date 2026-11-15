@@ -1,10 +1,11 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Callout } from '@nibleaf/design-system/components/ui/callout';
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { useT } from '@nibleaf/i18n/react';
 import { useStore } from '@tanstack/react-form';
 import { Megaphone } from 'lucide-react';
-import { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import { type KeyboardEvent, useCallback, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
   FIELD_INPUT,
@@ -17,13 +18,28 @@ import {
 } from '@/components/project-settings/shared';
 import type { Language, Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
-import { SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
+import { errorMessages, fieldErrorsVisible, validateOnBlurThenChange, withoutStaleErrors } from '@/lib/forms/field-errors';
+import { focusFirstInvalid, SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useBannerLanguages, useSaveBanner } from '../api/hooks';
-import { type BannerValues, inheritedPlaceholders, languageBannerValues, PROJECT_SCOPE, projectBannerValues } from '../model/banner';
+import { type BannerValues, inheritedPlaceholders, languageBannerValues, linkUrlProblem, PROJECT_SCOPE, projectBannerValues } from '../model/banner';
 
 /** The `dir` for text written in a content language, independent of the interface locale. */
 const dirOf = (language: Pick<Language, 'direction'> | undefined) => (language ? (language.direction === 'RTL' ? 'rtl' : 'ltr') : 'auto');
+
+/**
+ * Enter in a single-line field saves, as it did when the form had its own
+ * Save button: Save now lives in the page's bar, outside the form, so the
+ * browser no longer submits on Enter. An IME composition and modified Enter
+ * are left alone. A second Enter during a save reaches the draft's lock and
+ * sends nothing. Moves to the shared Enter adapter in lib/forms once it lands.
+ */
+const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+  if (event.key !== 'Enter' || event.nativeEvent.isComposing || event.keyCode === 229) return;
+  if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return;
+  event.preventDefault();
+  event.currentTarget.form?.requestSubmit();
+};
 
 /**
  * Site configuration → Banner, in Settings → Appearance and the editor's
@@ -85,6 +101,10 @@ function BannerForm({ project }: { project: Project }) {
   useLayoutEffect(() => setDirty(unsettled), [setDirty, unsettled]);
 
   const enabled = useStore(form.store, (state) => state.values.enabled);
+  const submissionAttempts = useStore(form.store, (state) => state.submissionAttempts);
+  const formRef = useRef<HTMLFormElement>(null);
+  const linkUrlId = useId();
+  const linkUrlMessage = (value: string) => (linkUrlProblem(value) ? t('settings.addons.url.invalid') : undefined);
   const placeholders = activeLanguage ? inheritedPlaceholders(projectBanner) : {};
   const contentLanguage = activeLanguage ?? defaultLanguage;
   const contentDir = dirOf(contentLanguage);
@@ -94,8 +114,10 @@ function BannerForm({ project }: { project: Project }) {
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        if (draft.isDirty) void submit();
+        if (!draft.isDirty) return;
+        void submit().then((outcome) => outcome === 'invalid' && focusFirstInvalid(formRef.current));
       }}
+      ref={formRef}
     >
       <SectionHeader icon={<Megaphone className="size-4" />} title={t('settings.banner.title')} />
       <p className="mb-4 text-[13.5px] text-muted-foreground leading-relaxed">{t('settings.banner.description')}</p>
@@ -164,6 +186,7 @@ function BannerForm({ project }: { project: Project }) {
                     lang={contentLanguage?.code}
                     onBlur={field.handleBlur}
                     onChange={(event) => field.handleChange(event.target.value)}
+                    onKeyDown={submitOnEnter}
                     placeholder={placeholders.message ?? t('settings.banner.message.placeholder')}
                     value={field.state.value}
                   />
@@ -179,26 +202,39 @@ function BannerForm({ project }: { project: Project }) {
                     lang={contentLanguage?.code}
                     onBlur={field.handleBlur}
                     onChange={(event) => field.handleChange(event.target.value)}
+                    onKeyDown={submitOnEnter}
                     placeholder={placeholders.linkLabel ?? t('settings.banner.linkLabel.placeholder')}
                     value={field.state.value}
                   />
                 </Field>
               )}
             </form.Field>
-            <form.Field name="linkUrl">
-              {(field) => (
-                <Field hint={t('settings.banner.linkUrl.hint')} label={t('settings.banner.linkUrl.label')}>
-                  <Input
-                    className={FIELD_INPUT}
-                    dir="ltr"
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                    placeholder={placeholders.linkUrl ?? t('settings.banner.linkUrl.placeholder')}
-                    type="url"
-                    value={field.state.value}
-                  />
-                </Field>
-              )}
+            <form.Field name="linkUrl" validators={validateOnBlurThenChange(linkUrlMessage)}>
+              {(field) => {
+                // Shown once the field was left or a save was tried (operations/ui-overhaul.md §6.4).
+                const errors = fieldErrorsVisible(field.state.meta, submissionAttempts) ? errorMessages(field.state.meta.errors) : [];
+                return (
+                  <Field hint={t('settings.banner.linkUrl.hint')} htmlFor={linkUrlId} label={t('settings.banner.linkUrl.label')}>
+                    <Input
+                      aria-describedby={errors.length > 0 ? `${linkUrlId}-error` : undefined}
+                      aria-invalid={errors.length > 0 || undefined}
+                      className={FIELD_INPUT}
+                      dir="ltr"
+                      id={linkUrlId}
+                      onBlur={field.handleBlur}
+                      onChange={(event) => {
+                        field.setMeta((meta) => withoutStaleErrors(meta));
+                        field.handleChange(event.target.value);
+                      }}
+                      onKeyDown={submitOnEnter}
+                      placeholder={placeholders.linkUrl ?? t('settings.banner.linkUrl.placeholder')}
+                      type="url"
+                      value={field.state.value}
+                    />
+                    <FieldError className="mt-1.5 text-destructive text-xs" errors={errors} id={`${linkUrlId}-error`} />
+                  </Field>
+                );
+              }}
             </form.Field>
           </div>
           <form.Field name="dismissible">

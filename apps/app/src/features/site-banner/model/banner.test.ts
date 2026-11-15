@@ -5,6 +5,7 @@ import {
   inheritedPlaceholders,
   languageBannerOverride,
   languageBannerValues,
+  linkUrlProblem,
   projectBannerPatch,
   projectBannerValues,
 } from './banner';
@@ -119,5 +120,31 @@ describe('scope values in the draft lifecycle', () => {
     const current = { ...baseline, message: 'Soldes' };
     const next = languageBannerValues(null, { ...projectBanner, enabled: false });
     expect(reconcileServerChange({ baseline, current, next }).current).toEqual({ ...current, enabled: false });
+  });
+});
+
+describe('linkUrlProblem', () => {
+  it.each(['', '   ', 'https://acme.test/sale', 'http://acme.test', ' https://acme.test/docs/ar/guide?ref=banner#plans '])(
+    'accepts %j: empty, or an absolute http(s) address',
+    (value) => {
+      expect(linkUrlProblem(value)).toBeUndefined();
+    },
+  );
+
+  it.each([
+    '/guide',
+    'guide',
+    './guide',
+    '../pricing',
+    '#plans',
+    '?ref=banner',
+    '//acme.test/sale',
+    'acme.test/pricing',
+    'https://',
+    'mailto:team@acme.test',
+    'ftp://acme.test/file',
+    'javascript:alert(1)',
+  ])('rejects %j: relative and bare paths, and other schemes', (value) => {
+    expect(linkUrlProblem(value)).toBe('invalid');
   });
 });

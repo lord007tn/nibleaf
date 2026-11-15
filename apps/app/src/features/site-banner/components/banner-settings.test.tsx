@@ -400,3 +400,108 @@ describe('BannerSettings — switching scope', () => {
     expect(saveRegion()).not.toBeNull();
   });
 });
+
+const leave = (input: HTMLInputElement) =>
+  act(async () => {
+    input.focus();
+    input.blur();
+  });
+/** The message shown for a field, through its `aria-describedby`. */
+const errorOf = (input: HTMLInputElement) => {
+  const id = input.getAttribute('aria-describedby');
+  return id ? (document.getElementById(id)?.textContent ?? null) : null;
+};
+/** A real keydown on the field, as the browser dispatches it. */
+const press = (input: HTMLInputElement, init: KeyboardEventInit = {}) =>
+  act(async () => {
+    input.focus();
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init }));
+  });
+
+describe('BannerSettings — link address', () => {
+  it('rejects a relative path once the field is left, and saves nothing until it is absolute', async () => {
+    mocks.updateProject.mockImplementation(async ({ config }) => ({ id: 'site-1', config }));
+    await render(projectWith(PROJECT_BANNER));
+    await type(linkUrl(), '/guide');
+    // Nothing shows while typing in a fresh field.
+    expect(linkUrl().getAttribute('aria-invalid')).toBeNull();
+    await leave(linkUrl());
+    expect(linkUrl().getAttribute('aria-invalid')).toBe('true');
+    expect(errorOf(linkUrl())).toBe('settings.addons.url.invalid');
+
+    await save();
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(linkUrl());
+    expect(saveRegion()).not.toBeNull();
+
+    await type(linkUrl(), 'https://acme.test/guide');
+    expect(linkUrl().getAttribute('aria-invalid')).toBeNull();
+    await save();
+    expect(mocks.updateProject).toHaveBeenCalledWith({ config: { banner: { ...PROJECT_BANNER, linkUrl: 'https://acme.test/guide' } } });
+    expect(saveRegion()).toBeNull();
+  });
+
+  it('rejects a bare path in a language scope; an empty address still inherits the project link', async () => {
+    mocks.languages = [ENGLISH, french()];
+    mocks.updateLanguage.mockImplementation(async ({ id, body }) => ({ id, config: body.config }));
+    await render(projectWith(PROJECT_BANNER));
+    await chooseScope('Français');
+    await type(message(), 'Soldes');
+    await type(linkUrl(), 'fr/soldes');
+    await save();
+    expect(mocks.updateLanguage).not.toHaveBeenCalled();
+    expect(errorOf(linkUrl())).toBe('settings.addons.url.invalid');
+
+    await type(linkUrl(), '');
+    await save();
+    expect(mocks.updateLanguage).toHaveBeenLastCalledWith({ id: 'fr', body: { config: { banner: { message: 'Soldes' } } } });
+
+    await type(linkUrl(), 'http://acme.test/fr/soldes');
+    await save();
+    expect(mocks.updateLanguage).toHaveBeenLastCalledWith({
+      id: 'fr',
+      body: { config: { banner: { message: 'Soldes', linkUrl: 'http://acme.test/fr/soldes' } } },
+    });
+  });
+});
+
+describe('BannerSettings — Enter', () => {
+  it('Enter in a single-line field saves once, even pressed again while the save is in flight', async () => {
+    const pending = deferred<unknown>();
+    mocks.updateProject.mockReturnValue(pending.promise);
+    await render(projectWith(PROJECT_BANNER));
+    await type(message(), 'Summer sale');
+    await press(message());
+    await press(linkLabel());
+    await press(linkUrl());
+    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+    expect(mocks.updateProject).toHaveBeenCalledWith({ config: { banner: { ...PROJECT_BANNER, message: 'Summer sale' } } });
+    await act(async () => pending.resolve({ id: 'site-1', config: { banner: { ...PROJECT_BANNER, message: 'Summer sale' } } }));
+    expect(saveRegion()).toBeNull();
+  });
+
+  it('leaves Enter alone during an IME composition, with a modifier, and while nothing changed', async () => {
+    mocks.updateProject.mockImplementation(async ({ config }) => ({ id: 'site-1', config }));
+    await render(projectWith(PROJECT_BANNER));
+    await press(message());
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+
+    await type(message(), 'セール');
+    await press(message(), { isComposing: true });
+    await press(message(), { keyCode: 229 });
+    for (const modifier of ['shiftKey', 'altKey', 'ctrlKey', 'metaKey'] as const) await press(message(), { [modifier]: true });
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+
+    await press(message());
+    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+  });
+
+  it('Enter with an invalid address saves nothing and moves to the field', async () => {
+    await render(projectWith(PROJECT_BANNER));
+    await type(linkUrl(), 'pricing');
+    await press(message());
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(linkUrl());
+    expect(errorOf(linkUrl())).toBe('settings.addons.url.invalid');
+  });
+});
