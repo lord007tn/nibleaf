@@ -74,6 +74,7 @@ import { FixHighlight } from './extensions/fix-highlight';
 import { ImageControls } from './extensions/image-controls';
 import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions/image-upload';
 import { InternalLinkClicks } from './extensions/internal-link-clicks';
+import { LinkableCode } from './extensions/linkable-code';
 import { mdxNodes } from './extensions/mdx';
 import { decodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { MarkdownBlockquote } from './extensions/quote';
@@ -364,10 +365,13 @@ export function buildEditorExtensions({
       blockquote: false,
       // SourceParagraph replaces it, saving an untouched paragraph's line breaks.
       paragraph: false,
+      // LinkableCode replaces it, so a link can wrap inline code (#660).
+      code: false,
       undoRedo: { newGroupDelay: 300 },
       link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } },
     }),
     MarkdownBlockquote,
+    LinkableCode,
     SourceParagraph,
     AutomaticBlockDirection.configure({ dir }),
     ImageUpload.configure({ canEdit, getUpload: getUpload ?? (() => onUpload) }),
