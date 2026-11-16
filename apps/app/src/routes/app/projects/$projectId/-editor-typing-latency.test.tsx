@@ -1867,6 +1867,57 @@ describe("#790: another client's copy over unsent changes is reviewed, never sil
     expect(conflictShown()).toBe(false);
   });
 
+  // Cap review: retiring that provisional conflict does not depend on the
+  // editor. Unmounted before the response, or with the review open, the
+  // queued AB is still sent once the response shows the copy was ours.
+  it('our own normalized write refetched, AB queued, the editor unmounts, then the response lands: AB is saved; reopened, no banner', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(3500);
+    expect(attempts).toHaveLength(1);
+    await queryFollowsServer();
+    await unmount();
+    await drain();
+    await reopen();
+    await drain();
+    // 458f3c22: one write, the banner stuck, and AB never saved.
+    expect(server.content).toBe(withTyped('AB'));
+    expect(sent()).toEqual(['original+A', 'original+AB']);
+    expect(refused).toBe(0);
+    expect(conflictShown()).toBe(false);
+  });
+
+  it('our own normalized write refetched, AB queued, the review opened, then the response lands and the review is closed: AB is saved', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(3500);
+    await queryFollowsServer();
+    expect(conflictShown()).toBe(true);
+    const review = reviewButton();
+    if (!review) throw new Error('No review button');
+    await act(async () => review.click());
+    await advance(0);
+    await drain();
+    await act(async () =>
+      (mocks.conflictDialog as { onClose?: (merged: { title: string; content: string }) => void } | null)?.onClose?.({
+        title: 'Page',
+        content: withTyped('AB'),
+      }),
+    );
+    await drain();
+    // 458f3c22: saving stayed held, and AB was never sent.
+    expect(conflictShown()).toBe(false);
+    expect(server.content).toBe(withTyped('AB'));
+    expect(sent()).toEqual(['original+A', 'original+AB']);
+    expect(refused).toBe(0);
+  });
+
   it('guard: our own write refetched before its response, stored as sent, with AB unsent: AB is saved, no banner', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('request');

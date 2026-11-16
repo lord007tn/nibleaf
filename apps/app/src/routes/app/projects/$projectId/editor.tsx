@@ -413,8 +413,6 @@ function EditorPage() {
   // clobbering edits — and pins autosaves to the page the draft was loaded from.
   const [conflictedPageId, setConflictedPageId] = useState<string | null>(null);
   const [conflictServer, setConflictServer] = useState<Page | null>(null);
-  const conflictServerRef = useRef(conflictServer);
-  conflictServerRef.current = conflictServer;
   const [synced, setSynced] = useState<ServerSnapshot | null>(null);
 
   // Resizable left sidebar (persisted). Clamp to a sensible range.
@@ -762,16 +760,17 @@ function EditorPage() {
     // A newer copy that arrived while a write was at the server is told apart
     // once it settles (#790): render again to look at it.
     const settledNow = () => {
-      if (!mounted.current) return;
-      setWritesSettled((count) => count + 1);
+      if (mounted.current) setWritesSettled((count) => count + 1);
       const provisional = provisionalRef.current;
       if (!provisional || provisional.id !== draft.id || saveQueue.inFlight(draft.id)) return;
       provisionalRef.current = null;
-      // The copy was this editor's own write after all: nothing to review, and
-      // saving goes on (unless the server raised a conflict of its own since,
-      // or the author already opened the review).
-      if (!saveQueue.ownRevision(draft.id, provisional.revision) || conflictServerRef.current?.id === draft.id) return;
-      if (!saveQueue.dropConflict(draft.id, provisional.error)) return;
+      // The copy was this editor's own write after all: nothing to review. The
+      // queue lets the page's writes go on (a draft queued meanwhile is sent)
+      // whatever the editor shows: unmounted, or with the review open, it is
+      // retired all the same (unless the server raised a conflict of its own).
+      if (!saveQueue.ownRevision(draft.id, provisional.revision) || !saveQueue.dropConflict(draft.id, provisional.error)) return;
+      if (!mounted.current) return;
+      setConflictServer((open) => (open?.id === draft.id ? null : open));
       setConflictedPageId((current) => (current === draft.id ? null : current));
       setSaveError(null);
       setStatus('saving');
