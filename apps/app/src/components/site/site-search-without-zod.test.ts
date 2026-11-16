@@ -4,38 +4,22 @@ import { expect, it, vi } from 'vitest';
 // hook. Neither may import zod: docs pages keep zod out of their entry, so any
 // zod import here would be fetched on the reader's first search open (#836).
 // The API validates the query on the server.
-vi.mock(
-  'zod',
-  () => {
-    throw new Error('the search dialog imported zod');
-  },
-  30_000,
-);
-vi.mock(
-  'zod/v4',
-  () => {
-    throw new Error('the search dialog imported zod/v4');
-  },
-  30_000,
-);
-vi.mock(
-  'zod/v4/core',
-  () => {
-    throw new Error('the search dialog imported zod/v4/core');
-  },
-  30_000,
-);
-vi.mock(
-  'zod/mini',
-  () => {
-    throw new Error('the search dialog imported zod/mini');
-  },
-  30_000,
-);
-// The RPC client resolves to the built server package (`@nibleaf/server/rpc`,
-// from apps/server/dist), which unit tests don't build. It imports hono's
-// client, not zod.
-vi.mock('@/services/api', () => ({ api: {} }));
+vi.mock('zod', () => {
+  throw new Error('the search dialog imported zod');
+});
+vi.mock('zod/v4', () => {
+  throw new Error('the search dialog imported zod/v4');
+});
+vi.mock('zod/v4/core', () => {
+  throw new Error('the search dialog imported zod/v4/core');
+});
+vi.mock('zod/mini', () => {
+  throw new Error('the search dialog imported zod/mini');
+});
+// Server-only: reached through `createIsomorphicFn().server(...)` in
+// services/api-origin.ts, which the Start compiler removes from client builds
+// and vitest does not.
+vi.mock('@/env.server', () => ({ serverEnv: {} }));
 
 it('loads the search dialog and its query hook without zod', async () => {
   await expect(import('./site-search-dialog')).resolves.toHaveProperty('default');
