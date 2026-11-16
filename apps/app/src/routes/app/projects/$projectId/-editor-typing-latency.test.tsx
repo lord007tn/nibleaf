@@ -1731,6 +1731,42 @@ describe("#790: another client's copy over unsent changes is reviewed, never sil
     expect(conflictShown()).toBe(true);
   });
 
+  // #802 review: a write still pending when the conflict appears lands after it.
+  // Its success set the status back to "saving"/"saved", and the banner and its
+  // Review only show for an error: the editor was stuck, every save held back
+  // and the review out of reach. The conflict now keeps its banner until resolved.
+  const reviewButton = () => [...container.querySelectorAll('button')].find((button) => button.textContent === 'editor.conflict.review');
+  it.each<[string, () => string]>([
+    ['the review keeps the draft: it is saved from their revision', () => withTyped('AB')],
+    ['the review takes their copy: it is shown, and nothing more is written', () => withTyped('F')],
+  ])('an older write lands after their copy made a conflict: the banner and Review stay; %s', async (name, choose) => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    key('B');
+    await foreignCopyNow(withTyped('F'));
+    expect(conflictShown()).toBe(true);
+    await settleWrite();
+    await advance(SERIALIZE_PAUSE);
+    // 69241cb8: the banner and Review were gone here.
+    expect(conflictShown()).toBe(true);
+    const review = reviewButton();
+    if (!review) throw new Error('No review button');
+    // Guarded actions stay held for the review.
+    const proceeded = await navigate();
+    await expect(proceeded()).rejects.toThrow();
+    expect(conflictShown()).toBe(true);
+    await act(async () => review.click());
+    await advance(0);
+    await act(async () => mocks.conflictDialog?.onResolve({ title: 'Page', content: choose() }));
+    await drain();
+    expect(conflictShown()).toBe(false);
+    expect(server.content).toBe(choose());
+    expect(getMarkdown(current())).toBe(choose().trimEnd());
+    expect(sent()).toEqual(name.includes('keeps') ? ['original+A', 'original+AB'] : ['original+A']);
+    expect(refused).toBe(0);
+  });
+
   // Guards: copies that are not over unsent changes load as before.
   it('guard: their copy arrives while the only change is the write in flight, which the server stored first: it is loaded, with no banner', async () => {
     await open(ORIGINAL);

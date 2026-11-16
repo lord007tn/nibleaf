@@ -567,6 +567,11 @@ function EditorPage() {
     setStatus('error');
     setConflictedPageId(page.id);
   }
+  // A conflict under review keeps its banner and Review until it is resolved: no
+  // other save outcome replaces that status, such as an older write landing after
+  // it, a failure, or a restore. A status that reads "saved" would hide the review
+  // while every save stays held back for it.
+  if (page && conflictedPageId === page.id && status !== 'error' && status !== 'offline') setStatus('error');
   if (hydration) {
     setSynced(hydration);
     setTitle(hydration.title);
@@ -686,7 +691,8 @@ function EditorPage() {
             const holds = record(saved, base);
             if (!sameText(saved) && saved !== first) throw normalizedSaveConflict(draft.id);
             const latest = draftRef.current.draft;
-            if (mounted.current && holds?.id === draft.id) {
+            // A conflict under review keeps its status (see above).
+            if (mounted.current && holds?.id === draft.id && autosaveGateRef.current.conflictedPageId !== draft.id) {
               setStatus(latest.title === holds.title && latest.content === holds.content ? 'saved' : 'saving');
             }
             return saved;
@@ -695,7 +701,8 @@ function EditorPage() {
               tooLargeDraftRef.current = { id: draft.id, revision: draft.expectedUpdatedAt, title: draft.title, content: draft.content, error };
             }
             if (mounted.current && draftRef.current.synced?.id === draft.id) {
-              setSaveError(error);
+              // An older write failing never replaces the conflict under review.
+              if (autosaveGateRef.current.conflictedPageId !== draft.id) setSaveError(error);
               setStatus(navigator.onLine === false ? 'offline' : 'error');
               if (isEditorRevisionConflict(error)) setConflictedPageId(draft.id);
             }
