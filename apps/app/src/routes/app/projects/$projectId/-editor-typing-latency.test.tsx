@@ -2104,6 +2104,62 @@ describe('#789: an unmount while the server normalizes the last write keeps the 
     expect(conflictShown()).toBe(false);
   });
 
+  // #799 CodeRabbit (r4589943298): the latest write wins over a failure shown
+  // on screen too. B fails while the reopened editor shows it, then the old
+  // editor's A fails: A is older than B, so it is not kept, and undoing B back
+  // to the server copy never brings A back.
+  it('reopened, B fails on screen, then the old A fails, then B is undone: A never comes back or is saved', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    await typeAndHoldTheSave();
+    await unmount();
+    await reopen();
+    key('B');
+    await advance(700);
+    expect(held.map((write) => write.content)).toEqual([withTyped('A'), withTyped('B')]);
+    await act(async () => held.splice(1, 1)[0]?.settle(false));
+    await advance(0);
+    expect(errorShown()).toBe(true);
+    await settleWrite(false);
+    undo();
+    await drain();
+    // 05b15d9: A was kept, restored over the undo and saved.
+    expect(getMarkdown(current())).toBe(ORIGINAL.trimEnd());
+    expect(sent()).toEqual(['original+A', 'original+B']);
+    expect(server.content).toBe(ORIGINAL);
+  });
+
+  // #799 CodeRabbit (r4589943308): a draft restored as a conflict stays kept
+  // until the review resolves it, with the author's edits since: closing the
+  // editor before the review loses nothing.
+  it('a draft restored as a conflict, edited, then the editor closes before the review: reopened, the edited draft and the banner are back', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (_index, content) => `${content}${NORMALIZED}`;
+    await typeAndHoldTheSave();
+    await unmount();
+    await drain();
+    await reopen();
+    expect(conflictShown()).toBe(true);
+    key('9');
+    await advance(SERIALIZE_PAUSE);
+    await unmount();
+    await drain();
+    await reopen();
+    // 05b15d9: the server's copy, no banner, and the draft gone.
+    expect(getMarkdown(current())).toBe(withTyped('A9').trimEnd());
+    expect(conflictShown()).toBe(true);
+    expect(attempts).toHaveLength(2);
+    // Resolved, it is gone for good: the next editor opens on the server copy.
+    const review = [...container.querySelectorAll('button')].find((button) => button.textContent === 'editor.conflict.review');
+    if (!review) throw new Error('No review button');
+    await act(async () => review.click());
+    await advance(0);
+    await act(async () => mocks.conflictDialog?.onResolve({ title: 'Page', content: withTyped('A9') }));
+    await drain();
+    expect(unsavedDrafts.peek('user-1', 'page-1')).toBeUndefined();
+  });
+
   // Guards: what main already did right stays so.
   it('guard: the re-send stores the draft: opened again, it shows the stored draft, with no banner and no more writes', async () => {
     await open(ORIGINAL);

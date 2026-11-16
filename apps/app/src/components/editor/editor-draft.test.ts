@@ -308,6 +308,30 @@ describe('unsaved drafts kept after the editor unmounted (#789)', () => {
     expect(drafts.peek('user-1', pageA.id)?.content).toBe('Edited since.');
   });
 
+  it('a later failure shown on screen outranks an earlier one: the earlier is neither kept after it nor left kept', () => {
+    const drafts = createUnsavedDrafts();
+    const keptEarlier = drafts.issue('user-1', pageA.id);
+    const older = drafts.issue('user-1', pageA.id);
+    const shown = drafts.issue('user-1', pageA.id);
+    if (!keptEarlier || !older || !shown) throw new Error('No ticket');
+    drafts.failed(keptEarlier, { ...kept, content: 'Kept before.' });
+    drafts.settled(shown, { title: kept.title, content: 'B' });
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    drafts.failed(older, { ...kept, content: 'A' });
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+  });
+
+  it('revises a kept draft with the text its editor holds, and nothing when none is kept', () => {
+    const drafts = createUnsavedDrafts();
+    drafts.revise('user-1', pageA.id, { title: 'T', content: 'Nothing kept.' });
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    const ticket = drafts.issue('user-1', pageA.id);
+    if (!ticket) throw new Error('No ticket');
+    drafts.failed(ticket, kept);
+    drafts.revise('user-1', pageA.id, { title: kept.title, content: 'Edited under the conflict.' });
+    expect(drafts.peek('user-1', pageA.id)).toMatchObject({ content: 'Edited under the conflict.', error: kept.error });
+  });
+
   it('drops everything when the session ends, and ignores writes queued before', () => {
     const drafts = createUnsavedDrafts();
     const kept1 = drafts.issue('user-1', pageA.id);
