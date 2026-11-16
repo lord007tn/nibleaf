@@ -103,6 +103,11 @@ const EDITOR_HTML_CONTENT: ReadonlySet<string> = new Set(['br', 'hr', 's', 'del'
 /** Elements whose content is raw text in HTML: a `<` in a script is not a tag. */
 const RAW_TEXT_HTML: ReadonlySet<string> = new Set(['script', 'style', 'textarea', 'title']);
 
+/** A raw-text element's complete closing tag (`</title>`, `</title >`), searched in
+ *  lowercased source. A `</title` with no `>`, or `</titles>`, doesn't close it. */
+const RAW_TEXT_CLOSERS = new Map([...RAW_TEXT_HTML].map((name) => [name, new RegExp(`</${name}[ \\t\\r\\n\\f]*>`, 'g')]));
+const rawTextCloser = (name: string): RegExp => RAW_TEXT_CLOSERS.get(name) ?? new RegExp(`</${name}[ \\t\\r\\n\\f]*>`, 'g');
+
 /** The block tokens of the editor's own Markdown parser (markdown-it). */
 type MarkdownBlockTokens = (source: string) => ReadonlyArray<{ type: string; map: [number, number] | null; content: string }>;
 
@@ -480,12 +485,34 @@ interface AttributeToken {
   value: string | boolean;
 }
 
-export const encodeMdxSource = (value: string): string => encodeURIComponent(value);
+/** A UTF-16 surrogate with no partner: encodeURIComponent throws on it. */
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+/** How the encoding writes a lone surrogate: `%%` and its four hex digits. Plain
+ *  encodeURIComponent output never holds `%%`, since its every `%` starts a `%XX`. */
+const ENCODED_SURROGATE = /%%([0-9A-F]{4})/;
+
+/**
+ * Source text as an HTML attribute value, the way the editor carries it. A lone
+ * surrogate is kept as the code unit it is (#805), so a page holding one loads
+ * and saves byte for byte rather than throwing.
+ */
+export const encodeMdxSource = (value: string): string => {
+  let encoded = '';
+  let from = 0;
+  for (const match of value.matchAll(LONE_SURROGATE)) {
+    encoded += `${encodeURIComponent(value.slice(from, match.index))}%%${match[0].charCodeAt(0).toString(16).toUpperCase()}`;
+    from = match.index + 1;
+  }
+  return encoded + encodeURIComponent(value.slice(from));
+};
 
 export const decodeMdxSource = (value: string | null | undefined): string => {
   if (!value) return '';
   try {
-    return decodeURIComponent(value);
+    return value
+      .split(ENCODED_SURROGATE)
+      .map((part, index) => (index % 2 === 1 ? String.fromCharCode(Number.parseInt(part, 16)) : decodeURIComponent(part)))
+      .join('');
   } catch {
     return value;
   }
@@ -1134,12 +1161,16 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
     // In indented code a `<script>` is code, and after an odd run of backslashes
     // (`\<title>`) its `<` is an escaped, literal character: neither starts raw text.
     if (isHtml && !closing && !selfClosing && RAW_TEXT_HTML.has(name) && indented?.[token.start] !== 1 && !escapedAt(source, token.start)) {
-      // A script's or style's content is text up to its closing tag.
-      // A search that found no closer means none after any later tag either.
+      // A script's or style's content is text up to its closing tag, and only a
+      // complete one (`</title>`) ends it: a malformed `</title` with no `>` is
+      // part of that text (#628). A search that found no closer means none after
+      // any later tag either.
       lower ??= source.toLowerCase();
       let close = closers.get(name);
       if (close === undefined || (close !== -1 && close <= i)) {
-        close = lower.indexOf(`</${name}`, i + 1);
+        const closer = rawTextCloser(name);
+        closer.lastIndex = i + 1;
+        close = closer.exec(lower)?.index ?? -1;
         closers.set(name, close);
       }
       if (close > i) i = close - 1;
