@@ -19,7 +19,7 @@ run held the repository's heavy-step lock.
   interception: held until the script releases it, or delayed (1.5 s in the recording), then stored the way the
   server normalizes it, or refused with a 400 the fixture invents. That answer is the mock, not the server: the
   server's own normalization and storage are checked separately, with mocked persistence, in
-  `apps/server/src/actions/git/workflow.test.ts`.
+  `apps/server/src/actions/git/workflow.connect.test.ts` (real crypto).
 
 No server, database, worker or Git provider was used, no request left the fixture origin (`attempted: 0`), and the
 temporary build was deleted after the run. `evidence.json` names the base and the head, and records every save

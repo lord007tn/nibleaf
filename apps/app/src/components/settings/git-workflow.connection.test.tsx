@@ -8,7 +8,7 @@
 // no import targets, which the server then cleared.
 import type { MessageKey } from '@nibleaf/i18n';
 import { translateFn } from '@nibleaf/i18n';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { dehydrate, onlineManager, QueryClientProvider } from '@tanstack/react-query';
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -45,6 +45,7 @@ vi.mock('@/services/api', () => ({
 import { sentGitWorkflowConnectionValues } from '@/features/site-git/model/git-workflow-connection';
 import { queryKeys } from '@/hooks/api/query-keys';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
+import { resetDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { GitWorkflow } from './git-workflow';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -200,6 +201,26 @@ const conflictShown = () => container.textContent?.includes(t('forms.changedElse
 const successes = () => mocks.success.mock.calls.map(([message]) => message);
 const errors = () => mocks.error.mock.calls.map(([message]) => message);
 const isBusy = () => saveButton().getAttribute('aria-busy') === 'true';
+const refreshButton = () => buttons().find((item) => item.textContent?.trim() === t('common.refresh'));
+/** A refusal that echoes what it was sent: the server's message must never reach a cache, the console or a toast. */
+const echoed = () => json(400, { error: { message: `Bad credentials: ${TOKEN}` } });
+/**
+ * Nothing the app keeps holds the token: no mutation at all (the save is a direct request), no query's data or
+ * error, no dehydrated state (every mutation and query, or the default), no console line and no toast.
+ */
+const expectNoTokenKept = () => {
+  expect(client.getMutationCache().getAll()).toEqual([]);
+  const queries = client.getQueryCache().getAll();
+  expect(JSON.stringify(queries.map(({ state }) => [state.data, state.error?.message, String(state.error ?? '')]))).not.toContain(TOKEN);
+  expect(JSON.stringify(dehydrate(client, { shouldDehydrateMutation: () => true, shouldDehydrateQuery: () => true }))).not.toContain(TOKEN);
+  expect(JSON.stringify(dehydrate(client))).not.toContain(TOKEN);
+  const logged = vi
+    .mocked(console.error)
+    .mock.calls.flat()
+    .map((item) => (item instanceof Error ? `${item.message} ${String(item.cause ?? '')}` : String(item)));
+  expect(logged.join(' ')).not.toContain(TOKEN);
+  expect(JSON.stringify([successes(), errors()])).not.toContain(TOKEN);
+};
 
 beforeEach(() => {
   mocks.locale = 'en';
@@ -369,7 +390,7 @@ describe('the save', () => {
 });
 
 describe('the token', () => {
-  it('starts blank, is sent only when typed, and never sits in the mutation cache', async () => {
+  it('starts blank and is sent only when typed', async () => {
     await openConfiguration();
     expect(field('git2-update-token').value).toBe('');
     await type('git2-update-token', '   ');
@@ -382,22 +403,7 @@ describe('the token', () => {
     mocks.put.mockImplementationOnce(() => put.promise);
     await save();
     expect(bodies()[1]?.json.token).toBe(TOKEN);
-    expect(
-      JSON.stringify(
-        client
-          .getMutationCache()
-          .getAll()
-          .map((mutation) => mutation.state),
-      ),
-    ).not.toContain(TOKEN);
-    expect(
-      JSON.stringify(
-        client
-          .getQueryCache()
-          .getAll()
-          .map((query) => query.state.data),
-      ),
-    ).not.toContain(TOKEN);
+    expectNoTokenKept();
     await put.answer(serve(lastPut()));
     expect(field('git2-update-token').value).toBe('');
   });
@@ -413,6 +419,202 @@ describe('the token', () => {
     expect(field('git2-update-token').value).toBe(NEWER_TOKEN);
     expect(successes()).toEqual([]);
     expect(discardButton()).toBeDefined();
+  });
+});
+
+describe('the token never stays in a cache', () => {
+  it('a refusal that echoes the token: pending, settled, corrected and retried, unmounted, then a session reset', async () => {
+    await openConfiguration();
+    await type('git2-update-token', TOKEN);
+    const put = held();
+    mocks.put.mockImplementationOnce(() => put.promise);
+    await save();
+    expect(bodies()[0]?.json.token).toBe(TOKEN);
+    expectNoTokenKept();
+
+    await put.answer(echoed());
+    expect(errors()).toEqual([t('settings.git.workflow.connectError')]);
+    expect(field('git2-update-token').value).toBe(TOKEN);
+    expectNoTokenKept();
+
+    await type('git2-update-token', NEWER_TOKEN);
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
+    await save();
+    expect(bodies()[1]?.json.token).toBe(NEWER_TOKEN);
+    expect(field('git2-update-token').value).toBe('');
+    expectNoTokenKept();
+
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    expectNoTokenKept();
+    await act(async () => resetDashboardSession(client));
+    expectNoTokenKept();
+  });
+
+  it('a session reset while the save runs: the answer touches nothing, and nothing keeps the token', async () => {
+    await openConfiguration();
+    await type('git2-update-token', TOKEN);
+    const put = held();
+    mocks.put.mockImplementationOnce(() => put.promise);
+    await save();
+    await act(async () => resetDashboardSession(client));
+    expectNoTokenKept();
+    await put.answer(echoed());
+    expectNoTokenKept();
+  });
+
+  it('offline: a save whose status read pauses sends nothing; one sent while offline is held by no cache', async () => {
+    await openConfiguration();
+    await type('git2-update-token', TOKEN);
+    try {
+      await act(async () => onlineManager.setOnline(false));
+      // The cached status is invalidated, so the save needs a read, which pauses offline: nothing is sent.
+      await act(async () => {
+        void client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail('site-a') });
+      });
+      await save();
+      expect(bodies()).toEqual([]);
+      expect(errors()).toEqual([t('settings.git.workflow.connectError')]);
+      expect(isBusy()).toBe(false);
+      expectNoTokenKept();
+    } finally {
+      await act(async () => onlineManager.setOnline(true));
+      await settle();
+    }
+    // A save whose status is known goes out directly; while it is held, offline, nothing keeps the token.
+    const put = held();
+    mocks.put.mockImplementationOnce(() => put.promise);
+    await save();
+    expect(bodies()).toHaveLength(1);
+    await act(async () => onlineManager.setOnline(false));
+    expectNoTokenKept();
+    await act(async () => onlineManager.setOnline(true));
+    await put.answer(serve(lastPut()));
+    expectNoTokenKept();
+  });
+});
+
+describe('the import targets come from a read the cache adopted', () => {
+  it('a manual Refresh in flight: Save waits for it and sends the targets it brought', async () => {
+    await openConfiguration();
+    await type('git2-update-path', 'guides');
+    const read = held();
+    mocks.status.mockImplementationOnce(() => read.promise);
+    await press(refreshButton());
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
+    await save();
+    expect(bodies()).toEqual([]);
+    expect(isBusy()).toBe(true);
+    change('site-a', { importBranchId: 'branch-fixture-2', importLanguageId: 'language-fixture-2' });
+    await read.answer(json(200, { data: status('site-a') }));
+    expect(bodies().map(({ json: body }) => body)).toEqual([
+      {
+        ...SETTINGS,
+        repository: 'acme-fixture/site-a',
+        contentPath: 'guides',
+        importBranchId: 'branch-fixture-2',
+        importLanguageId: 'language-fixture-2',
+      },
+    ]);
+  });
+
+  it('a read cancelled back to the old status is not trusted: one more read, and its targets are sent', async () => {
+    await openConfiguration();
+    await type('git2-update-path', 'guides');
+    const read = held();
+    mocks.status.mockImplementationOnce(() => read.promise);
+    await act(async () => {
+      void client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail('site-a') });
+    });
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
+    await save();
+    change('site-a', { importBranchId: 'branch-fixture-2' });
+    const before = reads('site-a');
+    await act(async () => client.cancelQueries({ queryKey: queryKeys.gitWorkflow.detail('site-a') }));
+    await settle();
+    // One more read for the save, then the success's own readback.
+    expect(reads('site-a')).toBe(before + 2);
+    expect(bodies().map(({ json: body }) => body)).toEqual([
+      {
+        ...SETTINGS,
+        repository: 'acme-fixture/site-a',
+        contentPath: 'guides',
+        importBranchId: 'branch-fixture-2',
+        importLanguageId: 'language-fixture-1',
+      },
+    ]);
+    await read.answer(json(200, { data: status('site-a') }));
+  });
+
+  it('when the second read is cancelled too, nothing is sent: the values stay and Save is ready again', async () => {
+    await openConfiguration();
+    await type('git2-update-path', 'guides');
+    const first = held();
+    const second = held();
+    mocks.status.mockImplementationOnce(() => first.promise).mockImplementationOnce(() => second.promise);
+    await act(async () => {
+      void client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail('site-a') });
+    });
+    await save();
+    await act(async () => client.cancelQueries({ queryKey: queryKeys.gitWorkflow.detail('site-a') }));
+    await settle();
+    await act(async () => client.cancelQueries({ queryKey: queryKeys.gitWorkflow.detail('site-a') }));
+    await settle();
+    expect(bodies()).toEqual([]);
+    expect(errors()).toEqual([t('settings.git.workflow.connectError')]);
+    expect(shown().contentPath).toBe('guides');
+    expect(isBusy()).toBe(false);
+    await first.answer(json(200, { data: status('site-a') }));
+    await second.answer(json(200, { data: status('site-a') }));
+    expect(bodies()).toEqual([]);
+  });
+
+  it('a read that fails sends nothing (the screen then shows the load error, as on main)', async () => {
+    await openConfiguration();
+    await type('git2-update-path', 'guides');
+    const read = held();
+    mocks.status.mockImplementationOnce(() => read.promise);
+    await act(async () => {
+      void client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail('site-a') });
+    });
+    await save();
+    // A 4xx is not retried; the save's one more read is refused too.
+    mocks.status.mockImplementation(async () => json(403, { error: { message: 'Refused by the test.' } }));
+    await read.answer(json(403, { error: { message: 'Refused by the test.' } }));
+    expect(bodies()).toEqual([]);
+    expect(container.textContent).toContain(t('settings.git.workflow.loadError'));
+  });
+
+  it('controls: the values pressed are sent, a newer edit stays, and the request keeps its site', async () => {
+    await openConfiguration('site-a', 'git-site-a');
+    await type('git2-update-path', 'guides');
+    const read = held();
+    mocks.status.mockImplementationOnce(() => read.promise);
+    await press(refreshButton());
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
+    await save();
+    await type('git2-update-path', 'typed-while-waiting');
+    await read.answer(json(200, { data: status('site-a') }));
+    expect(bodies().map(({ param, json: body }) => [param.projectId, body.contentPath, body.importBranchId])).toEqual([
+      ['site-a', 'guides', 'branch-fixture-1'],
+    ]);
+    expect(shown().contentPath).toBe('typed-while-waiting');
+    expect(discardButton()).toBeDefined();
+
+    // Leaving for B while A waits: A's request still goes for A, with A's latest targets; B sends nothing.
+    const readA = held();
+    mocks.status.mockImplementationOnce(() => readA.promise);
+    await press(refreshButton());
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
+    await save();
+    await openConfiguration('site-b', 'git-site-b');
+    change('site-a', { importLanguageId: 'language-fixture-3' });
+    await readA.answer(json(200, { data: status('site-a') }));
+    expect(bodies().map(({ param, json: body }) => [param.projectId, body.importLanguageId])).toEqual([
+      ['site-a', 'language-fixture-1'],
+      ['site-a', 'language-fixture-3'],
+    ]);
+    expect(shown().repository).toBe('acme-fixture/site-b');
   });
 });
 
