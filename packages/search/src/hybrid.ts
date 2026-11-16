@@ -159,7 +159,12 @@ export const cleanSearchText = (value: string): string => {
   const prosePass = cleaned
     .replace(/\[!\w+\]/g, ' ')
     .replace(/(^|\s)\\[-*+]\s*(?:\d+[-.)]\s*)?/gm, '$1')
-    .replace(/^ {0,3}#{1,6}[ \t]+(.*)$/gm, (_, heading: string) => heading.replace(/[ \t]+#+[ \t]*$/, ''))
+    .replace(/^ {0,3}#{1,6}[ \t]+(.*)$/gm, (_, heading: string) =>
+      heading
+        .trimEnd()
+        .replace(/[ \t]#+$/, '')
+        .trimEnd(),
+    )
     .replace(/^[ \t]*(?:>\s*|[-*+]\s+)/gm, '')
     .replace(/^[ \t]*\d+[.)][ \t]+/gm, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
