@@ -287,11 +287,35 @@ describe('SearchSettings', () => {
     expect(input('settings.search.placeholder.label').value).toBe('');
   });
 
-  it('leaves a failed configuration save to its mutation, so the form adds no toast, and stays dirty', async () => {
+  it('reports a failed configuration save once, from the form, and stays dirty', async () => {
     mocks.updateConfiguration.mockRejectedValueOnce(new Error('PrismaClientKnownRequestError'));
     await type(input('settings.search.placeholder.label'), 'Find');
     await save();
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Could not save');
+    expect(region()).not.toBeNull();
+  });
+
+  it('says nothing about a configuration save that fails after its form unmounted, through the real mutation (#767)', async () => {
+    await remountWithRealMutations();
+    let answer!: (response: Response) => void;
+    mocks.patchConfiguration.mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        answer = resolve;
+      }),
+    );
+    await type(input('settings.search.placeholder.label'), 'Find');
+    await save();
+    expect(mocks.patchConfiguration).toHaveBeenCalledOnce();
+    // Another section in its place, then back: a new form, with a new intent.
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await render();
+    await type(input('settings.search.placeholder.label'), 'Search the docs');
+    await act(async () => answer(failure(500)));
+    await vi.waitFor(() => expect(client.isMutating()).toBe(0));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(input('settings.search.placeholder.label').value).toBe('Search the docs');
     expect(region()).not.toBeNull();
   });
 

@@ -4,6 +4,7 @@ import { Activity, act, StrictMode, Suspense, startTransition } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DraftValues } from './server-draft';
 import { type DraftSave, type DraftSubmitResult, useServerDraftForm } from './use-server-draft';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -1484,27 +1485,26 @@ describe('useServerDraftForm: a save belongs to the mount that started it (#767)
     expect(draft.api().isSaving).toBe(false);
   });
 
-  // React runs effect cleanups when <Activity> hides a tree, as on unmount, and
-  // keeps its state for when it shows again. The hook cannot tell the two apart,
-  // so hiding ends the save's ownership too; only the request's end unlocks.
-  it('hidden by <Activity> and shown again: the save is no longer current, and its own end still unlocks the kept form', async () => {
+  // React runs effect cleanups when <Activity> hides a tree, as on unmount, but
+  // keeps the same form (state and refs) for when it shows again.
+  it('hidden by <Activity>: not current while hidden, the form’s own again once shown; the lock holds throughout', async () => {
     const draft = await lifetimes();
     await draft.set('name', 'Pill');
     const { result } = await draft.submit();
     await draft.render({ hidden: true });
     expect(draft.saves[0]?.save.isCurrent()).toBe(false);
     await draft.render({ hidden: false });
-    expect(draft.saves[0]?.save.isCurrent()).toBe(false);
+    expect(draft.saves[0]?.save.isCurrent()).toBe(true);
     expect(draft.api().isSaving).toBe(true);
     expect(await draft.api().submit()).toBe('busy');
-    await act(async () => draft.saves[0]?.finish('saved'));
-    expect(await result).toBe('failed');
+    await act(async () => {
+      expect(draft.saves[0]?.save.succeeded(draft.saves[0].values)).toBe(true);
+      draft.saves[0]?.finish('saved');
+    });
+    expect(await result).toBe('saved');
     expect(draft.api().isSaving).toBe(false);
-    expect(draft.api().form.state.values.name).toBe('Pill');
-    const { result: next } = await draft.submit();
-    expect(draft.saves[1]?.save.isCurrent()).toBe(true);
-    await act(async () => draft.saves[1]?.finish('failed'));
-    expect(await next).toBe('failed');
+    expect(draft.api().baseline.name).toBe('Pill');
+    expect(draft.api().isDirty).toBe(false);
   });
 
   it('validation that ends after the unmount sends nothing', async () => {
@@ -1580,5 +1580,170 @@ describe('useServerDraftForm: a save belongs to the mount that started it (#767)
     await draft.render({ shown: false });
     expect(await stale.submit()).toBe('failed');
     expect(draft.saves).toHaveLength(0);
+  });
+});
+
+describe('useServerDraftForm: a save that ends while <Activity> hides the form (#767)', () => {
+  /** One form inside an <Activity>, with what its submit handler sends shaped by `toSent`. */
+  async function hideable<V extends DraftValues>(source: V, toSent?: (values: V) => V) {
+    const root = createRoot(document.createElement('div'));
+    roots.push(root);
+    let api!: ReturnType<typeof useServerDraftForm<V>>;
+    const saves: Array<{ values: V; save: DraftSave<V>; finish: (outcome: Outcome) => void }> = [];
+    const onSubmit = (values: V, save: DraftSave<V>) =>
+      new Promise<Outcome>((resolve) => {
+        saves.push({ values, save, finish: resolve });
+      });
+    function Form({ current }: { current: V }) {
+      api = useServerDraftForm<V>({ identity: ['site'], source: current, onSubmit, toSent });
+      return null;
+    }
+    let shape = { hidden: false, source };
+    const render = async (next: Partial<typeof shape>) => {
+      shape = { ...shape, ...next };
+      await act(async () =>
+        root.render(
+          <Activity mode={shape.hidden ? 'hidden' : 'visible'}>
+            <Form current={shape.source} />
+          </Activity>,
+        ),
+      );
+    };
+    await render({});
+    const set = (field: keyof V & string, value: unknown) =>
+      act(async () => (api.form.setFieldValue as (field: string, value: unknown) => void)(field, value));
+    const submit = async () => {
+      const before = saves.length;
+      let result!: Promise<DraftSubmitResult>;
+      await act(async () => {
+        result = api.submit();
+        await vi.waitFor(() => expect(saves.length).toBeGreaterThan(before));
+      });
+      return { result };
+    };
+    return { api: () => api, saves, render, set, submit };
+  }
+
+  type Story<V extends DraftValues> = {
+    source: V;
+    toSent?: (values: V) => V;
+    edit: Partial<V>;
+    /** An edit made during the save, before the form is hidden. */
+    during?: Partial<V>;
+    /** What the server confirmed; `undefined` with `fails` for a failed save. */
+    confirmed?: V;
+    fails?: boolean;
+    /** The refetch after the save; left out when the readback failed. */
+    readback?: V;
+  };
+
+  /** Plays the story with the form on screen throughout, or hidden from just after the edit during the save until the readback landed. */
+  async function play<V extends DraftValues>(story: Story<V>, hide: boolean) {
+    const draft = await hideable(story.source, story.toSent);
+    for (const [field, value] of Object.entries(story.edit)) await draft.set(field, value);
+    const { result } = await draft.submit();
+    for (const [field, value] of Object.entries(story.during ?? {})) await draft.set(field, value);
+    if (hide) await draft.render({ hidden: true });
+    const entry = draft.saves[0];
+    let current: boolean | undefined;
+    await act(async () => {
+      current = entry?.save.isCurrent();
+      if (story.fails) entry?.save.failed();
+      else entry?.save.succeeded(story.confirmed);
+      entry?.finish(story.fails ? 'failed' : 'saved');
+    });
+    if (story.readback) await draft.render({ source: story.readback });
+    if (hide) await draft.render({ hidden: false });
+    const api = draft.api();
+    return {
+      current,
+      result: await result,
+      state: { values: api.form.state.values, baseline: api.baseline, isDirty: api.isDirty, conflicts: api.conflicts, isSaving: api.isSaving },
+      draft,
+    };
+  }
+
+  const trim = (values: Values) => ({ ...values, name: values.name.trim() });
+  type Rows = { rows: string[] };
+  const dropBlank = (values: Rows) => ({ rows: values.rows.filter((row) => row.trim() !== '') });
+
+  it('trimmed text, its readback after: reconciled on show as on screen, clean, with no conflict against its own save', async () => {
+    const story: Story<Values> = {
+      source: { name: 'old', description: 'd1' },
+      toSent: trim,
+      edit: { name: ' saved ' },
+      confirmed: { name: 'saved', description: 'd1' },
+      readback: { name: 'saved', description: 'd1' },
+    };
+    const hidden = await play(story, true);
+    expect(hidden.current).toBe(false);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state.isDirty).toBe(false);
+    expect(hidden.state.conflicts).toStrictEqual([]);
+    expect(hidden.state.baseline).toStrictEqual({ name: 'saved', description: 'd1' });
+  });
+
+  it('blank rows dropped from what was sent, its readback after: reconciled on show as on screen, with no conflict', async () => {
+    const story: Story<Rows> = {
+      source: { rows: ['a'] },
+      toSent: dropBlank,
+      edit: { rows: ['a', 'b', ''] },
+      confirmed: { rows: ['a', 'b'] },
+      readback: { rows: ['a', 'b'] },
+    };
+    const hidden = await play(story, true);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state.conflicts).toStrictEqual([]);
+    expect(hidden.state.baseline).toStrictEqual({ rows: ['a', 'b'] });
+  });
+
+  it('a failed readback: the response alone settles the shown form, as on screen', async () => {
+    const story: Story<Values> = {
+      source: { name: 'old', description: 'd1' },
+      toSent: trim,
+      edit: { name: ' saved ' },
+      confirmed: { name: 'saved', description: 'd1' },
+    };
+    const hidden = await play(story, true);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state.isDirty).toBe(false);
+    expect(hidden.state.baseline).toStrictEqual({ name: 'saved', description: 'd1' });
+  });
+
+  it('an edit made before the hide survives, dirty and without a conflict, and the next save settles clean', async () => {
+    const story: Story<Values> = {
+      source: { name: 'old', description: 'd1' },
+      edit: { name: 'A' },
+      during: { name: 'AB' },
+      confirmed: { name: 'A', description: 'd1' },
+      readback: { name: 'A', description: 'd1' },
+    };
+    const hidden = await play(story, true);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state).toMatchObject({ values: { name: 'AB' }, baseline: { name: 'A' }, isDirty: true, conflicts: [], isSaving: false });
+    const { result } = await hidden.draft.submit();
+    await act(async () => {
+      hidden.draft.saves[1]?.save.succeeded({ name: 'AB', description: 'd1' });
+      hidden.draft.saves[1]?.finish('saved');
+    });
+    expect(await result).toBe('saved');
+    expect(hidden.draft.api().isDirty).toBe(false);
+  });
+
+  it('a failure while hidden keeps the edit, as on screen, and says nothing to the hidden form', async () => {
+    const story: Story<Values> = { source: { name: 'old', description: 'd1' }, edit: { name: 'A' }, fails: true };
+    const hidden = await play(story, true);
+    expect(hidden.current).toBe(false);
+    expect(hidden.result).toBe('failed');
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state).toMatchObject({ values: { name: 'A' }, isDirty: true, isSaving: false });
+  });
+
+  it('a save confirmed while hidden ends its submit as failed (nothing to tell an off-screen form), and its form unlocks', async () => {
+    const story: Story<Values> = { source: original, edit: { name: 'A' }, confirmed: { ...original, name: 'A' } };
+    const hidden = await play(story, true);
+    expect(hidden.result).toBe('failed');
+    expect(hidden.state.isSaving).toBe(false);
+    expect((await play(story, false)).result).toBe('saved');
   });
 });

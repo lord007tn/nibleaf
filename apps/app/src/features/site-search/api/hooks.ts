@@ -25,16 +25,6 @@ export const useSearchIndexDiagnostics = (projectId: string, cursor?: string) =>
  */
 export const useReindexSearch = (projectId: string) => useCreateProjectSearchReindex(projectId);
 
-/** A failure the shared mutation has already told the person about (its `meta.errorMessage`). */
-class ReportedError extends Error {
-  constructor(readonly original: unknown) {
-    super('Already reported');
-  }
-}
-
-/** Whether a failed save was already toasted, so the form must not toast it again. */
-export const wasReported = (error: unknown) => error instanceof ReportedError;
-
 /**
  * Saves the Search form: the changed configuration fields in one request,
  * then each changed language placeholder. Class: form save (§8.2). It is not
@@ -42,22 +32,15 @@ export const wasReported = (error: unknown) => error instanceof ReportedError;
  * invalidates the project and the published reader's shell and search; the
  * language mutation invalidates the language list.
  *
- * `save` rejects on the first failure so the form stays dirty. The
- * configuration mutation toasts its own failure, so that rejection is marked
- * `wasReported`; a language failure is the caller's to word.
+ * `save` rejects on the first failure so the form stays dirty. Neither
+ * mutation toasts: the caller words every failure.
  */
 export function useSaveSearch(projectId: string) {
   const updateConfiguration = useUpdateProjectSearchConfiguration(projectId);
   const updateLanguage = useUpdateLanguage(projectId);
   const save = async (baseline: SearchValues, submitted: SearchValues) => {
     const { configuration, languages } = searchSaveRequests(baseline, submitted);
-    if (configuration) {
-      try {
-        await updateConfiguration.mutateAsync(configuration);
-      } catch (error) {
-        throw new ReportedError(error);
-      }
-    }
+    if (configuration) await updateConfiguration.mutateAsync(configuration);
     for (const { id, placeholder } of languages) {
       await updateLanguage.mutateAsync({ id, body: { config: { search: placeholder ? { placeholder } : null } } });
     }

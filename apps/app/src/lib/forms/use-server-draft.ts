@@ -30,13 +30,17 @@ export type DraftSave<T extends DraftValues> = {
   /** Call after a failed save: nothing is confirmed and the edits stay. */
   failed: () => void;
   /**
-   * False once this save no longer belongs to the form: the form unmounted, or
-   * it moved to another identity (or away and back) since the save started.
-   * It stays false, even once another form for the same identity mounts.
-   * `succeeded` and `failed` then do nothing; check it before any effect of
-   * your own on the form or the screen (a field error, a toast, focus,
-   * closing or navigating). The request itself is not cancelled: what it
-   * wrote stays written, and cache updates and refetches still follow it.
+   * False while this save's form is off screen or no longer its own: the form
+   * unmounted, React hid it (`<Activity>`), or it moved to another identity
+   * (or away and back) since the save started. An unmounted form never comes
+   * back, so its save stays not current even once another form for the same
+   * identity mounts. A hidden form that shows again owns its save again, and
+   * a confirmation that came while it was hidden is reconciled then, quietly.
+   * While it is false, `succeeded` returns false and touches nothing on
+   * screen. Check it before any effect of your own on the form or the screen
+   * (a field error, a toast, focus, closing or navigating). The request itself
+   * is not cancelled: what it wrote stays written, and cache updates and
+   * refetches still follow it.
    */
   isCurrent: () => boolean;
 };
@@ -65,14 +69,7 @@ export type DraftSettlement = {
  * its request is sent, what it sent and which of those keys the server has
  * echoed (see `PendingSave`).
  */
-type ActiveSave<T extends DraftValues> = {
-  id: number;
-  generation: number;
-  /** The mount it started in; see `lifetimeRef`. */
-  lifetime: object;
-  pending?: PendingSave<T>;
-  outcome?: 'saved' | 'invalid' | 'failed';
-};
+type ActiveSave<T extends DraftValues> = { id: number; generation: number; pending?: PendingSave<T>; outcome?: 'saved' | 'invalid' | 'failed' };
 
 /**
  * A TanStack form kept in step with server data (operations/ui-overhaul.md
@@ -84,9 +81,9 @@ type ActiveSave<T extends DraftValues> = {
  * - one save at a time: `submit()` takes a synchronous lock, so Enter or
  *   Cmd+S during a save can't start a second one; only that save's own
  *   completion releases it;
- * - a save belongs to the mount that started it: once the form unmounts, its
- *   save is no longer current (see `DraftSave.isCurrent`), so a late answer
- *   reaches neither a form mounted later nor the screen;
+ * - a save belongs to the form that started it, and is current only while
+ *   that form is on screen (see `DraftSave.isCurrent`): a late answer for a
+ *   form that unmounted reaches neither a form mounted later nor the screen;
  * - a refetch during a save reconciles values but never drops the save's
  *   state or its pending flag. The save records what it sent and which keys
  *   it changed when its request goes out; until a refetch echoes a sent key,
@@ -132,16 +129,22 @@ export function useServerDraftForm<T extends DraftValues>({
   const baselineRef = useRef(baseline);
   const identityRef = useRef(identityKey);
   const lastSource = useRef(source);
+  // The source object the effect below last handled. React runs effects again
+  // when it shows a hidden form; the same source then is nothing new.
+  const handledSource = useRef(source);
   // Bumped on every identity change, so a save that started for an earlier
   // identity (even one we came back to) can recognise it no longer applies.
   const generationRef = useRef(0);
   const activeRef = useRef<ActiveSave<T> | null>(null);
   const nextSaveId = useRef(0);
-  // This mount, while it lasts: a new object each time the form mounts (or is
-  // shown again after React hid it), null once it unmounts. Set in a layout
-  // effect, so it is already null when the commit that removes the form ends,
-  // before any later promise continuation can read it.
-  const lifetimeRef = useRef<object | null>(null);
+  // Whether the form is on screen: set when it mounts or React shows it again,
+  // cleared when it unmounts or React hides it. A layout effect, so it is
+  // already cleared when the commit that removes the form ends, before any
+  // later promise continuation can read it. React keeps a hidden form's refs,
+  // and drops an unmounted one's, so a save can only come back to the former.
+  const shownRef = useRef(false);
+  // A save confirmed while the form was hidden, to reconcile once it shows.
+  const heldRef = useRef<{ save: ActiveSave<T>; confirmed?: T } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [conflicts, setConflicts] = useState<Array<keyof T & string>>([]);
   const onSubmitRef = useRef(onSubmit);
@@ -154,7 +157,7 @@ export function useServerDraftForm<T extends DraftValues>({
     setBaselineState(next);
   }, []);
 
-  // Runs when the save's own request ends, even after the form unmounted: React
+  // Runs when the save's own request ends, even with the form off screen: React
   // can show a hidden form again with this state, and it must not stay saving.
   const release = useCallback((save: ActiveSave<T>) => {
     if (activeRef.current?.id !== save.id) return;
@@ -167,17 +170,23 @@ export function useServerDraftForm<T extends DraftValues>({
     onSubmit: async ({ value }) => {
       const save = activeRef.current;
       if (!save) return;
-      const isCurrent = () => save.lifetime === lifetimeRef.current && save.generation === generationRef.current && activeRef.current?.id === save.id;
-      // Validation that outlasted the form sends nothing.
+      const owned = () => save.generation === generationRef.current && activeRef.current?.id === save.id;
+      const isCurrent = () => shownRef.current && owned();
+      // Validation that outlasted the form on screen sends nothing.
       if (!isCurrent()) return;
       save.pending = startSave(baselineRef.current, value, toSentRef.current);
       try {
         save.outcome = await onSubmitRef.current(value, {
           baseline: baselineRef.current,
-          succeeded: (confirmed) => isCurrent() && succeededRef.current(save, confirmed),
+          succeeded: (confirmed) => {
+            if (isCurrent()) return succeededRef.current(save, confirmed);
+            // Off screen: held for when the form shows again (an unmounted form never does).
+            if (owned()) heldRef.current = { save, confirmed };
+            return false;
+          },
           failed: () => {
             // Nothing was confirmed: the edits stay and later refetches follow the normal rules.
-            if (isCurrent()) save.pending = undefined;
+            if (owned()) save.pending = undefined;
           },
           isCurrent,
         });
@@ -189,9 +198,13 @@ export function useServerDraftForm<T extends DraftValues>({
   });
 
   useLayoutEffect(() => {
-    lifetimeRef.current = {};
+    shownRef.current = true;
+    // Confirmed while React kept the form hidden: reconcile it as it would have been on screen.
+    const held = heldRef.current;
+    heldRef.current = null;
+    if (held && held.save.generation === generationRef.current) succeededRef.current(held.save, held.confirmed);
     return () => {
-      lifetimeRef.current = null;
+      shownRef.current = false;
     };
   }, []);
 
@@ -221,6 +234,8 @@ export function useServerDraftForm<T extends DraftValues>({
 
   useEffect(() => {
     const identityChanged = identityRef.current !== identityKey;
+    if (!identityChanged && handledSource.current === source) return;
+    handledSource.current = source;
     if (!identityChanged && deepEqual(lastSource.current, source)) return;
     lastSource.current = source;
     identityRef.current = identityKey;
@@ -282,16 +297,15 @@ export function useServerDraftForm<T extends DraftValues>({
    */
   const submit = useCallback(async (): Promise<DraftSubmitResult> => {
     if (activeRef.current) return 'busy';
-    const lifetime = lifetimeRef.current;
-    if (!lifetime) return 'failed';
+    if (!shownRef.current) return 'failed';
     nextSaveId.current += 1;
-    const save: ActiveSave<T> = { id: nextSaveId.current, generation: generationRef.current, lifetime };
+    const save: ActiveSave<T> = { id: nextSaveId.current, generation: generationRef.current };
     activeRef.current = save;
     setIsSaving(true);
     try {
       await form.handleSubmit();
-      // A save for a form that has since unmounted, or for an identity it has since left, reports nothing useful to it.
-      return save.lifetime === lifetimeRef.current && save.generation === generationRef.current ? (save.outcome ?? 'invalid') : 'failed';
+      // A save that ends with the form off screen, or on an identity it has since left, reports nothing useful to it.
+      return shownRef.current && save.generation === generationRef.current ? (save.outcome ?? 'invalid') : 'failed';
     } finally {
       release(save);
     }
