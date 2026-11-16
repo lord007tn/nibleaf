@@ -223,6 +223,63 @@ describe('preset contrast (PUB-019)', () => {
     expect(projectThemeCss({ styling: { primaryColor: '#5546e8' } } as never)).not.toContain('[data-theme-callouts="solid"]');
   });
 
+  // #682: a tab list nested in a solid callout draws its active label in
+  // `text-primary` (the callout's code accent) on the list's muted fill, which is
+  // lighter than the code surface that accent is shaded for. #b96a3d on Signal
+  // gave #bb6e42: 4.09:1 on #1e2230.
+  it('keeps the labels of a tab list nested in a solid callout readable, for every preset and brand (#682)', () => {
+    // What ships: the active label and indicator use --primary, the others the
+    // muted text, on the boxed and pill lists' muted fill (or the callout's own).
+    const tabs = read('mdx/tabs.tsx');
+    expect(tabs).toContain("i === active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground");
+    const styles = read('../../styles.css');
+    for (const variant of ['boxed', 'pills']) {
+      const start = styles.search(new RegExp(`\\[data-theme-tabs="${variant}"\\]\\s+\\[data-theme-component="tabs-list"\\]`));
+      expect(start).toBeGreaterThan(0);
+      expect(styles.slice(start, styles.indexOf('}', start))).toContain('background: var(--theme-muted)');
+    }
+    const islandOf = (css: string) => {
+      const body = css.match(/\.nibleaf-site-chrome\[data-theme-callouts="solid"\] \[data-theme-component="callout"\]\{([^}]*)\}/)?.[1] ?? '';
+      // Later declarations win, as in the browser.
+      return new Map(
+        body.split(';').map((declaration) => [declaration.slice(0, declaration.indexOf(':')), declaration.slice(declaration.indexOf(':') + 1)]),
+      );
+    };
+    const presets = ['harbor', 'manuscript', 'signal'] as const;
+    const brands = ['#b96a3d', '#5546e8', '#2d25e3', '#3a1408', '#000000', '#0b7a55', '#ffcc00', '#e11d48'];
+    const configs = presets.flatMap((preset) => [
+      { theme: { preset, components: { callouts: 'solid' } } },
+      ...brands.flatMap((brand) => [
+        { theme: { preset, components: { callouts: 'solid' }, colors: { light: { accent: brand }, dark: { accent: brand } } } },
+        { theme: { preset, components: { callouts: 'solid' } }, styling: { primaryColor: brand } },
+      ]),
+    ]);
+    const failures: string[] = [];
+    for (const config of configs) {
+      const island = islandOf(projectThemeCss(config as never));
+      const raw = island.get('--primary') ?? '';
+      const primary = raw === 'var(--theme-code-accent)' ? (island.get('--theme-code-accent') ?? '') : raw;
+      const muted = island.get('--theme-muted') ?? '';
+      const code = island.get('--theme-code') ?? '';
+      const fills = [
+        ['tab list', hoverRgb(muted)],
+        ...(['info', 'success', 'warning', 'danger'] as const).map(
+          (tone) => [`${tone} callout`, hoverMixOklab(hoverRgb(island.get(`--theme-${tone}`) ?? ''), hoverRgb(code), 0.14)] as const,
+        ),
+      ] as const;
+      const label = JSON.stringify(config);
+      for (const [name, fill] of fills) {
+        const active = hoverContrast(hoverRgb(primary), [...fill]);
+        if (active < 4.5) failures.push(`${label}: active label ${primary} on the ${name} ${active.toFixed(2)}:1`);
+      }
+      const inactive = hoverContrast(hoverRgb(island.get('--muted-foreground') ?? ''), hoverRgb(muted));
+      if (inactive < 4.5) failures.push(`${label}: inactive label on the tab list ${inactive.toFixed(2)}:1`);
+    }
+    expect(failures).toEqual([]);
+    // Signal as shipped keeps the code accent itself: its CSS doesn't change.
+    expect(islandOf(projectThemeCss({ theme: { preset: 'signal' } } as never)).get('--primary')).toBe('var(--theme-code-accent)');
+  });
+
   it("draws the code block's language label at a contrast that reads on the dark chrome", () => {
     expect(read('reader-code-block.tsx')).toContain('font-mono text-[10px] text-white/70 uppercase');
   });
@@ -544,10 +601,15 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
       if (first === 'legacy') return name === 'legacy default' ? {} : { styling: { primaryColor: name.slice('legacy '.length) } };
       return { theme: { preset: first }, ...(brand ? { styling: { primaryColor: brand } } : {}) };
     };
+    // #682 gives a solid callout its own --primary where the code accent doesn't
+    // read on the callout's lighter fills; with that one value put back, the CSS
+    // is otherwise unchanged.
+    const before682 = (css: string) =>
+      css.replace(/(\[data-theme-callouts="solid"\] \[data-theme-component="callout"\]\{[^}]*;--primary:)[^;}]+/, '$1var(--theme-code-accent)');
     const now = main.map(([name]) => [
       name,
       createHash('sha256')
-        .update(projectThemeCss(configFor(name as string) as never))
+        .update(before682(projectThemeCss(configFor(name as string) as never)))
         .digest('hex'),
     ]);
     expect(now).toEqual(main);

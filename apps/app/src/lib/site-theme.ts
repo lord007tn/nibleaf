@@ -4,6 +4,7 @@ import {
   channelsContrast,
   channelsHex,
   contrastRatio,
+  mixOklab,
   mixOklabChannels,
   type ResolvedTheme,
   type RgbChannels,
@@ -202,6 +203,35 @@ const legacyDarkPalette = (brand: string) => {
   return { accent, foreground, codeAccent, drawer };
 };
 
+/** The solid callout's fill per callout type: `color-mix(in oklab,<tone> 14%,var(--theme-code))` (styles.css). */
+const SOLID_CALLOUT_TONES = ['info', 'success', 'warning', 'danger'] as const;
+const SOLID_CALLOUT_TINT = 0.14;
+
+/** A solid callout's `--primary` (its links, and the active label of a tab list
+ * nested in it). The code accent is shaded for the code surface, but this text
+ * sits on lighter fills: the callout's tinted fill, and the muted fill of a boxed
+ * or pill tab list. For most accents it reads there too and the rule keeps
+ * `var(--theme-code-accent)`; otherwise it gets the nearest lighter (or darker,
+ * on a light code surface) shade that reads on every fill, judged unrounded as
+ * the browser draws the mix. #b96a3d on Signal gave #bb6e42: 4.09:1 on the tab
+ * list's #1e2230 (#682). */
+const solidCalloutPrimary = (tokens: ThemeColorTokens, authoredAccent: string): string => {
+  const codeAccent = readableCodeAccent(authoredAccent, tokens.code);
+  const fills: Array<RgbChannels | string> = [tokens.muted];
+  for (const tone of SOLID_CALLOUT_TONES) {
+    const fill = mixOklabChannels(tokens[tone], tokens.code, SOLID_CALLOUT_TINT);
+    if (fill) fills.push(fill);
+  }
+  const reads = (color: string) => fills.every((fill) => mixReads(channelsContrast(color, fill)));
+  if (reads(codeAccent)) return 'var(--theme-code-accent)';
+  const toward = contrastRatio('#ffffff', tokens.code) >= contrastRatio('#000000', tokens.code) ? '#ffffff' : '#000000';
+  for (let step = 1; step <= 40; step++) {
+    const shade = mixOklab(codeAccent, toward, 1 - step / 40);
+    if (reads(shade)) return shade;
+  }
+  return 'var(--theme-code-accent)';
+};
+
 const radiusValue = (radius: ResolvedTheme['layout']['radius']): string =>
   radius === 'sharp' ? '0.125rem' : radius === 'pill' ? '1rem' : '0.625rem';
 
@@ -251,7 +281,7 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
         // The outer .typeset derives --typeset-muted and --typeset-rule from the
         // light palette and descendants inherit those values, so they are bound
         // again here (h5/h6 and rules use them).
-        `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:var(--theme-code-accent);--typeset-muted:var(--muted-foreground);--typeset-rule:var(--border)}`,
+        `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:${solidCalloutPrimary(dark, authored.dark)};--typeset-muted:var(--muted-foreground);--typeset-rule:var(--border)}`,
         ...drawerAccentRules(light, dark),
       ]
     : [
