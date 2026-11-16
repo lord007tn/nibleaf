@@ -12,11 +12,12 @@ const mocks = vi.hoisted(() => ({
   runs: [] as unknown[],
   deployments: undefined as { status: string }[] | undefined,
   project: undefined as { hasPublishedVersion?: boolean } | undefined,
-  cancel: { isPending: false, variables: undefined as string | undefined, mutate: vi.fn() },
+  cancel: vi.fn(),
+  pending: { create: [] as unknown[], cancel: [] as unknown[], download: [] as unknown[] },
   locale: 'en' as 'en' | 'ar',
   lastError: null as string | null,
 }));
-vi.mock('sonner', () => ({ toast: { error: mocks.error } }));
+vi.mock('sonner', () => ({ toast: { error: mocks.error, success: vi.fn() } }));
 vi.mock('@nibleaf/i18n/react', async () => {
   const { translateFn } = await vi.importActual<typeof import('@nibleaf/i18n')>('@nibleaf/i18n');
   return {
@@ -47,9 +48,12 @@ vi.mock('@/hooks/api/exports', () => ({
       },
     ],
   }),
-  useCreateExport: () => ({ mutate: mocks.create }),
-  useCancelExport: () => mocks.cancel,
-  useGetExportDownload: () => ({ mutateAsync: mocks.download }),
+}));
+vi.mock('@/features/site-exports/api/runs', () => ({
+  useCreateExportRun: () => mocks.create,
+  useCancelExportRun: () => mocks.cancel,
+  useExportArtifactLink: () => mocks.download,
+  usePendingRunRequests: () => mocks.pending,
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn() }));
 vi.mock('@/features/site-exports/api/schedules', () => ({
@@ -74,7 +78,7 @@ describe('export schedule permissions', () => {
     mocks.runs = [];
     mocks.deployments = [{ status: 'READY' }];
     mocks.project = { hasPublishedVersion: true };
-    mocks.cancel = { isPending: false, variables: undefined, mutate: vi.fn() };
+    mocks.pending = { create: [], cancel: [], download: [] };
     mocks.locale = 'en';
     mocks.lastError = null;
     container = document.createElement('div');
@@ -93,7 +97,7 @@ describe('export schedule permissions', () => {
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
     await act(async () => findButton('settings.exports.workflow.create')?.click());
 
-    expect(mocks.create).toHaveBeenCalledWith(['MARKDOWN'], expect.any(Object));
+    expect(mocks.create).toHaveBeenCalledWith({ projectId: 'project-1', formats: ['MARKDOWN'] });
     expect(mocks.scheduleMutation).not.toHaveBeenCalled();
   });
 
@@ -171,7 +175,7 @@ describe('export schedule permissions', () => {
     const button = findButton('settings.exports.workflow.create');
     expect(button?.getAttribute('aria-disabled')).toBeNull();
     await act(async () => button?.click());
-    expect(mocks.create).toHaveBeenCalledWith(['MARKDOWN'], expect.any(Object));
+    expect(mocks.create).toHaveBeenCalledWith({ projectId: 'project-1', formats: ['MARKDOWN'] });
   });
 
   it('offers the export right after a first publish, before the site itself is reloaded', async () => {
@@ -188,9 +192,8 @@ describe('export schedule permissions', () => {
     mocks.project = undefined;
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+    mocks.create.mockRejectedValueOnce(new ApiResponseError('Publish the site before creating an export.', 400));
     await act(async () => findButton('settings.exports.workflow.create')?.click());
-    const options = mocks.create.mock.calls[0]?.[1];
-    act(() => options.onError(new ApiResponseError('Publish the site before creating an export.', 400)));
 
     expect(mocks.error).toHaveBeenCalledWith('settings.exports.workflow.publishFirst');
   });
@@ -198,9 +201,8 @@ describe('export schedule permissions', () => {
   it("says the site is too large, not 'try again', when the live version is over the export limit", async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+    mocks.create.mockRejectedValueOnce(new ApiResponseError('The published revision is larger than this instance allows.', 400));
     await act(async () => findButton('settings.exports.workflow.create')?.click());
-    const options = mocks.create.mock.calls[0]?.[1];
-    act(() => options.onError(new ApiResponseError('The published revision is larger than this instance allows.', 400)));
 
     expect(mocks.error).toHaveBeenCalledWith('settings.exports.workflow.tooLarge');
   });
@@ -208,9 +210,8 @@ describe('export schedule permissions', () => {
   it('keeps the general message for an unexplained failure once a version is live', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
+    mocks.create.mockRejectedValueOnce(new ApiResponseError('Internal error', 500));
     await act(async () => findButton('settings.exports.workflow.create')?.click());
-    const options = mocks.create.mock.calls[0]?.[1];
-    act(() => options.onError(new ApiResponseError('Internal error', 500)));
 
     expect(mocks.error).toHaveBeenCalledWith('settings.exports.workflow.startError');
   });
@@ -226,7 +227,7 @@ describe('export schedule permissions', () => {
       artifacts: [],
     });
     mocks.runs = [running('run-1'), running('run-2')];
-    mocks.cancel = { isPending: true, variables: 'run-2', mutate: vi.fn() };
+    mocks.pending.cancel = [{ projectId: 'project-1', runId: 'run-2' }];
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
     await act(async () => findButton('settings.exports.workflow.history')?.click());
 
@@ -280,7 +281,7 @@ describe('export schedule permissions', () => {
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
     await act(async () => findButton('settings.exports.workflow.history')?.click());
     await act(async () => findButton('settings.exports.workflow.format.pdf')?.click());
-    expect(mocks.download).toHaveBeenCalledExactlyOnceWith({ runId: 'run-2', artifactId: 'pdf' });
+    expect(mocks.download).toHaveBeenCalledExactlyOnceWith({ projectId: 'project-1', runId: 'run-2', artifactId: 'pdf' });
     expect(clicks).toEqual([{ href: new URL(fileUrl, window.location.href).href, download: 'دليل-v4.pdf', target: '', connected: true }]);
     expect(window.location.href).toBe(originalLocation);
     expect(container.querySelector('a')).toBeNull();
