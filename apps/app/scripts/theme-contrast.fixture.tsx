@@ -1,7 +1,8 @@
 // The actual theme settings section for a site whose brand accent fails AA as
 // text (PUB-006). No network: the section only reads the project passed in, and
-// nothing here saves. Built and captured by a local harness, like the other
+// nothing here saves (its import confirmation needs the ConfirmProvider). Built and captured by a local harness, like the other
 // fixtures in this folder.
+import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
 import { setLanguage } from '@nibleaf/i18n/locale-state';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
@@ -30,8 +31,10 @@ const project: Project = {
 
 createRoot(document.getElementById('root') as HTMLElement).render(
   <QueryClientProvider client={createQueryClient()}>
-    <main className="mx-auto max-w-5xl bg-background p-6 text-foreground">
-      <ThemeSection project={project} />
-    </main>
+    <ConfirmProvider>
+      <main className="mx-auto max-w-5xl bg-background p-6 text-foreground">
+        <ThemeSection project={project} />
+      </main>
+    </ConfirmProvider>
   </QueryClientProvider>,
 );
