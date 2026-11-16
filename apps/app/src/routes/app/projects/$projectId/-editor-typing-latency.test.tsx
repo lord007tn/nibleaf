@@ -1437,7 +1437,7 @@ describe('#735 review: a repeat is skipped only when the pending write stored it
  * while the draft is clean, ignored while it is dirty) and the server storing the
  * next write normalized. Writes are stored when sent or when they land, per seed.
  * Whenever main ends with the final draft stored, this branch must too, and it
- * never sends more writes than main.
+ * never sends more writes than main, except to store a final draft main lost.
  */
 const REVIEW_SEEDS = Array.from({ length: 40 }, (_, index) => 735 + index * 6007);
 const REVIEW_OPS = ['type', 'type', 'undo', 'undo', 'redo', 'idle', 'idle', 'land', 'blur', 'adopt', 'normalize'] as const;
@@ -1492,11 +1492,311 @@ describe('#735 review differential: foreign copies and normalized writes', { tim
     reviewResults[seed] = result;
     const main = MAIN_REVIEW[seed];
     if (RECORDING_REVIEW) return;
-    expect({ steps, main, writes: result.writes <= (main?.writes ?? -1), stored: result.stored || main?.stored === false }).toEqual({
+    // More writes than main only to store a final draft main lost (#757: a
+    // normalized final draft is sent once more).
+    const writes = result.writes <= (main?.writes ?? -1) || (main?.stored === false && result.stored);
+    expect({ steps, main, writes, stored: result.stored || main?.stored === false }).toEqual({
       steps,
       main,
       writes: true,
       stored: true,
     });
+  });
+});
+
+/*
+ * #757: once every write settles, the server holds the author's final draft, or
+ * the editor says it could not. Two ways main lost it without a word:
+ *
+ * - A write's response replaced the editor's server copy with the write's text,
+ *   even after the editor had adopted a newer copy from another client while the
+ *   write was in flight. The adopted copy was what the server held, but the
+ *   editor took the older write's text for it: a final draft equal to that text
+ *   looked saved, and was never sent.
+ * - A write the server stored as other text (normalized) counted as the draft
+ *   saved.
+ *
+ * Now a response only replaces the server copy the write was based on, and is
+ * taken as what the server stored. A final draft stored as other text is sent
+ * once more; if that is changed too, saving pauses for the conflict review.
+ *
+ * These tests use a server like the real one: every revision stamp is later than
+ * the last (another client's too), and a write whose `expectedUpdatedAt` is not
+ * the stored revision is refused with a revision conflict.
+ */
+/** Writes the server refused with a revision conflict. */
+let refused = 0;
+/** The next revision stamp, later than the stored one, as the server makes it. */
+const nextStamp = () => new Date(Math.max(Date.now(), Date.parse(server.updatedAt) + 1)).toISOString();
+/** Like `serveWrites`, with the real server's stamps and revision check. */
+function serveLikeTheServer(commit: 'request' | 'response') {
+  held = [];
+  attempts = [];
+  refused = 0;
+  storeAs = (_index, content) => content;
+  mocks.update.mockImplementation(async ({ pageId, body }: UpdateArgs) => {
+    const index = attempts.length;
+    attempts.push({ pageId, content: body.content });
+    const store = () => {
+      if (body.expectedUpdatedAt && body.expectedUpdatedAt !== server.updatedAt) {
+        refused += 1;
+        throw Object.assign(new Error('This page changed.'), { code: 'page:revision_conflict' });
+      }
+      const content = storeAs(index, body.content);
+      server.patches.push({ at: Date.now(), content, expectedUpdatedAt: body.expectedUpdatedAt });
+      server = { ...server, content, updatedAt: nextStamp() };
+      const page = mocks.pages.find((item) => item.id === pageId) ?? mocks.page;
+      return { ...page, title: body.title, content, updatedAt: server.updatedAt };
+    };
+    let early: Record<string, unknown> | undefined;
+    let earlyError: unknown;
+    if (commit === 'request') {
+      try {
+        early = store();
+      } catch (error) {
+        earlyError = error;
+      }
+    }
+    const ok = await new Promise<boolean>((settle) => held.push({ content: body.content, settle }));
+    if (!ok) throw new Error('Network error');
+    if (earlyError) throw earlyError;
+    return early ?? store();
+  });
+}
+/** Another client saves `content` now, and the route's page query returns it. */
+const foreignCopyNow = (content: string) => foreignCopy(content, nextStamp());
+const conflictShown = () => mounted && (container.textContent ?? '').includes('editor.conflict.body');
+
+describe("#757: after another client's copy is adopted, the final draft is stored", { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  it('repro 1: A commits (response held), undo, another client saves B, B is replaced by A, staying: A is stored', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    undo();
+    await foreignCopyNow(withTyped('B'));
+    expect(getMarkdown(current())).toContain('a byte.B');
+    act(() => replaceLastTyped('A'));
+    await settleWrite();
+    await drain();
+    // Main: ['original+A'], and the server ends with original+B.
+    expect(sent()).toEqual(['original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+    expect(getMarkdown(current())).toBe(withTyped('A').trimEnd());
+    expect(refused).toBe(0);
+  });
+
+  it.each(leaves)('repro 1, then %s before the response lands: A is stored', async (_name, leave) => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    undo();
+    await foreignCopyNow(withTyped('B'));
+    act(() => replaceLastTyped('A'));
+    await leave();
+    await drain();
+    expect(server.content).toBe(withTyped('A'));
+    expect(refused).toBe(0);
+  });
+
+  it('repro 1, the response lands before B is replaced: the editor keeps showing B, and A is stored after it', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    undo();
+    await foreignCopyNow(withTyped('B'));
+    await settleWrite();
+    expect(getMarkdown(current())).toContain('a byte.B');
+    act(() => replaceLastTyped('A'));
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+  });
+
+  it('the adopted copy is not edited: it stays stored and on screen', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    undo();
+    await foreignCopyNow(withTyped('B'));
+    await settleWrite();
+    await drain();
+    expect(server.content).toBe(withTyped('B'));
+    expect(getMarkdown(current())).toBe(withTyped('B').trimEnd());
+  });
+});
+
+describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  it('repro 2: the final draft is stored normalized once: it is sent again, and stored as typed', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await settleWrite();
+    await drain();
+    // Main: ['original+A'], and the server ends with the normalized text.
+    expect(sent()).toEqual(['original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+    expect(conflictShown()).toBe(false);
+  });
+
+  it.each(leaves)('repro 2, then %s before the write lands: the final draft is sent again and stored', async (_name, leave) => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await leave();
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+  });
+
+  it('the server changes every write: sent twice, then saving pauses for the conflict review, with no more writes', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (_index, content) => `${content}${NORMALIZED}`;
+    await typeAndHoldTheSave();
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A']);
+    // Main: one write, "saved", and the server's text differs from the screen.
+    expect(conflictShown()).toBe(true);
+    expect(getMarkdown(current())).toBe(withTyped('A').trimEnd());
+    await act(async () => window.dispatchEvent(new Event('blur')));
+    await advance(30_000);
+    expect(attempts).toHaveLength(2);
+  });
+
+  it('sending it again fails: the editor knows what the server stored, and saves the draft from that revision', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await settleWrite();
+    await settleWrite(false);
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+    expect(refused).toBe(0);
+  });
+
+  it('a normalized write that is no longer the final draft is not sent again: the final draft is', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    key('B');
+    await settleWrite();
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+AB']);
+    expect(server.content).toBe(withTyped('AB'));
+  });
+
+  it('undoing to the text of a normalized write that was not sent again: it is saved', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await advance(SERIALIZE_PAUSE);
+    key('B');
+    await settleWrite();
+    undo();
+    await drain();
+    expect(server.content).toBe(withTyped('A'));
+  });
+
+  it('opening another page while the final draft is stored normalized: the page left is sent again and stored', async () => {
+    const next = pageOf('page-2', 'The next page.');
+    await open(ORIGINAL, [next]);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await act(async () => (mocks.tree as { onSelect: (id: string) => void } | null)?.onSelect('page-2'));
+    mocks.page = next;
+    await rerender();
+    await drain();
+    expect(attempts.map((write) => `${write.pageId}:${label(write.content)}`)).toEqual(['page-1:original+A', 'page-1:original+A']);
+    expect(server.content).toBe(withTyped('A'));
+  });
+});
+
+/*
+ * The #728 generator with another client's copy arriving (adopted while the draft
+ * is clean, ignored while it is dirty) and the server normalizing the next write,
+ * against the real server's stamps and revision check; writes are stored when
+ * sent or when they land, per seed. Once every write settles the server holds the
+ * final draft, or a write was refused and the editor said so (a revision
+ * conflict). Main's results are in `__fixtures__/autosave-adoption-main.json`;
+ * this branch never sends more writes than main, except to store a final draft
+ * main lost.
+ */
+const ADOPTION_OPS = [...OPS, 'adopt', 'normalize'] as const;
+const ADOPTION_FIXTURE = resolve(import.meta.dirname, '../../../../components/editor/__fixtures__/autosave-adoption-main.json');
+const RECORDING_ADOPTION = Boolean(process.env.WRITE_AUTOSAVE_ADOPTION_MAIN);
+type AdoptionResult = { writes: number; stored: boolean; conflict: boolean };
+const MAIN_ADOPTION: Record<number, AdoptionResult> = RECORDING_ADOPTION ? {} : JSON.parse(readFileSync(ADOPTION_FIXTURE, 'utf8')).seeds;
+const adoptionResults: Record<number, AdoptionResult> = {};
+afterAll(() => {
+  if (RECORDING_ADOPTION) writeFileSync(ADOPTION_FIXTURE, `${JSON.stringify({ base: 'a716947c', seeds: adoptionResults }, null, 2)}\n`);
+});
+
+describe("#757 differential: adopted copies and normalized writes, against the real server's checks", { timeout: 180_000 }, () => {
+  it.each(SEEDS)('seed %i', async (seed) => {
+    const random = seeded(seed);
+    const pick = <T,>(items: readonly T[]): T => items[Math.floor(random() * items.length)] as T;
+    await open(ORIGINAL);
+    serveLikeTheServer(random() < 0.5 ? 'request' : 'response');
+    let normalizeFrom = Number.POSITIVE_INFINITY;
+    storeAs = (index, content) => (index === normalizeFrom ? `${content}${NORMALIZED}` : content);
+    const foreignTexts = new Set<string>();
+    let conflict = false;
+    const steps: string[] = [];
+    for (let step = 0; step < 8; step += 1) {
+      const op = pick(ADOPTION_OPS);
+      steps.push(op);
+      if (op === 'type') key(pick(['a', 'b', 'c']));
+      else if (op === 'undo') undo();
+      else if (op === 'redo') redo();
+      else if (op === 'idle') await advance(pick([50, SERIALIZE_PAUSE, 800, 800, 3500]));
+      else if (op === 'land') {
+        if (held.length > 0) await settleWrite();
+      } else if (op === 'blur') await act(async () => window.dispatchEvent(new Event('blur')));
+      else if (op === 'hide') await act(async () => hideTab());
+      else if (op === 'adopt') {
+        const text = withTyped(`F${foreignTexts.size + 1}`);
+        foreignTexts.add(text.trimEnd());
+        await foreignCopyNow(text);
+      } else normalizeFrom = attempts.length;
+      conflict ||= conflictShown();
+    }
+    const ending = pick(ENDINGS);
+    steps.push(ending);
+    let finalDraft = getMarkdown(current()).trimEnd();
+    if (ending === 'navigate') {
+      await act(async () => {
+        void mocks.blocker?.shouldBlockFn().catch(() => undefined);
+      });
+    } else if (ending === 'pagehide') {
+      await act(async () => window.dispatchEvent(new Event('pagehide')));
+      await unmount();
+    } else if (ending === 'unmount') await unmount();
+    await drain();
+    conflict ||= conflictShown() || refused > 0;
+    // Still open, the editor may since have adopted a newer copy (only while the
+    // draft had no unsaved change): what it shows is the final draft.
+    if (mounted) finalDraft = getMarkdown(current()).trimEnd();
+    const stored = server.content.trimEnd();
+    // Left with no edit of the author's (undone back to a copy it loaded) while
+    // the server holds another client's latest copy: nothing was the author's to save.
+    const untouched = stored === [...foreignTexts].at(-1) && (finalDraft === ORIGINAL.trimEnd() || foreignTexts.has(finalDraft));
+    const result: AdoptionResult = { writes: attempts.length, stored: stored === finalDraft || untouched, conflict };
+    adoptionResults[seed] = result;
+    if (RECORDING_ADOPTION) return;
+    const main = MAIN_ADOPTION[seed];
+    const mainLost = main !== undefined && !main.stored && !main.conflict;
+    expect({
+      steps,
+      main,
+      finalDraftOrConflict: result.stored || result.conflict,
+      writes: result.writes <= (main?.writes ?? -1) || (mainLost && result.stored),
+    }).toEqual({ steps, main, finalDraftOrConflict: true, writes: true });
   });
 });

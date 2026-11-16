@@ -57,6 +57,7 @@ import {
   isEditorRevisionConflict,
   isPageTooLarge,
   nextHydration,
+  normalizedSaveConflict,
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
@@ -601,16 +602,60 @@ function EditorPage() {
                   unpublished: addressFollowsTitleRef.current(draft.id),
                 })
               : undefined;
-            const saved = await updatePageRef.current.mutateAsync({
-              pageId: draft.id,
-              body: { expectedUpdatedAt: draft.expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
-            });
-            lastSavedRef.current = saved;
-            tooLargeDraftRef.current = null;
-            if (mounted.current) setSynced((current) => (current?.id === draft.id ? { ...draft, updatedAt: saved.updatedAt } : current));
-            const latest = draftRef.current;
-            if (mounted.current && latest.synced?.id === draft.id) {
-              setStatus(latest.draft.title === draft.title && latest.draft.content === draft.content ? 'saved' : 'saving');
+            const send = (expectedUpdatedAt: string | undefined) =>
+              updatePageRef.current.mutateAsync({
+                pageId: draft.id,
+                body: { expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
+              });
+            const sameText = (other: { title: string; content: string }) => other.title === draft.title && other.content === draft.content;
+            // This draft is the page's final one: the editor still shows it (with
+            // any edit not serialized yet), or the author left the page and no
+            // later draft of it is queued.
+            const final = () => {
+              if (draftRef.current.synced?.id === draft.id) {
+                editorDraftRef.current?.flush();
+                return draftRef.current.synced?.id === draft.id && sameText(draftRef.current.draft);
+              }
+              const queued = saveQueue.pendingDraft();
+              return queued?.id !== draft.id || sameText(queued);
+            };
+            /**
+             * Take `page`, sent from `from`, as what the server holds: it stored
+             * exactly that text, and replaces the editor's server copy unless the
+             * editor moved on to a newer one (another client's, adopted while the
+             * write was in flight): the write's precondition held, so it was
+             * stored before that copy (#757). Returns what the server now holds.
+             */
+            const record = (page: Awaited<ReturnType<typeof send>>, from: string | undefined) => {
+              lastSavedRef.current = page;
+              tooLargeDraftRef.current = null;
+              const stored: ServerSnapshot = { id: draft.id, title: page.title, content: page.content, updatedAt: page.updatedAt };
+              const supersedes = (synced: ServerSnapshot | null) =>
+                synced?.id === draft.id && (from === undefined || synced.updatedAt === undefined || synced.updatedAt === from);
+              if (mounted.current) setSynced((synced) => (supersedes(synced) ? stored : synced));
+              return supersedes(draftRef.current.synced) ? stored : draftRef.current.synced;
+            };
+            const first = await send(draft.expectedUpdatedAt);
+            let saved = first;
+            let base = draft.expectedUpdatedAt;
+            // The server stored other text than this draft (it normalized it). While
+            // the draft is still the page's final one, send it once more from the
+            // revision just stored; if that is changed too, re-sending cannot
+            // converge, so saving pauses for the author to review (#757).
+            if (!sameText(first) && final()) {
+              try {
+                saved = await send(first.updatedAt);
+              } catch (error) {
+                record(first, base);
+                throw error;
+              }
+              base = first.updatedAt;
+            }
+            const holds = record(saved, base);
+            if (!sameText(saved) && saved !== first) throw normalizedSaveConflict(draft.id);
+            const latest = draftRef.current.draft;
+            if (mounted.current && holds?.id === draft.id) {
+              setStatus(latest.title === holds.title && latest.content === holds.content ? 'saved' : 'saving');
             }
             return saved;
           } catch (error) {

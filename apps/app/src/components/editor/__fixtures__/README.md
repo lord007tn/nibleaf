@@ -41,3 +41,11 @@ draft. Those sequences add another client's copy arriving and the server storing
 normalized. The test checks the editor never sends more writes, and stores the final draft
 whenever main did. It was made against main's `editor-save-queue.ts` with
 `WRITE_AUTOSAVE_REVIEW_MAIN=1`.
+
+`autosave-adoption-main.json` holds main's (a716947c) result for each seed of the #757 differential
+in the same test file: the writes sent, whether the server ended with the final draft, and whether a
+revision conflict was raised. Those sequences add another client's copy arriving and the server
+storing a write normalized, against a server with the real one's checks (later stamps, a refused
+stale `expectedUpdatedAt`). The test checks every seed ends with the final draft stored or a
+conflict raised, and never sends more writes than main except to store a final draft main lost. It
+was made against main's `editor.tsx` and `editor-draft.ts` with `WRITE_AUTOSAVE_ADOPTION_MAIN=1`.

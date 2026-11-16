@@ -4,7 +4,9 @@ import {
   type DraftState,
   draftUnsavable,
   isDirty,
+  isEditorRevisionConflict,
   nextHydration,
+  normalizedSaveConflict,
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
@@ -169,6 +171,14 @@ describe('shouldSaveDraft (#728)', () => {
     expect(shouldSaveDraft(cleanState(pageA), pageA, { ...pageB })).toBe(false);
     expect(shouldSaveDraft({ ...cleanState(pageA), conflicted: true }, pageA, inFlight)).toBe(false);
     expect(shouldSaveDraft(cleanState(pageA), pageB, inFlight)).toBe(false);
+  });
+});
+
+describe('normalizedSaveConflict (#757)', () => {
+  it('is reviewed as a revision conflict, naming the page', () => {
+    const conflict = normalizedSaveConflict('a');
+    expect(isEditorRevisionConflict(conflict)).toBe(true);
+    expect(conflict.details).toEqual({ id: 'a', reason: 'normalized' });
   });
 });
 

@@ -128,6 +128,17 @@ export function shouldSaveDraft(
 export const isEditorRevisionConflict = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && error.code === 'page:revision_conflict';
 
+/**
+ * The server stored other text than the draft, again when it was sent once more:
+ * re-sending cannot converge. It is reviewed like a revision conflict, so saving
+ * pauses and the author compares the saved version with their draft (#757).
+ */
+export const normalizedSaveConflict = (id: string): Error & { code: 'page:revision_conflict'; details: { id: string; reason: 'normalized' } } =>
+  Object.assign(new Error('The server stored other text than this draft.'), {
+    code: 'page:revision_conflict' as const,
+    details: { id, reason: 'normalized' as const },
+  });
+
 /** The server refused the draft for its size: saving the same text again fails the same way. */
 export const isPageTooLarge = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && error.code === 'page:too_large';
