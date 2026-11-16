@@ -262,9 +262,11 @@ describe('mayBeNormalizedWrite (#825)', () => {
   const write = { title: 'Guide', content: page('setup', '/installation', '/api'), base: '2026-09-01T10:00:00.000Z' };
   const copy = (content: string, updatedAt = '2026-09-01T10:00:01.000Z'): ServerSnapshot => ({ id: 'a', title: 'Guide', content, updatedAt });
 
-  it('is the write with its link destinations rewritten, inline, angle-bracketed or as definitions, at a newer revision', () => {
+  it('is the write with its link destinations rewritten, inline or as definitions, at a newer revision', () => {
     expect(mayBeNormalizedWrite(copy(page('setup', '/en/installation', '/en/api')), write)).toBe(true);
-    expect(mayBeNormalizedWrite(copy(page('setup', '/a/(b)', '<./en api>')), write)).toBe(true);
+    expect(mayBeNormalizedWrite(copy(page('setup', '/a/(b)', '/en/api?v=(2)')), write)).toBe(true);
+    // The server rewrites inside the brackets only: an unbracketed destination never becomes a bracketed one.
+    expect(mayBeNormalizedWrite(copy(page('setup', '/installation', '<./en api>')), write)).toBe(false);
     expect(mayBeNormalizedWrite(copy(write.content), { ...write, base: undefined })).toBe(true);
   });
 
@@ -276,6 +278,51 @@ describe('mayBeNormalizedWrite (#825)', () => {
     expect(mayBeNormalizedWrite(copy(write.content, write.base), write)).toBe(false);
     expect(mayBeNormalizedWrite(copy(write.content, '2026-09-01T09:00:00.000Z'), write)).toBe(false);
     expect(mayBeNormalizedWrite({ ...copy(write.content), updatedAt: undefined }, write)).toBe(false);
+  });
+
+  // #849 review: the matcher is never narrower than the server's rewrite. Every
+  // text below goes through the server's own `rewritePageLinks`; whatever it
+  // rewrites, the rewritten copy is the write, links aside.
+  const SERVER_CASES = [
+    // rewrite-page-links.test.ts
+    '{true && "[expression](/old)"}\n\n<Card\n  title="[prop](/old)"\n>\n\n[real](/old)\n\n</Card>\n\n<div>[html](/old)</div>',
+    '# العربية 🧭\r\n\r\n[ابدأ 🚀](/old#تثبيت)\r\n\r\n```md\r\n[مثال](/old)\r\n```\r\n',
+    '<Card title="[literal](/old)">\n\n[**Guide**](</old#heading> "Read this") and [](/old?x=(1)).\n\n![image](/old) [external](https://example.com/old)\n\n</Card>',
+    '[guide](/old)\n\n`[inline](/old)`\n\n    [indent](/old)\n\n> ~~~md\n> [quote](/old)\n> ~~~\n\n- ```md\n  [list](/old)\n  ```\n\n````md\n[code](/old)\n```\n[still code](/old)',
+    '\\[literal](/old) [real](/old)',
+    // The review's repro: a definition's destination on the next line.
+    'See [setup][ref].\n\n[ref]:\n  /old\n',
+    // Definitions: bracketed, titled, indented, in a quote or a list item, a label over two lines.
+    '[a][one] [b][two] [c][three]\n\n[one]: </old/one> "One"\n  [two]: /old/two \'Two\'\n[three]:\t/old/three (Three)\n',
+    '> See [q][quoted].\n>\n> [quoted]: /old/quote\n\n- [l][listed]\n\n  [listed]:\n    </old/list>\n',
+    '[x][long label]\n\n[long\nlabel]: /old/long\n',
+    // Inline: a destination on the next line, escapes, parentheses, an image inside the label, two links on one line.
+    '[next](\n/old/next "Next") [esc](/old/a\\)b) [paren](/old/(a)(b)) [![logo](/old/logo.png)](/old/home) [one](/old/1)[two](/old/2)',
+    // Wrapped paragraphs and Markdown around the links.
+    'Every **bold [link](/old/bold)** and _[em](/old/em "t")_\nwrap onto [a second](/old/second)\nline.\n',
+  ];
+  const moved = (href: string) => (href.startsWith('/old') ? href.replace('/old', '/en/moved') : href);
+  const withParens = (href: string) => (href.startsWith('/old') ? `${href}?v=(2)` : href);
+
+  it.each(SERVER_CASES)('is the write as the server rewrites its links: %j', async (content) => {
+    const { rewritePageLinks } = await import('../../../../server/src/lib/rewrite-page-links');
+    for (const rewrite of [moved, withParens]) {
+      const stored = rewritePageLinks(content, rewrite);
+      if (stored.content === content) continue;
+      expect(stored.documentsSkipped).toBe(0);
+      expect(mayBeNormalizedWrite(copy(stored.content), { ...write, content })).toBe(true);
+      // Other text changed besides is not.
+      expect(mayBeNormalizedWrite(copy(`${stored.content}\n\nTheir line.`), { ...write, content })).toBe(false);
+    }
+  });
+
+  it('the review repro and the server agree: a definition with its destination on the next line is rewritten, and matched', async () => {
+    const { rewritePageLinks } = await import('../../../../server/src/lib/rewrite-page-links');
+    const content = 'See [setup][ref].\n\n[ref]:\n  /installation\n';
+    const stored = rewritePageLinks(content, (href) => (href === '/installation' ? '/en/installation' : href));
+    expect(stored.linksUpdated).toBe(1);
+    // 3fc0609f: false.
+    expect(mayBeNormalizedWrite(copy(stored.content), { ...write, content })).toBe(true);
   });
 });
 

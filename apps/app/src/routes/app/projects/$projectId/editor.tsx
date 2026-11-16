@@ -621,6 +621,15 @@ function EditorPage() {
     const timer = setTimeout(() => setHeldConflict((current: unknown) => (current === heldConflict ? null : current)), OWN_WRITE_HOLD_MS);
     return () => clearTimeout(timer);
   }, [heldConflict]);
+  // Each newer copy while the banner waits is told apart again: one that is not a
+  // write of ours at the server, links aside, shows the banner now. The conflict
+  // is withdrawn when the writes settle only if the latest copy is one they stored.
+  const waiting = provisionalRef.current;
+  if (conflictHeld && page && waiting?.id === page.id && page.updatedAt !== waiting.revision) {
+    const copy = page;
+    provisionalRef.current = { ...waiting, revision: page.updatedAt };
+    if (!sentWritesRef.current(page.id).some((write) => mayBeNormalizedWrite(copy, write))) setHeldConflict(null);
+  }
 
   const navigate = Route.useNavigate();
   // A deep link, so the "Open page" action on a finished draft also works after the editor was closed.
@@ -825,18 +834,22 @@ function EditorPage() {
   saveTrackedRef.current = saveTracked;
   const conflictHeldRef = useRef(false);
   conflictHeldRef.current = conflictHeld;
+  // The session this editor opened in: nothing is kept for it once that session ends (#789).
+  const sessionRef = useRef(unsavedDrafts.generation());
   // Closing the editor while a conflict's banner waits for our write (#825):
   // the author was never shown it, so the draft must not go with the editor.
   // It is queued behind that write, where the conflict still holds it: sent if
   // the write proves the copy ours (the conflict is withdrawn first), refused
   // otherwise, and then kept and brought back as a conflict by the next editor (#789).
+  // Any draft but the copy the server holds is kept, even the text this editor
+  // loaded: the server holds that no longer. Not after the session ended.
   useEffect(
     () => () => {
       const held = provisionalRef.current;
-      if (!conflictHeldRef.current || !held) return;
+      if (!conflictHeldRef.current || !held || unsavedDrafts.generation() !== sessionRef.current) return;
       editorDraftRef.current?.flush();
-      const { synced: currentSynced, draft } = draftRef.current;
-      if (currentSynced?.id !== held.id || !isDirty({ synced: currentSynced, draft })) return;
+      const { synced: currentSynced, draft, page: server } = draftRef.current;
+      if (currentSynced?.id !== held.id || (server?.id === held.id && server.title === draft.title && server.content === draft.content)) return;
       saveTrackedRef.current({ id: held.id, ...draft, expectedUpdatedAt: currentSynced.updatedAt }).catch(() => undefined);
     },
     [],

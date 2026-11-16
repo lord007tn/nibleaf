@@ -2133,6 +2133,87 @@ describe('#825: our own write, refetched with its links rewritten before its res
     expect(getMarkdown(current())).toBe(withTyped('AB').trimEnd());
   });
 
+  // #849 review (round 1).
+  /** Send A and hold it, type B, then the copy that starts the wait: our own A stored with its link rewritten, or theirs. */
+  const holdOn = async (own: boolean) => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    if (own) storeAs = (index, content) => (index === 0 ? rewriteLinks(content) : content);
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    if (own) await queryFollowsServer();
+    else await linksMovedByAnotherClient();
+    expect(conflictShown()).toBe(false);
+  };
+
+  it('P1: our own write, the author undoes to the loaded text, and the editor unmounts while the banner waits: the loaded text is stored', async () => {
+    await holdOn(true);
+    undo();
+    undo();
+    await advance(SERIALIZE_PAUSE);
+    expect(getMarkdown(current())).toBe(ORIGINAL.trimEnd());
+    await unmount();
+    await drain();
+    await reopen();
+    // 3fc0609f: the server kept A, and nothing was kept or said.
+    expect(server.content).toBe(ORIGINAL);
+    expect(sent()).toEqual(['original+A', 'original']);
+    expect(refused).toBe(0);
+    expect(getMarkdown(current())).toBe(ORIGINAL.trimEnd());
+  });
+
+  it("P1: another client's copy, the author undoes to the loaded text, and the editor unmounts while the banner waits: reopened, it is back as a conflict", async () => {
+    await holdOn(false);
+    undo();
+    undo();
+    await advance(SERIALIZE_PAUSE);
+    expect(getMarkdown(current())).toBe(ORIGINAL.trimEnd());
+    await unmount();
+    await drain();
+    await reopen();
+    // 3fc0609f: their copy on screen, no banner, the loaded text gone.
+    expect(getMarkdown(current())).toBe(ORIGINAL.trimEnd());
+    expect(conflictShown()).toBe(true);
+    expect(sent()).toEqual(['original+A']);
+    expect(server.content).toBe(rewriteLinks(withTyped('A')));
+  });
+
+  it.each([
+    ['our own write', true],
+    ["another client's link-only copy", false],
+  ] as const)(
+    'P2: the banner waits on %s, and a newer copy with other text arrives: it shows at once, and nothing is written',
+    async (_name, own) => {
+      await holdOn(own);
+      const theirs = withTyped('FOREIGN');
+      await foreignCopyNow(theirs);
+      // 3fc0609f: hidden until A settled or the timeout.
+      expect(conflictShown()).toBe(true);
+      await settleWrite();
+      await drain();
+      // The response shows the first copy was ours, not the latest: the conflict stays, and AB is never sent.
+      expect(conflictShown()).toBe(true);
+      expect(sent()).toEqual(['original+A']);
+      expect(refused).toBe(0);
+      expect(server.content).toBe(theirs);
+    },
+  );
+
+  it('P2: the session ends while the banner waits, then the editor unmounts and A fails: nothing of the old account is kept', async () => {
+    await holdOn(false);
+    const { resetDashboardSession, syncDashboardSession } = await import('@/integrations/tanstack-query/session-cache');
+    const client = { clear: vi.fn() } as unknown as Parameters<typeof resetDashboardSession>[0];
+    syncDashboardSession(client, 'user-1');
+    resetDashboardSession(client);
+    await unmount();
+    await settleWrite(false);
+    await drain();
+    // 3fc0609f: AB kept for user-1 after its session ended.
+    expect(unsavedDrafts.peek('user-1', 'page-1')).toBeUndefined();
+    expect(sent()).toEqual(['original+A']);
+  });
+
   it('guard: a copy with other text over A at the server still shows the banner at once (#790)', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('request');
