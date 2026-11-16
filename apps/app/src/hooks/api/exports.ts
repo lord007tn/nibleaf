@@ -1,4 +1,4 @@
-import type { CreateExportScheduleBody, ExportFormatInput, UpdateExportScheduleBody } from '@nibleaf/validators';
+import type { ExportFormatInput, UpdateExportScheduleBody } from '@nibleaf/validators';
 import { type QueryClient, useQuery } from '@tanstack/react-query';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
@@ -91,18 +91,6 @@ export const useGetExportDownload = (projectId: string) =>
         'download URL',
       ),
   });
-
-export const useCreateExportSchedule = (projectId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: CreateExportScheduleBody) =>
-      mutateData<ExportSchedule>(
-        await api.app.projects[':projectId'].exports.schedules.$post({ param: { projectId }, json: body }),
-        'Could not create the export schedule.',
-      ),
-    onSuccess: () => invalidateExports(queryClient, projectId),
-  });
-};
 
 export const useUpdateExportSchedule = (projectId: string, scheduleId: string) => {
   const queryClient = useQueryClient();
