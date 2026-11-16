@@ -1155,11 +1155,14 @@ function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagTo
 
 /**
  * A supported component whose opening tag can't be read (see scanTags) is kept
- * byte for byte, up to the first of: the end of its Markdown block (a blank line or
- * a heading line), or the next component tag, which it takes only when that is its
- * own closing tag. Its own text may run on over lines Markdown would start other
- * blocks with (`<Card title={x\n>`), so those don't end it. So it never holds another component
- * or crosses the closing tag of one around it; a closing tag of its own that is not
+ * byte for byte. When its own closing tag is the next component tag after it (so no
+ * other component's tag, and no closing tag of one around it, comes between), the
+ * whole authored pair is kept, blank lines and headings inside it too. Otherwise it
+ * is kept up to the first of: the end of its Markdown block (a blank line or a heading
+ * line), or that next component tag. Its own text may run on over lines Markdown would
+ * start other blocks with (`<Card title={x\n>`), so those don't end it. So it never
+ * holds another component or crosses the closing tag of one around it; a closing tag
+ * of its own that is not
  * the next tag is kept on its own (strayPartners). The editor can't tell its
  * attributes, so it doesn't structure it; read as text, the tag was escaped and its
  * closing tag dropped or moved (#714).
@@ -1187,11 +1190,12 @@ function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[]
       HEADING_LINES.lastIndex = token.start;
       headingLine = HEADING_LINES.exec(source)?.index ?? source.length;
     }
-    let end = Math.min(blankLine, headingLine);
     next = Math.max(next, index + 1);
     while (tokens[next]?.html) next++;
     const tag = tokens[next];
-    if (tag && tag.start < end) end = pairs.get(index) === next ? tag.end : tag.start;
+    let end: number;
+    if (tag && pairs.get(index) === next) end = tag.end;
+    else end = Math.min(blankLine, headingLine, tag?.start ?? source.length);
     while (end > token.start && /\s/.test(source[end - 1] ?? '')) end--;
     if (end <= coveredUntil) continue;
     coveredUntil = end;

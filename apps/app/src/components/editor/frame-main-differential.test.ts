@@ -110,6 +110,10 @@ interface SeededPage {
   /** Whether a character was inserted into the opener (which can leave a quote or brace
    *  unterminated). */
   inserted: boolean;
+  /** Where the component's opener ends, and where its own closing tag starts when it has
+   *  a body of its own blocks (null for an inline or self-closing one). */
+  openerEnd: number;
+  closerAt: number | null;
 }
 
 function seededPages(): SeededPage[] {
@@ -169,6 +173,7 @@ function seededPages(): SeededPage[] {
       const selfClosing = opener.endsWith('/>');
       let component: string;
       let componentAt = 'Intro.\n\n'.length;
+      let closerAt: number | null = null;
       if (inline || next() % 5 === 0) {
         componentAt += 'Some '.length;
         // In a line of text, as inline components are written.
@@ -184,6 +189,7 @@ function seededPages(): SeededPage[] {
           `\n\n<${tag} ${key}="Inner">\n\nInner text.\n\n</${tag}>\n\n`,
         ] as const);
         component = selfClosing ? opener : `${opener}${body}</${tag}>`;
+        if (!selfClosing) closerAt = componentAt + opener.length + body.length;
       }
       const after = pick(['', '\n\n## Later heading', '\n\n<Card title="Next">\n\nMore\n\n</Card>'] as const);
       pages.push({
@@ -194,6 +200,8 @@ function seededPages(): SeededPage[] {
         valueText: opener.slice(valueStart, valueEnd),
         valueAt: componentAt + valueStart,
         inserted,
+        openerEnd: componentAt + opener.length,
+        closerAt,
       });
     }
   }
@@ -267,7 +275,9 @@ describe('pages without a Frame read as on main', () => {
         if (!seeded || !(VALUES_714.has(seeded.value) || seeded.inserted) || !result) continue;
         if (result.saved === page || result.digest !== main.digests[index]) continue;
         const plainPage = `${page.slice(0, seeded.valueAt)}"x"${page.slice(seeded.valueAt + seeded.valueText.length)}`;
-        const plainSaved = seeded.value === REGEX_VALUE ? digest(plainPage, seeded.key).saved : null;
+        // The regular expression value's pages (`plain`) and pages with a body of blocks
+        // (`body-normalized`): main's save with the value a plain "x".
+        const plainSaved = seeded.value === REGEX_VALUE || seeded.closerAt !== null ? digest(plainPage, seeded.key).saved : null;
         records.push({ index, nodes: result.nodes.join(','), saved: result.saved, edited: result.edited, valueText: seeded.valueText, plainSaved });
       }
       writeFileSync(FIXTURE_714, `${JSON.stringify({ pages: pages.length, records }, null, 2)}\n`);
@@ -281,9 +291,14 @@ describe('pages without a Frame read as on main', () => {
       main714.records.filter((record) => record.saved !== pages[record.index]?.page).map((record) => [record.index, record]),
     );
     // #714: see the comment at the top. `exact` pages now save byte for byte; `plain` pages
-    // save what main saves for the same page with the value a plain "x".
+    // (the regular expression value) save what main saves for the same page with the value
+    // a plain "x"; `bodyNormalized` pages keep their unreadable opener and its closing tag
+    // byte for byte, and between them hold the body exactly as main saves it with a
+    // readable opener, and save to a fixed point.
     const exact: string[] = [];
     const plain: string[] = [];
+    const bodyNormalized: string[] = [];
+    const plainValue = (record: Main714Record) => record.plainSaved?.replace('"x"', record.valueText);
     // Pages saved and edited byte for byte as main does, whose nodes alone differ: text
     // with a `{…}` (`{/"/}`) that main's scan misread as a runaway string now loads as an
     // opaque inline expression node, kept byte for byte. Exactly these, by index.
@@ -297,8 +312,22 @@ describe('pages without a Frame read as on main', () => {
         exact.push(page);
         return [];
       }
-      if (record?.plainSaved != null && result.saved === record.plainSaved.replace('"x"', record.valueText)) {
+      const seeded = pages[index]?.seeded;
+      if (record && seeded?.value === REGEX_VALUE && result.saved === plainValue(record)) {
         plain.push(page);
+        return [];
+      }
+      if (
+        record &&
+        seeded &&
+        seeded.value !== REGEX_VALUE &&
+        seeded.closerAt !== null &&
+        result.saved.startsWith(page.slice(0, seeded.openerEnd)) &&
+        result.saved.endsWith(page.slice(seeded.closerAt)) &&
+        result.saved === plainValue(record) &&
+        digest(result.saved, seeded.key).saved === result.saved
+      ) {
+        bodyNormalized.push(page);
         return [];
       }
       return [{ ...result, page }];
@@ -312,13 +341,14 @@ describe('pages without a Frame read as on main', () => {
     });
     const differences = changed.filter((result) => !result.blankLineValue).map((result) => result.page);
     console.info(
-      `[frame-main-differential] ${pages.length} pages, ${differences.length} differences, ${kept.length} kept by #721, #714 ${exact.length} exact and ${plain.length} as a plain value`,
+      `[frame-main-differential] ${pages.length} pages, ${differences.length} differences, ${kept.length} kept by #721, #714 ${exact.length} exact, ${plain.length} as a plain value and ${bodyNormalized.length} body-normalized`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
     expect(lost.map((result) => result.page)).toEqual([]);
     expect(kept.length).toBe(4);
-    expect(exact.length).toBe(338);
+    expect(exact.length).toBe(328);
     expect(plain.length).toBe(45);
+    expect(bodyNormalized.length).toBe(0);
     expect(nodesOnly).toEqual([132, 943, 972, 1132]);
   }, 600_000);
 });

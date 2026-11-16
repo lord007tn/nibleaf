@@ -23,7 +23,7 @@
       "saved": "Intro.\n\n&lt;Check title=\"Old\" aria-lab\\\\el=\"L\"\n\n> \n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Check title=\"Old\" aria-lab\\\\el=\"L\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"Old\\\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Check title=\"x\"\n  aria-lab\\el=\"L\"\n\n>\n\n![Diagram](/diagram.png)\n\n</Check>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 4,
@@ -47,7 +47,7 @@
       "saved": "Intro.\n\n&lt;Step\\` title=\"a \"b\" c\"id=\"x\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Step\\` title=\"a \"b\" c\"id=\"x\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a \\\"b\\\" c\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Step\\` title=\"x\"id=\"x\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 17,
@@ -55,7 +55,7 @@
       "saved": "Intro.\n\n&lt;ResponseField name={\"x\" hidden\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ResponseField name=\"x\" hidden\n>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</ResponseField>\n\nOutro."
     },
     {
       "index": 23,
@@ -71,7 +71,7 @@
       "saved": "Intro.\n\n&lt;File name=\"xid=\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": null,
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<File name=\"x\"id=\"x\"\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</File>\n\nOutro."
     },
     {
       "index": 30,
@@ -111,7 +111,7 @@
       "saved": "Intro.\n\n&lt;Tabs title='A' {...pro\"ps}\n\n> \n\n**x**\n\nOutro.",
       "edited": null,
       "valueText": "'A'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Tabs title=\"x\" {...pro\"ps}\n\n> \n\n**x**\n\nOutro."
     },
     {
       "index": 55,
@@ -143,7 +143,7 @@
       "saved": "Intro.\n\n&lt;RelatedContent title={\"x\" xml:lang=\"en\"\n\n> \n\n<RelatedContent title=\"Inner\">\n\nInner text.\n\n</RelatedContent>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedContent title={\"x\" xml:lang=\"en\"\n\n> \n\n<RelatedContent title=\"Edited\">\n\nInner text.\n\n</RelatedContent>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedContent title=\"x\" xml:lang=\"en\"\n>\n\n<RelatedContent title=\"Inner\">\n\nInner text.\n\n</RelatedContent>\n\n</RelatedContent>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 71,
@@ -151,7 +151,7 @@
       "saved": "Intro.\n\n&lt;RelatedCard title=\"\\\\xid=\"x\"&gt;\n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedCard title=\"\\\\xid=\"x\"&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "\"\\x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedCard title=\"x\"id=\"x\">\n\n![Diagram](/diagram.png)\n\n</RelatedCard>\n\nOutro."
     },
     {
       "index": 73,
@@ -159,7 +159,7 @@
       "saved": "Intro.\n\n&lt;Widget title=\"**\"\\` aria-label=\"L\"**\n\n> \n\n![Diagram](/diagram.png)\n\n</Widget>\n\n## **Later heading**\n\n**Outro.**",
       "edited": "Intro.\n\n&lt;Widget title=\"**\"\\` aria-label=\"L\"**\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n</Widget>\n\n## **Later heading**\n\n**Outro.**",
       "valueText": "\"<b>\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Widget title=\"x\"\\` aria-label=\"L\"\n\n> \n\n![Diagram](/diagram.png)\n\n</Widget>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 74,
@@ -167,7 +167,7 @@
       "saved": "Intro.\n\n&lt;Callout type=\"x 'xml:lang=\"en\"&gt;\n\n<Callout type=\"Inner\">\n\nInner text.\n\n</Callout>\n\nOutro.",
       "edited": null,
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Callout type=\"x\" 'xml:lang=\"en\"&gt;\n\n<Callout type=\"Inner\">\n\nInner text.\n\n</Callout>\n\nOutro."
     },
     {
       "index": 79,
@@ -231,7 +231,7 @@
       "saved": "Intro.\n\n&lt;Expandable title={() =&gt; '{ return 1; }} id=\"x\"&gt;\n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;Expandable title={() =&gt; '{ return 1; }} id=\"x\"&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "{() => '{ return 1; }}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Expandable title=\"x\" id=\"x\">\n\n![Diagram](/diagram.png)\n\n</Expandable>\n\nOutro."
     },
     {
       "index": 96,
@@ -255,7 +255,7 @@
       "saved": "Intro.\n\n&lt;Folder nam\\`e={<b title=\"</Card>\">x</b>} {...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Folder nam\\`e={<b title=\"</Card>\">x</b>} {...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Folder nam\\`e=\"x\" {...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 103,
@@ -263,7 +263,7 @@
       "saved": "Intro.\n\n<File name=\"a }\\\"b\\\" c\"{...props}></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n<File name=\"Edited\"{...props}></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a }\\\"b\\\" c\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<File name=\"x\"{...props}></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 105,
@@ -303,7 +303,7 @@
       "saved": "Intro.\n\n&lt;Note title=\"Old\" da\\\\ta-x={1}\n\n> \n\nBody text.\n\nOutro.",
       "edited": null,
       "valueText": "\"Old\\\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Note title=\"x\" da\\ta-x={1}\n>\n\nBody text.\n\n</Note>\n\nOutro."
     },
     {
       "index": 114,
@@ -319,7 +319,7 @@
       "saved": "Intro.\n\n&lt;Danger title={\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Danger title={\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Danger title=\"x\"\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Danger>\n\nOutro."
     },
     {
       "index": 120,
@@ -327,7 +327,7 @@
       "saved": "Intro.\n\n&lt;Steps title=\"ü\" id=\"x\" \\`&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Steps title=\"ü\" id=\"x\" \\`&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n## Later heading\n\nOutro.",
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Steps title=\"x\" id=\"x\" \\`&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 125,
@@ -351,7 +351,7 @@
       "saved": "Intro.\n\n<Columns ti>\n\n<Column>\n\ntle={() => { return 1; }} a.b=\"x\" &gt;\n\n<Columns title=\"Inner\">\n\n<Column>\n\nInner text.\n\n</Column>\n\n</Columns>\n\n</Column>\n\n</Columns>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{() => { return 1; }}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Columns ti>\n\n<Column>\n\ntle=\"x\" a.b=\"x\" &gt;\n\n<Columns title=\"Inner\">\n\n<Column>\n\nInner text.\n\n</Column>\n\n</Columns>\n\n</Column>\n\n</Columns>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 132,
@@ -399,7 +399,7 @@
       "saved": "Intro.\n\n&lt;RelatedContent title={\"x\" {...prop\\`s}&gt;\n\n**x**\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedContent title={\"x\" {...prop\\`s}&gt;\n\n**x**\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;RelatedContent title=\"x\" {...prop\\`s}&gt;\n\n**x**\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 148,
@@ -423,7 +423,7 @@
       "saved": "Intro.\n\n<Check title=\"x\n>\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</Check>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Check title=\"x\"\n>\n\n**x**\n\n</Check>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 153,
@@ -455,7 +455,7 @@
       "saved": "Intro.\n\n&lt;Columns title={**x\\`**}&gt;\n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;Columns title={**x\\`**}&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x`</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Columns title=\"x\">\n\n<Column>\n\n![Diagram](/diagram.png)\n\n</Column>\n\n</Columns>\n\nOutro."
     },
     {
       "index": 173,
@@ -503,7 +503,7 @@
       "saved": "Intro.\n\n&lt;Info title=\"A\" href=\"/docs\"title=\"B\"\\`\n\n> \n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Info title=\"A\" href=\"/docs\"title=\"B\"\\`\n\n> \n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Info title=\"x\" href=\"/docs\"title=\"B\"\\`\n\n> \n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 192,
@@ -535,7 +535,7 @@
       "saved": "Intro.\n\n&lt;AccordionGroup }title={\"x\"id=\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;AccordionGroup }title={\"x\"id=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<AccordionGroup }title=\"x\"id=\"x\"\n>\n\n<Accordion>\n\n![Diagram](/diagram.png)\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 202,
@@ -575,7 +575,7 @@
       "saved": "Intro.\n\n&lt;RelatedCard title=\\`\"ü\"&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedCard title=\\`\"ü\"&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;RelatedCard title=\\`\"x\"&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro."
     },
     {
       "index": 226,
@@ -615,7 +615,7 @@
       "saved": "Intro.\n\n&lt;Step t}itle=\"x id=\"x\"\n\n> \n\n<Step title=\"Inner\">\n\nInner text.\n\n</Step>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Step t}itle=\"x id=\"x\"\n\n> \n\n<Step title=\"Edited\">\n\nInner text.\n\n</Step>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Step t}itle=\"x\" id=\"x\"\n>\n\n<Step title=\"Inner\">\n\nInner text.\n\n</Step>\n\n</Step>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 234,
@@ -623,7 +623,7 @@
       "saved": "Intro.\n\n&lt;Tab title={\"x\" {\\...props}&gt;\n\nBody text.\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Tab title=\"x\" {\\...props}>\n\nBody text.\n\n</Tab>\n\nOutro."
     },
     {
       "index": 239,
@@ -631,7 +631,7 @@
       "saved": "Intro.\n\n&lt;ResponseField name=\"a \"b\" c\" {...p\"rops}\n\n> \n\n**x**\n\nOutro.",
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;ResponseField name=\"x\" {...p\"rops}\n\n> \n\n**x**\n\nOutro."
     },
     {
       "index": 240,
@@ -663,7 +663,7 @@
       "saved": "Intro.\n\n<Folder name=\"a \"\\\"b\\\" c\" id=\"x\">\n\n**x**\n\n</Folder>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n<Folder name=\"Edited\"\\\"b\\\" c\" id=\"x\">\n\n**x**\n\n</Folder>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a \"\\\"b\\\" c\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Folder name=\"x\" id=\"x\">\n\n**x**\n\n</Folder>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 252,
@@ -671,7 +671,7 @@
       "saved": "Intro.\n\n&lt;ApiExample t{itle='Old' id=\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;ApiExample t{itle='Old' id=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "'Old\\'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;ApiExample t{itle=\"x\" id=\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro."
     },
     {
       "index": 259,
@@ -679,7 +679,7 @@
       "saved": "Intro.\n\n&lt;Callout t{ype={\"x\"} a.b=\"x\"&gt;\n\n**x**\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Callout t{ype=\"x\" a.b=\"x\"&gt;\n\n**x**\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 262,
@@ -687,7 +687,7 @@
       "saved": "Intro.\n\n&lt;Check titl\"e=\"A\" id=\"x\"\n\n> \n\n<Check title=\"Inner\">\n\nInner text.\n\n</Check>\n\nOutro.",
       "edited": null,
       "valueText": "\"A\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Check titl\"e=\"x\" id=\"x\"\n\n> \n\n<Check title=\"Inner\">\n\nInner text.\n\n</Check>\n\nOutro."
     },
     {
       "index": 263,
@@ -703,7 +703,7 @@
       "saved": "Intro.\n\n&lt;CardGroup cols=\"x data-x={1}&gt;\n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": null,
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CardGroup cols=\"x\" data-x={1}>\n\n<Card>\n\n![Diagram](/diagram.png)\n\n</Card>\n\n</CardGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 267,
@@ -719,7 +719,7 @@
       "saved": "Intro.\n\n&lt;Tabs title={**x**\"} aria-label=\"L\"\n\n> \n\n<Tabs title=\"Inner\">\n\n<Tab>\n\nInner text.\n\n</Tab>\n\n</Tabs>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Tabs title={**x**\"} aria-label=\"L\"\n\n> \n\n<Tabs title=\"Inner\">\n\n<Tab title=\"Edited\">\n\nInner text.\n\n</Tab>\n\n</Tabs>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Tabs title=\"x\"\n  aria-label=\"L\"\n\n>\n\n<Tab>\n\n<Tabs title=\"Inner\">\n\n<Tab>\n\nInner text.\n\n</Tab>\n\n</Tabs>\n\n</Tab>\n\n</Tabs>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 272,
@@ -751,7 +751,7 @@
       "saved": "Intro.\n\n&lt;Column title={\"a } \\\" b\"} href=\\`\"/docs\"title=\"B\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;Column title={\"a } \\\" b\"} href=\\`\"/docs\"title=\"B\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Column title=\"x\" href=\\`\"/docs\"title=\"B\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro."
     },
     {
       "index": 282,
@@ -767,7 +767,7 @@
       "saved": "Intro.\n\n&lt;Update label={() => { return 1; }} href=\"/docs\"title\"=\"B\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{() => { return 1; }}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Update label=\"x\" href=\"/docs\"title\"=\"B\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 290,
@@ -799,7 +799,7 @@
       "saved": "Intro.\n\n&lt;Danger title={<b title=\"</Card>\">x</b>} \"aria-label=\"L\"\n\n> \n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Danger title={<b title=\"</Card>\">x</b>} \"aria-label=\"L\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Danger title=\"x\" \"aria-label=\"L\"\n\n> \n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro."
     },
     {
       "index": 302,
@@ -815,7 +815,7 @@
       "saved": "Intro.\n\n&lt;CardGroup cols={\"x\" id=\"x\"&gt;\n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CardGroup cols=\"x\" id=\"x\">\n\n<Card>\n\nBody text.\n\n</Card>\n\n</CardGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 306,
@@ -823,7 +823,7 @@
       "saved": "Intro.\n\n&lt;Step title={\"x\" data-x={1}\n\n> \n\n**x**\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Step title=\"x\" data-x={1}\n>\n\n**x**\n\n</Step>\n\nOutro."
     },
     {
       "index": 307,
@@ -839,7 +839,7 @@
       "saved": "Intro.\n\n<AccordionGroup title=\"a \\\"b\\\" \\c\"\n>\n\n<Accordion>\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<AccordionGroup title=\"a \\\"b\\\" \\c\"\n>\n\n<Accordion title=\"Edited\">\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
       "valueText": "\"a \\\"b\\\" \\c\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<AccordionGroup title=\"x\"\n>\n\n<Accordion>\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 310,
@@ -887,7 +887,7 @@
       "saved": "Intro.\n\n&lt;RelatedCard title={'Old' hidden&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedCard title={'Old' hidden&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "'Old\\'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;RelatedCard title={\"x\" hidden&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro."
     },
     {
       "index": 332,
@@ -895,7 +895,7 @@
       "saved": "Intro.\n\n&lt;Widget title=\"ü\" a\\`ria-label=\"L\"\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Widget>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Widget title=\"ü\" a\\`ria-label=\"L\"\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n</Widget>\n\n## Later heading\n\nOutro.",
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Widget title=\"x\" a\\`ria-label=\"L\"\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Widget>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 335,
@@ -967,7 +967,7 @@
       "saved": "Intro.\n\n&lt;Columns title={\"x\" data-x={1}&gt;\n\n**x**\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Columns title=\"x\" data-x={1}>\n\n<Column>\n\n**x**\n\n</Column>\n\n</Columns>\n\nOutro."
     },
     {
       "index": 353,
@@ -1007,7 +1007,7 @@
       "saved": "Intro.\n\n&lt;Update label={**x**\\`} id=\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": null,
       "valueText": "{<b title=\"</Card>\">x</b>`}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Update label=\"x\" id=\"x\"\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Update>\n\nOutro."
     },
     {
       "index": 362,
@@ -1015,7 +1015,7 @@
       "saved": "Intro.\n\n&lt;File name={\"a } \" \"b\"}&gt;\n\nBody text.\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"a } \\\" \"b\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<File name=\"x\"></File>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 365,
@@ -1023,7 +1023,7 @@
       "saved": "Intro.\n\n&lt;ResponseExample title={\"x\"&gt;\n\n<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;ResponseExample title={\"x\"&gt;\n\n<ResponseExample title=\"Edited\">\n\nInner text.\n\n</ResponseExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ResponseExample title=\"x\">\n\n<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>\n\n</ResponseExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 366,
@@ -1031,7 +1031,7 @@
       "saved": "Intro.\n\n<RelatedContent title=\"<b>\" xml:lang=\"en\"\n\">\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</RelatedContent>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<RelatedContent title=\"Edited\" xml:lang=\"en\"\n\">\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</RelatedContent>\n\n## Later heading\n\nOutro.",
       "valueText": "\"<b>\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedContent title=\"x\" xml:lang=\"en\"\n\">\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</RelatedContent>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 367,
@@ -1047,7 +1047,7 @@
       "saved": "Intro.\n\n&lt;Callout \"type=\"ü\" xml:lang=\"en\"\n\n> \n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": null,
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Callout \"type=\"x\" xml:lang=\"en\"\n\n> \n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 374,
@@ -1055,7 +1055,7 @@
       "saved": "Intro.\n\n&lt;Warning title=\"x href=\"/docs\"title=\"B\"&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Warning title=\"x href=\"/docs\"title=\"B\"&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Warning title=\"x\" href=\"/docs\"title=\"B\">\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Warning>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 376,
@@ -1071,7 +1071,7 @@
       "saved": "Intro.\n\n&lt;Tabs title={() =&gt; '{ return 1; }}id=\"x\"\n\n> \n\n<Tabs title=\"Inner\">\n\n<Tab>\n\nInner text.\n\n</Tab>\n\n</Tabs>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Tabs title={() =&gt; '{ return 1; }}id=\"x\"\n\n> \n\n<Tabs title=\"Inner\">\n\n<Tab title=\"Edited\">\n\nInner text.\n\n</Tab>\n\n</Tabs>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{() => '{ return 1; }}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Tabs title=\"x\"id=\"x\"\n>\n\n<Tab>\n\n<Tabs title=\"Inner\">\n\n<Tab>\n\nInner text.\n\n</Tab>\n\n</Tabs>\n\n</Tab>\n\n</Tabs>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 392,
@@ -1143,7 +1143,7 @@
       "saved": "Intro.\n\n&lt;Check title=\"x{...props}\n\n> \n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Check title=\"x{...props}\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Check title=\"x\"{...props}\n>\n\n![Diagram](/diagram.png)\n\n</Check>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 411,
@@ -1151,7 +1151,7 @@
       "saved": "Intro.\n\n&lt;Warning title={\"x\" id=\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Warning title={\"x\" id=\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Warning title=\"x\" id=\"x\"\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Warning>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 413,
@@ -1167,7 +1167,7 @@
       "saved": "Intro.\n\n<CardGroup cols>\n\n<Card>\n\n=\"ü\" id=\"x\" &gt;\n\n**x**\n\n</Card>\n\n</CardGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n<CardGroup cols=\"Edited\">\n\n<Card>\n\n=\"ü\" id=\"x\" &gt;\n\n**x**\n\n</Card>\n\n</CardGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CardGroup cols>\n\n<Card>\n\n=\"x\" id=\"x\" &gt;\n\n**x**\n\n</Card>\n\n</CardGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 420,
@@ -1183,7 +1183,7 @@
       "saved": "Intro.\n\n<CodeGroup title=}\"<b>\" a.b=\"x\">\n\n**x**\n\n</CodeGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n<CodeGroup title=}\"<b>\" a.b=\"x\">\n\n**x**\n\n</CodeGroup>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"<b>\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CodeGroup title=}\"x\" a.b=\"x\">\n\n**x**\n\n</CodeGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 425,
@@ -1199,7 +1199,7 @@
       "saved": "Intro.\n\n&lt;Columns title={\"x\" xml:lan\\\\g=\"en\"&gt;\n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Columns title={\"x\" xml:lan\\\\g=\"en\"&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Columns title=\"x\" xml:lan\\g=\"en\">\n\n<Column>\n\nBody text.\n\n</Column>\n\n</Columns>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 428,
@@ -1207,7 +1207,7 @@
       "saved": "Intro.\n\n&lt;Banner type=\"x{...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": null,
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Banner type=\"x\"{...props}>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Banner>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 433,
@@ -1215,7 +1215,7 @@
       "saved": "Intro.\n\n&lt;Update label={\"x\" data-x={1}&gt;\n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Update label=\"x\" data-x={1}>\n\n![Diagram](/diagram.png)\n\n</Update>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 435,
@@ -1223,7 +1223,7 @@
       "saved": "Intro.\n\n&lt;Folder name={() =&gt; { retur\\`n 1; }} hidden\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": null,
       "valueText": "{() => { retur`n 1; }}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Folder name=\"x\" hidden\n>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Folder>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 436,
@@ -1231,7 +1231,7 @@
       "saved": "Intro.\n\n&lt;File name=\"x{...pr{ops}&gt;\n\n<File name=\"Inner\"></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;File name=\"x{...pr{ops}&gt;\n\n<File name=\"Inner\"></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;File name=\"x\"{...pr{ops}&gt;\n\n<File name=\"Inner\"></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 439,
@@ -1255,7 +1255,7 @@
       "saved": "Intro.\n\n&lt;Callout type={\"x\" xml:lang=\"en\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Callout type=\"x\" xml:lang=\"en\">\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Callout>\n\nOutro."
     },
     {
       "index": 449,
@@ -1271,7 +1271,7 @@
       "saved": "Intro.\n\n&lt;Steps title=\"x a.b=\"x\"&gt;\n\nBody text.\n\nOutro.",
       "edited": null,
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Steps title=\"x\" a.b=\"x\">\n\n<Step>\n\nBody text.\n\n</Step>\n\n</Steps>\n\nOutro."
     },
     {
       "index": 456,
@@ -1287,7 +1287,7 @@
       "saved": "Intro.\n\n<ParamField path=\"a > b\"{.}..props}>\n\n**x**\n\n</ParamField>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<ParamField path=\"Edited\"{.}..props}>\n\n**x**\n\n</ParamField>\n\n## Later heading\n\nOutro.",
       "valueText": "\"a > b\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ParamField path=\"x\"{.}..props}>\n\n**x**\n\n</ParamField>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 465,
@@ -1295,7 +1295,7 @@
       "saved": "Intro.\n\n&lt;Banner type={\"x\" href=\"/docs\"title=\"B\"\n\n> \n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Banner type=\"x\" href=\"/docs\"title=\"B\"\n>\n\n![Diagram](/diagram.png)\n\n</Banner>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 469,
@@ -1367,7 +1367,7 @@
       "saved": "Intro.\n\n&lt;ResponseField name\\`=\"**\" {...props}**\n\n> \n\n**x**\n\n<Card title=\"Next\">\n\n**More**\n\n</Card>\n\n**Outro.**",
       "edited": "Intro.\n\n&lt;ResponseField name\\`=\"**\" {...props}**\n\n> \n\n**x**\n\n<Card title=\"Next\">\n\n**More**\n\n</Card>\n\n**Outro.**",
       "valueText": "\"<b>\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;ResponseField name\\`=\"x\" {...props}\n\n> \n\n**x**\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 500,
@@ -1375,7 +1375,7 @@
       "saved": "Intro.\n\n&lt;Columns title=\"x\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Columns title=\"x\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Columns title=\"x\"\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Columns>\n\nOutro."
     },
     {
       "index": 501,
@@ -1399,7 +1399,7 @@
       "saved": "Intro.\n\n&lt;Update label=\"ü\"{...props} /\"&gt;\n\n<Update label=\"Inner\">\n\nInner text.\n\n</Update>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Update label=\"ü\"{...props} /\"&gt;\n\n<Update label=\"Edited\">\n\nInner text.\n\n</Update>\n\nOutro.",
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Update label=\"x\"{...props} /\"&gt;\n\n<Update label=\"Inner\">\n\nInner text.\n\n</Update>\n\nOutro."
     },
     {
       "index": 510,
@@ -1431,7 +1431,7 @@
       "saved": "Intro.\n\n&lt;RelatedCard t\"itle=\"Old\" id=\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedCard t\"itle=\"Old\" id=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "\"Old\\\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;RelatedCard t\"itle=\"x\" id=\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro."
     },
     {
       "index": 518,
@@ -1447,7 +1447,7 @@
       "saved": "Intro.\n\n&lt;Check title={\"x\" {...props}\n\n> \n\n<Check title=\"Inner\">\n\nInner text.\n\n</Check>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Check title={\"x\" {...props}\n\n> \n\n<Check title=\"Inner\">\n\nInner text.\n\n</Check>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Check title=\"x\" {...props}\n>\n\n<Check title=\"Inner\">\n\nInner text.\n\n</Check>\n\n</Check>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 522,
@@ -1455,7 +1455,7 @@
       "saved": "Intro.\n\n<Warning title={\"a } \\\" b\"}>\n\nid=\"x\" &gt;\n\nBody text.\n\n</Warning>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"a } \\\" b\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Warning title=\"x\">\n\nid=\"x\" &gt;\n\nBody text.\n\n</Warning>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 523,
@@ -1471,7 +1471,7 @@
       "saved": "Intro.\n\n&lt;Info title={a\\` / b}id=\"x\"\n\n> \n\nBody text.\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{a` / b}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Info title=\"x\"id=\"x\"\n>\n\nBody text.\n\n</Info>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 525,
@@ -1487,7 +1487,7 @@
       "saved": "Intro.\n\n&lt;CodeGroup title={() =&gt; { return\\` 1; }} href=\"/docs\"title=\"B\"\n\n> \n\n**x**\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;CodeGroup title={() =&gt; { return\\` 1; }} href=\"/docs\"title=\"B\"\n\n> \n\n**x**\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{() => { return` 1; }}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CodeGroup title=\"x\" href=\"/docs\"title=\"B\"\n>\n\n**x**\n\n</CodeGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 534,
@@ -1495,7 +1495,7 @@
       "saved": "Intro.\n\n&lt;ParamField path=\"x data-x={1}\n\n> \n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": null,
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ParamField path=\"x\" data-x={1}\n>\n\n![Diagram](/diagram.png)\n\n</ParamField>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 535,
@@ -1511,7 +1511,7 @@
       "saved": "Intro.\n\n&lt;Expandable title=\"A\"{...props} \"&gt;\n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Expandable title=\"A\"{...props} \"&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Expandable title=\"x\"{...props} \"&gt;\n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 537,
@@ -1527,7 +1527,7 @@
       "saved": "Intro.\n\n&lt;Banner type={\"x\" xml:lang=\"en\"\n\n> \n\nBody text.\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Banner type=\"x\" xml:lang=\"en\"\n>\n\nBody text.\n\n</Banner>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 543,
@@ -1551,7 +1551,7 @@
       "saved": "Intro.\n\n&lt;File name'={a / b} hidden\n\n> \n\n<File name=\"Inner\"></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;File name'={a / b} hidden\n\n> \n\n<File name=\"Inner\"></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{a / b}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;File name'=\"x\" hidden\n\n> \n\n<File name=\"Inner\"></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 549,
@@ -1567,7 +1567,7 @@
       "saved": "Intro.\n\n&lt;ResponseExample title\\`=\"xid=\"x\"&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;ResponseExample title\\`=\"xid=\"x\"&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;ResponseExample title\\`=\"x\"id=\"x\"&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro."
     },
     {
       "index": 555,
@@ -1575,7 +1575,7 @@
       "saved": "Intro.\n\n<Callout type=\"x href=\"/docs\"title=\"B\">\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</Callout>\n\nOutro.",
       "edited": null,
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Callout type=\"x\" href=\"/docs\"title=\"B\">\n\n**x**\n\n</Callout>\n\nOutro."
     },
     {
       "index": 558,
@@ -1599,7 +1599,7 @@
       "saved": "Intro.\n\n&lt;Danger{ title=\"ü\" hidden&gt;\n\n<Danger title=\"Inner\">\n\nInner text.\n\n</Danger>\n\nOutro.",
       "edited": null,
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Danger{ title=\"x\" hidden&gt;\n\n<Danger title=\"Inner\">\n\nInner text.\n\n</Danger>\n\nOutro."
     },
     {
       "index": 565,
@@ -1607,7 +1607,7 @@
       "saved": "Intro.\n\n&lt;Step title={&lt;b titl{e=\"</Card>\">x</b>}\n\n> \n\n<Step title=\"Inner\">\n\nInner text.\n\n</Step>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Step title={&lt;b titl{e=\"</Card>\">x</b>}\n\n> \n\n<Step title=\"Edited\">\n\nInner text.\n\n</Step>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b titl{e=\"</Card>\">x</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Step title=\"x\"\n>\n\n<Step title=\"Inner\">\n\nInner text.\n\n</Step>\n\n</Step>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 566,
@@ -1623,7 +1623,7 @@
       "saved": "Intro.\n\n&lt;Tab title={\"x\" data-x={1}&gt;\n\n**x**\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Tab title=\"x\" data-x={1}>\n\n**x**\n\n</Tab>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 569,
@@ -1655,7 +1655,7 @@
       "saved": "Intro.\n\n<RequestExample title='Old\\>' a.b=\"x\">\n\n**x**\n\n</RequestExample>\n\nOutro.",
       "edited": "Intro.\n\n<RequestExample title=\"Edited\" a.b=\"x\">\n\n**x**\n\n</RequestExample>\n\nOutro.",
       "valueText": "'Old\\>'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RequestExample title=\"x\" a.b=\"x\">\n\n**x**\n\n</RequestExample>\n\nOutro."
     },
     {
       "index": 588,
@@ -1695,7 +1695,7 @@
       "saved": "Intro.\n\n&lt;Steps title=\"x aria-label=\"L\"}\n\n> \n\n<Steps title=\"Inner\">\n\n<Step>\n\nInner text.\n\n</Step>\n\n</Steps>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Steps title=\"x aria-label=\"L\"}\n\n> \n\n<Steps title=\"Inner\">\n\n<Step title=\"Edited\">\n\nInner text.\n\n</Step>\n\n</Steps>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Steps title=\"x\"\n  aria-label=\"L\"}\n>\n\n<Step>\n\n<Steps title=\"Inner\">\n\n<Step>\n\nInner text.\n\n</Step>\n\n</Steps>\n\n</Step>\n\n</Steps>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 602,
@@ -1719,7 +1719,7 @@
       "saved": "Intro.\n\n<ParamField path=\"\\A\" xml:lang=\"en\">\n\n**x**\n\n</ParamField>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<ParamField path=\"Edited\" xml:lang=\"en\">\n\n**x**\n\n</ParamField>\n\n## Later heading\n\nOutro.",
       "valueText": "\"\\A\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ParamField path=\"x\" xml:lang=\"en\">\n\n**x**\n\n</ParamField>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 611,
@@ -1727,7 +1727,7 @@
       "saved": "Intro.\n\n&lt;Columns title=\"x xml:lang=\"en\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;Columns title=\"x xml:lang=\"en\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Columns title=\"x\" xml:lang=\"en\"\n>\n\n<Column>\n\n![Diagram](/diagram.png)\n\n</Column>\n\n</Columns>\n\nOutro."
     },
     {
       "index": 613,
@@ -1759,7 +1759,7 @@
       "saved": "Intro.\n\n<RelatedContent title={\"x\"\n  ar}ia-label=\"L\"\n>\n\n**x**\n\n</RelatedContent>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<RelatedContent title=\"Edited\"ia-label=\"L\"\n>\n\n**x**\n\n</RelatedContent>\n\n## Later heading\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedContent title=\"x\"\n  ar}ia-label=\"L\"\n>\n\n**x**\n\n</RelatedContent>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 627,
@@ -1775,7 +1775,7 @@
       "saved": "Intro.\n\n&lt;Widget title=\"x xml:lang=\"en\"\n\n> \n\n<Widget title=\"Inner\">\n\nInner text.\n\n</Widget>\n\n</Widget>\n\nOutro.",
       "edited": null,
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Widget title=\"x\" xml:lang=\"en\"\n>\n\n<Widget title=\"Inner\">\n\nInner text.\n\n</Widget>\n\n</Widget>\n\nOutro."
     },
     {
       "index": 635,
@@ -1783,7 +1783,7 @@
       "saved": "Intro.\n\n&lt;Info title={\"x\"} da{ta-x={1}\n\n> \n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Info title={\"x\"} da{ta-x={1}\n\n> \n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Info title=\"x\" da{ta-x={1}\n\n> \n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 637,
@@ -1807,7 +1807,7 @@
       "saved": "Intro.\n\n<Columns ti\"tle={<b title=\"</Card>\n\n<Column>\n\n\"&gt;x} {...props}&gt;\n\n![Diagram](/diagram.png)\n\n</Column>\n\n</Columns>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n<Columns ti\"tle={<b title=\"</Card>\n\n<Column>\n\n\"&gt;x} {...props}&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\n</Column>\n\n</Columns>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Columns ti\"tle=\"x\" {...props}&gt;\n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 649,
@@ -1815,7 +1815,7 @@
       "saved": "Intro.\n\n&lt;Column title={\"x\" href=\"/docs\"title=\"B\"&gt;\n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Column title={\"x\" href=\"/docs\"title=\"B\"&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Column title=\"x\" href=\"/docs\"title=\"B\">\n\nBody text.\n\n</Column>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 652,
@@ -1847,7 +1847,7 @@
       "saved": "Intro.\n\n&lt;Check title={\"a } &lt;nibleaf-mdx-opaque-inline data-source=\"%7B%22%20b%22%7D\" data-name=\"Expression\"&gt; aria-label=\"L\"\n\n> \n\nBody text.\n\nOutro.",
       "edited": null,
       "valueText": "{\"a } \\{\" b\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Check title=\"x\"\n  aria-label=\"L\"\n\n>\n\nBody text.\n\n</Check>\n\nOutro."
     },
     {
       "index": 672,
@@ -1911,7 +1911,7 @@
       "saved": "Intro.\n\n&lt;Folder name\"={\"x\" {...props}\n\n> \n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Folder name\"={\"x\" {...props}\n\n> \n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Folder name\"=\"x\" {...props}\n\n> \n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 696,
@@ -1919,7 +1919,7 @@
       "saved": "Intro.\n\n&lt;ApiExample title=\"x\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;ApiExample title=\"x\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ApiExample title=\"x\"\n>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</ApiExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 698,
@@ -1927,7 +1927,7 @@
       "saved": "Intro.\n\n&lt;ResponseExample title=\"x{...props}&gt;\n\n<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;ResponseExample title=\"x{...props}&gt;\n\n<ResponseExample title=\"Edited\">\n\nInner text.\n\n</ResponseExample>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ResponseExample title=\"x\"{...props}>\n\n<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>\n\n</ResponseExample>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 699,
@@ -1935,7 +1935,7 @@
       "saved": "Intro.\n\n<RelatedContent titl>\n\ne={\"a } \\\" b\"} data-x={1}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</RelatedContent>\n\nOutro.",
       "edited": "Intro.\n\n<RelatedContent titl title=\"Edited\">\n\ne={\"a } \\\" b\"} data-x={1}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</RelatedContent>\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedContent titl>\n\ne=\"x\" data-x={1}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</RelatedContent>\n\nOutro."
     },
     {
       "index": 706,
@@ -1959,7 +1959,7 @@
       "saved": "Intro.\n\n&lt;AccordionGroup ti{tle={() => { return 1; }}id=\"x\"&gt;\n\n<AccordionGroup title=\"Inner\">\n\n<Accordion>\n\nInner text.\n\n</Accordion>\n\n</AccordionGroup>\n\nOutro.",
       "edited": "Intro.\n\n&lt;AccordionGroup ti{tle={() => { return 1; }}id=\"x\"&gt;\n\n<AccordionGroup title=\"Inner\">\n\n<Accordion title=\"Edited\">\n\nInner text.\n\n</Accordion>\n\n</AccordionGroup>\n\nOutro.",
       "valueText": "{() => { return 1; }}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;AccordionGroup ti{tle=\"x\"id=\"x\"&gt;\n\n<AccordionGroup title=\"Inner\">\n\n<Accordion>\n\nInner text.\n\n</Accordion>\n\n</AccordionGroup>\n\nOutro."
     },
     {
       "index": 721,
@@ -2015,7 +2015,7 @@
       "saved": "Intro.\n\n&lt;Folder{ name={\"x\"id=\"x\"&gt;\n\n<Folder name=\"Inner\">\n\nInner text.\n\n</Folder>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Folder{ name={\"x\"id=\"x\"&gt;\n\n<Folder name=\"Edited\">\n\nInner text.\n\n</Folder>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Folder{ name=\"x\"id=\"x\"&gt;\n\n<Folder name=\"Inner\">\n\nInner text.\n\n</Folder>\n\nOutro."
     },
     {
       "index": 734,
@@ -2023,7 +2023,7 @@
       "saved": "Intro.\n\n&lt;RequestExample title={\"a } \\\" b\"}id=\"\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;RequestExample title={\"a } \\\" b\"}id=\"\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;RequestExample title=\"x\"id=\"\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro."
     },
     {
       "index": 736,
@@ -2055,7 +2055,7 @@
       "saved": "Intro.\n\n&lt;Danger title={\"x\" aria-label=\"L\"\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Danger title={\"x\" aria-label=\"L\"\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Danger title=\"x\"\n  aria-label=\"L\"\n\n>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Danger>\n\nOutro."
     },
     {
       "index": 746,
@@ -2087,7 +2087,7 @@
       "saved": "Intro.\n\n&lt;Tab title='Old' hidde}n\n\n> \n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Tab title='Old' hidde}n\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "'Old\\'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Tab title=\"x\" hidde}n\n>\n\n![Diagram](/diagram.png)\n\n</Tab>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 753,
@@ -2095,7 +2095,7 @@
       "saved": "Intro.\n\n<AccordionGroup title=\"a > b\" id=\"x'\"\n>\n\n<Accordion>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Accordion>\n\n</AccordionGroup>\n\nOutro.",
       "edited": "Intro.\n\n<AccordionGroup title=\"a > b\" id=\"x'\"\n>\n\n<Accordion title=\"Edited\">\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Accordion>\n\n</AccordionGroup>\n\nOutro.",
       "valueText": "\"a > b\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<AccordionGroup title=\"x\" id=\"x'\"\n>\n\n<Accordion>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Accordion>\n\n</AccordionGroup>\n\nOutro."
     },
     {
       "index": 756,
@@ -2151,7 +2151,7 @@
       "saved": "Intro.\n\n<RelatedCard title={<b title=\"</Card>\">x</b>}\n  }aria-label=\"L\"\n>\n\n**x**\n\n</RelatedCard>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<RelatedCard title=\"Edited\"\n  }aria-label=\"L\"\n>\n\n**x**\n\n</RelatedCard>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedCard title=\"x\"\n  }aria-label=\"L\"\n>\n\n**x**\n\n</RelatedCard>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 776,
@@ -2167,7 +2167,7 @@
       "saved": "Intro.\n\n&lt;Check title=\"A\" href=\"/docs\"title={\"B\"&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Check title=\"A\" href=\"/docs\"title={\"B\"&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Check title=\"x\" href=\"/docs\"title={\"B\"&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro."
     },
     {
       "index": 783,
@@ -2183,7 +2183,7 @@
       "saved": "Intro.\n\n&lt;CardGroup \\`cols=\"A\"id=\"x\"\n\n> \n\n<CardGroup cols=\"Inner\">\n\n<Card>\n\nInner text.\n\n</Card>\n\n</CardGroup>\n\nOutro.",
       "edited": "Intro.\n\n&lt;CardGroup \\`cols=\"A\"id=\"x\"\n\n> \n\n<CardGroup cols=\"Edited\">\n\n<Card>\n\nInner text.\n\n</Card>\n\n</CardGroup>\n\nOutro.",
       "valueText": "\"A\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;CardGroup \\`cols=\"x\"id=\"x\"\n\n> \n\n<CardGroup cols=\"Inner\">\n\n<Card>\n\nInner text.\n\n</Card>\n\n</CardGroup>\n\nOutro."
     },
     {
       "index": 787,
@@ -2207,7 +2207,7 @@
       "saved": "Intro.\n\n&lt;ResponseField {name=\"a &gt; b\" hidden&gt;\n\n<ResponseField name=\"Inner\">\n\nInner text.\n\n</ResponseField>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;ResponseField {name=\"a &gt; b\" hidden&gt;\n\n<ResponseField name=\"Edited\">\n\nInner text.\n\n</ResponseField>\n\n## Later heading\n\nOutro.",
       "valueText": "\"a > b\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;ResponseField {name=\"x\" hidden&gt;\n\n<ResponseField name=\"Inner\">\n\nInner text.\n\n</ResponseField>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 795,
@@ -2215,7 +2215,7 @@
       "saved": "Intro.\n\n&lt;Expandable title={'Old' aria-label=\"L\"\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Expandable title={'Old' aria-label=\"L\"\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "'Old\\'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Expandable title={\"x\" aria-label=\"L\"\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro."
     },
     {
       "index": 799,
@@ -2231,7 +2231,7 @@
       "saved": "Intro.\n\n<File name='Old\\\\' a.b=\"x\"\n></File>\n\nOutro.",
       "edited": "Intro.\n\n<File name=\"Edited\" a.b=\"x\"\n></File>\n\nOutro.",
       "valueText": "'Old\\\\'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<File name=\"x\" a.b=\"x\"\n></File>\n\nOutro."
     },
     {
       "index": 808,
@@ -2247,7 +2247,7 @@
       "saved": "Intro.\n\n&lt;Check title={\"x\"id=\"x\"\n\n> \n\n**x**\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Check title={\"x\"id=\"x\"\n\n> \n\n**x**\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Check title=\"x\"id=\"x\"\n>\n\n**x**\n\n</Check>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 818,
@@ -2255,7 +2255,7 @@
       "saved": "Intro.\n\n&lt;Warning title='Ol\"d'id=\"x\"\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Warning title='Ol\"d'id=\"x\"\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "'Ol\"d\\'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Warning title=\"x\"id=\"x\"\n>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Warning>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 819,
@@ -2279,7 +2279,7 @@
       "saved": "Intro.\n\n<CardGroup c\\ols=\"<b>\" xml:lang=\"en\"\n>\n\n<Card>\n\nBody text.\n\n</Card>\n\n</CardGroup>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<CardGroup c\\ols=\"<b>\" xml:lang=\"en\"\n cols=\"Edited\">\n\n<Card>\n\nBody text.\n\n</Card>\n\n</CardGroup>\n\n## Later heading\n\nOutro.",
       "valueText": "\"<b>\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CardGroup c\\ols=\"x\" xml:lang=\"en\"\n>\n\n<Card>\n\nBody text.\n\n</Card>\n\n</CardGroup>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 823,
@@ -2287,7 +2287,7 @@
       "saved": "Intro.\n\n&lt;Steps title=\"**\"' a.b=\"x\"**\n\n> \n\n**Body text.**\n\n## **Later heading**\n\n**Outro.**",
       "edited": null,
       "valueText": "\"<b>\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Steps title=\"x\"' a.b=\"x\"\n\n> \n\nBody text.\n\n## Later heading\n\nOutro."
     },
     {
       "index": 825,
@@ -2335,7 +2335,7 @@
       "saved": "Intro.\n\n&lt;ResponseField{ name={\"x\" xml:lang=\"en\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;ResponseField{ name=\"x\" xml:lang=\"en\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro."
     },
     {
       "index": 838,
@@ -2415,7 +2415,7 @@
       "saved": "Intro.\n\n&lt;Columns title='Old'{...props\"}&gt;\n\nBody text.\n\nOutro.",
       "edited": null,
       "valueText": "'Old\\'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Columns title=\"x\"{...props\"}&gt;\n\nBody text.\n\nOutro."
     },
     {
       "index": 871,
@@ -2423,7 +2423,7 @@
       "saved": "Intro.\n\n&lt;Column title={\"x\" id=\"x\"\n\n> \n\n**x**\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Column title=\"x\" id=\"x\"\n>\n\n**x**\n\n</Column>\n\nOutro."
     },
     {
       "index": 872,
@@ -2455,7 +2455,7 @@
       "saved": "Intro.\n\n&lt;ResponseExample title'='Old' data-x={1}&gt;\n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;ResponseExample title'='Old' data-x={1}&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "'Old\\'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;ResponseExample title'=\"x\" data-x={1}&gt;\n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 884,
@@ -2463,7 +2463,7 @@
       "saved": "Intro.\n\n&lt;RelatedContent \\`title=\"a &gt; b\" id=\"x\"\n\n> \n\nBody text.\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "\"a > b\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;RelatedContent \\`title=\"x\" id=\"x\"\n\n> \n\nBody text.\n\n## Later heading\n\nOutro."
     },
     {
       "index": 893,
@@ -2487,7 +2487,7 @@
       "saved": "Intro.\n\n&lt;Card tit'le={<b title=\"</Card>\">x</b>} {...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Card tit'le={<b title=\"</Card>\">x</b>} {...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Card tit'le=\"x\" {...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 899,
@@ -2503,7 +2503,7 @@
       "saved": "Intro.\n\n<Tab t>\n\nitle={a / b} id=\"x\" &gt;\n\n**x**\n\n</Tab>\n\nOutro.",
       "edited": "Intro.\n\n<Tab t title=\"Edited\">\n\nitle={a / b} id=\"x\" &gt;\n\n**x**\n\n</Tab>\n\nOutro.",
       "valueText": "{a / b}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Tab t>\n\nitle=\"x\" id=\"x\" &gt;\n\n**x**\n\n</Tab>\n\nOutro."
     },
     {
       "index": 901,
@@ -2527,7 +2527,7 @@
       "saved": "Intro.\n\n<Columns title=\"a \">\n\n<Column>\n\nb\" aria-label=\"L\" &gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Column>\n\n</Columns>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<Columns title=\"a \">\n\n<Column>\n\nb\" aria-label=\"L\" &gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n</Column>\n\n</Columns>\n\n## Later heading\n\nOutro.",
       "valueText": "\"a \"> b\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Columns title=\"x\"\n  aria-label=\"L\"\n>\n\n<Column>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Column>\n\n</Columns>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 908,
@@ -2543,7 +2543,7 @@
       "saved": "Intro.\n\n&lt;Banner' type='A'id=\"x\"\n\n> \n\n**x**\n\nOutro.",
       "edited": null,
       "valueText": "'A'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Banner' type=\"x\"id=\"x\"\n\n> \n\n**x**\n\nOutro."
     },
     {
       "index": 913,
@@ -2559,7 +2559,7 @@
       "saved": "Intro.\n\n<Update label=\"ü\" d>\n\nata-x={1}&gt;\n\nBody text.\n\n</Update>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n<Update label=\"Edited\" d>\n\nata-x={1}&gt;\n\nBody text.\n\n</Update>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Update label=\"x\" d>\n\nata-x={1}&gt;\n\nBody text.\n\n</Update>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 915,
@@ -2567,7 +2567,7 @@
       "saved": "Intro.\n\n&lt;FileTree title\\`=\"A\" id=\"x\"&gt;\n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;FileTree title\\`=\"A\" id=\"x\"&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "\"A\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;FileTree title\\`=\"x\" id=\"x\"&gt;\n\n![Diagram](/diagram.png)\n\nOutro."
     },
     {
       "index": 920,
@@ -2599,7 +2599,7 @@
       "saved": "Intro.\n\n&lt;Warning title=\"ü\"' xml:lang=\"en\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Warning title=\"ü\"' xml:lang=\"en\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Warning title=\"x\"' xml:lang=\"en\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro."
     },
     {
       "index": 931,
@@ -2607,7 +2607,7 @@
       "saved": "Intro.\n\n&lt;Info title={\"x\" data-x={1}\n\n> \n\n<Info title=\"Inner\">\n\nInner text.\n\n</Info>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Info title=\"x\" data-x={1}\n>\n\n<Info title=\"Inner\">\n\nInner text.\n\n</Info>\n\n</Info>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 933,
@@ -2647,7 +2647,7 @@
       "saved": "Intro.\n\n&lt;ResponseField name='A' xml:l\"ang=\"en\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": null,
       "valueText": "'A'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;ResponseField name=\"x\" xml:l\"ang=\"en\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro."
     },
     {
       "index": 943,
@@ -2663,7 +2663,7 @@
       "saved": "Intro.\n\n&lt;Columns t}itle=\"x\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Columns t}itle=\"x\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Columns t}itle=\"x\"\n>\n\n<Column>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Column>\n\n</Columns>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 945,
@@ -2687,7 +2687,7 @@
       "saved": "Intro.\n\n<FileTree title=\"a \\\\\"b\\\" c\">\n\n<Folder>\n\n![Diagram](/diagram.png)\n\n</Folder>\n\n</FileTree>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<FileTree title=\"a \\\\\"b\\\" c\">\n\n<Folder>\n\n![Diagram](/diagram.png \"Edited\")\n\n</Folder>\n\n</FileTree>\n\n## Later heading\n\nOutro.",
       "valueText": "\"a \\\\\"b\\\" c\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<FileTree title=\"x\">\n\n<Folder>\n\n![Diagram](/diagram.png)\n\n</Folder>\n\n</FileTree>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 953,
@@ -2711,7 +2711,7 @@
       "saved": "Intro.\n\n&lt;ResponseExample title={\"x\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": "Intro.\n\n&lt;ResponseExample title={\"x\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ResponseExample title=\"x\">\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</ResponseExample>\n\nOutro."
     },
     {
       "index": 962,
@@ -2719,7 +2719,7 @@
       "saved": "Intro.\n\n<Callout type='A' id\\=\"x\">\n\n**x**\n\n</Callout>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "'A'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Callout type=\"x\" id\\=\"x\">\n\n**x**\n\n</Callout>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 963,
@@ -2735,7 +2735,7 @@
       "saved": "Intro.\n\n&lt;Tip title='A' hidde\"n\n\n> \n\nBody text.\n\nOutro.",
       "edited": null,
       "valueText": "'A'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Tip title=\"x\" hidde\"n\n\n> \n\nBody text.\n\nOutro."
     },
     {
       "index": 965,
@@ -2751,7 +2751,7 @@
       "saved": "Intro.\n\n&lt;Danger title=\"\\`x hidden\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Danger title=\"\\`x hidden\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"`x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Danger title=\"x\" hidden\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Danger>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 968,
@@ -2767,7 +2767,7 @@
       "saved": "Intro.\n\n&lt;CardGroup cols={a {/ b} aria-label=\"L\"\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": null,
       "valueText": "{a {/ b}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CardGroup cols=\"x\"\n  aria-label=\"L\"\n\n>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</CardGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 972,
@@ -2783,7 +2783,7 @@
       "saved": "Intro.\n\n<Tabs title={\"a } \\\" b\"}\n  aria-labe\\l=\"L\"\n>\n\n<Tab>\n\nBody text.\n\n</Tab>\n\n</Tabs>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n<Tabs title={\"a } \\\" b\"}\n  aria-labe\\l=\"L\"\n>\n\n<Tab title=\"Edited\">\n\nBody text.\n\n</Tab>\n\n</Tabs>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Tabs title=\"x\"\n  aria-labe\\l=\"L\"\n>\n\n<Tab>\n\nBody text.\n\n</Tab>\n\n</Tabs>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 974,
@@ -2823,7 +2823,7 @@
       "saved": "Intro.\n\n&lt;ParamField p\"ath='A' href=\"/docs\"title=\"B\"&gt;\n\n<ParamField path=\"Inner\">\n\nInner text.\n\n</ParamField>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;ParamField p\"ath='A' href=\"/docs\"title=\"B\"&gt;\n\n<ParamField path=\"Edited\">\n\nInner text.\n\n</ParamField>\n\n## Later heading\n\nOutro.",
       "valueText": "'A'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;ParamField p\"ath=\"x\" href=\"/docs\"title=\"B\"&gt;\n\n<ParamField path=\"Inner\">\n\nInner text.\n\n</ParamField>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 983,
@@ -2831,7 +2831,7 @@
       "saved": "Intro.\n\n&lt;Banner type={'\"a } \" b\"}{...props}\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": null,
       "valueText": "{'\"a } \\\" b\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Banner type=\"x\"{...props}\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Banner>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 990,
@@ -2839,7 +2839,7 @@
       "saved": "Intro.\n\n&lt;Folder name=\"a \"b\" c\" ar\"ia-label=\"L\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Folder name=\"x\" ar\"ia-label=\"L\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 992,
@@ -2879,7 +2879,7 @@
       "saved": "Intro.\n\n&lt;Check title={\"x\" aria-label=\"L\"\n\n> \n\nBody text.\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Check title=\"x\"\n  aria-label=\"L\"\n\n>\n\nBody text.\n\n</Check>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1003,
@@ -2903,7 +2903,7 @@
       "saved": "Intro.\n\n&lt;Info title=\"x aria-label=\"L\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Info title=\"x aria-label=\"L\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Info title\\=\"x\"\n  aria-label=\"L\"\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Info>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1011,
@@ -2919,7 +2919,7 @@
       "saved": "Intro.\n\n<AccordionGroup title=\"ü\" xml:la}ng=\"en\">\n\n<Accordion>\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<AccordionGroup title=\"ü\" xml:la}ng=\"en\">\n\n<Accordion title=\"Edited\">\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<AccordionGroup title=\"x\" xml:la}ng=\"en\">\n\n<Accordion>\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1015,
@@ -3007,7 +3007,7 @@
       "saved": "Intro.\n\n&lt;Tip title={\"x\" xml:lang=\"en\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Tip title={\"x\" xml:lang=\"en\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Tip title=\"x\" xml:lang=\"en\"\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Tip>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1042,
@@ -3055,7 +3055,7 @@
       "saved": "Intro.\n\n&lt;Banner type=\"a \"b\" c\" {...props} /'&gt;\n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Banner type=\"x\" {...props} /'&gt;\n\n![Diagram](/diagram.png)\n\nOutro."
     },
     {
       "index": 1058,
@@ -3103,7 +3103,7 @@
       "saved": "Intro.\n\n&lt;ResponseExample title={\"x\" id=\"x\"\n\n> \n\n<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;ResponseExample title={\"x\" id=\"x\"\n\n> \n\n<ResponseExample title=\"Edited\">\n\nInner text.\n\n</ResponseExample>\n\n## Later heading\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ResponseExample title=\"x\" id=\"x\"\n>\n\n<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>\n\n</ResponseExample>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1069,
@@ -3111,7 +3111,7 @@
       "saved": "Intro.\n\n&lt;RelatedContent\" title=\"Old\" hidden&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedContent\" title=\"Old\" hidden&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"Old\\\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;RelatedContent\" title=\"x\" hidden&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1071,
@@ -3151,7 +3151,7 @@
       "saved": "Intro.\n\n<Check title=\"<b>\\\"{...props}>\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</Check>\n\nOutro.",
       "edited": null,
       "valueText": "\"<b>\\\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Check title=\"x\"{...props}>\n\n**x**\n\n</Check>\n\nOutro."
     },
     {
       "index": 1079,
@@ -3167,7 +3167,7 @@
       "saved": "Intro.\n\n&lt;AccordionGroup title=\"\"Old\"{...props}\n\n> \n\n<AccordionGroup title=\"Inner\">\n\n<Accordion>\n\nInner text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;AccordionGroup title=\"\"Old\"{...props}\n\n> \n\n<AccordionGroup title=\"Inner\">\n\n<Accordion title=\"Edited\">\n\nInner text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
       "valueText": "\"\"Old\\\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<AccordionGroup title=\"x\"{...props}\n>\n\n<Accordion>\n\n<AccordionGroup title=\"Inner\">\n\n<Accordion>\n\nInner text.\n\n</Accordion>\n\n</AccordionGroup>\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1087,
@@ -3207,7 +3207,7 @@
       "saved": "Intro.\n\n&lt;Column title=\"x href\\`=\"/docs\"title=\"B\"&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Column title=\"x href\\`=\"/docs\"title=\"B\"&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Column title=\"x\" href\\`=\"/docs\"title=\"B\"&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro."
     },
     {
       "index": 1095,
@@ -3239,7 +3239,7 @@
       "saved": "Intro.\n\n<Note title=\"A\" xm\"l:lang=\"en\"\n>\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</Note>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "\"A\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Note title=\"x\" xm\"l:lang=\"en\"\n>\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</Note>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1118,
@@ -3327,7 +3327,7 @@
       "saved": "Intro.\n\n&lt;Tab title='\"x data-x={1}&gt;\n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;Tab title='\"x data-x={1}&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Tab title='\"x\" data-x={1}&gt;\n\n![Diagram](/diagram.png)\n\nOutro."
     },
     {
       "index": 1165,
@@ -3335,7 +3335,7 @@
       "saved": "Intro.\n\n&lt;Expandable title=\"x id=\"x\"\n\n> \n\nBody text.\n\nOutro.",
       "edited": null,
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Expandable title=\"x\" id=\"x\"\n>\n\nBody text.\n\n</Expandable>\n\nOutro."
     },
     {
       "index": 1166,
@@ -3367,7 +3367,7 @@
       "saved": "Intro.\n\n<File name=\"a \\\"'b\\\" c\"\n  aria-label=\"L\"\n\n></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n<File name=\"Edited\"\n  aria-label=\"L\"\n\n></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a \\\"'b\\\" c\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<File name=\"x\"\n  aria-label=\"L\"\n\n></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1177,
@@ -3407,7 +3407,7 @@
       "saved": "Intro.\n\n&lt;Note title={\"a } \\\" b\"} \\`id=\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro.",
       "edited": "Intro.\n\n&lt;Note title={\"a } \\\" b\"} \\`id=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Note title=\"x\" \\`id=\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\nOutro."
     },
     {
       "index": 1186,
@@ -3431,7 +3431,7 @@
       "saved": "Intro.\n\n&lt;CardGroup cols={() =&gt; { return 1\"; }} xml:lang=\"en\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": null,
       "valueText": "{() => { return 1\"; }}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CardGroup cols=\"x\" xml:lang=\"en\">\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</CardGroup>\n\nOutro."
     },
     {
       "index": 1192,
@@ -3503,7 +3503,7 @@
       "saved": "Intro.\n\n<FileTree>\n\n<Folder>\n\ntitle=\"a &gt; b\"{...props}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Folder>\n\n</FileTree>\n\nOutro.",
       "edited": "Intro.\n\n<FileTree>\n\n<Folder>\n\ntitle=\"a &gt; b\"{...props}&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n</Folder>\n\n</FileTree>\n\nOutro.",
       "valueText": "\"a > b\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<FileTree>\n\n<Folder>\n\ntitle=\"x\"{...props}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Folder>\n\n</FileTree>\n\nOutro."
     },
     {
       "index": 1215,
@@ -3511,7 +3511,7 @@
       "saved": "Intro.\n\n<RequestExample title=\"\"<b>\n\n\" a.b=\"x\"&gt;\n\nBody text.\n\n</RequestExample>\n\nOutro.",
       "edited": "Intro.\n\n<RequestExample title=\"Edited\"<b>\n\n\" a.b=\"x\"&gt;\n\nBody text.\n\n</RequestExample>\n\nOutro.",
       "valueText": "\"\"<b>\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RequestExample title=\"x\" a.b=\"x\">\n\nBody text.\n\n</RequestExample>\n\nOutro."
     },
     {
       "index": 1216,
@@ -3551,7 +3551,7 @@
       "saved": "Intro.\n\n&lt;Danger title=\"**\"{...p'rops}&gt;**\n\n**Body text.**\n\n## **Later heading**\n\n**Outro.**",
       "edited": null,
       "valueText": "\"<b>\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Danger title=\"x\"{...p'rops}&gt;\n\nBody text.\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1228,
@@ -3559,7 +3559,7 @@
       "saved": "Intro.\n\n&lt;CardGroup cols=\"Ol\\\\d\" hidden\n\n> \n\n<CardGroup cols=\"Inner\">\n\n<Card>\n\nInner text.\n\n</Card>\n\n</CardGroup>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;CardGroup cols=\"Ol\\\\d\" hidden\n\n> \n\n<CardGroup cols=\"Edited\">\n\n<Card>\n\nInner text.\n\n</Card>\n\n</CardGroup>\n\n## Later heading\n\nOutro.",
       "valueText": "\"Ol\\d\\\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CardGroup cols=\"x\" hidden\n>\n\n<Card>\n\n<CardGroup cols=\"Inner\">\n\n<Card>\n\nInner text.\n\n</Card>\n\n</CardGroup>\n\n</Card>\n\n</CardGroup>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1234,
@@ -3575,7 +3575,7 @@
       "saved": "Intro.\n\n&lt;CodeGroup title={\"a } \\\" b\"} aria-{label=\"L\"\n\n> \n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;CodeGroup title={\"a } \\\" b\"} aria-{label=\"L\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;CodeGroup title=\"x\" aria-{label=\"L\"\n\n> \n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1238,
@@ -3615,7 +3615,7 @@
       "saved": "Intro.\n\n&lt;ResponseExample title={() =&gt; { return 1;\" }} a.b=\"x\"&gt;\n\n<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>\n\nOutro.",
       "edited": "Intro.\n\n&lt;ResponseExample title={() =&gt; { return 1;\" }} a.b=\"x\"&gt;\n\n<ResponseExample title=\"Edited\">\n\nInner text.\n\n</ResponseExample>\n\nOutro.",
       "valueText": "{() => { return 1;\" }}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ResponseExample title=\"x\" a.b=\"x\">\n\n<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>\n\n</ResponseExample>\n\nOutro."
     },
     {
       "index": 1256,
@@ -3671,7 +3671,7 @@
       "saved": "Intro.\n\n&lt;Card title\\`=\"ü\" a.b=\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Card title\\`=\"ü\" a.b=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Card title\\`=\"x\" a.b=\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1267,
@@ -3679,7 +3679,7 @@
       "saved": "Intro.\n\n&lt;Steps title={a / b} data-x{={1}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Steps title={a / b} data-x{={1}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "{a / b}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Steps title=\"x\" data-x{={1}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro."
     },
     {
       "index": 1269,
@@ -3735,7 +3735,7 @@
       "saved": "Intro.\n\n<FileTree title='A' hre\\f=\"/docs\"title=\"B\"\n>\n\n<Folder>\n\nBody text.\n\n</Folder>\n\n</FileTree>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "'A'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<FileTree title=\"x\" hre\\f=\"/docs\"title=\"B\"\n>\n\n<Folder>\n\nBody text.\n\n</Folder>\n\n</FileTree>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1287,
@@ -3743,7 +3743,7 @@
       "saved": "Intro.\n\n<File name}={a / b} xml:lang=\"en\"></File>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<File name}={a / b} xml:lang=\"en\" name=\"Edited\"></File>\n\n## Later heading\n\nOutro.",
       "valueText": "{a / b}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<File name}=\"x\" xml:lang=\"en\"></File>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1289,
@@ -3759,7 +3759,7 @@
       "saved": "Intro.\n\n&lt;RelatedCard title={\"x\"id=\"x\"&gt;\n\n**x**\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedCard title=\"x\"id=\"x\">\n\n**x**\n\n</RelatedCard>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1293,
@@ -3775,7 +3775,7 @@
       "saved": "Intro.\n\n&lt;Note title=\"A\" id=\"x\"'\n\n> \n\n<Note title=\"Inner\">\n\nInner text.\n\n</Note>\n\nOutro.",
       "edited": null,
       "valueText": "\"A\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Note title=\"x\" id=\"x\"'\n\n> \n\n<Note title=\"Inner\">\n\nInner text.\n\n</Note>\n\nOutro."
     },
     {
       "index": 1297,
@@ -3799,7 +3799,7 @@
       "saved": "Intro.\n\n<Card title=\"a \\\\\"b\\\" c\">\n\n**x**\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n<Card title=\"Edited\"b\\\" c\">\n\n**x**\n\n</Card>\n\nOutro.",
       "valueText": "\"a \\\\\"b\\\" c\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Card title=\"x\">\n\n**x**\n\n</Card>\n\nOutro."
     },
     {
       "index": 1305,
@@ -3807,7 +3807,7 @@
       "saved": "Intro.\n\n&lt;Step title={&lt;b title=\"&lt;/Car\"d&gt;\"&gt;x} {...props}&gt;\n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Step title={&lt;b title=\"&lt;/Car\"d&gt;\"&gt;x} {...props}&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{<b title=\"</Car\"d>\">x</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Step title=\"x\" {...props}>\n\nBody text.\n\n</Step>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1310,
@@ -3823,7 +3823,7 @@
       "saved": "Intro.\n\n&lt;ParamField path={\"x\"id=\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ParamField path=\"x\"id=\"x\"\n>\n\n![Diagram](/diagram.png)\n\n</ParamField>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1312,
@@ -3847,7 +3847,7 @@
       "saved": "Intro.\n\n&lt;Column title=\"x href=\"/docs\"title=\"B\"&gt;\n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Column title=\"x href=\"/docs\"title=\"B\"&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Column title=\"x\" href=\"/docs\"title=\"B\">\n\n![Diagram](/diagram.png)\n\n</Column>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1316,
@@ -3879,7 +3879,7 @@
       "saved": "Intro.\n\n&lt;RelatedContent title=\"x a.b=\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedContent title=\"x a.b=\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedContent title=\"x\" a.b=\"x\"\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</RelatedContent>\n\nOutro."
     },
     {
       "index": 1331,
@@ -3895,7 +3895,7 @@
       "saved": "Intro.\n\n&lt;Tip title=\"a &gt; b\" href'=\"/docs\"title=\"B\"\n\n> \n\n**x**\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Tip title=\"a &gt; b\" href'=\"/docs\"title=\"B\"\n\n> \n\n**x**\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a > b\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Tip title=\"x\" href'=\"/docs\"title=\"B\"\n\n> \n\n**x**\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1339,
@@ -3911,7 +3911,7 @@
       "saved": "Intro.\n\n&lt;Card title=\"x hidden\n\n> \n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Card title=\"x hidden\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Card title=\"x\" hidden\n>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Card>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1346,
@@ -3943,7 +3943,7 @@
       "saved": "Intro.\n\n<FileTree title=\"ü`\"id=\"x\">\n\n<Folder>\n\n<FileTree title=\"Inner\">\n\n<Folder>\n\nInner text.\n\n</Folder>\n\n</FileTree>\n\n</Folder>\n\n</FileTree>\n\nOutro.",
       "edited": null,
       "valueText": "\"ü`\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<FileTree title=\"x\"id=\"x\">\n\n<Folder>\n\n<FileTree title=\"Inner\">\n\n<Folder>\n\nInner text.\n\n</Folder>\n\n</FileTree>\n\n</Folder>\n\n</FileTree>\n\nOutro."
     },
     {
       "index": 1361,
@@ -3959,7 +3959,7 @@
       "saved": "Intro.\n\n<RelatedContent title=\"A\"\">\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</RelatedContent>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n<RelatedContent title=\"Edited\"\">\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</RelatedContent>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedContent title=\"x\">\n\n**x**\n\n</RelatedContent>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1366,
@@ -3983,7 +3983,7 @@
       "saved": "Intro.\n\n&lt;Widget{ title={<b title=\"</Card>\">x</b>} {...props}&gt;\n\n**x**\n\n</Widget>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{<b title=\"</Card>\">x</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Widget{ title=\"x\" {...props}&gt;\n\n**x**\n\n</Widget>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1370,
@@ -3991,7 +3991,7 @@
       "saved": "Intro.\n\n&lt;Note title={\"x\" {...props}\n\n> \n\n<Note title=\"Inner\">\n\nInner text.\n\n</Note>\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Note title=\"x\" {...props}\n>\n\n<Note title=\"Inner\">\n\nInner text.\n\n</Note>\n\n</Note>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1373,
@@ -3999,7 +3999,7 @@
       "saved": "Intro.\n\n&lt;Warning title={\"x\" a.b=\"x\"\n\n> \n\n**x**\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Warning title=\"x\" a.b=\"x\"\n>\n\n**x**\n\n</Warning>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1377,
@@ -4015,7 +4015,7 @@
       "saved": "Intro.\n\n&lt;Tabs title=\"x xml:lang=\"en\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Tabs title=\"x xml:lang=\"en\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Tabs title=\"x\" xml:lang=\"en\">\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Tabs>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1381,
@@ -4023,7 +4023,7 @@
       "saved": "Intro.\n\n&lt;Tab title=\"Old\" data-x={1}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Tab title=\"Old\" data-x={1}&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "\"Old\\\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Tab title=\"x\" data-x={1}\\>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Tab>\n\nOutro."
     },
     {
       "index": 1384,
@@ -4031,7 +4031,7 @@
       "saved": "Intro.\n\n&lt;CodeGroup title={\"x\"id=\"x\"\n\n> \n\nBody text.\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CodeGroup title=\"x\"id=\"x\"\n>\n\nBody text.\n\n</CodeGroup>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1386,
@@ -4039,7 +4039,7 @@
       "saved": "Intro.\n\n&lt;ResponseField name={**x**}{...props}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;ResponseField name={**x**}{...props}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\\\">x</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ResponseField name=\"x\"{...props}>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</ResponseField>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1390,
@@ -4079,7 +4079,7 @@
       "saved": "Intro.\n\n&lt;RelatedContent title={\"x\"{...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedContent title={\"x\"{...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedContent title=\"x\"{...props}>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</RelatedContent>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1405,
@@ -4095,7 +4095,7 @@
       "saved": "Intro.\n\n&lt;Callout type=\"ü\"{{...props}&gt;\n\n<Callout type=\"Inner\">\n\nInner text.\n\n</Callout>\n\nOutro.",
       "edited": null,
       "valueText": "\"ü\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Callout type=\"x\"{{...props}&gt;\n\n<Callout type=\"Inner\">\n\nInner text.\n\n</Callout>\n\nOutro."
     },
     {
       "index": 1411,
@@ -4103,7 +4103,7 @@
       "saved": "Intro.\n\n&lt;Danger title={\"x\" a.b{=\"x\"\n\n> \n\n<Danger title=\"Inner\">\n\nInner text.\n\n</Danger>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Danger title={\"x\" a.b{=\"x\"\n\n> \n\n<Danger title=\"Inner\">\n\nInner text.\n\n</Danger>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;Danger title=\"x\" a.b{=\"x\"\n\n> \n\n<Danger title=\"Inner\">\n\nInner text.\n\n</Danger>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1415,
@@ -4119,7 +4119,7 @@
       "saved": "Intro.\n\n&lt;ResponseField nam{e={<b title=\"</Card>\">x</b>} hidden&gt;\n\n**x**\n\nOutro.",
       "edited": "Intro.\n\n&lt;ResponseField nam{e={<b title=\"</Card>\">x</b>} hidden&gt;\n\n**x**\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n&lt;ResponseField nam{e=\"x\" hidden&gt;\n\n**x**\n\nOutro."
     },
     {
       "index": 1424,
@@ -4127,7 +4127,7 @@
       "saved": "Intro.\n\n&lt;Expandable title={a{ / b}{...props}\n\n> \n\nBody text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Expandable title={a{ / b}{...props}\n\n> \n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{a{ / b}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Expandable title=\"x\"{...props}\n>\n\nBody text.\n\n</Expandable>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1427,
@@ -4167,7 +4167,7 @@
       "saved": "Intro.\n\n&lt;ApiExample title='Old' \\\\ aria-label=\"L\"\n\n> \n\n**x**\n\n## Later heading\n\nOutro.",
       "edited": null,
       "valueText": "'Old\\'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<ApiExample title=\"x\"\n\\  aria-label=\"L\"\n>\n\n**x**\n\n</ApiExample>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1439,
@@ -4175,7 +4175,7 @@
       "saved": "Intro.\n\n&lt;RelatedContent title=\"x data-x={1}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedContent title=\"x data-x={1}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedContent title=\"x\" data-x={1}>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</RelatedContent>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1442,
@@ -4183,7 +4183,7 @@
       "saved": "Intro.\n\n&lt;Widget title=\"Old\" id=&gt;\"x\"\n\n> \n\n![Diagram](/diagram.png)\n\n</Widget>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;Widget title=\"Old\" id=&gt;\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n</Widget>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"Old\\\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Widget title=\"x\" id=>\"x\"\n>\n\n![Diagram](/diagram.png)\n\n</Widget>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1450,
@@ -4191,7 +4191,7 @@
       "saved": "Intro.\n\n&lt;CardGroup cols={\"x\"{...props}\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\nOutro.",
       "edited": null,
       "valueText": "{\"x\"",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<CardGroup cols=\"x\"{...props}\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</CardGroup>\n\nOutro."
     },
     {
       "index": 1451,
@@ -4207,7 +4207,7 @@
       "saved": "Intro.\n\n<Steps title=\"xid=\"x\"\n>\n\n<b title=\"</Card>\n\n<Step>\n\n\"&gt;x\n\n</Step>\n\n</Steps>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<Steps title=\"xid=\"x\"\n>\n\n<b title=\"</Card>\n\n<Step title=\"Edited\">\n\n\"&gt;x\n\n</Step>\n\n</Steps>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Steps title=\"x\"id=\"x\"\n>\n\n<Step>\n\n**x**\n\n</Step>\n\n</Steps>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1454,
@@ -4223,7 +4223,7 @@
       "saved": "Intro.\n\n&lt;Accordion title=\"x {...props}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n&lt;Accordion title=\"x {...props}&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<Accordion title=\"x\" {...props}>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Accordion>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1467,
@@ -4239,7 +4239,7 @@
       "saved": "Intro.\n\n<File name={\"x\"} \\{...props}></File>\n\n## Later heading\n\nOutro.",
       "edited": "Intro.\n\n<File name=\"Edited\" \\{...props}></File>\n\n## Later heading\n\nOutro.",
       "valueText": "{\"x\"}",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<File name=\"x\" \\{...props}></File>\n\n## Later heading\n\nOutro."
     },
     {
       "index": 1475,
@@ -4255,7 +4255,7 @@
       "saved": "Intro.\n\n&lt;RelatedCard title='Old' dat}a-x={1}&gt;\n\n<RelatedCard title=\"Inner\">\n\nInner text.\n\n</RelatedCard>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "edited": "Intro.\n\n&lt;RelatedCard title='Old' dat}a-x={1}&gt;\n\n<RelatedCard title=\"Edited\">\n\nInner text.\n\n</RelatedCard>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "'Old\\'",
-      "plainSaved": null
+      "plainSaved": "Intro.\n\n<RelatedCard title=\"x\" dat}a-x={1}>\n\n<RelatedCard title=\"Inner\">\n\nInner text.\n\n</RelatedCard>\n\n</RelatedCard>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro."
     },
     {
       "index": 1478,
