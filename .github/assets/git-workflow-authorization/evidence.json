@@ -1,7 +1,7 @@
 {
   "environment": "Component fixture: main's GitWorkflow, its features/site-git slice and useAuthorizeGitWorkflow (fc7f92e2c435d1017af4fb14233d3aac92870e25) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient (invalidations recorded) and the Git workflow status query; each authorization POST answered by interception (a fictional account, or a 400), optionally held; a fictional site; placeholder tokens written as <TOKEN_A>/<TOKEN_B> labels and masked on screen; not the signed-in dashboard, production, the server or GitHub",
   "base": "fc7f92e2c435d1017af4fb14233d3aac92870e25",
-  "head": "50d656ed811de0464d6f2cbdb1c3f6ea379b14c8",
+  "head": "632ec4e4ab81dd5324488c27748b9d66706ecf51",
   "uncommitted": [],
   "attempted": 0,
   "captures": [
