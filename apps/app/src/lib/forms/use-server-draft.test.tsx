@@ -1633,6 +1633,8 @@ describe('useServerDraftForm: a save that ends while <Activity> hides the form (
     /** What the server confirmed; `undefined` with `fails` for a failed save. */
     confirmed?: V;
     fails?: boolean;
+    /** A refetch that lands before the answer (while hidden, when hiding). */
+    racing?: V;
     /** The refetch after the save; left out when the readback failed. */
     readback?: V;
   };
@@ -1644,6 +1646,7 @@ describe('useServerDraftForm: a save that ends while <Activity> hides the form (
     const { result } = await draft.submit();
     for (const [field, value] of Object.entries(story.during ?? {})) await draft.set(field, value);
     if (hide) await draft.render({ hidden: true });
+    if (story.racing) await draft.render({ source: story.racing });
     const entry = draft.saves[0];
     let current: boolean | undefined;
     await act(async () => {
@@ -1728,6 +1731,31 @@ describe('useServerDraftForm: a save that ends while <Activity> hides the form (
     });
     expect(await result).toBe('saved');
     expect(hidden.draft.api().isDirty).toBe(false);
+  });
+
+  it('someone else’s value refetched before the answer: mine stays, unsaved, against theirs with the conflict, as on screen', async () => {
+    const story: Story<Values> = {
+      source: { name: 'old', description: 'd1' },
+      edit: { name: 'mine' },
+      racing: { name: 'theirs', description: 'd1' },
+      confirmed: { name: 'mine', description: 'd1' },
+      readback: { name: 'theirs', description: 'd1' },
+    };
+    const hidden = await play(story, true);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state).toMatchObject({ values: { name: 'mine' }, baseline: { name: 'theirs' }, isDirty: true, conflicts: ['name'] });
+  });
+
+  it('someone else’s value refetched before a failure: mine stays against theirs, as on screen', async () => {
+    const story: Story<Values> = {
+      source: { name: 'old', description: 'd1' },
+      edit: { name: 'mine' },
+      racing: { name: 'theirs', description: 'd1' },
+      fails: true,
+    };
+    const hidden = await play(story, true);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state).toMatchObject({ values: { name: 'mine' }, baseline: { name: 'theirs' }, isDirty: true });
   });
 
   it('a failure while hidden keeps the edit, as on screen, and says nothing to the hidden form', async () => {

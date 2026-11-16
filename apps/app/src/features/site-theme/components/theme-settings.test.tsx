@@ -12,7 +12,7 @@ import {
 } from '@nibleaf/shared/themes';
 import { parseThemeTemplate } from '@nibleaf/validators';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { act, type ComponentProps, type ReactNode, StrictMode, useCallback, useRef, useState } from 'react';
+import { Activity, act, type ComponentProps, type ReactNode, StrictMode, useCallback, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -236,15 +236,23 @@ function SiblingForm() {
 
 /** Whether the section is keyed by site, as the editor's Configuration panel renders it (a site switch remounts it). */
 let keyedBySite = false;
+/** Hides the section in an <Activity>, as React can keep a tab's content while it is not shown. */
+let hideSection: (hidden: boolean) => void;
 function Canvas() {
   const [site, setSite] = useState<Site>('site-1');
+  const [hidden, setHidden] = useState(false);
   showSite = setSite;
-  return <Section site={site} />;
+  hideSection = setHidden;
+  return <Section hidden={hidden} site={site} />;
 }
-function Section({ site }: { site: Site }) {
+function Section({ site, hidden }: { site: Site; hidden: boolean }) {
   const { data } = useQuery(projectQueryOptions(site));
   if (!data) return null;
-  return keyedBySite ? <ThemeSection key={site} project={data as Project} /> : <ThemeSection project={data as Project} />;
+  return (
+    <Activity mode={hidden ? 'hidden' : 'visible'}>
+      {keyedBySite ? <ThemeSection key={site} project={data as Project} /> : <ThemeSection project={data as Project} />}
+    </Activity>
+  );
 }
 
 /** The site's own theme: Signal with an authored accent and metadata, beside Styling's colour and radius. */
@@ -1186,6 +1194,36 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
       await save();
       expect(lastPatch()).toStrictEqual({ styling: { theme: 'light' } });
       expect(status()).toBe('common.saved');
+    },
+  );
+
+  it.each([
+    ['on screen', false],
+    ['hidden meanwhile', true],
+  ])(
+    'a Manuscript save answered after another writer stored Harbor keeps Manuscript, unsaved, against Harbor with the conflict (%s, #767)',
+    async (_name, hide) => {
+      await open();
+      const patch = gate();
+      server.holdPatch = patch.promise;
+      await preset('manuscript');
+      await startSave();
+      if (hide) await act(async () => hideSection(true));
+      await elsewhere((config) => ({ ...config, theme: { ...(config.theme as Config), preset: 'harbor' } }));
+      await patch.open();
+      await finished();
+      if (hide) {
+        // Nothing reaches a hidden form's screen; it reconciles once shown.
+        expect(toast.success).not.toHaveBeenCalled();
+        await act(async () => hideSection(false));
+        await settle();
+      }
+      expect(storedTheme()).toMatchObject({ preset: 'harbor' });
+      expect(activePreset()).toBe('manuscript');
+      expect(conflict()).toBe(true);
+      expect(region()).not.toBeNull();
+      expect(statuses).not.toContain('common.saved');
+      expect(toast.error).not.toHaveBeenCalled();
     },
   );
 

@@ -143,8 +143,8 @@ export function useServerDraftForm<T extends DraftValues>({
   // later promise continuation can read it. React keeps a hidden form's refs,
   // and drops an unmounted one's, so a save can only come back to the former.
   const shownRef = useRef(false);
-  // A save confirmed while the form was hidden, to reconcile once it shows.
-  const heldRef = useRef<{ save: ActiveSave<T>; confirmed?: T } | null>(null);
+  // How a save ended while React kept the form hidden, to reconcile once it shows.
+  const heldRef = useRef<{ save: ActiveSave<T>; failed: boolean; confirmed?: T } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [conflicts, setConflicts] = useState<Array<keyof T & string>>([]);
   const onSubmitRef = useRef(onSubmit);
@@ -181,12 +181,13 @@ export function useServerDraftForm<T extends DraftValues>({
           succeeded: (confirmed) => {
             if (isCurrent()) return succeededRef.current(save, confirmed);
             // Off screen: held for when the form shows again (an unmounted form never does).
-            if (owned()) heldRef.current = { save, confirmed };
+            if (owned()) heldRef.current = { save, failed: false, confirmed };
             return false;
           },
           failed: () => {
             // Nothing was confirmed: the edits stay and later refetches follow the normal rules.
-            if (owned()) save.pending = undefined;
+            if (isCurrent()) save.pending = undefined;
+            else if (owned()) heldRef.current = { save, failed: true };
           },
           isCurrent,
         });
@@ -199,10 +200,6 @@ export function useServerDraftForm<T extends DraftValues>({
 
   useLayoutEffect(() => {
     shownRef.current = true;
-    // Confirmed while React kept the form hidden: reconcile it as it would have been on screen.
-    const held = heldRef.current;
-    heldRef.current = null;
-    if (held && held.save.generation === generationRef.current) succeededRef.current(held.save, held.confirmed);
     return () => {
       shownRef.current = false;
     };
@@ -244,6 +241,7 @@ export function useServerDraftForm<T extends DraftValues>({
       // the old identity and will find itself no longer current.
       generationRef.current += 1;
       activeRef.current = null;
+      heldRef.current = null;
       setIsSaving(false);
       setConflicts([]);
       setBaseline(source);
@@ -252,7 +250,10 @@ export function useServerDraftForm<T extends DraftValues>({
     }
     const current = form.state.values as T;
     const prior = baselineRef.current;
-    if (!activeRef.current && !isDraftDirty(current, prior)) {
+    // A save that ended while the form was hidden is still in flight here: its
+    // end is reconciled after this, as when a refetch lands during a save.
+    const save = activeRef.current ?? heldRef.current?.save;
+    if (!save && !isDraftDirty(current, prior)) {
       // Nothing edited and nothing saving: take the server's values.
       setConflicts([]);
       setBaseline(source);
@@ -261,13 +262,23 @@ export function useServerDraftForm<T extends DraftValues>({
     }
     // Edits or a save in flight: merge without resetting anything. The save's
     // state tells its own echo apart from someone else's change.
-    const save = activeRef.current;
     const change = reconcileServerChange({ baseline: prior, current, next: source, save: save?.pending });
     if (save && change.save) save.pending = change.save;
     setBaseline(change.baseline);
     applyValues(change.current);
     mergeConflicts(change.conflicts, change.current, change.baseline, change.save);
   }, [applyValues, form, identityKey, mergeConflicts, setBaseline, source]);
+
+  // After the source effect, so when React shows a hidden form again, a source
+  // it missed is reconciled first, while the save's pending state still tells
+  // its echo from someone else's change; then how the save ended.
+  useEffect(() => {
+    const held = heldRef.current;
+    heldRef.current = null;
+    if (!held || held.save.generation !== generationRef.current) return;
+    if (held.failed) held.save.pending = undefined;
+    else succeededRef.current(held.save, held.confirmed);
+  }, []);
 
   const succeeded = (save: ActiveSave<T>, confirmed?: T) => {
     const pending = save.pending;

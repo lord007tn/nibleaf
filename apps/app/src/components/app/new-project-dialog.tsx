@@ -60,8 +60,9 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
             starter: importInstead ? 'blank' : submitted.starter,
           }),
         );
-        if (!save.isCurrent()) return 'failed';
+        // Always reported to the draft, which keeps it for a hidden form and drops it otherwise.
         save.succeeded(submitted);
+        if (!save.isCurrent()) return 'failed';
         toast.success(t('newSite.created'));
         if (importInstead) {
           void navigate({ to: '/app/projects/$projectId/settings', params: { projectId: project.id }, search: { section: 'contentImport' } });
@@ -74,8 +75,8 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
         }
         return 'saved';
       } catch (error) {
-        if (!save.isCurrent()) return 'failed';
         save.failed();
+        if (!save.isCurrent()) return 'failed';
         if (error instanceof ApiResponseError && error.status === 409 && error.reason === 'slug_taken') {
           form.setFieldValue('slug', slug);
           setEditingAddress(true);

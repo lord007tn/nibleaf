@@ -410,10 +410,10 @@ function AddDomainForm({ projectId, decision }: { projectId: string; decision: D
         await add.mutateAsync({ domain: cleaned });
         // The outcome is always reported; only the form is left alone when the page moved to another site.
         toast.success(t('settings.domain.toast.added'));
-        if (!outcome.isCurrent()) return 'failed';
-        // Back to empty, unless something new was typed while it was added.
+        // Back to empty, unless something new was typed while it was added. Always
+        // reported to the draft, which keeps it for a hidden form and drops it otherwise.
         outcome.succeeded(empty);
-        return 'saved';
+        return outcome.isCurrent() ? 'saved' : 'failed';
       } catch (error) {
         outcome.failed();
         const message = domainErrorMessage(t, error, 'settings.domain.toast.addError');

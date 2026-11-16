@@ -84,9 +84,10 @@ return (
   unmounts (or moves to another identity), `save.isCurrent()` stays false, even after the same form mounts again.
   While React hides it (`<Activity>`) it is false too; the same form shown again owns its save again, and a
   confirmation that came meanwhile is reconciled then, quietly. While it is false, `succeeded` returns false and
-  touches nothing on screen, and a `submit()` that ends then resolves `'failed'`. In your submit handler, check
-  `save.isCurrent()` after every `await` and before any effect on the form or the screen: a toast, a field error,
-  focus, closing, collapsing or navigating. The request itself still runs to its end: what it wrote stays written,
+  touches nothing on screen, and a `submit()` that ends then resolves `'failed'`. In your submit handler, always call
+  `succeeded` or `failed` (the hook keeps what a hidden form needs and drops the rest), then check `save.isCurrent()`
+  before any effect of your own on the form or the screen: a toast, a field error, focus, closing, collapsing or
+  navigating. The request itself still runs to its end: what it wrote stays written,
   and its query invalidation still happens. Release a lock or flag owned outside the form (a write in flight for the
   page) in `finally`, whether or not the save is current. A form save's mutation sets no `meta.errorMessage`: a
   global toast would bypass this check. A one-off action whose form is gone may still report its own outcome (an
