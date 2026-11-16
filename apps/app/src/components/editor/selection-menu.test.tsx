@@ -127,6 +127,10 @@ const linkField = () => textMenu()?.querySelector<HTMLInputElement>('input[role=
 const button = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('button')].find((node) => node.getAttribute('aria-label') === name);
 const turnIntoTrigger = () => toolbar()?.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]') ?? null;
 
+/** An opened menu focuses its item in an animation frame. Until then a key goes
+ *  to the toolbar button instead, and its Escape sends focus to the text. */
+const menuItemFocused = () => waitFor(() => expect(document.activeElement?.getAttribute('role')).toBe('menuitemradio'));
+
 /** Select `text` the way a writer would, with the page focused. */
 async function select(editor: Editor, text: string) {
   let from = -1;
@@ -347,13 +351,20 @@ describe('Ctrl/⌘+K in the page adds a link (AUTH-10)', () => {
 });
 
 describe('Turn into (AUTH-37)', () => {
-  const chooseTurnInto = async (label: string) => {
+  /** Clicks the button, then waits until the menu is open and has focus. */
+  const openTurnInto = async () => {
+    await waitFor(() => expect(turnIntoTrigger()).not.toBeNull());
     const trigger = turnIntoTrigger() as HTMLButtonElement;
     await act(async () => {
       trigger.focus();
       trigger.click();
     });
     await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeNull());
+    await menuItemFocused();
+  };
+
+  const chooseTurnInto = async (label: string) => {
+    await openTurnInto();
     const item = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((node) => node.textContent?.trim() === label);
     if (!item) throw new Error(`No "${label}" choice`);
     await act(async () => {
@@ -368,17 +379,15 @@ describe('Turn into (AUTH-37)', () => {
   };
 
   const checkedChoice = async () => {
-    await act(async () => {
-      turnIntoTrigger()?.focus();
-      turnIntoTrigger()?.click();
-    });
-    await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeNull());
+    await openTurnInto();
     const checked = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')]
       .filter((node) => node.getAttribute('aria-checked') === 'true')
       .map((node) => node.textContent?.trim());
     await key(document.activeElement ?? document.body, { key: 'Escape' });
     await settle();
     await waitFor(() => expect(document.querySelector('[role="menu"]')).toBeNull());
+    // Escape gives focus back to the button, where the writer's next click starts.
+    await waitFor(() => expect(document.activeElement).toBe(turnIntoTrigger()));
     return checked;
   };
 
@@ -508,6 +517,7 @@ describe('Turn into (AUTH-37)', () => {
     await waitFor(() => expect(document.activeElement).toBe(trigger));
     await key(trigger, { key: 'ArrowDown' });
     await waitFor(() => expect(document.querySelector('[role="menu"]')).not.toBeNull());
+    await menuItemFocused();
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     const menu = document.querySelector('[role="menu"]') as HTMLElement;
     expect(menu.getAttribute('aria-label')).toBe('Turn into');
@@ -526,7 +536,7 @@ describe('Turn into (AUTH-37)', () => {
 
     // Choosing with the keyboard applies the type and returns to the text.
     await key(trigger, { key: 'ArrowDown' });
-    await waitFor(() => expect(document.activeElement?.getAttribute('role')).toBe('menuitemradio'));
+    await menuItemFocused();
     const heading = [...document.querySelectorAll<HTMLElement>('[role="menuitemradio"]')].find((node) => node.textContent?.trim() === 'Heading 2');
     await act(async () => heading?.focus());
     await key(heading as HTMLElement, { key: 'Enter' });
