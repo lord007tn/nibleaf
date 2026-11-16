@@ -71,15 +71,6 @@ const useGitWorkflowMutation = <TVariables, TResult>(projectId: string, mutation
   });
 };
 
-// Authorizing stores the credential, which the status shows (`credentialConfigured`).
-export const useAuthorizeGitWorkflow = (projectId: string) =>
-  useGitWorkflowMutation(projectId, async (token: string) =>
-    mutateData(
-      await api.app.projects[':projectId'].git.authorize.$post({ param: { projectId }, json: { token } }),
-      'Could not authorize the GitHub account.',
-    ),
-  );
-
 export const useConnectGitWorkflow = (projectId: string) =>
   useGitWorkflowMutation(projectId, async (json: GitConnectionBody) =>
     mutateData(await api.app.projects[':projectId'].git.connection.$put({ param: { projectId }, json }), 'Could not connect the repository.'),
