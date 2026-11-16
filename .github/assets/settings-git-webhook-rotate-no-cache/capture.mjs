@@ -41,7 +41,8 @@ const SECRETS = ['test-secret-0001', 'test-secret-0002', 'test-secret-0003', 'te
 /** Every placeholder as the label captures show instead. */
 const LABELS = [[SITE_A, '<id#1>'], [SITE_B, '<id#2>'], ...SECRETS.map((secret, index) => [secret, `<credential#${index + 1}>`])];
 const label = (text) => LABELS.reduce((out, [value, name]) => out.replaceAll(value, name), String(text));
-const labelsIn = (text) => LABELS.filter(([value]) => text.includes(value)).map(([, name]) => name);
+/** Which placeholder secrets `text` holds, as labels. */
+const credentialsIn = (text) => LABELS.filter(([value, name]) => name.startsWith('<credential') && text.includes(value)).map(([, name]) => name);
 
 let harness;
 try {
@@ -120,7 +121,7 @@ fixture.retained = () => {
   return {
     mutations: mutations.length,
     pausedInDefaultDehydrate: dehydrate(client).mutations.length,
-    mutationText: JSON.stringify(states) + JSON.stringify(dehydrate(client, { shouldDehydrateMutation: () => true })),
+    mutationText: JSON.stringify(states) + JSON.stringify(dehydrate(client, { shouldDehydrateMutation: () => true }).mutations),
     settingsText: JSON.stringify(settings),
   };
 };
@@ -264,9 +265,9 @@ createRoot(document.getElementById('root')!).render(
       retained: {
         ...retained,
         // Which placeholders the mutations keep; "server text" when a refusal's echo is kept.
-        byMutations: [...labelsIn(mutationText), ...(mutationText.includes('echo') ? ['server text'] : [])],
+        byMutations: [...credentialsIn(mutationText), ...(mutationText.includes('echo') ? ['server text'] : [])],
         // Main's contract, unchanged here: the settings read answers an admin with the stored secret.
-        bySettingsRead: labelsIn(settingsText),
+        bySettingsRead: credentialsIn(settingsText),
       },
     };
   };
@@ -310,7 +311,7 @@ createRoot(document.getElementById('root')!).render(
       },
     },
     keyed: {
-      label: 'Ordinary: rotation held, the tab left for <id#2> and reopened, Rotate pressed again',
+      label: 'Ordinary: rotation held, the tab left for <id#2> and reopened, Rotate pressed again if it can be',
       run: async ({ page, locale }) => {
         await rotateButton(page, locale).click();
         await settle(page, 300);
@@ -318,7 +319,10 @@ createRoot(document.getElementById('root')!).render(
         await settle(page);
         await go(page, { site: SITE_A, away: false });
         await settle(page);
-        await rotateButton(page, locale).click();
+        // Busy is disabled: a person cannot press it, so neither does the script.
+        const pressableOnReturn = await rotateButton(page, locale).isEnabled();
+        if (pressableOnReturn) await rotateButton(page, locale).click();
+        return { extra: { pressableOnReturn } };
       },
     },
     offline: {
@@ -381,6 +385,7 @@ createRoot(document.getElementById('root')!).render(
         }
         assert.deepEqual(at('rotated', 'before').retained.byMutations, ['<credential#2>']);
         assert.deepEqual(at('refused', 'before').retained.byMutations, ['<credential#4>', 'server text']);
+        assert.equal(at('keyed', 'before').pressableOnReturn, true);
         assert.equal(at('keyed', 'before').posts.length, 2);
         assert.equal(at('keyed', 'before').rotate.busy, true);
         assert.equal(at('offline', 'before').postsAtPress, 0);
@@ -391,6 +396,7 @@ createRoot(document.getElementById('root')!).render(
           assert.equal(at(state, 'after').retained.mutations, 0);
           assert.deepEqual(at(state, 'after').retained.byMutations, []);
         }
+        assert.equal(at('keyed', 'after').pressableOnReturn, false);
         assert.equal(at('keyed', 'after').posts.length, 1);
         assert.equal(at('keyed', 'after').rotate.busy, true);
         assert.equal(at('offline', 'after').retained.pausedInDefaultDehydrate, 0);
@@ -474,9 +480,7 @@ createRoot(document.getElementById('root')!).render(
       await go(page, { site: SITE_A, away: false });
       await pause();
       await page.locator('li:has(#git-webhook-url)').scrollIntoViewIfNeeded();
-      await note('pressed again, the tab left and reopened: still busy, nothing more sent');
-      await rotateButton(page, locale).click();
-      await pause(600);
+      await note('Rotate pressed, the tab left and reopened: still busy, so it cannot be pressed again');
       await answer(1);
       await pause(1400);
       await note('stored and read back: no reveal or toast in the reopened tab');
@@ -493,8 +497,8 @@ createRoot(document.getElementById('root')!).render(
       const step = (prefix) => steps.find(({ step: name }) => name.startsWith(prefix));
       assert.equal(step('Rotate pressed').rotate.busy, true);
       assert.deepEqual(step('refused').toasts, [msg(locale, 'settings.git.webhook.rotateError')]);
-      assert.equal(step('pressed again, the tab').rotate.busy, true);
-      assert.equal(step('pressed again, the tab').posts.length, 2);
+      assert.equal(step('Rotate pressed, the tab').rotate.busy, true);
+      assert.equal(step('Rotate pressed, the tab').posts.length, 2);
       assert.equal(step('stored and read back').secret.revealed, false);
       assert.deepEqual(step('pressed again: stored').secret, { value: '<credential#3>', revealed: true });
       assert.ok(steps.every(({ retained }) => retained.mutations === 0 && retained.byMutations.length === 0));
