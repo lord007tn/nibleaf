@@ -54,7 +54,7 @@ async function render(overrides: Partial<Props> = {}) {
   document.body.append(container);
   const root = createRoot(container);
   roots.push(root);
-  const props: Props = { projectId: 'docs', open: false, onOpenChange: vi.fn(), lang: 'en', ...overrides };
+  const props = { projectId: 'docs', open: false, lang: 'en', ...overrides, onOpenChange: vi.fn<(open: boolean) => void>() };
   const rerender = (next: Partial<Props> = {}) =>
     act(async () =>
       root.render(
@@ -288,7 +288,7 @@ describe("the '/' search shortcut readers can turn off (WCAG 2.1.4)", () => {
         ],
       },
     ],
-  ] as const)('keeps the switch reachable at every width and pointer type, %s', async (_, extra) => {
+  ] satisfies Array<[string, Partial<Props>]>)('keeps the switch reachable at every width and pointer type, %s', async (_, extra) => {
     await render({ open: true, ...extra });
     const control = slashSwitch();
     if (!control) throw new Error('Missing the / switch');
