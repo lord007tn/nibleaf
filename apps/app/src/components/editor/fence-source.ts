@@ -339,32 +339,49 @@ const FENCE_ENDING_CONTAINERS: ReadonlySet<string> = new Set(['doc', 'blockquote
 /** The lists a list item sits in, which end with their last item. */
 const LISTS: ReadonlySet<string> = new Set(['bulletList', 'orderedList', 'taskList']);
 
-/** Whether anything is written after the child at `index`: empty paragraphs write
- *  nothing (the editor adds one at the end of the page). */
-function followed(parent: PMNode, index: number): boolean {
+/** The first block written after the child at `index`, or null: empty paragraphs
+ *  write nothing (the editor adds one at the end of the page). */
+function writtenAfter(parent: PMNode, index: number): PMNode | null {
   for (let next = index + 1; next < parent.childCount; next++) {
     const sibling = parent.child(next);
-    if (sibling.type.name !== 'paragraph' || sibling.content.size > 0) return true;
+    if (sibling.type.name !== 'paragraph' || sibling.content.size > 0) return sibling;
   }
-  return false;
+  return null;
+}
+
+/**
+ * Whether an unclosed fence that ends its list items, written as `lines`, still
+ * ends where it did when the serializer writes what follows (`next`, in
+ * `container`). A blank line there doesn't end the fence: markdown-it reads it as
+ * more code, and the line after it ends the fence. So the lines between the code
+ * and what follows must be the ones already written, which happens in two ways:
+ * - The next item of a tight list follows on the next line. The fence's last line
+ *   is ended there, so it mustn't be empty, or the next item would take its place.
+ * - Anything else follows one blank line (`flushClose(2)`; a nested list's own
+ *   spacing isn't predicted here). The fence's last line must be that blank line:
+ *   empty, as markdown-it read the blank line before what followed in the source.
+ */
+function endsBeforeNext(lines: string, container: PMNode, next: PMNode): boolean {
+  const lastEmpty = lines.slice(lines.lastIndexOf('\n') + 1) === '';
+  if (LISTS.has(container.type.name) && container.attrs.tight === true) return !lastEmpty;
+  return lastEmpty && !LISTS.has(next.type.name);
 }
 
 /**
  * Where an unclosed fence still ends if it is written without a closing line:
  * `page` as the last block of the page, `container` as the last block of a quote or
  * list item that ends it with nothing taken into its code, and null anywhere else
- * (it gets a closing line). It must be the last block of its quote or list item.
- * What comes after that container must end the fence on the very next line:
- * - after a quote, a line without its `>` (a blank line, or the next block) does;
- * - after a list item, only the next item of a tight list does. A blank line after
- *   a list item doesn't end its fence, so the next block (a paragraph appended
- *   below the list, a loose list's next item) took the blank line, and any
- *   whitespace lines kept after the fence, into the code (#649).
+ * (it gets a closing line). It must be the last block of its quote or list item,
+ * and what comes after that container must not add to its code:
+ * - after a quote, a line without its `>` (a blank line, or the next block) ends it;
+ * - after list items only, see `endsBeforeNext`. Writing the fence unclosed there
+ *   anyway let a paragraph appended below the list take the blank line before it,
+ *   and any whitespace lines kept after the fence, into the code (#649).
  * Null for a closed fence, and on the clipboard, whose slice may be pasted anywhere.
  */
 function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNode | Fragment | undefined, index: number): 'page' | 'container' | null {
   if (String(node.attrs.sourceFenceClose ?? '') !== '') return null;
-  if (!parent || !('type' in parent) || !FENCE_ENDING_CONTAINERS.has(parent.type.name) || followed(parent, index)) return null;
+  if (!parent || !('type' in parent) || !FENCE_ENDING_CONTAINERS.has(parent.type.name) || writtenAfter(parent, index)) return null;
   const path = state.path ?? [];
   if (path[path.length - 1]?.node !== node) return null;
   let quoted = false;
@@ -373,10 +390,8 @@ function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNo
     const { parent: container, index: at } = path[level] as { parent: PMNode | Fragment; index: number };
     if (!('type' in container)) return null;
     const name = container.type.name;
-    if (followed(container, at)) {
-      if (quoted) return 'container';
-      return LISTS.has(name) && container.attrs.tight === true ? 'container' : null;
-    }
+    const next = writtenAfter(container, at);
+    if (next) return quoted || endsBeforeNext(String(node.attrs.sourceFenceLines ?? ''), container, next) ? 'container' : null;
     if (name === 'doc') return 'page';
     if (name === 'blockquote') quoted = true;
     else if (!FENCE_ENDING_CONTAINERS.has(name) && !LISTS.has(name)) return quoted ? 'container' : null;
