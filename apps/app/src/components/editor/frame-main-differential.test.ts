@@ -56,7 +56,10 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * 45 `plain`: keeping a broken opener only to its own block (the #714 review) moved 30
  * pages out of `exact`; keeping the whole authored pair when its own closing tag is the
  * next component tag brought 20 back, and keeping a lone `>` line with its opener 2 more,
- * so 330 `exact`, 45 `plain` and 8 `body-normalized`. Once later work (#714 phase 0b,
+ * so 330 `exact`, 45 `plain` and 8 `body-normalized`. Then page 1234 moved from `plain`
+ * to `exact`: its `{/"/\}` holds a `\` JavaScript can't read there, so main's reading
+ * decides that expression, and the whole broken component is kept byte for byte: 331
+ * `exact`, 44 `plain`. Once later work (#714 phase 0b,
  * or after) saves those layouts byte for byte, `plain` and `body-normalized` shrink to
  * zero, and the exception should shrink with them.
  *
@@ -458,8 +461,8 @@ describe('pages without a Frame read as on main', () => {
     expect(differences.slice(0, 3)).toEqual([]);
     expect(lost.map((result) => result.page)).toEqual([]);
     expect(kept.length).toBe(4);
-    expect(exact.length).toBe(330);
-    expect(plain.length).toBe(45);
+    expect(exact.length).toBe(331);
+    expect(plain.length).toBe(44);
     expect(bodyNormalized.length).toBe(8);
     expect(nodesOnly).toEqual([132, 943, 972, 1132]);
   }, 600_000);

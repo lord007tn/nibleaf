@@ -469,6 +469,8 @@ interface SourceRange {
   source: string;
   name: string;
   block: boolean;
+  /** A component whose opening tag can't be read (brokenRanges). */
+  broken?: boolean;
 }
 
 interface AttributeToken {
@@ -687,6 +689,8 @@ const LINE_BREAK = /[\r\n\u2028\u2029]/g;
 const isLineTerminator = (char: string | undefined): boolean => char === '\n' || char === '\r' || char === '\u2028' || char === '\u2029';
 /** How deep `${…}` substitutions may nest in template literals before a scan gives up. */
 const MAX_TEMPLATE_DEPTH = 32;
+/** JavaScript's punctuation (quotes and `.` are read on their own), plus `#` and `@`. */
+const PUNCTUATION: ReadonlySet<string> = new Set([...'{}()[];,<>+-*/%&|^!~?:=#@']);
 /** How many times one expression's scan may read a `/` both ways before it gives up. */
 const MAX_EXPRESSION_FORKS = 16;
 
@@ -908,6 +912,9 @@ function readExpression(
       word = '';
       continue;
     }
+    // Anything else that isn't JavaScript's punctuation (an emoji, a stray `\`): the scan
+    // can't tell what it is, so main's reading decides (#714).
+    if (!PUNCTUATION.has(char)) return null;
     const previous = last;
     const previousWord = word;
     word = '';
@@ -1364,6 +1371,7 @@ function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[]
     // after it) is a block there, as it is at the top level: read as an inline atom in a
     // quote's first paragraph, a callout would drop it.
     if (!range.block && depth > 0 && quotedBlock(source, layout, line, range)) range.block = true;
+    range.broken = true;
     ranges.push(range);
   }
   return ranges;
@@ -1618,7 +1626,9 @@ function videoEmbedPlaceholder(range: SourceRange, frame: { open: TagToken; clos
 
 function placeholder(range: SourceRange): string {
   const tag = range.block ? 'nibleaf-mdx-opaque-block' : 'nibleaf-mdx-opaque-inline';
-  return `<${tag} data-source="${encodeMdxSource(range.source)}" data-name="${escapeHtmlAttribute(range.name)}"></${tag}>`;
+  // A broken component's mark: a callout keeps it where it starts the callout (callout.ts).
+  const broken = range.broken ? ' data-broken=""' : '';
+  return `<${tag} data-source="${encodeMdxSource(range.source)}" data-name="${escapeHtmlAttribute(range.name)}"${broken}></${tag}>`;
 }
 
 function metadataAttributes(open: TagToken, close: TagToken | undefined, definition: SupportedDefinition): string {
