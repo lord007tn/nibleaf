@@ -1,16 +1,16 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { SkeletonCard } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import { Archive, Ban, Download, FileArchive, Play, Plus } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { FailureMessage } from '@/components/failure-message';
+import { ScheduleCreateForm } from '@/features/site-exports/components/schedule-create-form';
+import { EXPORT_FORMAT_LABELS as labelKeys } from '@/features/site-exports/model/schedule-create';
 import { useDeployments, useProject } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import {
@@ -21,7 +21,6 @@ import {
   type ExportStatus,
   useCancelExport,
   useCreateExport,
-  useCreateExportSchedule,
   useGetExportDownload,
   useListExportRuns,
   useListExportSchedules,
@@ -30,13 +29,8 @@ import {
 } from '@/hooks/api/exports';
 import { formatExportFileSize } from '@/lib/export-file-size';
 import { countVariables, localeTag } from '@/lib/format';
-import { DirtyStateReporter, SectionHeader } from './shared';
+import { SectionHeader, useConfirmSettingsDiscard } from './shared';
 
-const labelKeys: Record<ExportFormat, MessageKey> = {
-  MARKDOWN: 'settings.exports.workflow.format.markdown',
-  PDF: 'settings.exports.workflow.format.pdf',
-  STATIC_HTML: 'settings.exports.workflow.format.html',
-};
 const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(localeTag(locale)) : '—');
 
 /**
@@ -74,6 +68,14 @@ export function ExportsSection({
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
   const [showSchedule, setShowSchedule] = useState(false);
   const [surface, setSurface] = useState<'create' | 'schedules' | 'history'>('create');
+  // The new-schedule draft is unsettled while it differs from its defaults or its creation is pending.
+  // Closing it or leaving Schedules asks first, as leaving the page does.
+  const scheduleUnsettled = useRef(false);
+  const setScheduleUnsettled = useCallback((unsettled: boolean) => {
+    scheduleUnsettled.current = unsettled;
+  }, []);
+  const confirmDiscard = useConfirmSettingsDiscard();
+  const mayCloseSchedule = async () => !scheduleUnsettled.current || (await confirmDiscard());
   const runs = useListExportRuns(projectId);
   const schedules = useListExportSchedules(projectId);
   const create = useCreateExport(projectId);
@@ -128,7 +130,10 @@ export function ExportsSection({
             aria-pressed={surface === value}
             className="h-auto flex-col items-start whitespace-normal p-3 text-start aria-pressed:border-primary aria-pressed:bg-primary/5"
             key={value}
-            onClick={() => setSurface(value)}
+            onClick={async () => {
+              if (value !== surface && !(await mayCloseSchedule())) return;
+              setSurface(value);
+            }}
             type="button"
             variant="outline"
           >
@@ -190,12 +195,22 @@ export function ExportsSection({
           <div className="flex items-center justify-between">
             <div className="font-semibold text-sm">{t('settings.exports.workflow.archiveSchedules')}</div>
             {canManageSchedules ? (
-              <Button onClick={() => setShowSchedule((value) => !value)} size="sm" variant="outline">
+              <Button
+                aria-expanded={showSchedule}
+                onClick={async () => {
+                  if (showSchedule && !(await mayCloseSchedule())) return;
+                  setShowSchedule(!showSchedule);
+                }}
+                size="sm"
+                variant="outline"
+              >
                 <Plus className="size-3.5" /> {t('settings.exports.workflow.newSchedule')}
               </Button>
             ) : null}
           </div>
-          {showSchedule && canManageSchedules ? <ScheduleForm projectId={projectId} onCreated={() => setShowSchedule(false)} /> : null}
+          {showSchedule && canManageSchedules ? (
+            <ScheduleCreateForm onCreated={() => setShowSchedule(false)} onUnsettledChange={setScheduleUnsettled} projectId={projectId} />
+          ) : null}
           <div className="space-y-2">
             {schedules.isPending ? (
               <div aria-busy="true">
@@ -324,224 +339,6 @@ function StatusBadge({ status }: { status: ExportStatus }) {
     <Badge variant={status === 'FAILED' ? 'destructive' : status === 'SUCCEEDED' ? 'default' : 'secondary'}>
       {t(`settings.exports.workflow.status.${status.toLowerCase()}` as MessageKey)}
     </Badge>
-  );
-}
-
-function ScheduleForm({ projectId, onCreated }: { projectId: string; onCreated: () => void }) {
-  const { t } = useLocale();
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
-  const timezoneOptions = [...new Set(['UTC', timezone, ...Intl.supportedValuesOf('timeZone')])].map((value) => ({
-    value,
-    label: value.replaceAll('_', ' '),
-  }));
-  const [name, setName] = useState(() => t('settings.exports.workflow.defaultScheduleName'));
-  const [cadence, setCadence] = useState<ExportSchedule['cadence']>('DAILY');
-  const [time, setTime] = useState('02:00');
-  const [weekday, setWeekday] = useState(1);
-  const [monthday, setMonthday] = useState(1);
-  const [retentionCount, setRetentionCount] = useState(12);
-  const [retentionDays, setRetentionDays] = useState(90);
-  const [scheduleFormats, setScheduleFormats] = useState<ExportFormat[]>(['MARKDOWN', 'PDF', 'STATIC_HTML']);
-  const toggleScheduleFormat = (format: ExportFormat) =>
-    setScheduleFormats((current) =>
-      current.includes(format) ? (current.length === 1 ? current : current.filter((item) => item !== format)) : [...current, format],
-    );
-  const create = useCreateExportSchedule(projectId);
-  const cadenceOptions: Array<{ value: ExportSchedule['cadence']; label: string }> = [
-    { value: 'DAILY', label: t('settings.exports.workflow.daily') },
-    { value: 'WEEKLY', label: t('settings.exports.workflow.weekly') },
-    { value: 'MONTHLY', label: t('settings.exports.workflow.monthly') },
-  ];
-  const weekdayOptions: Array<{ value: number; label: string }> = [
-    { value: 0, label: t('settings.exports.workflow.day.sunday') },
-    { value: 1, label: t('settings.exports.workflow.day.monday') },
-    { value: 2, label: t('settings.exports.workflow.day.tuesday') },
-    { value: 3, label: t('settings.exports.workflow.day.wednesday') },
-    { value: 4, label: t('settings.exports.workflow.day.thursday') },
-    { value: 5, label: t('settings.exports.workflow.day.friday') },
-    { value: 6, label: t('settings.exports.workflow.day.saturday') },
-  ];
-  const createSchedule = () => {
-    const [hour, minute] = time.split(':').map(Number);
-    create.mutate(
-      {
-        name,
-        formats: scheduleFormats,
-        cadence,
-        timezone,
-        hour: hour ?? 2,
-        minute: minute ?? 0,
-        ...(cadence === 'WEEKLY' ? { weekday } : {}),
-        ...(cadence === 'MONTHLY' ? { monthday } : {}),
-        retentionCount,
-        retentionDays,
-      },
-      {
-        onSuccess: () => {
-          toast.success(t('settings.exports.workflow.scheduleCreated'));
-          onCreated();
-        },
-        // 409: the site already has the most schedules allowed.
-        onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError', { 409: 'settings.exports.workflow.scheduleLimit' })),
-      },
-    );
-  };
-  return (
-    <form
-      className="grid gap-3 rounded-lg border border-border p-4 sm:grid-cols-2"
-      onSubmit={(event) => {
-        event.preventDefault();
-        createSchedule();
-      }}
-    >
-      <DirtyStateReporter
-        dirty={
-          name !== t('settings.exports.workflow.defaultScheduleName') ||
-          timezone !== (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC') ||
-          cadence !== 'DAILY' ||
-          time !== '02:00' ||
-          weekday !== 1 ||
-          monthday !== 1 ||
-          retentionCount !== 12 ||
-          retentionDays !== 90 ||
-          scheduleFormats.join(',') !== 'MARKDOWN,PDF,STATIC_HTML'
-        }
-      />
-      <label htmlFor="schedule-scheduleName" className="grid gap-1.5 text-sm">
-        <span>{t('settings.exports.workflow.scheduleName')}</span>
-        <Input
-          id="schedule-scheduleName"
-          aria-label={t('settings.exports.workflow.scheduleName')}
-          onChange={(event) => setName(event.target.value)}
-          value={name}
-        />
-      </label>
-      <label htmlFor="schedule-timezone" className="grid gap-1.5 text-sm">
-        <span>{t('settings.exports.workflow.timezone')}</span>
-        <Select
-          items={timezoneOptions}
-          value={timezone}
-          onValueChange={(next) => {
-            if (next) setTimezone(next);
-          }}
-        >
-          <SelectTrigger id="schedule-timezone" className="w-full" dir="ltr">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {timezoneOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </label>
-      <label htmlFor="schedule-schedules" className="grid gap-1.5 text-sm">
-        <span>{t('settings.exports.workflow.schedules')}</span>
-        <Select items={cadenceOptions} onValueChange={(next) => setCadence(next ?? 'DAILY')} value={cadence}>
-          <SelectTrigger id="schedule-schedules" aria-label={t('settings.exports.workflow.schedules')} className="w-full">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {cadenceOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </label>
-      <label htmlFor="schedule-localTime" className="grid gap-1.5 text-sm">
-        <span>{t('settings.exports.workflow.localTime')}</span>
-        <Input
-          id="schedule-localTime"
-          aria-label={t('settings.exports.workflow.localTime')}
-          onChange={(event) => setTime(event.target.value)}
-          required
-          type="time"
-          value={time}
-        />
-      </label>
-      {cadence === 'WEEKLY' ? (
-        <label htmlFor="schedule-weekday" className="grid gap-1.5 text-sm">
-          <span>{t('settings.exports.workflow.weekday')}</span>
-          <Select items={weekdayOptions} onValueChange={(next) => setWeekday(next ?? 1)} value={weekday}>
-            <SelectTrigger id="schedule-weekday" aria-label={t('settings.exports.workflow.weekday')} className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {weekdayOptions.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </label>
-      ) : null}
-      {cadence === 'MONTHLY' ? (
-        <label htmlFor="schedule-monthDay" className="grid gap-1.5 text-sm">
-          <span>{t('settings.exports.workflow.monthDay')}</span>
-          <Input
-            id="schedule-monthDay"
-            aria-label={t('settings.exports.workflow.monthDay')}
-            max={31}
-            min={1}
-            onChange={(event) => setMonthday(Number(event.target.value))}
-            required
-            type="number"
-            value={monthday}
-          />
-        </label>
-      ) : null}
-      <label htmlFor="schedule-retainRuns" className="grid gap-1.5 text-sm">
-        <span>{t('settings.exports.workflow.retainRuns')}</span>
-        <Input
-          id="schedule-retainRuns"
-          aria-label={t('settings.exports.workflow.retainRuns')}
-          max={100}
-          min={1}
-          onChange={(event) => setRetentionCount(Number(event.target.value))}
-          required
-          type="number"
-          value={retentionCount}
-        />
-      </label>
-      <label htmlFor="schedule-retentionDays" className="grid gap-1.5 text-sm">
-        <span>{t('settings.exports.workflow.retentionDays')}</span>
-        <Input
-          id="schedule-retentionDays"
-          aria-label={t('settings.exports.workflow.retentionDays')}
-          max={3650}
-          min={1}
-          onChange={(event) => setRetentionDays(Number(event.target.value))}
-          required
-          type="number"
-          value={retentionDays}
-        />
-      </label>
-      <div className="flex flex-wrap gap-2 sm:col-span-2">
-        {(Object.keys(labelKeys) as ExportFormat[]).map((format) => (
-          <div className="flex items-center gap-1.5 text-xs" key={format}>
-            <Switch
-              checked={scheduleFormats.includes(format)}
-              id={`schedule-format-${format}`}
-              onCheckedChange={() => toggleScheduleFormat(format)}
-              size="sm"
-            />
-            <Label className="text-xs" htmlFor={`schedule-format-${format}`}>
-              {t(labelKeys[format])}
-            </Label>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center justify-end sm:col-span-2">
-        <Button disabled={!name.trim() || !timezone.trim()} loading={create.isPending} type="submit" size="sm">
-          {t('settings.exports.workflow.createSchedule')}
-        </Button>
-      </div>
-    </form>
   );
 }
 
