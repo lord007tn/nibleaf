@@ -86,10 +86,11 @@ describe('gitInstantPayload: the stored connection with one change', () => {
     expect(blankRepo).toEqual({ provider: 'github', repo: '  ', connected: false });
     const blankCloneUrl = gitInstantPayload({ provider: 'git', cloneUrl: ' ', connected: true }, { autoPublish: false });
     expect(blankCloneUrl).toEqual({ provider: 'git', cloneUrl: ' ', connected: true, autoPublish: false });
-    // The validator refuses (or, for a blank URL, throws on) each one: never a silent repair.
-    expect(() => updateWorkspaceSettingsBody.parse({ git: blankInstance })).toThrow();
-    expect(() => updateWorkspaceSettingsBody.parse({ git: blankRepo })).toThrow();
-    expect(() => updateWorkspaceSettingsBody.parse({ git: blankCloneUrl })).toThrow();
+    // The validator refuses each one at its own field (a refusal, not a throw): never a silent repair.
+    const refusedAt = (git: unknown) => updateWorkspaceSettingsBody.safeParse({ git }).error?.issues.map((issue) => issue.path.join('.'));
+    expect(refusedAt(blankInstance)).toEqual(['git.instanceUrl', 'git.instanceUrl']);
+    expect(refusedAt(blankRepo)).toEqual(['git.repo']);
+    expect(refusedAt(blankCloneUrl)).toEqual(['git.cloneUrl', 'git.cloneUrl']);
   });
 
   it('reads an unknown provider as GitHub and leaves it out, since the schema would refuse it', () => {
