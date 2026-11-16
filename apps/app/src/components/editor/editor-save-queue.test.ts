@@ -29,6 +29,7 @@ describe('editor save queue', () => {
     await queue.save({ ...newer, content: newer.content.replace('/old', '/new'), expectedUpdatedAt: 'reviewed-revision' });
     expect(save).toHaveBeenLastCalledWith(
       expect.objectContaining({ content: '[link](/new)\nUnsaved text\nMore unsaved text', expectedUpdatedAt: 'reviewed-revision' }),
+      expect.anything(),
     );
   });
 
@@ -333,29 +334,77 @@ describe('editor save queue', () => {
   });
 });
 
-describe('a conflict the editor found itself (#790)', () => {
-  it('tells which unsettled writes carry a text, and forgets them once settled', async () => {
-    const write = deferred();
-    const queue = createEditorSaveQueue(() => write.promise);
-    const sent = queue.save(draft('mine'));
-    expect(queue.carries('page-a', { title: 'Title', content: 'mine' })).toBe(true);
-    expect(queue.carries('page-a', { title: 'Title', content: 'theirs' })).toBe(false);
-    expect(queue.carries('page-b', { title: 'Title', content: 'mine' })).toBe(false);
-    write.resolve('saved');
-    await sent;
-    expect(queue.carries('page-a', { title: 'Title', content: 'mine' })).toBe(false);
-  });
+describe('conflicts the editor found, and resolutions (#789, #790)', () => {
+  const conflict = Object.assign(new Error('Another client saved this page.'), { code: 'page:revision_conflict' });
 
-  it("refuses the page's writes with that conflict, without sending them, until it is resolved", async () => {
+  it("refuses the page's writes with a raised conflict, without sending them, until it is resolved", async () => {
     const save = vi.fn().mockResolvedValue('saved');
     const queue = createEditorSaveQueue(save);
-    const conflict = Object.assign(new Error('Another client saved this page.'), { code: 'page:revision_conflict' });
     queue.raiseConflict('page-a', conflict);
     await expect(queue.save(draft('mine'))).rejects.toBe(conflict);
     await queue.save(draft('other page', 'page-b'));
     expect(save).toHaveBeenCalledOnce();
     queue.resolveConflict('page-a', 'reviewed');
     await queue.save(draft('mine'));
-    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'page-a', expectedUpdatedAt: 'reviewed' }));
+    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'page-a', expectedUpdatedAt: 'reviewed' }), expect.anything());
+  });
+
+  it('a write queued before a resolution is not sent after it', async () => {
+    const first = deferred();
+    const save = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue('saved');
+    const queue = createEditorSaveQueue(save);
+    const inFlight = queue.save(draft('A'));
+    const queued = queue.save(draft('AB'));
+    const refused = expect(queued).rejects.toMatchObject({ code: 'page:write_superseded' });
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    queue.resolveConflict('page-a', 'reviewed');
+    first.resolve('saved');
+    await inFlight;
+    await refused;
+    expect(save).toHaveBeenCalledOnce();
+    expect(queue.resolution('page-a')).toBe(1);
+  });
+
+  it('a 409 for a write sent before a resolution does not latch the conflict again', async () => {
+    const first = deferred();
+    const save = vi
+      .fn()
+      .mockReturnValueOnce(first.promise.then(() => Promise.reject(conflict)))
+      .mockResolvedValue('saved');
+    const queue = createEditorSaveQueue(save);
+    const inFlight = queue.save(draft('A'));
+    const refused = expect(inFlight).rejects.toBe(conflict);
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    queue.resolveConflict('page-a', 'reviewed');
+    first.resolve('');
+    await refused;
+    const write = save.mock.calls[0]?.[1] as { stale: () => boolean } | undefined;
+    expect(write?.stale()).toBe(true);
+    await queue.save({ ...draft('mine'), expectedUpdatedAt: 'reviewed' });
+    expect(save).toHaveBeenCalledTimes(2);
+  });
+
+  it('tells which writes at the server carry a text, and which are in flight; a draft only queued carries nothing (#790)', async () => {
+    const first = deferred();
+    const queue = createEditorSaveQueue(vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue('saved'));
+    const inFlight = queue.save(draft('A'));
+    const queued = queue.save(draft('AB'));
+    await vi.waitFor(() => expect(queue.inFlight('page-a')).toBe(true));
+    expect(queue.carries('page-a', { title: 'Title', content: 'A' })).toBe(true);
+    expect(queue.carries('page-a', { title: 'Title', content: 'AB' })).toBe(false);
+    expect(queue.carries('page-b', { title: 'Title', content: 'A' })).toBe(false);
+    expect(queue.inFlight('page-b')).toBe(false);
+    first.resolve('saved');
+    await Promise.all([inFlight, queued]);
+    expect(queue.carries('page-a', { title: 'Title', content: 'AB' })).toBe(false);
+    expect(queue.inFlight('page-a')).toBe(false);
+  });
+
+  it('reports the revision a draft is sent from: the latest own stored one, when based on one', async () => {
+    const save = vi.fn().mockResolvedValue({ updatedAt: 'r2' });
+    const queue = createEditorSaveQueue<{ updatedAt: string }>(save, (saved) => saved.updatedAt);
+    await queue.save({ ...draft('A'), expectedUpdatedAt: 'r1' });
+    expect(queue.baseFor({ ...draft('AB'), expectedUpdatedAt: 'r1' })).toBe('r2');
+    expect(queue.baseFor({ ...draft('AB'), expectedUpdatedAt: 'foreign' })).toBe('foreign');
   });
 });
