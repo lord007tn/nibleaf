@@ -277,3 +277,62 @@ describe('template literals and line terminators in an attribute expression (#71
     expect(setAttribute(page, 'title', 'Edited')).toBe('<Card title="Edited" icon="x">\n\nBody\n\n</Card>');
   });
 });
+
+describe('an identifier outside the Basic Multilingual Plane in an attribute expression (#714 review)', () => {
+  // Two UTF-16 units each: read as one identifier, so the `/` after it divides.
+  const identifiers = [
+    ['U+1D49C', '\u{1D49C}'],
+    ['obj.U+1D49C', 'obj.\u{1D49C}'],
+    ['U+10400', '\u{10400}'],
+  ] as const;
+  const operators = [
+    ['before a division', ' / 2'],
+    ['before another operator', ' * 2 + 1'],
+  ] as const;
+  const cases = identifiers.flatMap(([name, identifier]) =>
+    operators.flatMap(([where, rest]) =>
+      (['LF', 'CRLF'] as const).map((endings) => {
+        const newline = endings === 'LF' ? '\n' : '\r\n';
+        const page = `<Card title={${identifier}${rest}} icon={a / 2}>${newline}${newline}Body${newline}${newline}</Card>`;
+        return { name, where, endings, page, edited: page.replace(`{${identifier}${rest}}`, '"Edited"') };
+      }),
+    ),
+  );
+
+  it.each(cases)('$name $where ($endings) saves unchanged, and a title edit keeps icon', ({ page, edited }) => {
+    expect(load(page, 'title').target?.type).toBe('mdxCard');
+    expect(saveTwice(page)).toEqual([page, page]);
+    expect(setAttribute(page, 'title', 'Edited')).toBe(edited);
+  });
+});
+
+describe('an opener that can not be read inside a container that is not a component tag (#714 review)', () => {
+  // The broken opener's range stops at the closing tag of whatever is open around it (the
+  // editor's own `<div data-callout>` and `data-mdx` markup, lowercase component names, a
+  // component), and the closing tag of its own after that is kept on its own. Main keeps
+  // Text and Outside too, but writes the opener as text (`&lt;Accordion title="oops&gt;`, or
+  // `title="{oops"`) and drops `</Accordion>`; the containers are written as main writes them.
+  const containers = [
+    ['<div data-callout>', '</div>', null],
+    ['<card title="Outer">', '</card>', ['<Card title="Outer">', '</Card>']],
+    ['<step title="Outer">', '</step>', ['<Step title="Outer">', '</Step>']],
+    ['<div data-mdx="Card">', '</div>', ['<Card>', '</Card>']],
+    ['<Card title="Outer">', '</Card>', ['<Card title="Outer">', '</Card>']],
+  ] as const;
+  const cases = containers.flatMap(([open, close, saved]) =>
+    ['<Accordion title="oops>', '<Accordion title={oops>'].map((opener) => ({
+      open,
+      opener,
+      page: `${open}\n\n${opener}\n\nText\n\n${close}\n\n# Outside\n\n</Accordion>`,
+      expected: saved
+        ? `${saved[0]}\n\n${opener}\n\nText\n\n${saved[1]}\n\n# Outside\n\n</Accordion>`
+        : `> [!NOTE]\n> \n>\n> ${opener}\n>\n> Text\n\n# Outside\n\n</Accordion>`,
+    })),
+  );
+
+  it.each(cases)('$opener inside $open keeps Text, Outside and both of its tags, save after save', ({ page, expected }) => {
+    expect(saveTwice(page)).toEqual([expected, expected]);
+    expect(allNodes(page)).toContain('heading');
+    expect(appendTo(page, 'Outside', '!')).toBe(expected.replace('# Outside', '# Outside!'));
+  });
+});

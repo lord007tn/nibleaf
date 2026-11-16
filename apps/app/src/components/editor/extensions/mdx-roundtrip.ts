@@ -158,6 +158,9 @@ interface MarkdownLayout {
   length: number;
   /** Where a fence with no closing line that runs to the end of the page starts, or -1. */
   unclosedFence: number;
+  /** For each line in a blockquote or list item, the line after the innermost one ends;
+   *  the line count for a line in neither. */
+  containerEnd: Int32Array;
 }
 
 function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undefined): MarkdownLayout {
@@ -174,6 +177,7 @@ function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undef
     nonSpace: new Int32Array(source.length + 1),
     length: source.length,
     unclosedFence: -1,
+    containerEnd: new Int32Array(lineStarts.length).fill(lineStarts.length),
   };
   for (let index = 0; index < source.length; index++) {
     const code = source.charCodeAt(index);
@@ -189,7 +193,10 @@ function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undef
       layout.fenced.push({ start: at(first), end: at(last) });
       if (at(last) === source.length && !fenceClosed(token, source.slice(at(last - 1), at(last)))) layout.unclosedFence = at(first);
     } else if (token.type === 'code_block') layout.indented.fill(1, at(first), at(last));
-    else if (token.type === 'paragraph_open') {
+    else if (token.type === 'blockquote_open' || token.type === 'list_item_open') {
+      // The innermost container ends first.
+      for (let line = first; line < last; line++) layout.containerEnd[line] = Math.min(layout.containerEnd[line] ?? last, last);
+    } else if (token.type === 'paragraph_open') {
       layout.paragraphOfLine.fill(layout.paragraphs.length, first, last);
       layout.paragraphs.push([first, last]);
     }
@@ -654,7 +661,27 @@ const REGEX_AFTER_WORDS: ReadonlySet<string> = new Set([
 const STATEMENT_PAREN_WORDS: ReadonlySet<string> = new Set(['if', 'while', 'for', 'with']);
 /** Words after which a `{` opens a block. */
 const BLOCK_AFTER_WORDS: ReadonlySet<string> = new Set(['else', 'do', 'try', 'finally']);
-const IDENTIFIER_CHAR = /[\p{ID_Continue}$]/u;
+/** What starts a word, an identifier or a number: JavaScript's identifier start, `$`, `_`, a digit. */
+const WORD_START = /^[\p{ID_Start}$_0-9]$/u;
+/** What continues one: JavaScript's identifier part (digits and `_` included), `$`, ZWNJ and ZWJ. */
+const WORD_PART = /^[\p{ID_Continue}\p{Join_Control}$]$/u;
+
+/**
+ * Where the word that starts at `at` ends, or `at` when none does. Read by code point, so
+ * an identifier outside the Basic Multilingual Plane (U+1D49C, say: two UTF-16 units) is one
+ * word, not two pieces of punctuation; offsets stay in UTF-16 units.
+ */
+function wordEnd(source: string, at: number, first: RegExp = WORD_START): number {
+  let end = at;
+  let test = first;
+  while (end < source.length) {
+    const code = source.codePointAt(end) ?? 0;
+    if (!test.test(String.fromCodePoint(code))) break;
+    end += code > 0xff_ff ? 2 : 1;
+    test = WORD_PART;
+  }
+  return end;
+}
 /** JavaScript's line terminators: they end a `//` comment, and a regular expression literal can't hold one. */
 const LINE_BREAK = /[\r\n\u2028\u2029]/g;
 const isLineTerminator = (char: string | undefined): boolean => char === '\n' || char === '\r' || char === '\u2028' || char === '\u2029';
@@ -771,8 +798,7 @@ function regexEnd(context: ExpressionContext, start: number): number | null {
     } else if (inClass) inClass = char !== ']';
     else if (char === '[') inClass = true;
     else if (char === '/') {
-      end = i + 1;
-      while (end < source.length && IDENTIFIER_CHAR.test(source[end] ?? '')) end++;
+      end = wordEnd(source, i + 1, WORD_PART);
       break;
     }
   }
@@ -864,9 +890,8 @@ function readExpression(
       }
       // After a block's `}`, a `/` that can't start a regular expression divides.
     }
-    if (IDENTIFIER_CHAR.test(char)) {
-      let end = i + 1;
-      while (end < source.length && IDENTIFIER_CHAR.test(source[end] ?? '')) end++;
+    const end = wordEnd(source, i);
+    if (end > i) {
       context.budget -= end - i;
       const name = source.slice(i, end);
       // After a `.` a keyword is a property name (`obj.return / 2`).
@@ -1191,8 +1216,86 @@ function loneTagEnd(source: string, at: number): number {
   return i >= source.length || source[i] === '\r' || source[i] === '\n' ? i : -1;
 }
 
+/**
+ * For each broken opener, the index of the earliest closing tag of a tag opened before it
+ * and still open there, whatever the tag (a component, a lowercase component name, the
+ * editor's own `<div data-callout>` or `data-mdx` markup, plain HTML): -1 for none. One
+ * forward sweep, with the open tags' closing tags in a min-heap.
+ */
+function enclosingClosers(tokens: TagToken[], pairs: Map<number, number>): Map<number, number> {
+  const closeOf = new Int32Array(tokens.length).fill(-1);
+  for (const [open, close] of pairs) closeOf[open] = close;
+  const heap: number[] = [];
+  const push = (value: number) => {
+    let at = heap.push(value) - 1;
+    while (at > 0) {
+      const parent = (at - 1) >> 1;
+      if ((heap[parent] ?? 0) <= value) break;
+      heap[at] = heap[parent] ?? 0;
+      at = parent;
+    }
+    heap[at] = value;
+  };
+  const pop = () => {
+    const last = heap.pop() ?? 0;
+    if (heap.length === 0) return;
+    let at = 0;
+    for (;;) {
+      const left = 2 * at + 1;
+      if (left >= heap.length) break;
+      const right = left + 1;
+      const child = right < heap.length && (heap[right] ?? 0) < (heap[left] ?? 0) ? right : left;
+      if ((heap[child] ?? 0) >= last) break;
+      heap[at] = heap[child] ?? 0;
+      at = child;
+    }
+    heap[at] = last;
+  };
+  const enclosing = new Map<number, number>();
+  for (const [index, token] of tokens.entries()) {
+    while (heap.length > 0 && (heap[0] ?? 0) <= index) pop();
+    if (token.broken) enclosing.set(index, heap[0] ?? -1);
+    const close = closeOf[index] ?? -1;
+    if (close > index) push(close);
+  }
+  return enclosing;
+}
+
+/** How many quote markers (`>`) open the line at `from`, read up to `to`. */
+function quoteDepth(source: string, from: number, to: number): number {
+  let depth = 0;
+  for (let at = from; at < to; at++) {
+    const char = source[at];
+    if (char === '>') depth++;
+    else if (char !== ' ' && char !== '\t') break;
+  }
+  return depth;
+}
+
+/** Whether `line` is blank inside `depth` quotes: nothing but its quote markers and spaces. */
+function blankAtDepth(line: string, depth: number): boolean {
+  let markers = 0;
+  for (const char of line) {
+    if (char === '>' && markers < depth) markers++;
+    else if (char !== ' ' && char !== '\t' && char !== '\r' && char !== '\n') return false;
+  }
+  return true;
+}
+
+/** Whether a range that starts on `line` inside quotes stands on lines of its own there:
+ *  only quote markers and spaces before it, only spaces after it, and no paragraph
+ *  running on beyond it (see isBlockRange). */
+function quotedBlock(source: string, layout: MarkdownLayout, line: number, span: Span): boolean {
+  const before = source.slice(lineStart(layout, line), span.start);
+  if (!blankAtDepth(before, before.length)) return false;
+  if (!blank(layout, span.end, lineStart(layout, lineOf(layout.lineStarts, span.end) + 1))) return false;
+  const paragraph = layout.paragraphs[layout.paragraphOfLine[line] ?? -1];
+  return !paragraph || (paragraph[0] === line && paragraph[1] === lineOf(layout.lineStarts, Math.max(span.start, span.end - 1)) + 1);
+}
+
 function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>): SourceRange[] {
   const ranges: SourceRange[] = [];
+  const enclosing = enclosingClosers(tokens, pairs);
   // Tokens come in page order, so each lookup below only moves forward: one pass in all,
   // however many openers can't be read (a page of them on one line, say).
   let blankLine = -1;
@@ -1200,6 +1303,18 @@ function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[]
   let loneFor = -1;
   let loneEnd = -1;
   let next = 0;
+  // Inside quotes, per depth: the first blank quoted line after the line last searched from.
+  const quotedBlank = new Map<number, { from: number; line: number }>();
+  const blankQuotedLine = (depth: number, line: number): number => {
+    let memo = quotedBlank.get(depth);
+    if (!memo || memo.from > line || memo.line <= line) {
+      let at = line + 1;
+      while (at < layout.lineStarts.length && !blankAtDepth(source.slice(lineStart(layout, at), lineStart(layout, at + 1)), depth)) at++;
+      memo = { from: line, line: at };
+      quotedBlank.set(depth, memo);
+    }
+    return memo.line < layout.lineStarts.length ? lineStart(layout, memo.line) - 1 : source.length;
+  };
   // A range inside an earlier one is dropped by outermostRanges anyway: never sliced.
   let coveredUntil = -1;
   for (const [index, token] of tokens.entries()) {
@@ -1212,15 +1327,25 @@ function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[]
       HEADING_LINES.lastIndex = token.start;
       headingLine = HEADING_LINES.exec(source)?.index ?? source.length;
     }
+    // The opener's Markdown container (a quote or list item) ends its range too, and inside
+    // quotes a line of nothing but quote markers is its blank line.
+    const line = lineOf(layout.lineStarts, token.start);
+    const depth = quoteDepth(source, lineStart(layout, line), token.start);
+    const containerEnd = lineStart(layout, layout.containerEnd[line] ?? layout.lineStarts.length);
+    const blockEnd = depth === 0 ? blankLine : blankQuotedLine(depth, line);
+    // The next component tag (lowercase names and the editor's own markup included), or
+    // the closing tag of anything still open around the opener, whichever comes first.
     next = Math.max(next, index + 1);
-    while (tokens[next]?.html) next++;
-    const tag = tokens[next];
+    while (tokens[next]?.html && !isComponentTag(tokens[next] as TagToken)) next++;
+    const around = enclosing.get(index) ?? -1;
+    const tagIndex = around >= 0 && (next >= tokens.length || around < next) ? around : next;
+    const tag = tokens[tagIndex];
     let end: number;
-    if (tag && pairs.get(index) === next) end = tag.end;
+    if (tag && pairs.get(index) === tagIndex && tag.end <= containerEnd) end = tag.end;
     else {
-      const limit = Math.min(headingLine, tag?.start ?? source.length);
-      end = Math.min(blankLine, limit);
-      if (end === blankLine && blankLine < limit) {
+      const limit = Math.min(headingLine, tag?.start ?? source.length, containerEnd);
+      end = Math.min(blockEnd, limit);
+      if (depth === 0 && end === blankLine && blankLine < limit) {
         // The opener's own `>` on a line of its own after a blank line ends the opener
         // (`<Card title={x\n\n>`): kept with it, rather than read as an empty quote.
         // Read once per blank line, however many openers end at it.
@@ -1234,15 +1359,21 @@ function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[]
     while (end > token.start && /\s/.test(source[end - 1] ?? '')) end--;
     if (end <= coveredUntil) continue;
     coveredUntil = end;
-    ranges.push(sourceRange(source, layout, { start: token.start, end }, token.name));
+    const range = sourceRange(source, layout, { start: token.start, end }, token.name);
+    // Inside quotes, a range on lines of its own (nothing but quote markers before it, nothing
+    // after it) is a block there, as it is at the top level: read as an inline atom in a
+    // quote's first paragraph, a callout would drop it.
+    if (!range.block && depth > 0 && quotedBlock(source, layout, line, range)) range.block = true;
+    ranges.push(range);
   }
   return ranges;
 }
 
 /**
- * A component tag whose partner is inside a range kept byte for byte is kept too.
- * Rewritten, a closing tag would close nothing and be dropped, and an opening tag
- * would hold everything to the end of the page (#714).
+ * A tag whose partner is inside a range kept byte for byte is kept too, whatever the tag
+ * (a component, a lowercase component name, the editor's own markup, HTML). Rewritten or
+ * read alone, a closing tag would close nothing and be dropped, and an opening tag would
+ * hold everything to the end of the page (#714).
  */
 function strayPartners(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>, opaque: SourceRange[]): SourceRange[] {
   const kept = spanIndex(opaque);
@@ -1250,7 +1381,9 @@ function strayPartners(source: string, layout: MarkdownLayout, tokens: TagToken[
   for (const [openIndex, closeIndex] of pairs) {
     const open = tokens[openIndex];
     const close = tokens[closeIndex];
-    if (!open || !close || open.html || !isComponentTag(open)) continue;
+    // Raw HTML is kept opaque as a whole (keepRawHtml); every other pair, HTML included, is
+    // kept together.
+    if (!open || !close || open.rawHtml) continue;
     const openKept = kept(open.start, open.end);
     if (openKept === kept(close.start, close.end)) continue;
     const stray = openKept ? close : open;

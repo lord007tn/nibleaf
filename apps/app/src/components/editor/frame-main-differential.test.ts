@@ -97,6 +97,9 @@ interface Main714Record extends Omit<MainResult, 'nodes'> {
   plainSaved: string | null;
   /** Main's save of that plain-value page after its attribute edit. */
   plainEdited: string | null;
+  /** Where the plain value `"x"` sits in `plainEdited` when the edit left it there (it
+   *  set another node's attribute), or -1 when the edit replaced it. */
+  plainEditedValueAt: number;
   bodySaved: string | null;
 }
 
@@ -109,6 +112,25 @@ const bodyOf = (page: string, seeded: SeededPage): { before: string; body: strin
   const start = between.indexOf(body);
   return { before: between.slice(0, start), body, after: between.slice(start + body.length) };
 };
+
+/** The node the edit sets `key` on: its type, and the opening tag it was read from. */
+type EditTarget = { type: string; sourceOpen: string };
+
+/**
+ * The edit oracle for a `plain` page: exactly one expected save after the edit, chosen
+ * by the node the edit targets. When it targets the component holding the expression
+ * (its opener holds `key={…}`), the edit replaced that value, so the save is main's
+ * edit of the plain-value page as it is. Otherwise the value is untouched: main's edit
+ * with only the plain value's span, at its recorded offset, put back to the expression.
+ * Every other byte must match.
+ */
+function plainEditExpected(record: Main714Record, key: string, target: EditTarget | null): string | null {
+  if (record.plainEdited === null) return null;
+  if (target?.sourceOpen.includes(`${key}=${record.valueText}`)) return record.plainEdited;
+  const at = record.plainEditedValueAt;
+  if (at < 0 || !record.plainEdited.startsWith('"x"', at)) return null;
+  return `${record.plainEdited.slice(0, at)}${record.valueText}${record.plainEdited.slice(at + 3)}`;
+}
 
 const digestOf = ({ nodes, saved, edited }: MainResult): string =>
   createHash('sha256').update(JSON.stringify({ nodes, saved, edited })).digest('hex').slice(0, 16);
@@ -271,8 +293,6 @@ describe('pages without a Frame read as on main', () => {
 
   /** The page's nodes, its save, and its save after the first node with `key` has it
    *  set to `Edited`; and whether a node holds an attribute value with a blank line. */
-  /** The node the edit sets `key` on: its type, and the opening tag it was read from. */
-  type EditTarget = { type: string; sourceOpen: string };
   const digest = (page: string, key: string): MainResult & { digest: string; blankLineValue: boolean; target: EditTarget | null } => {
     editor.commands.setContent(page, { emitUpdate: false });
     const nodes: string[] = [];
@@ -310,6 +330,13 @@ describe('pages without a Frame read as on main', () => {
         if (result.saved === page || result.digest !== main.digests[index]) continue;
         const plainPage = `${page.slice(0, seeded.valueAt)}"x"${page.slice(seeded.valueAt + seeded.valueText.length)}`;
         const plain = seeded.value === REGEX_VALUE ? digest(plainPage, seeded.key) : null;
+        // The plain value's offset in main's edited save, when the edit left it: the value
+        // is the opener's first attribute, so its `="x"` is the page's first (an inserted
+        // character may be in its name: `co>lor=`, `ti}p=`).
+        const valueAt = (edited: string) => {
+          const at = edited.indexOf('="x"');
+          return at < 0 ? -1 : at + 1;
+        };
         const body = bodyOf(page, seeded);
         const bodySaved = body ? digest(body.body, seeded.key).saved : null;
         records.push({
@@ -320,6 +347,7 @@ describe('pages without a Frame read as on main', () => {
           valueText: seeded.valueText,
           plainSaved: plain?.saved ?? null,
           plainEdited: plain?.edited ?? null,
+          plainEditedValueAt: plain?.edited ? valueAt(plain.edited) : -1,
           bodySaved,
         });
       }
@@ -343,15 +371,12 @@ describe('pages without a Frame read as on main', () => {
     const plain: string[] = [];
     const bodyNormalized: string[] = [];
     const plainValue = (record: Main714Record) => record.plainSaved?.replace('"x"', record.valueText);
-    // The edit oracle. A `plain` page's edit is main's edit of the plain-value page: as is
-    // when the edit replaced that value, or with the value put back when it edited another
-    // node. On `exact` and `body-normalized` pages, whose opener may be opaque, the edit
-    // sets `key` on what is left editable, and on nothing else: the node it targets is an
+    // The edit oracle. A `plain` page's edit: see plainEditExpected. On `exact` and
+    // `body-normalized` pages, whose opener may be opaque, the edit sets `key` on what is
+    // left editable, and on nothing else: the node it targets is an
     // opaque one (its source is kept, so the save is unchanged), or a component, whose
     // authored opening tag alone is rewritten, as the editor rewrites any opening tag; with
     // nothing to target, there is no edit.
-    const plainEditOk = (result: { edited: string | null }, record: Main714Record): boolean =>
-      result.edited === record.plainEdited || result.edited === record.plainEdited?.replace('"x"', record.valueText);
     const editOk = (result: { saved: string; edited: string | null; target: EditTarget | null }, key: string): boolean => {
       const { saved, edited, target } = result;
       if (!target) return edited === null;
@@ -394,7 +419,12 @@ describe('pages without a Frame read as on main', () => {
         exact.push(page);
         return [];
       }
-      if (record && seeded?.value === REGEX_VALUE && result.saved === plainValue(record) && plainEditOk(result, record)) {
+      if (
+        record &&
+        seeded?.value === REGEX_VALUE &&
+        result.saved === plainValue(record) &&
+        result.edited === plainEditExpected(record, seeded.key, result.target)
+      ) {
         plain.push(page);
         return [];
       }
@@ -433,4 +463,38 @@ describe('pages without a Frame read as on main', () => {
     expect(bodyNormalized.length).toBe(8);
     expect(nodesOnly).toEqual([132, 943, 972, 1132]);
   }, 600_000);
+});
+
+describe('the #714 plain edit oracle', () => {
+  // Damage a reviewer injected into two `plain` pages' edits: on page 149 the edit targets
+  // the Card after the Note, and the untouched `title={/"/}` became `title="x"`; on page
+  // 425 the edit targets the expression's own Expandable, and `id="x"` became `id={/"/}`.
+  // The oracle accepts each page's real edit and rejects the damaged one.
+  const injected = [
+    {
+      index: 149,
+      page: 'Intro.\n\n<Note title={/"/} data-x={1} />\n\n<Card title="Next">\n\nMore\n\n</Card>\n\nOutro.',
+      target: { type: 'mdxCard', sourceOpen: '<Card title="Next">' },
+      edited: 'Intro.\n\n<Note title={/"/} data-x={1} />\n\n</Callout>\n\n<Card title="Edited">\n\nMore\n\n</Card>\n\nOutro.',
+      damaged: 'Intro.\n\n<Note title="x" data-x={1} />\n\n</Callout>\n\n<Card title="Edited">\n\nMore\n\n</Card>\n\nOutro.',
+    },
+    {
+      index: 425,
+      page: 'Intro.\n\nSome <Expandable title={/"/}id="x"\n>inline text</Expandable> more text.\n\nOutro.',
+      target: { type: 'mdxExpandable', sourceOpen: '<Expandable title={/"/}id="x"\n>' },
+      edited: 'Intro.\n\nSome\n\n<Expandable title="Edited"id="x"\n>\n\ninline text\n\n</Expandable>\n\n more text.\n\nOutro.',
+      damaged: 'Intro.\n\nSome\n\n<Expandable title="Edited"id={/"/}\n>\n\ninline text\n\n</Expandable>\n\n more text.\n\nOutro.',
+    },
+  ];
+
+  it.each(injected)('accepts page $index’s real edit and rejects its damaged one', ({ index, page, target, edited, damaged }) => {
+    expect(pages[index]?.page).toBe(page);
+    const records = (JSON.parse(readFileSync(FIXTURE_714, 'utf8')) as { records: Main714Record[] }).records;
+    const record = records.find((entry) => entry.index === index);
+    const key = pages[index]?.key ?? '';
+    expect(record).toBeDefined();
+    if (!record) return;
+    expect(plainEditExpected(record, key, target)).toBe(edited);
+    expect(plainEditExpected(record, key, target)).not.toBe(damaged);
+  });
 });
