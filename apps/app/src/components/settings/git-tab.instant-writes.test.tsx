@@ -12,7 +12,7 @@ import { GitTab } from './git-tab';
  * connection switching the legacy import off) in the real GitTab, over the real
  * settings query and `useWriteGitSettings`. Behind `fetch`, a stand-in settings
  * API keeps each PATCH body as sent, runs the real body validator (answering
- * 422 or 500 as the route does), then stores what the server stores: `git` replaced wholesale with
+ * 422 when it refuses, as the route does), then stores what the server stores: `git` replaced wholesale with
  * the validated object, the import and push-sync bookkeeping carried over, and
  * the webhook secret kept apart (the GET returns it to an admin).
  * apps/server/src/actions/workspace.git-connection.test.ts runs the same
@@ -97,8 +97,8 @@ function stubApi() {
         patch.status = 500;
         return Response.json({ error: { message: 'Could not save.' } }, { status: 500 });
       }
-      // As the route answers: 422 for a body the validator refuses, 500 when it throws (a blank clone
-      // or instance URL reaches its `new URL()` refinement).
+      // As the route answers: 422 for a body the validator refuses. A throw would be the route's 500;
+      // a blank clone or instance URL once threw there (#782), so the branch stays to catch a regression.
       let parsed: ReturnType<typeof updateWorkspaceSettingsBody.safeParse>;
       try {
         parsed = updateWorkspaceSettingsBody.safeParse(body);
@@ -361,8 +361,8 @@ describe('a stored active address the server refuses: sent as stored, so the wri
     const reads = api.reads['site-a'];
     await ACTIONS['auto publish'].run();
     await settle();
-    // The blank URL reaches the validator's `new URL()` refinement, which throws: the route answers 500.
-    await expectRefused(stored, { autoPublish: true }, 500, reads);
+    // The validator refuses the blank URL at git.instanceUrl: the route answers 422 (a 500 before #782).
+    await expectRefused(stored, { autoPublish: true }, 422, reads);
     expect(db.git['site-a']).not.toHaveProperty('autoPublish');
     expect(autoPublishSwitch()?.getAttribute('aria-checked')).toBe('false');
   });

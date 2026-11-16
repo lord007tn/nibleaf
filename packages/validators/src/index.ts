@@ -1214,7 +1214,9 @@ export const gitConfigSchema = z.object({
   cloneUrl: z
     .url()
     .max(500)
+    // z.url() reports a malformed value but does not stop this check, so guard the parse.
     .refine((value) => {
+      if (!URL.canParse(value)) return false;
       const url = new URL(value);
       return ['http:', 'https:'].includes(url.protocol) && !(url.username || url.password || url.search || url.hash);
     }, 'Clone URL must use http(s) without credentials, query parameters, or fragments.')
@@ -1223,6 +1225,7 @@ export const gitConfigSchema = z.object({
     .url()
     .max(200)
     .refine((value) => {
+      if (!URL.canParse(value)) return false;
       const url = new URL(value);
       return ['http:', 'https:'].includes(url.protocol) && !(url.username || url.password || url.search || url.hash);
     }, 'GitLab instance URL must use http(s) without credentials, query parameters, or fragments.')
