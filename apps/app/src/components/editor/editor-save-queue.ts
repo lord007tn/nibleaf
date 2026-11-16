@@ -30,6 +30,8 @@ export function createEditorSaveQueue<T>(
   let tail: Promise<unknown> = Promise.resolve();
   let latest: { draft: PageDraft; result: Promise<T> } | undefined;
   let pending = 0;
+  /** Every draft sent or queued that has not settled yet. */
+  const unsettled = new Set<PageDraft>();
   const revisions = new Map<string, { revision: string; bases: Set<string> }>();
   const conflicts = new Map<string, unknown>();
   /** The revisions this queue's own writes produced, per page. */
@@ -94,12 +96,14 @@ export function createEditorSaveQueue<T>(
         : tail.catch(() => undefined).then(send);
       const entry = { draft, result };
       pending += 1;
+      unsettled.add(draft);
       latest = entry;
       tail = result;
       // Deduplicate only in-flight writes. The same content may need saving
       // again after a server refresh or after a failed request.
       const release = () => {
         pending -= 1;
+        unsettled.delete(draft);
         if (latest === entry) latest = undefined;
       };
       void result.then(release, release);
@@ -120,6 +124,16 @@ export function createEditorSaveQueue<T>(
     superseded: (id: string, revision: string): boolean => {
       const known = revisions.get(id);
       return known !== undefined && known.revision !== revision && known.bases.has(revision);
+    },
+    /** Whether a write of page `id` not settled yet carries this title and content. */
+    carries: (id: string, text: Omit<StoredPage, 'id'>): boolean => {
+      for (const draft of unsettled) if (sameStoredText(draft, { id, ...text })) return true;
+      return false;
+    },
+    /** The editor found a conflict on page `id` itself (#790): its writes not sent
+     *  yet are refused with `error` until it is resolved, like the server's. */
+    raiseConflict: (id: string, error: unknown) => {
+      conflicts.set(id, error);
     },
     resolveConflict: (id: string, revision: string) => {
       revisions.set(id, { revision, bases: new Set([revision]) });

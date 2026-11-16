@@ -97,6 +97,36 @@ export function nextHydration(
 }
 
 /**
+ * Whether `page` is another client's newer copy that arrived while the draft
+ * holds a change of the author's not sent yet (#790). It cannot be loaded
+ * without discarding that change, and saving over it without asking would
+ * discard theirs; leaving it unloaded let an undo back to the loaded text look
+ * clean while the server held their copy. So it is a revision conflict at once:
+ * saving pauses for the author to review. "Clean" then means what the server
+ * holds now, not what was loaded.
+ *
+ * Not a conflict: a copy holding the draft's own text, the text it mirrors, or
+ * the text of a write still pending (`carries`, the editor's own, refetched
+ * early); a copy without comparable stamps, or one this editor's own writes
+ * have moved on from (`superseded`).
+ */
+export function foreignCopyWhileDirty(
+  state: DraftState,
+  page: ServerSnapshot | null | undefined,
+  superseded?: (revision: string) => boolean,
+  carries?: (text: DraftSnapshot) => boolean,
+): boolean {
+  const { synced, draft } = state;
+  if (!page || state.conflicted || !synced || synced.id !== page.id || !isDirty(state)) return false;
+  const holds = (text: DraftSnapshot) => page.title === text.title && page.content === text.content;
+  if (holds(synced) || holds(draft) || carries?.(page) || carries?.(draft)) return false;
+  if (page.updatedAt === undefined || synced.updatedAt === undefined) return false;
+  const next = Date.parse(page.updatedAt);
+  const current = Date.parse(synced.updatedAt);
+  return !Number.isNaN(next) && !Number.isNaN(current) && next > current && !superseded?.(page.updatedAt);
+}
+
+/**
  * Decide whether the draft should be automatically saved to `page`.
  * The draft is only ever saved to the page it was hydrated from.
  */
@@ -133,6 +163,13 @@ export function shouldSaveDraft(
 
 export const isEditorRevisionConflict = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && error.code === 'page:revision_conflict';
+
+/** Another client's copy arrived while the draft held unsent changes (#790): reviewed like a revision conflict. */
+export const foreignCopyConflict = (id: string): Error & { code: 'page:revision_conflict'; details: { id: string; reason: 'foreign' } } =>
+  Object.assign(new Error('Another client saved this page while it had unsaved changes.'), {
+    code: 'page:revision_conflict' as const,
+    details: { id, reason: 'foreign' as const },
+  });
 
 /**
  * The server stored other text than the draft, again when it was sent once more:

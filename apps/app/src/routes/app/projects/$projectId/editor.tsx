@@ -54,6 +54,8 @@ import { EditorConflictDialog } from '@/components/editor/editor-conflict-dialog
 import {
   aiAssistState,
   draftUnsavable,
+  foreignCopyConflict,
+  foreignCopyWhileDirty,
   isEditorRevisionConflict,
   isPageTooLarge,
   nextHydration,
@@ -530,13 +532,40 @@ function EditorPage() {
   // A copy older than this editor's own stored writes is never loaded back (#757).
   const supersededRef = useRef<(id: string, revision: string) => boolean>(() => false);
   const superseded = (revision: string) => (page ? supersededRef.current(page.id, revision) : false);
-  let hydration = nextHydration({ synced, draft: { title, content }, conflicted: conflictedPageId === page?.id }, page, superseded);
+  // Whether a write not settled yet carries this text: the editor's own, not another client's (#790).
+  const carriesRef = useRef<(id: string, text: { title: string; content: string }) => boolean>(() => false);
+  // The draft as of now, with an edit the editor has not serialized yet, once a fresher copy needs it.
+  let currentDraft = { title, content };
+  let hydration = nextHydration({ synced, draft: currentDraft, conflicted: conflictedPageId === page?.id }, page, superseded);
   if (hydration && synced?.id === hydration.id && editorDraftRef.current?.pending()) {
     // A fresher server copy arrived while the editor holds an edit `content`
     // doesn't have yet. Serialize it first: it makes the draft dirty, and a dirty
     // draft is never re-seeded over.
     flushEditorDraft();
-    hydration = nextHydration({ synced, draft: draftRef.current.draft, conflicted: conflictedPageId === page?.id }, page, superseded);
+    currentDraft = draftRef.current.draft;
+    hydration = nextHydration({ synced, draft: currentDraft, conflicted: conflictedPageId === page?.id }, page, superseded);
+  }
+  // Another client's newer copy while the draft holds unsent changes: neither
+  // loaded over them nor saved over it, but reviewed at once (#790).
+  const foreignOver = (draft: { title: string; content: string }) =>
+    !hydration &&
+    Boolean(page) &&
+    foreignCopyWhileDirty({ synced, draft, conflicted: conflictedPageId === page?.id }, page, superseded, (text) =>
+      page ? carriesRef.current(page.id, text) : false,
+    );
+  let foreign = foreignOver(currentDraft);
+  if (foreign && editorDraftRef.current?.pending()) {
+    // `content` may lag the editor (an undo back to the loaded text not
+    // serialized yet): decide on the draft as it is.
+    flushEditorDraft();
+    currentDraft = draftRef.current.draft;
+    hydration = nextHydration({ synced, draft: currentDraft, conflicted: conflictedPageId === page?.id }, page, superseded);
+    foreign = foreignOver(currentDraft);
+  }
+  if (foreign && page) {
+    setSaveError(foreignCopyConflict(page.id));
+    setStatus('error');
+    setConflictedPageId(page.id);
   }
   if (hydration) {
     setSynced(hydration);
@@ -683,6 +712,11 @@ function EditorPage() {
   // A refusal with its own fix (the page is too large) says so; other failures
   // keep the general "could not be saved" wording.
   const saveFailedMessage = (error: unknown) => (isPageTooLarge(error) ? friendlyErrorMessage(t, error, 'editor.saveError') : t('editor.saveError'));
+  carriesRef.current = saveQueue.carries;
+  // A conflict the editor found itself holds back the page's writes too, as the server's does.
+  useEffect(() => {
+    if (conflictedPageId && isEditorRevisionConflict(saveError)) saveQueue.raiseConflict(conflictedPageId, saveError);
+  }, [conflictedPageId, saveError, saveQueue]);
   const saveErrorText = useMemo(
     () => (isPageTooLarge(saveError) ? friendlyErrorMessage(t, saveError, 'editor.saveError') : t('editor.saveError')),
     [saveError, t],
@@ -815,6 +849,9 @@ function EditorPage() {
       return;
     }
     const pageId = current.page.id;
+    // A conflict under review: nothing is sent until the author resolves it, and
+    // the banner stays (#790).
+    if (conflictedPageId === pageId) throw isEditorRevisionConflict(saveError) ? saveError : foreignCopyConflict(pageId);
     // Typing while a slow request runs must also reach the server before a
     // navigation or publish can proceed.
     let fresh = serialized;

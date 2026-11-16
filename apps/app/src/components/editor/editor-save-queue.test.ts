@@ -332,3 +332,30 @@ describe('editor save queue', () => {
     });
   });
 });
+
+describe('a conflict the editor found itself (#790)', () => {
+  it('tells which unsettled writes carry a text, and forgets them once settled', async () => {
+    const write = deferred();
+    const queue = createEditorSaveQueue(() => write.promise);
+    const sent = queue.save(draft('mine'));
+    expect(queue.carries('page-a', { title: 'Title', content: 'mine' })).toBe(true);
+    expect(queue.carries('page-a', { title: 'Title', content: 'theirs' })).toBe(false);
+    expect(queue.carries('page-b', { title: 'Title', content: 'mine' })).toBe(false);
+    write.resolve('saved');
+    await sent;
+    expect(queue.carries('page-a', { title: 'Title', content: 'mine' })).toBe(false);
+  });
+
+  it("refuses the page's writes with that conflict, without sending them, until it is resolved", async () => {
+    const save = vi.fn().mockResolvedValue('saved');
+    const queue = createEditorSaveQueue(save);
+    const conflict = Object.assign(new Error('Another client saved this page.'), { code: 'page:revision_conflict' });
+    queue.raiseConflict('page-a', conflict);
+    await expect(queue.save(draft('mine'))).rejects.toBe(conflict);
+    await queue.save(draft('other page', 'page-b'));
+    expect(save).toHaveBeenCalledOnce();
+    queue.resolveConflict('page-a', 'reviewed');
+    await queue.save(draft('mine'));
+    expect(save).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'page-a', expectedUpdatedAt: 'reviewed' }));
+  });
+});
