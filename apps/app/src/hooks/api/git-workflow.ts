@@ -1,4 +1,4 @@
-import type { GitConflictResolutionBody, GitConnectionBody } from '@nibleaf/validators';
+import type { GitConnectionBody } from '@nibleaf/validators';
 import { useQuery } from '@tanstack/react-query';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
@@ -67,17 +67,6 @@ const useGitWorkflowMutation = <TVariables, TResult>(projectId: string, mutation
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail(projectId) }),
   });
 };
-
-export const useResolveGitConflict = (projectId: string, conflictId: string) =>
-  useGitWorkflowMutation(projectId, async (json: GitConflictResolutionBody) =>
-    mutateData(
-      await api.app.projects[':projectId'].git.conflicts[':conflictId'].resolve.$post({
-        param: { projectId, conflictId },
-        json,
-      }),
-      'Could not resolve the conflict.',
-    ),
-  );
 
 // Authorizing stores the credential, which the status shows (`credentialConfigured`).
 export const useAuthorizeGitWorkflow = (projectId: string) =>
