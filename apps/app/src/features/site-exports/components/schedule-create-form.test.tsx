@@ -485,6 +485,53 @@ describe('inside the exports section', () => {
     expect(mocks.success).not.toHaveBeenCalled();
   });
 
+  // Async-contract hardening: the real modal blocks reopening behind it, so these hold the answer open by hand.
+  it.each([
+    ['closing the form', 'New schedule'],
+    ['leaving for another surface', 'Run history'],
+  ])('ignores a late answer about %s once the draft it was about is gone', async (_case, control) => {
+    const response = deferred();
+    mocks.post.mockReturnValue(response.promise);
+    let answer: (confirmed: boolean) => void = () => undefined;
+    mocks.confirm.mockReturnValue(
+      new Promise<boolean>((done) => {
+        answer = done;
+      }),
+    );
+    await openForm();
+    await click(button('Create schedule'));
+    await click(button(control));
+    expect(mocks.confirm).toHaveBeenCalledOnce();
+
+    // The creation completes and closes its form; a new draft is opened and edited.
+    await act(async () => response.resolve(created()));
+    expect(button('Create schedule')).toBeUndefined();
+    await click(button('New schedule'));
+    await type(field('Schedule name'), 'A new draft');
+
+    await act(async () => answer(true));
+
+    expect(field('Schedule name').value).toBe('A new draft');
+    expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('true');
+    expect(button('Schedules')?.getAttribute('aria-pressed')).toBe('true');
+    expect(dirtyNow()).toBe(true);
+  });
+
+  it('still acts on an answer about the draft that is open', async () => {
+    let answer: (confirmed: boolean) => void = () => undefined;
+    mocks.confirm.mockReturnValue(
+      new Promise<boolean>((done) => {
+        answer = done;
+      }),
+    );
+    await openForm();
+    await type(field('Schedule name'), 'Edited');
+    await click(button('Run history'));
+    await act(async () => answer(true));
+    expect(button('Run history')?.getAttribute('aria-pressed')).toBe('true');
+    expect(button('Create schedule')).toBeUndefined();
+  });
+
   it('closes the form once after it creates the schedule', async () => {
     mocks.post.mockResolvedValue(created());
     await openForm();

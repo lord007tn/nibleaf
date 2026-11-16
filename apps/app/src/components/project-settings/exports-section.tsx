@@ -75,7 +75,23 @@ export function ExportsSection({
     scheduleUnsettled.current = unsettled;
   }, []);
   const confirmDiscard = useConfirmSettingsDiscard();
-  const mayCloseSchedule = async () => !scheduleUnsettled.current || (await confirmDiscard());
+  // Which draft a leave confirmation is about: it changes whenever the form opens, closes (a creation
+  // closes it too) or the surface changes, so an answer that arrives later can't drop another draft.
+  const scheduleDraft = useRef(0);
+  const showScheduleDraft = (open: boolean) => {
+    scheduleDraft.current += 1;
+    setShowSchedule(open);
+  };
+  const showSurface = (next: typeof surface) => {
+    scheduleDraft.current += 1;
+    setSurface(next);
+  };
+  /** True when the draft may be dropped now: nothing unsettled, or a confirmed discard of this same draft. */
+  const mayCloseSchedule = async () => {
+    if (!scheduleUnsettled.current) return true;
+    const draft = scheduleDraft.current;
+    return (await confirmDiscard()) && draft === scheduleDraft.current;
+  };
   const runs = useListExportRuns(projectId);
   const schedules = useListExportSchedules(projectId);
   const create = useCreateExport(projectId);
@@ -132,7 +148,7 @@ export function ExportsSection({
             key={value}
             onClick={async () => {
               if (value !== surface && !(await mayCloseSchedule())) return;
-              setSurface(value);
+              showSurface(value);
             }}
             type="button"
             variant="outline"
@@ -199,7 +215,7 @@ export function ExportsSection({
                 aria-expanded={showSchedule}
                 onClick={async () => {
                   if (showSchedule && !(await mayCloseSchedule())) return;
-                  setShowSchedule(!showSchedule);
+                  showScheduleDraft(!showSchedule);
                 }}
                 size="sm"
                 variant="outline"
@@ -209,7 +225,7 @@ export function ExportsSection({
             ) : null}
           </div>
           {showSchedule && canManageSchedules ? (
-            <ScheduleCreateForm onCreated={() => setShowSchedule(false)} onUnsettledChange={setScheduleUnsettled} projectId={projectId} />
+            <ScheduleCreateForm onCreated={() => showScheduleDraft(false)} onUnsettledChange={setScheduleUnsettled} projectId={projectId} />
           ) : null}
           <div className="space-y-2">
             {schedules.isPending ? (
