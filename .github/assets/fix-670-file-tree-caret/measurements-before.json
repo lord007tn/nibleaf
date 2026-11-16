@@ -1,0 +1,125 @@
+{
+  "baseline": "7491b8fcc074041144d63b782982759db08bf8a8",
+  "head": "1372427a6f506cb5d506828ab7c1a7542468f032",
+  "fixture": "production canvas; mocked router and page lookup hooks",
+  "results": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "tree",
+      "phase": "before",
+      "shot": "typed-before-en-1440-light.png",
+      "barHeight": null,
+      "sourceTop": null,
+      "labelBottom": null,
+      "labelPosition": null,
+      "landingGap": null,
+      "revealedGap": 138.375,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "mdxFileTree",
+            "attrs": {
+              "sourceOpen": "",
+              "sourceClose": "",
+              "sourceOriginal": ""
+            },
+            "content": [
+              {
+                "type": "mdxFolder",
+                "attrs": {
+                  "name": "",
+                  "defaultOpen": false,
+                  "sourceOpen": "",
+                  "sourceClose": "",
+                  "sourceOriginal": ""
+                },
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "attrs": {
+                      "sourceParagraph": ""
+                    },
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "index.ts"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            }
+          }
+        ]
+      },
+      "markdown": "<FileTree>\n\n<Folder>\n\nindex.ts\n\n</Folder>\n\n</FileTree>",
+      "overflowX": false
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "ar",
+      "scenario": "tree",
+      "phase": "before",
+      "shot": "typed-before-ar-390-light.png",
+      "barHeight": null,
+      "sourceTop": null,
+      "labelBottom": null,
+      "labelPosition": null,
+      "landingGap": null,
+      "revealedGap": 160.75,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "mdxFileTree",
+            "attrs": {
+              "sourceOpen": "",
+              "sourceClose": "",
+              "sourceOriginal": ""
+            },
+            "content": [
+              {
+                "type": "mdxFile",
+                "attrs": {
+                  "name": "",
+                  "icon": "",
+                  "sourceOpen": "",
+                  "sourceClose": "",
+                  "sourceOriginal": ""
+                }
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "دليل.md"
+              }
+            ]
+          }
+        ]
+      },
+      "markdown": "<FileTree>\n\n<File />\n\n</FileTree>\n\nدليل.md",
+      "overflowX": false
+    }
+  ]
+}

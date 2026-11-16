@@ -1,0 +1,117 @@
+{
+  "baseline": "5d674b7a791dae0fd6bfa7614f54814e658a5c89",
+  "head": "1372427a6f506cb5d506828ab7c1a7542468f032",
+  "fixture": "production canvas; mocked router and page lookup hooks",
+  "results": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "tree",
+      "phase": "after",
+      "shot": "typed-after-en-1440-light.png",
+      "barHeight": null,
+      "sourceTop": null,
+      "labelBottom": null,
+      "labelPosition": null,
+      "landingGap": null,
+      "revealedGap": 108,
+      "revealedTag": "DIV",
+      "caretInFileName": true,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "mdxFileTree",
+            "attrs": {
+              "sourceOpen": "",
+              "sourceClose": "",
+              "sourceOriginal": ""
+            },
+            "content": [
+              {
+                "type": "mdxFile",
+                "attrs": {
+                  "name": "index.ts",
+                  "icon": "",
+                  "sourceOpen": "",
+                  "sourceClose": "",
+                  "sourceOriginal": ""
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "index.ts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            }
+          }
+        ]
+      },
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n</FileTree>",
+      "overflowX": false
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "ar",
+      "scenario": "tree",
+      "phase": "after",
+      "shot": "typed-after-ar-390-light.png",
+      "barHeight": null,
+      "sourceTop": null,
+      "labelBottom": null,
+      "labelPosition": null,
+      "landingGap": null,
+      "revealedGap": 96,
+      "revealedTag": "DIV",
+      "caretInFileName": true,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "mdxFileTree",
+            "attrs": {
+              "sourceOpen": "",
+              "sourceClose": "",
+              "sourceOriginal": ""
+            },
+            "content": [
+              {
+                "type": "mdxFile",
+                "attrs": {
+                  "name": "دليل.md",
+                  "icon": "",
+                  "sourceOpen": "",
+                  "sourceClose": "",
+                  "sourceOriginal": ""
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "دليل.md"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            }
+          }
+        ]
+      },
+      "markdown": "<FileTree>\n\n<File name=\"دليل.md\" />\n\n</FileTree>",
+      "overflowX": false
+    }
+  ]
+}
