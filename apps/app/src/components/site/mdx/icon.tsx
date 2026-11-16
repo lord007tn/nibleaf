@@ -1,21 +1,21 @@
 import type { CSSProperties } from 'react';
-import { z } from 'zod';
 import { PageIcon } from '@/components/site/page-icon';
 import { plainCssColor } from './utils';
 
 // ─── Inline icon ──────────────────────────────────────────────────────────────
+
+/** The authored size in pixels, 1 to 128, from its digits and dots (`"24px"` is 24). */
+export const iconSize = (size: string | number | undefined): number | undefined => {
+  const px = Number(String(size ?? '').replace(/[^0-9.]/g, ''));
+  return Number.isFinite(px) && px >= 1 && px <= 128 ? px : undefined;
+};
 
 export function Icon({ icon, name, color, size }: { icon?: string; name?: string; color?: string; size?: string | number }) {
   const resolved = icon ?? name;
   if (!resolved) {
     return null;
   }
-  const parsedSize = z.coerce
-    .number()
-    .min(1)
-    .max(128)
-    .safeParse(String(size ?? '').replace(/[^0-9.]/g, ''));
-  const px = parsedSize.success ? parsedSize.data : undefined;
+  const px = iconSize(size);
   const style: CSSProperties = { color: plainCssColor(color) };
   if (px) {
     style.width = px;

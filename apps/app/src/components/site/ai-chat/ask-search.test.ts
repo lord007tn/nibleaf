@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { askSearchSchema } from './ask-search';
+import { readAskSearch } from './ask-search';
 
-describe('askSearchSchema', () => {
+describe('readAskSearch', () => {
   it('parses bounded deep links without breaking the route', () => {
-    expect(askSearchSchema.parse('  How?  ')).toBe('How?');
-    for (const value of ['', 'x', 'a'.repeat(501), 42, []]) expect(askSearchSchema.parse(value)).toBeUndefined();
+    expect(readAskSearch('  How?  ')).toBe('How?');
+    for (const value of ['', 'x', 'a'.repeat(501), 42, []]) expect(readAskSearch(value)).toBeUndefined();
   });
 });
