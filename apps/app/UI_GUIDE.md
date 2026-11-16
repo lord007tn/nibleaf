@@ -80,6 +80,13 @@ return (
 - **Always submit through `draft.submit()`**, never `form.handleSubmit()`. Only one save runs at a time, and a second
   Save, Enter or Cmd+S during a save is refused. Map a server field error only if the field still holds the value that
   was sent, and only while `save.isCurrent()`.
+- **A save belongs to the form that started it.** Once the form unmounts (or moves to another identity),
+  `save.isCurrent()` stays false, even after the same form mounts again. `succeeded` and `failed` then do nothing, and
+  `submit()` resolves `'failed'`. In your submit handler, check `save.isCurrent()` after every `await` and before any
+  effect on the form or the screen: a toast, a field error, focus, closing, collapsing or navigating. The request
+  itself still runs to its end: what it wrote stays written, and its query invalidation still happens. Release a
+  lock or flag owned outside the form (a write in flight for the page) in `finally`, whether or not the save is
+  current. A one-off action whose form is gone may still report its own outcome (an address added, invitations sent).
 - **Every editable value is in the form**, including icons, toggles and per-language drafts. No `useState` beside it,
   and no `useEffect` copying server data.
 - **Wrap the screen in `SaveRegionProvider`.** The bar appears only while something is dirty. It saves with Save,

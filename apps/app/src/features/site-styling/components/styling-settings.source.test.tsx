@@ -391,6 +391,51 @@ describe('StylingSettings: an unset radius shows the theme’s, and a choice set
     expect(radiusSource()).toStrictEqual(INHERITED);
     expect(server.patches).toStrictEqual([{ site: 'site-1', config: { styling: { radius: 'pill' } } }]);
   });
+
+  /**
+   * #767: site 2 is not cached, so the section really unmounts while it loads
+   * and a new one mounts on the way back. The held Pill save belongs to the
+   * section that unmounted: however it ends, the new section's choice stays,
+   * with nothing said about the old save and focus left where it is.
+   */
+  describe.each([
+    ['fails', true],
+    ['succeeds', false],
+  ])('a held Pill save that %s after A → uncached B → A', (_name, fails) => {
+    it('neither toasts, says "Saved", resets the new Rounded choice nor moves focus', async () => {
+      await open({ theme: SIGNAL, styling: {} });
+      server.config['site-2'] = { theme: { preset: 'harbor' }, styling: {} };
+      const patch = gate();
+      server.holdPatch = patch.promise;
+      server.failPatch = fails;
+      await click('settings.styling.radius.pill');
+      await startSave();
+      const before = hex();
+      await act(async () => showSite('site-2'));
+      expect(container.querySelector('input')).toBeNull();
+      await vi.waitFor(() => expect(radius()).toBe('settings.styling.radius.rounded'));
+      await act(async () => showSite('site-1'));
+      await settle();
+      expect(hex()).not.toBe(before);
+      expect(radius()).toBe('settings.styling.radius.sharp');
+      await click('settings.styling.radius.rounded');
+      await act(async () => hex().focus());
+      await patch.open();
+      await finished();
+      server.holdPatch = undefined;
+      server.failPatch = false;
+      expect(mocks.toastError).not.toHaveBeenCalled();
+      expect(radius()).toBe('settings.styling.radius.rounded');
+      expect(radiusSource()).toStrictEqual(OVERRIDE);
+      expect(region()).not.toBeNull();
+      expect(status()).not.toBe('common.saved');
+      expect(document.activeElement).toBe(hex());
+      // The new choice saves on its own: one request, its own change.
+      await save();
+      expect(lastPatch()).toStrictEqual({ site: 'site-1', config: { styling: { radius: 'rounded' } } });
+      expect(mocks.toastError).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('StylingSettings follows the server', () => {

@@ -636,6 +636,34 @@ describe('AddonsSettings', () => {
       expect(mocks.update).toHaveBeenCalledWith(consentBody('https://acme.test/privacy', 2));
     });
 
+    it('sends nothing for a settings save still waiting on a switch flip when the page goes away (#767)', async () => {
+      const pendingToggle = deferred<ProjectAddon>();
+      mocks.deactivate.mockReturnValueOnce(pendingToggle.promise);
+      await act(async () => switchFor('settings.addons.consent.title').click());
+      await type(inputFor('site.analyticsConsentPrivacy'), 'https://acme.test/privacy');
+      await save();
+      await act(async () => root.render(null));
+      await act(async () => pendingToggle.resolve({ ...consent, enabled: false, status: 'inactive', revision: 2 }));
+      await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(mocks.toastError).not.toHaveBeenCalled();
+    });
+
+    it('says nothing about a settings save that fails after the page went away (#767)', async () => {
+      const pendingSave = deferred<ProjectAddon>();
+      mocks.update.mockReturnValueOnce(pendingSave.promise);
+      await type(inputFor('site.analyticsConsentPrivacy'), 'https://acme.test/privacy');
+      await save();
+      expect(mocks.update).toHaveBeenCalledTimes(1);
+      await act(async () => root.render(page()));
+      await act(async () => root.render(null));
+      await act(async () => root.render(page()));
+      await act(async () => pendingSave.reject(new Error('offline')));
+      expect(mocks.toastError).not.toHaveBeenCalled();
+      // The new page's switch is not locked by the old save.
+      expect(switchFor('settings.addons.consent.title').getAttribute('aria-disabled')).not.toBe('true');
+    });
+
     it('sends the revision the switch produced when settings are saved after it', async () => {
       mocks.deactivate.mockResolvedValueOnce({ ...consent, enabled: false, status: 'inactive', revision: 2 });
       await act(async () => switchFor('settings.addons.consent.title').click());

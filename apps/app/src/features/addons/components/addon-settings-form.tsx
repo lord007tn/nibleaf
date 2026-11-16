@@ -74,6 +74,8 @@ function useAddonDraft<T extends DraftValues>(
       try {
         // A switch flip in flight bumps the revision: wait for it, then send the latest.
         await writes.switchSettled();
+        // The form went away while it waited: send nothing for it.
+        if (!outcome.isCurrent()) return 'failed';
         const saved = await save(addon.id, toConfig(value), writes.revision());
         writes.recordRevision(saved.revision);
         outcome.succeeded(toValues(saved.config));

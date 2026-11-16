@@ -356,4 +356,26 @@ describe('OpenApiSettings draft', () => {
     await click('settings.openapi.remove');
     expect(mocks.remove).not.toHaveBeenCalled();
   });
+
+  it.each(['succeeds', 'fails'] as const)(
+    'a save that %s after the section unmounted says nothing and leaves the new editor open with its edit (#767)',
+    async (ending) => {
+      const pending = pendingSave();
+      await render();
+      await click('settings.openapi.edit');
+      await type(field('openapi-title'), 'Billing API');
+      await click('common.save');
+      expect(mocks.upsert).toHaveBeenCalledTimes(1);
+      // Another site loading in its place, then back: a new section.
+      await act(async () => root.render(<QueryClientProvider client={queryClient}>{null}</QueryClientProvider>));
+      await render();
+      await click('settings.openapi.edit');
+      await type(field('openapi-title'), 'Ledger API');
+      await act(async () => (ending === 'succeeds' ? pending.finish() : pending.fail(new Error('boom'))));
+      expect(mocks.toastSuccess).not.toHaveBeenCalled();
+      expect(mocks.toastError).not.toHaveBeenCalled();
+      expect(field('openapi-title').value).toBe('Ledger API');
+      expect(dirty.size).toBe(1);
+    },
+  );
 });

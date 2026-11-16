@@ -67,6 +67,8 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
         // removed meanwhile; else what was sent, as the server stores it.
         const confirmed = stored !== undefined ? openApiValues(stored, defaultTitle) : confirmedOpenApiValues(outcome.baseline, value);
         const settled = outcome.succeeded(confirmed);
+        // A save for a form since gone (another site, or the section left) says nothing.
+        if (!outcome.isCurrent()) return 'failed';
         toast.success(t('settings.openapi.saved'));
         if (value.source.type === 'upload') setFilename('');
         // Edits typed while the save was in flight, or a conflict, stay open rather than hidden.
@@ -74,7 +76,7 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
         return 'saved';
       } catch {
         outcome.failed();
-        toast.error(t('settings.openapi.saveError'));
+        if (outcome.isCurrent()) toast.error(t('settings.openapi.saveError'));
         return 'failed';
       }
     },
