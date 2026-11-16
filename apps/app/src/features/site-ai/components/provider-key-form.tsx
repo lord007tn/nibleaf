@@ -7,10 +7,11 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import type { WorkspaceAiProvider } from '@nibleaf/validators';
 import { Check } from 'lucide-react';
-import { type FormEvent, useId, useState } from 'react';
+import { type FormEvent, useCallback, useId, useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { SecretInput } from '@/components/secret-input';
-import { useAiKeyConnection, useAiKeyModels, useSaveAiKey } from '../api/hooks';
+import { useAiKeyConnection } from '../api/hooks';
+import { providerKeyErrorMessage } from '../api/provider-key';
 import type { AiKeyProvider } from '../model/ai';
 import {
   checkRequest,
@@ -22,6 +23,7 @@ import {
   providerKeyFormState,
   saveRequest,
 } from '../model/provider-key-form';
+import { useProviderKeyCheck, useProviderKeySave } from './use-provider-key-commands';
 
 const STEP_LABEL: Record<ProviderKeyStep, MessageKey> = {
   key: 'settings.smartAi.step.key',
@@ -42,56 +44,94 @@ const SAVE_BLOCK: Record<ProviderKeySaveBlock, MessageKey> = {
  * answers page: paste the key, check it (which loads its models), choose a
  * model, save. Choosing the source is the card's radio, not this form.
  * PR 4 of operations/ux/ai-and-integrations.md replaces it with one dialog.
- * What the form shows and sends is decided in `model/provider-key-form.ts`.
- * Failed requests are toasted once, in plain words, by the mutations.
+ * What the form shows and sends is decided in `model/provider-key-form.ts`;
+ * Check and Save run in `use-provider-key-commands.ts`, which keeps the key
+ * out of every cache. A failure is toasted once, in plain words, and never
+ * with what the server said.
+ *
+ * Save belongs to this panel, not to the form inside it, which a new saved
+ * revision replaces: "Saved" and closing still follow once a Save is done.
+ * Outcomes are worded in the language shown when they arrive.
  */
 export function ProviderKeyForm({ projectId, providerId, onSaved }: { projectId: string; providerId: AiKeyProvider; onSaved?: () => void }) {
   const query = useAiKeyConnection(projectId, providerId);
+  const t = useT();
+  const latest = useRef({ t, onSaved });
+  useLayoutEffect(() => {
+    latest.current = { t, onSaved };
+  });
+  const save = useProviderKeySave({ projectId, providerId });
+  const report = useCallback((error: unknown) => toast.error(providerKeyErrorMessage(latest.current.t, error)), []);
+  const saved = useCallback(() => {
+    toast.success(latest.current.t('common.saved'));
+    latest.current.onSaved?.();
+  }, []);
   if (!query.data) return <Skeleton aria-hidden className="h-40 w-full" />;
   const provider = providerForForm(providerId, query.data.connection);
-  return <KeyForm canSave={query.data.canSave} key={providerFormKey(provider)} onSaved={onSaved} projectId={projectId} provider={provider} />;
+  // Keyed by site too: a key typed (or checked) for one site never carries over to another.
+  return (
+    <KeyForm
+      canSave={query.data.canSave}
+      key={`${projectId}:${providerFormKey(provider)}`}
+      projectId={projectId}
+      provider={provider}
+      report={report}
+      save={save}
+      saved={saved}
+    />
+  );
 }
 
 function KeyForm({
   provider,
   projectId,
   canSave,
-  onSaved,
+  save,
+  saved,
+  report,
 }: {
   provider: WorkspaceAiProvider;
   projectId: string;
   canSave: boolean;
-  onSaved?: () => void;
+  save: ReturnType<typeof useProviderKeySave>;
+  /** A Save succeeded: say so and close (the panel's, which outlives this form). */
+  saved: () => void;
+  /** A Check or Save failed: say so, in plain words. */
+  report: (error: unknown) => void;
 }) {
   const t = useT();
   const id = useId();
   const [apiKey, setApiKey] = useState('');
   const [answerModel, setAnswerModel] = useState(provider.answerModel ?? '');
   const [replace, setReplace] = useState(false);
-  const models = useAiKeyModels(projectId);
-  const save = useSaveAiKey(projectId);
-  const options = modelOptions(models.data?.models, provider);
+  const keyCheck = useProviderKeyCheck({ projectId, providerId: provider.id, busy: save.isSaving });
+  const options = modelOptions(keyCheck.models ?? undefined, provider);
   const form = providerKeyFormState({
     provider,
     canSave,
     apiKey,
     answerModel,
     replace,
-    checked: models.isSuccess,
-    busy: save.isPending || models.isPending,
+    checked: keyCheck.models !== null,
+    busy: save.saving || keyCheck.checking,
     modelCount: options.length,
   });
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    // No onError here: the mutation toasts its own failure, once.
-    save.mutate(saveRequest({ provider, apiKey, answerModel, replace }), {
-      onSuccess: () => {
-        setApiKey('');
-        models.reset();
-        toast.success(t('common.saved'));
-        onSaved?.();
+    if (keyCheck.isChecking()) return;
+    const pressedAt = keyCheck.edits();
+    save.save(
+      saveRequest({ provider, apiKey, answerModel, replace }),
+      () => {
+        // A key typed after the press is not this save's to clear (nor is a form that has since been replaced).
+        if (keyCheck.edits() === pressedAt) {
+          setApiKey('');
+          keyCheck.retire();
+        }
+        saved();
       },
-    });
+      report,
+    );
   };
   return (
     <div className="min-w-0 space-y-4 rounded-lg border bg-muted/20 p-4" data-testid="ai-key-form">
@@ -119,9 +159,9 @@ function KeyForm({
             id={`${id}-key`}
             name="ai-provider-api-key"
             onChange={(event) => {
-              // A new key makes the checked model list, and a model chosen from it, stale.
+              // A new key makes the checked model list (or a check still running), and a model chosen from it, stale.
               setApiKey(event.target.value);
-              models.reset();
+              keyCheck.retire();
               setAnswerModel(provider.answerModel ?? '');
             }}
             value={apiKey}
@@ -141,8 +181,8 @@ function KeyForm({
         ) : null}
         <Button
           disabled={!form.canCheck}
-          loading={models.isPending}
-          onClick={() => models.mutate(checkRequest(provider, apiKey))}
+          loading={keyCheck.checking}
+          onClick={() => keyCheck.check(checkRequest(provider, apiKey), report)}
           type="button"
           variant="outline"
         >
@@ -167,17 +207,12 @@ function KeyForm({
             </SelectContent>
           </Select>
         </div>
-        {models.isSuccess ? (
+        {keyCheck.models ? (
           <p className="text-muted-foreground text-xs" role="status">
             {t(options.length > 0 ? 'settings.smartAi.modelsVerified' : 'settings.smartAi.noModels')}
           </p>
         ) : null}
-        <Button
-          aria-describedby={form.shownSaveBlock ? `${id}-save-why` : undefined}
-          disabled={!form.canSubmit}
-          loading={save.isPending}
-          type="submit"
-        >
+        <Button aria-describedby={form.shownSaveBlock ? `${id}-save-why` : undefined} disabled={!form.canSubmit} loading={save.saving} type="submit">
           {t('common.save')}
         </Button>
         {form.shownSaveBlock ? (
