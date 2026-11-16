@@ -1,44 +1,22 @@
-import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { SkeletonCard } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
-import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
-import { Archive, Ban, Download, FileArchive, Plus } from 'lucide-react';
-import { useCallback, useId, useRef, useState } from 'react';
+import { Archive, FileArchive, Plus } from 'lucide-react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { FailureMessage } from '@/components/failure-message';
+import { useCreateExportRun, usePendingRunRequests } from '@/features/site-exports/api/runs';
+import { ExportRunRow } from '@/features/site-exports/components/export-run-row';
 import { ScheduleCreateForm } from '@/features/site-exports/components/schedule-create-form';
-import { formatExportDate, ScheduleRow } from '@/features/site-exports/components/schedule-row';
+import { ScheduleRow } from '@/features/site-exports/components/schedule-row';
+import { isSiteRequest, liveVersionKnown, manualExport, toggleExportFormat } from '@/features/site-exports/model/export-runs';
 import { EXPORT_FORMAT_LABELS as labelKeys } from '@/features/site-exports/model/schedule-create';
 import { exportStartErrorKeys } from '@/features/site-exports/model/schedule-row';
 import { useDeployments, useProject } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
-import {
-  type ExportArtifact,
-  type ExportFormat,
-  type ExportRun,
-  type ExportStatus,
-  useCancelExport,
-  useCreateExport,
-  useGetExportDownload,
-  useListExportRuns,
-  useListExportSchedules,
-} from '@/hooks/api/exports';
-import { formatExportFileSize } from '@/lib/export-file-size';
-import { countVariables } from '@/lib/format';
+import { type ExportFormat, useListExportRuns, useListExportSchedules } from '@/hooks/api/exports';
 import { SectionHeader, useConfirmSettingsDiscard } from './shared';
-
-/**
- * Whether the site has a published version to export. The site's own flag
- * covers every publish however old; the deployments list (newest 50) catches a
- * first publish that finished after the site was loaded. Unknown until both say.
- */
-const liveVersionKnown = (projectHasOne: boolean | undefined, recentReady: boolean | undefined): boolean | undefined => {
-  if (projectHasOne || recentReady) return true;
-  return projectHasOne === false && recentReady === false ? false : undefined;
-};
 
 export function ExportsSection({
   projectId,
@@ -50,7 +28,7 @@ export function ExportsSection({
   /** Viewers download finished exports; starting or cancelling one is for Editors. */
   canCreate?: boolean;
 }) {
-  const { locale, t } = useLocale();
+  const { t } = useLocale();
   const [formats, setFormats] = useState<ExportFormat[]>(['MARKDOWN']);
   const [showSchedule, setShowSchedule] = useState(false);
   const [surface, setSurface] = useState<'create' | 'schedules' | 'history'>('create');
@@ -86,9 +64,8 @@ export function ExportsSection({
   };
   const runs = useListExportRuns(projectId);
   const schedules = useListExportSchedules(projectId);
-  const create = useCreateExport(projectId);
-  const cancel = useCancelExport(projectId);
-  const downloadMutation = useGetExportDownload(projectId);
+  const createRun = useCreateExportRun();
+  const creating = usePendingRunRequests().create.some((variables) => isSiteRequest(variables, projectId));
   // Exports copy the live version, so a site that was never published has nothing to export yet.
   const project = useProject(projectId);
   const deployments = useDeployments(projectId);
@@ -96,28 +73,32 @@ export function ExportsSection({
     project.data?.hasPublishedVersion,
     deployments.data ? deployments.data.some((deployment) => deployment.status === 'READY') : undefined,
   );
-  const neverPublished = hasLiveVersion === false;
+  const manual = manualExport({ canCreate, hasLiveVersion });
   const createHintId = useId();
-  const downloadArtifact = async (run: ExportRun, artifact: ExportArtifact) => {
+  // The one-time export form of this site is a view; null while another surface shows or once the section is gone.
+  const createView = useRef<object | null>(null);
+  useEffect(() => {
+    if (surface !== 'create') return;
+    const current = { projectId };
+    createView.current = current;
+    return () => {
+      if (createView.current === current) createView.current = null;
+    };
+  }, [projectId, surface]);
+  /**
+   * Queues the selected formats for this site. A queued export is reported even after the person
+   * leaves, since it really was queued; a refusal only while the form it was sent from still shows.
+   */
+  const createExport = async () => {
+    if (manual.unavailable) return;
+    const startedIn = createView.current;
     try {
-      const result = await downloadMutation.mutateAsync({ runId: run.id, artifactId: artifact.id });
-      const link = document.createElement('a');
-      link.href = result.fileUrl;
-      link.download = result.fileName;
-      document.body.append(link);
-      try {
-        link.click();
-      } finally {
-        link.remove();
-      }
+      if ((await createRun({ projectId, formats })) !== 'busy') toast.success(t('settings.exports.workflow.queued'));
     } catch (error) {
-      toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.downloadError'));
+      if (startedIn && createView.current === startedIn)
+        toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', exportStartErrorKeys(hasLiveVersion)));
     }
   };
-  const toggleFormat = (format: ExportFormat) =>
-    setFormats((current) =>
-      current.includes(format) ? (current.length === 1 ? current : current.filter((item) => item !== format)) : [...current, format],
-    );
 
   return (
     <div className="space-y-7">
@@ -161,34 +142,28 @@ export function ExportsSection({
             <div className="flex flex-wrap gap-3">
               {(Object.keys(labelKeys) as ExportFormat[]).map((format) => (
                 <div className="flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm" key={format}>
-                  <Switch checked={formats.includes(format)} id={`export-format-${format}`} onCheckedChange={() => toggleFormat(format)} />
+                  <Switch
+                    checked={formats.includes(format)}
+                    id={`export-format-${format}`}
+                    onCheckedChange={() => setFormats((current) => toggleExportFormat(current, format))}
+                  />
                   <Label htmlFor={`export-format-${format}`}>{t(labelKeys[format])}</Label>
                 </div>
               ))}
             </div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
               <p className="text-muted-foreground text-xs" id={createHintId}>
-                {!canCreate
-                  ? t('access.viewOnly.action')
-                  : neverPublished
-                    ? t('settings.exports.workflow.publishFirst')
-                    : t('settings.exports.workflow.formatHint')}
+                {t(manual.hint)}
               </p>
               {/* Unavailable, not `disabled`: it stays in the tab order, and its reason (the hint) is read with it.
                   It looks like a disabled button too: dimmed, and no hover darkening or press movement. */}
               <Button
-                aria-describedby={neverPublished || !canCreate ? createHintId : undefined}
-                aria-disabled={neverPublished || !canCreate || undefined}
+                aria-describedby={manual.unavailable ? createHintId : undefined}
+                aria-disabled={manual.unavailable || undefined}
                 className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:hover:bg-primary aria-disabled:active:not-aria-[haspopup]:translate-y-0"
-                loading={create.isPending}
-                onClick={() => {
-                  if (neverPublished || !canCreate) return;
-                  create.mutate(formats, {
-                    onSuccess: () => toast.success(t('settings.exports.workflow.queued')),
-                    onError: (error) =>
-                      toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', exportStartErrorKeys(hasLiveVersion))),
-                  });
-                }}
+                focusableWhenDisabled
+                loading={creating}
+                onClick={() => void createExport()}
               >
                 <FileArchive className="size-3.5" /> {t('settings.exports.workflow.create')}
               </Button>
@@ -267,55 +242,7 @@ export function ExportsSection({
               </div>
             ) : null}
             {runs.data?.map((run) => (
-              <div className="rounded-lg border border-border p-4" key={run.id}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="flex items-center gap-2 font-medium text-sm">
-                      <Archive className="size-4" />
-                      {run.formats.map((format) => t(labelKeys[format])).join(', ')} <StatusBadge status={run.status} />
-                    </div>
-                    <div className="mt-1 text-muted-foreground text-xs">
-                      {t('settings.exports.workflow.publishedVersion', { version: run.snapshot.deploymentVersion })} ·{' '}
-                      {t('settings.exports.workflow.pageCount', countVariables(locale, run.snapshot.pagesCount))} ·{' '}
-                      {run.trigger === 'SCHEDULED'
-                        ? (run.schedule?.name ?? t('settings.exports.workflow.scheduled'))
-                        : t('settings.exports.workflow.manual')}{' '}
-                      · {formatExportDate(run.createdAt, locale)}
-                    </div>
-                  </div>
-                  {(run.status === 'PENDING' || run.status === 'RUNNING') && canCreate ? (
-                    <Button
-                      loading={cancel.isPending && cancel.variables === run.id}
-                      onClick={() => cancel.mutate(run.id)}
-                      size="sm"
-                      variant="outline"
-                    >
-                      <Ban className="size-3.5" /> {t('common.cancel')}
-                    </Button>
-                  ) : null}
-                </div>
-                {run.error ? (
-                  <div className="mt-3 min-w-0 rounded-md bg-destructive/10 p-2">
-                    <p className="text-muted-foreground text-xs">{t('settings.exports.workflow.attempt', { count: run.attempts })}</p>
-                    <FailureMessage context="export" error={run.error} />
-                  </div>
-                ) : null}
-                {run.artifacts.length ? (
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {run.artifacts.map((artifact) => (
-                      <Button
-                        loading={downloadMutation.isPending && downloadMutation.variables?.artifactId === artifact.id}
-                        key={artifact.id}
-                        onClick={() => downloadArtifact(run, artifact)}
-                        size="sm"
-                        variant="outline"
-                      >
-                        <Download className="size-3.5" /> {t(labelKeys[artifact.format])} · {formatExportFileSize(artifact.size, locale)}
-                      </Button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+              <ExportRunRow canCreate={canCreate} key={run.id} projectId={projectId} run={run} />
             ))}
             {!runs.isPending && !runs.data?.length ? (
               <div className="rounded-lg border border-dashed p-5 text-center">
@@ -342,14 +269,5 @@ export function ExportsSection({
         </p>
       ) : null}
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status: ExportStatus }) {
-  const { t } = useLocale();
-  return (
-    <Badge variant={status === 'FAILED' ? 'destructive' : status === 'SUCCEEDED' ? 'default' : 'secondary'}>
-      {t(`settings.exports.workflow.status.${status.toLowerCase()}` as MessageKey)}
-    </Badge>
   );
 }

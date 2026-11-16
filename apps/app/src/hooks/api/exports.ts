@@ -1,15 +1,11 @@
 import type { ExportFormatInput } from '@nibleaf/validators';
-import { type QueryClient, useQuery } from '@tanstack/react-query';
-import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
-import { api } from '@/services/api';
-import { getData, mutateData } from './client-helpers';
-import { queryKeys } from './query-keys';
+import { useQuery } from '@tanstack/react-query';
 import { listExportRunsQueryOptions, listExportSchedulesQueryOptions } from './query-options';
 
 export type ExportFormat = ExportFormatInput;
 export type ExportStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
-export interface ExportArtifact {
+interface ExportArtifact {
   id: string;
   format: ExportFormat;
   fileName: string;
@@ -45,9 +41,6 @@ export interface ExportSchedule {
   _count: { jobs: number };
 }
 
-const invalidateExports = (queryClient: QueryClient, projectId: string) =>
-  queryClient.invalidateQueries({ queryKey: queryKeys.exports.all(projectId) });
-
 /** Export history. Polls while a run is queued or running so its status updates on its own. */
 export const useListExportRuns = (projectId: string) =>
   useQuery({
@@ -56,38 +49,3 @@ export const useListExportRuns = (projectId: string) =>
   });
 
 export const useListExportSchedules = (projectId: string) => useQuery(listExportSchedulesQueryOptions(projectId));
-
-export const useCreateExport = (projectId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (formats: ExportFormat[]) =>
-      mutateData<ExportRun>(
-        await api.app.projects[':projectId'].exports.$post({ param: { projectId }, json: { formats } }),
-        'Could not queue the export.',
-      ),
-    onSuccess: () => invalidateExports(queryClient, projectId),
-  });
-};
-
-export const useCancelExport = (projectId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: string) =>
-      mutateData<ExportRun>(
-        await api.app.projects[':projectId'].exports[':id'].cancel.$post({ param: { projectId, id } }),
-        'Could not cancel the export.',
-      ),
-    onSuccess: () => invalidateExports(queryClient, projectId),
-  });
-};
-
-export const useGetExportDownload = (projectId: string) =>
-  useMutation({
-    mutationFn: async ({ runId, artifactId }: { runId: string; artifactId: string }) =>
-      getData(
-        await api.app.projects[':projectId'].exports[':id'].artifacts[':artifactId'].download.$get({
-          param: { projectId, id: runId, artifactId },
-        }),
-        'download URL',
-      ),
-  });
