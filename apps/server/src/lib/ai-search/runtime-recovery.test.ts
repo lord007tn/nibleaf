@@ -285,8 +285,42 @@ describe('hybrid index recovery', () => {
         },
       },
     ]);
-    await expect(runPublishedSearch(scope, 'xqzv nonsense', 12, async () => [])).resolves.toEqual({ hits: [], runtime: 'hybrid' });
+    await expect(runPublishedSearch(scope, 'xqzv nonsense', 12, async () => [])).resolves.toEqual({ hits: [], runtime: 'legacy-fallback' });
     expect((await runPublishedSearch(scope, 'الفاتورة', 12, async () => [])).hits[0]?.id).toBe('invoice');
+  });
+
+  it('uses keyword typo matches when relevance removes every vector hit', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
+    const keyword = { id: 'publish', title: 'Publish your changes', path: 'publish', description: '', snippet: 'Publish your changes.', score: 0.2 };
+    doubles.queryHybrid.mockResolvedValue([
+      {
+        id: 'publish-chunk',
+        score: 1,
+        payload: {
+          project_id: scope.projectId,
+          deployment_id: scope.deploymentId,
+          version_slug: scope.versionSlug,
+          language: 'en',
+          visibility: 'public',
+          visible: true,
+          page_id: keyword.id,
+          ordinal: 0,
+          title: keyword.title,
+          path: keyword.path,
+          content: keyword.snippet,
+          content_hash: 'publish-hash',
+          direction: 'ltr',
+        },
+      },
+    ]);
+    const legacy = vi.fn().mockResolvedValue([keyword]);
+    await expect(runPublishedSearch({ ...scope, language: 'en' }, 'publsh', 12, legacy)).resolves.toEqual({
+      hits: [keyword],
+      runtime: 'legacy-fallback',
+    });
+    expect(doubles.queryHybrid).toHaveBeenCalledOnce();
+    expect(legacy).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   // The keyword response's "AI ready" hint is cached for a few seconds. Answers

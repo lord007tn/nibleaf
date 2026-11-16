@@ -250,3 +250,44 @@ export function applyCorpusEdits(editor: DifferentialEditor, edits: readonly Cor
     }
   }
 }
+
+/**
+ * The corpus pages (by index) whose edits toggle code over part of a link (#660).
+ * Main's code mark kept every other mark out, so adding code to linked text
+ * dropped the link there; the editor's keeps it. These pages save differently
+ * from main's recorded output, and only because of that: replayed with main's
+ * toggle (`withMainCodeToggle`), each saves exactly as main did. The list is
+ * exact, so a page that starts differing for another reason fails the suites.
+ */
+export const CODE_TOGGLE_KEEPS_LINK_PAGES: readonly number[] = [109, 123, 143, 184, 194, 265, 283, 322, 337, 517, 550, 560, 776, 889];
+
+/** An editor whose commands can also set and unset a mark by name, and say if one is active. */
+export interface MarkEditor extends DifferentialEditor {
+  commands: DifferentialEditor['commands'] & { setMark(name: string): boolean; unsetMark(name: string): boolean };
+  isActive(name: string): boolean;
+}
+
+/**
+ * `editor` with main's code toggle (#660): TipTap's `toggleMark`, removing code
+ * where it is active and otherwise setting it, with the link taken off the range
+ * first, as main's code mark (`excludes: '_'`) did when it was added. Every other
+ * command is the editor's own. TipTap's `commands` holds the transaction it was
+ * read with, so each read here reads the editor's afresh.
+ */
+export function withMainCodeToggle(editor: MarkEditor): DifferentialEditor {
+  return {
+    get commands() {
+      return {
+        ...editor.commands,
+        toggleCode: () => {
+          if (editor.isActive('code')) return editor.commands.toggleCode();
+          editor.commands.unsetMark('link');
+          return editor.commands.setMark('code');
+        },
+      };
+    },
+    get state() {
+      return editor.state;
+    },
+  };
+}
