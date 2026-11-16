@@ -1685,7 +1685,13 @@ describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_
   // replaced (a revision conflict, and every later save refused).
   it.each<[string, () => Promise<void>]>([
     ['staying', async () => undefined],
-    ['the window loses focus', () => act(async () => window.dispatchEvent(new Event('blur')))],
+    [
+      'the window loses focus',
+      () =>
+        act(async () => {
+          window.dispatchEvent(new Event('blur'));
+        }),
+    ],
     ['the editor unmounts', unmount],
   ])('the retry stores the draft, then an undo to the loaded text, %s: the undo is saved', async (_name, leave) => {
     await open(ORIGINAL);
