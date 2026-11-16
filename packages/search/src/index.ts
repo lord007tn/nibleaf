@@ -138,7 +138,13 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
   indexLanguages.set(db, language);
   indexDocuments.set(db, new Map(docs.map((doc) => [doc.id, doc])));
   readerDocuments.set(db, new Map(docs.map((doc) => [doc.id, { fields: readerSearchFields(doc, language), text: cleanSearchText(doc.content) }])));
-  const searchable = (value: string) => (language === 'arabic' ? normalizeArabicSearchText(value) : value);
+  const searchable = (value: string) => {
+    const clean = cleanSearchText(value);
+    // Keep existing source tokens (including code/URLs), and add visible words
+    // that markup can bind into a different token, such as __publish__.
+    const text = clean === value ? value : `${value}\n${clean}`;
+    return language === 'arabic' ? normalizeArabicSearchText(text) : text;
+  };
   const morphological = (value: string) => (language === 'arabic' ? normalizeArabicMorphologyText(value) : '');
   if (docs.length > 0) {
     await insertMultiple(
@@ -419,7 +425,7 @@ function snippetWindow(haystack: string, start: number, end: number, anchor: num
 
 /** Build a short snippet centered on the first occurrence of the query. */
 function makeSnippet(content: string, query: string, arabic = false, clean = false, language: OramaLanguage = 'english'): string {
-  const haystack = clean ? content : stripMarkdown(content);
+  const haystack = clean ? content : cleanSearchText(content);
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   const normalizedText = normalizeArabicSearchText(haystack.toLowerCase());
   const foldedText = foldSearchText(normalizedText, language);
