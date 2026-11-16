@@ -144,7 +144,7 @@ export default function SiteSearchDialog({
   version?: string;
   /** Configured search prompt (config.search.placeholder); falls back to the localized default. */
   placeholder?: string;
-  /** Which key opens search (config.search.hotkey): ⌘K (default) or a bare '/'. */
+  /** The shortcut the search button shows (config.search.hotkey): ⌘K (default) or a bare '/'. Both open search. */
   hotkey?: 'cmdk' | 'slash';
   maxResults?: number;
   versions?: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;

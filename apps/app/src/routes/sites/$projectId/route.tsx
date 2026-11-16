@@ -613,7 +613,7 @@ function SiteChrome() {
                         onPointerEnter={preloadSiteSearch}
                         onPointerDown={preloadSiteSearch}
                         onTouchStart={preloadSiteSearch}
-                        aria-keyshortcuts={searchHotkey === 'slash' ? '/' : 'Control+K Meta+K'}
+                        aria-keyshortcuts={searchHotkey === 'slash' ? '/ Control+K Meta+K' : 'Control+K Meta+K /'}
                         data-theme-region="search-trigger"
                         type="button"
                       >

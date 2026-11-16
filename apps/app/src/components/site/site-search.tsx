@@ -118,7 +118,7 @@ export function SearchShell({
 }
 
 export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 'returnFocus' | 'onFieldReady'>) {
-  const { open, onOpenChange, hotkey, lang, direction, placeholder } = props;
+  const { open, onOpenChange, lang, direction, placeholder } = props;
   const [activated, setActivated] = useState(open);
   // The loading shell shows from the moment search opens until the dialog's
   // field has taken the text and focus. It is a sibling of the dialog, not its
@@ -179,7 +179,10 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
       onOpenChange(true);
     };
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (hotkey === 'slash' && isShortcutKey(event, '/', 'Slash') && !event.metaKey && !event.ctrlKey && !isTypingTarget(event.target)) {
+      // A bare '/' opens search on every site, whichever shortcut the site
+      // shows (config.search.hotkey picks the one on the search button), but
+      // never while the reader types in a field.
+      if (!event.defaultPrevented && isShortcutKey(event, '/', 'Slash') && !event.metaKey && !event.ctrlKey && !isTypingTarget(event.target)) {
         event.preventDefault();
         if (!open) startSearch();
         return;
@@ -193,7 +196,7 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onOpenChange, hotkey, lang]);
+  }, [open, onOpenChange, lang]);
 
   const t = siteT(lang);
   const shell =

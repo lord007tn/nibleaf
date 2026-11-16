@@ -666,7 +666,8 @@ it('keeps default-language search navigation on the clean URL', async () => {
 });
 
 /** Types like a keyboard: each key goes to whatever has focus when it is pressed
- * (a keydown handler may move focus first), and lands in it if it is a field. */
+ * (a keydown handler may move focus first), and lands in it if it is a field,
+ * replacing any selected text. */
 const typeKeys = (text: string) =>
   act(async () => {
     for (const key of text) {
@@ -674,7 +675,13 @@ const typeKeys = (text: string) =>
       const allowed = target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
       const field = document.activeElement;
       if (!allowed || !(field instanceof HTMLInputElement)) continue;
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, field.value + key);
+      const start = field.selectionStart ?? field.value.length;
+      const end = field.selectionEnd ?? start;
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+        field,
+        field.value.slice(0, start) + key + field.value.slice(end),
+      );
+      field.setSelectionRange(start + 1, start + 1);
       field.dispatchEvent(new Event('input', { bubbles: true }));
     }
   });
@@ -733,6 +740,66 @@ describe('keystrokes typed while search opens', () => {
     await rerender({ open: true });
     expect(input()?.value).toBe('api');
     expect([input()?.selectionStart, input()?.selectionEnd]).toEqual([0, 3]);
+  });
+
+  it.each([undefined, 'cmdk', 'slash'] as const)(
+    'opens with a bare / on a site whose shortcut is %s, with the old query selected so typing replaces it',
+    async (hotkey) => {
+      const { props, rerender } = await render({ hotkey });
+      await typeQuery('setup');
+      await rerender({ open: false });
+      const slash = new KeyboardEvent('keydown', { key: '/', code: 'Slash', bubbles: true, cancelable: true });
+      await act(async () => {
+        document.body.dispatchEvent(slash);
+      });
+      // The slash opens search; it is not typed into the query.
+      expect(slash.defaultPrevented).toBe(true);
+      expect(props.onOpenChange).toHaveBeenLastCalledWith(true);
+      await rerender({ open: true });
+      expect(document.activeElement).toBe(input());
+      expect(input()?.value).toBe('setup');
+      expect([input()?.selectionStart, input()?.selectionEnd]).toEqual([0, 5]);
+      await typeKeys('api');
+      expect(input()?.value).toBe('api');
+    },
+  );
+
+  it.each([
+    ['an input', () => document.createElement('input')],
+    ['a textarea', () => document.createElement('textarea')],
+    [
+      'an editable region',
+      () => {
+        const region = document.createElement('div');
+        region.contentEditable = 'true';
+        // jsdom doesn't derive isContentEditable from the attribute.
+        Object.defineProperty(region, 'isContentEditable', { value: true });
+        return region;
+      },
+    ],
+  ])('leaves a / typed in %s alone', async (_, make) => {
+    const { props } = await render({ open: false });
+    const field = make();
+    document.body.append(field);
+    const slash = new KeyboardEvent('keydown', { key: '/', code: 'Slash', bubbles: true, cancelable: true });
+    await act(async () => {
+      field.dispatchEvent(slash);
+    });
+    expect(slash.defaultPrevented).toBe(false);
+    expect(props.onOpenChange).not.toHaveBeenCalled();
+    field.remove();
+  });
+
+  it('leaves / alone with ⌘ or Ctrl held, or once another handler took it', async () => {
+    const { props } = await render({ open: false });
+    await act(async () => {
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '/', code: 'Slash', ctrlKey: true, bubbles: true, cancelable: true }));
+      document.body.dispatchEvent(new KeyboardEvent('keydown', { key: '/', code: 'Slash', metaKey: true, bubbles: true, cancelable: true }));
+      const taken = new KeyboardEvent('keydown', { key: '/', code: 'Slash', bubbles: true, cancelable: true });
+      taken.preventDefault();
+      document.body.dispatchEvent(taken);
+    });
+    expect(props.onOpenChange).not.toHaveBeenCalled();
   });
 
   it('keeps the field empty when the reader typed on reopen and deleted it all again', async () => {
