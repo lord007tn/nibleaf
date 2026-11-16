@@ -1678,6 +1678,102 @@ describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_
     expect(refused).toBe(0);
   });
 
+  // #784 review: the first response must be taken before the retry is sent, by
+  // the editor and by the save queue. Otherwise a successful retry left the
+  // editor's server copy at the loaded revision (an undo then looked clean), and
+  // a failed one left drafts queued meanwhile on a revision the server had
+  // replaced (a revision conflict, and every later save refused).
+  it.each<[string, () => Promise<void>]>([
+    ['staying', async () => undefined],
+    ['the window loses focus', () => act(async () => window.dispatchEvent(new Event('blur')))],
+    ['the editor unmounts', unmount],
+  ])('the retry stores the draft, then an undo to the loaded text, %s: the undo is saved', async (_name, leave) => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await drain();
+    expect(server.content).toBe(withTyped('A'));
+    undo();
+    await leave();
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A', 'original']);
+    expect(server.content).toBe(ORIGINAL);
+    expect(refused).toBe(0);
+  });
+
+  it('the retry stores the title, then the loaded title is restored: it is saved', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    const store = mocks.update.getMockImplementation() as (args: UpdateArgs) => Promise<Record<string, unknown>>;
+    let storedTitle = 'Page';
+    mocks.update.mockImplementation(async (args: UpdateArgs) => {
+      const first = attempts.length === 0;
+      const result = await store(args);
+      storedTitle = first ? `${args.body.title} normalized` : args.body.title;
+      return { ...result, title: storedTitle };
+    });
+    const changeTitle = (text: string) =>
+      act(() => {
+        const field = container.querySelector<HTMLTextAreaElement>('textarea[data-page-title]');
+        if (!field) throw new Error('No title field');
+        Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set?.call(field, text);
+        field.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+    changeTitle('New Title');
+    await drain();
+    expect(storedTitle).toBe('New Title');
+    changeTitle('Page');
+    await drain();
+    expect(mocks.update.mock.calls.map(([args]) => (args as UpdateArgs).body.title)).toEqual(['New Title', 'New Title', 'Page']);
+    expect(storedTitle).toBe('Page');
+    expect(refused).toBe(0);
+  });
+
+  it('the retry fails while a newer draft is queued: that draft and the next are saved, without a conflict', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await settleWrite();
+    key('B');
+    await act(async () => window.dispatchEvent(new Event('blur')));
+    await settleWrite(false);
+    await drain();
+    expect(server.content).toBe(withTyped('AB'));
+    key('C');
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A', 'original+AB', 'original+ABC']);
+    expect(server.content).toBe(withTyped('ABC'));
+    expect(refused).toBe(0);
+    expect(conflictShown()).toBe(false);
+  });
+
+  // Navigating sent a third write after a successful retry; losing focus and
+  // unmounting did not (guards).
+  it.each<[string, () => Promise<unknown>]>([
+    [
+      'navigating away',
+      async () => {
+        const proceeded = await navigate();
+        await drain();
+        await proceeded();
+      },
+    ],
+    ['the window losing focus (guard)', () => act(async () => window.dispatchEvent(new Event('blur')))],
+    ['the editor unmounting (guard)', unmount],
+  ])('the retry stores the draft, then %s with no edit: no third write', async (_name, leave) => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await drain();
+    await leave();
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+  });
+
   it('a normalized write that is no longer the final draft is not sent again: the final draft is', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('response');

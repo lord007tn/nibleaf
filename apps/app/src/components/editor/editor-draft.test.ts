@@ -26,6 +26,15 @@ describe('nextHydration', () => {
     expect(nextHydration({ synced: null, draft: { title: '', content: '' } }, pageA)).toEqual(snapshotOf(pageA));
   });
 
+  it('never loads back a copy an own stored write was based on, whatever its stamp (#757)', () => {
+    const saved = { ...pageA, content: 'Saved from the other copy.', updatedAt: '2026-09-01T09:00:00.000Z' };
+    const older = { ...pageA, content: 'The copy the write was based on.', updatedAt: '2026-09-01T12:00:00.000Z' };
+    const basedOn = (revision: string) => revision === older.updatedAt;
+    expect(nextHydration(cleanState(saved), older, basedOn)).toBeNull();
+    expect(nextHydration(cleanState(saved), older)).toEqual(snapshotOf(older));
+    expect(nextHydration(cleanState(saved), { ...older, updatedAt: '2026-09-01T13:00:00.000Z' }, basedOn)).not.toBeNull();
+  });
+
   it('does nothing while the page detail is still loading', () => {
     expect(nextHydration(cleanState(pageA), undefined)).toBeNull();
     expect(nextHydration(cleanState(pageA), null)).toBeNull();

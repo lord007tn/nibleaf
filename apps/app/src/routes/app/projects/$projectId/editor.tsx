@@ -527,13 +527,16 @@ function EditorPage() {
   };
   /** Bring an unserialized edit into the draft now. */
   const flushEditorDraft = () => editorDraftRef.current?.flush();
-  let hydration = nextHydration({ synced, draft: { title, content }, conflicted: conflictedPageId === page?.id }, page);
+  // A copy older than this editor's own stored writes is never loaded back (#757).
+  const supersededRef = useRef<(id: string, revision: string) => boolean>(() => false);
+  const superseded = (revision: string) => (page ? supersededRef.current(page.id, revision) : false);
+  let hydration = nextHydration({ synced, draft: { title, content }, conflicted: conflictedPageId === page?.id }, page, superseded);
   if (hydration && synced?.id === hydration.id && editorDraftRef.current?.pending()) {
     // A fresher server copy arrived while the editor holds an edit `content`
     // doesn't have yet. Serialize it first: it makes the draft dirty, and a dirty
     // draft is never re-seeded over.
     flushEditorDraft();
-    hydration = nextHydration({ synced, draft: draftRef.current.draft, conflicted: conflictedPageId === page?.id }, page);
+    hydration = nextHydration({ synced, draft: draftRef.current.draft, conflicted: conflictedPageId === page?.id }, page, superseded);
   }
   if (hydration) {
     setSynced(hydration);
@@ -643,13 +646,13 @@ function EditorPage() {
             // revision just stored; if that is changed too, re-sending cannot
             // converge, so saving pauses for the author to review (#757).
             if (!sameText(first) && final()) {
-              try {
-                saved = await send(first.updatedAt);
-              } catch (error) {
-                record(first, base);
-                throw error;
-              }
+              // The server holds `first` now, whatever happens to the retry: the
+              // editor and the queue take it first, so the retry (or a draft
+              // queued meanwhile) moves on from its revision.
+              record(first, base);
+              saveQueue.acknowledge(draft.id, base, first.updatedAt);
               base = first.updatedAt;
+              saved = await send(base);
             }
             const holds = record(saved, base);
             if (!sameText(saved) && saved !== first) throw normalizedSaveConflict(draft.id);
@@ -676,6 +679,7 @@ function EditorPage() {
       ),
     [],
   );
+  supersededRef.current = saveQueue.superseded;
   // A refusal with its own fix (the page is too large) says so; other failures
   // keep the general "could not be saved" wording.
   const saveFailedMessage = (error: unknown) => (isPageTooLarge(error) ? friendlyErrorMessage(t, error, 'editor.saveError') : t('editor.saveError'));

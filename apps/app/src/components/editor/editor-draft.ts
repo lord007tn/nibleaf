@@ -67,8 +67,14 @@ function isNewerRevision(page: ServerSnapshot, synced: ServerSnapshot): boolean 
 /**
  * Decide whether the local draft must be (re)hydrated from `page`.
  * Returns the snapshot to load, or null to leave the draft alone.
+ * `superseded` says whether a revision is one this editor's own stored writes
+ * were based on: those writes are newer, whatever its stamp says (#757).
  */
-export function nextHydration(state: DraftState, page: ServerSnapshot | null | undefined): ServerSnapshot | null {
+export function nextHydration(
+  state: DraftState,
+  page: ServerSnapshot | null | undefined,
+  superseded?: (revision: string) => boolean,
+): ServerSnapshot | null {
   if (!page) {
     return null;
   }
@@ -84,7 +90,7 @@ export function nextHydration(state: DraftState, page: ServerSnapshot | null | u
     return null;
   }
   const changed = page.title !== synced.title || page.content !== synced.content;
-  if (changed && isNewerRevision(page, synced)) {
+  if (changed && isNewerRevision(page, synced) && !(page.updatedAt !== undefined && superseded?.(page.updatedAt))) {
     return snapshotOf(page);
   }
   return null;
