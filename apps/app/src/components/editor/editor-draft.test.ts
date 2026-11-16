@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   aiAssistState,
+  createUnsavedDrafts,
   type DraftState,
   draftUnsavable,
   isDirty,
   isEditorRevisionConflict,
   nextHydration,
   normalizedSaveConflict,
+  restoreUnsavedDraft,
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
@@ -244,5 +246,113 @@ describe('aiAssistState', () => {
     expect(aiAssistState(false, { isPending: false, isError: true, error: { status: 403 } })).toBe('hidden');
     expect(aiAssistState(false, { isPending: false, isError: true, error: { status: 503 } })).toBe('shown');
     expect(aiAssistState(false, { isPending: false, isError: true, error: new TypeError('Failed to fetch') })).toBe('shown');
+  });
+});
+
+describe('unsaved drafts kept after the editor unmounted (#789)', () => {
+  const kept = { id: pageA.id, title: pageA.title, content: 'My final draft.', base: pageA.updatedAt, error: new Error('Network error') };
+
+  it("keeps a page's draft for its account only, until it is taken, and tells subscribers", () => {
+    const drafts = createUnsavedDrafts();
+    let calls = 0;
+    const stop = drafts.subscribe(() => {
+      calls += 1;
+    });
+    const ticket = drafts.issue('user-1', pageA.id);
+    if (!ticket) throw new Error('No ticket');
+    expect(drafts.pending('user-1', pageA.id)).toBe(true);
+    drafts.failed(ticket, kept);
+    expect(drafts.pending('user-1', pageA.id)).toBe(false);
+    expect(drafts.peek('user-1', pageA.id)).toMatchObject(kept);
+    expect(drafts.peek('user-2', pageA.id)).toBeUndefined();
+    expect(drafts.peek('user-1', pageB.id)).toBeUndefined();
+    expect(drafts.take('user-2', pageA.id)).toBeUndefined();
+    expect(drafts.take('user-1', pageA.id)).toMatchObject(kept);
+    expect(drafts.take('user-1', pageA.id)).toBeUndefined();
+    stop();
+    expect(calls).toBe(2);
+    expect(drafts.issue(null, pageA.id)).toBeNull();
+  });
+
+  it('keeps the latest write only: an older failure never replaces a later one, nor survives a later stored write', () => {
+    const drafts = createUnsavedDrafts();
+    const older = drafts.issue('user-1', pageA.id);
+    const newer = drafts.issue('user-1', pageA.id);
+    if (!older || !newer) throw new Error('No ticket');
+    drafts.failed(newer, { ...kept, content: 'Newer.' });
+    drafts.failed(older, { ...kept, content: 'Older.' });
+    expect(drafts.peek('user-1', pageA.id)?.content).toBe('Newer.');
+    const later = drafts.issue('user-1', pageA.id);
+    if (!later) throw new Error('No ticket');
+    drafts.stored(later);
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    // A write queued before that stored one, failing after it, is out of date too.
+    const stale = drafts.issue('user-1', pageB.id);
+    const saved = drafts.issue('user-1', pageB.id);
+    if (!stale || !saved) throw new Error('No ticket');
+    drafts.stored(saved);
+    drafts.failed(stale, { ...kept, id: pageB.id });
+    expect(drafts.peek('user-1', pageB.id)).toBeUndefined();
+  });
+
+  it('a draft never stored is kept, even after its editor showed an earlier failure of the same text', () => {
+    const drafts = createUnsavedDrafts();
+    const shown = drafts.issue('user-1', pageA.id);
+    const retried = drafts.issue('user-1', pageA.id);
+    if (!shown || !retried) throw new Error('No ticket');
+    drafts.settled(shown, true);
+    drafts.failed(retried, kept);
+    expect(drafts.peek('user-1', pageA.id)).toMatchObject(kept);
+  });
+
+  it('a later failure shown on screen outranks an earlier one: the earlier is neither kept after it nor left kept', () => {
+    const drafts = createUnsavedDrafts();
+    const keptEarlier = drafts.issue('user-1', pageA.id);
+    const older = drafts.issue('user-1', pageA.id);
+    const shown = drafts.issue('user-1', pageA.id);
+    if (!keptEarlier || !older || !shown) throw new Error('No ticket');
+    drafts.failed(keptEarlier, { ...kept, content: 'Kept before.' });
+    drafts.settled(shown, true);
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    drafts.failed(older, { ...kept, content: 'A' });
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+  });
+
+  it('revises a kept draft with the text its editor holds, and nothing when none is kept', () => {
+    const drafts = createUnsavedDrafts();
+    drafts.revise('user-1', pageA.id, { title: 'T', content: 'Nothing kept.' });
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    const ticket = drafts.issue('user-1', pageA.id);
+    if (!ticket) throw new Error('No ticket');
+    drafts.failed(ticket, kept);
+    drafts.revise('user-1', pageA.id, { title: kept.title, content: 'Edited under the conflict.' });
+    expect(drafts.peek('user-1', pageA.id)).toMatchObject({ content: 'Edited under the conflict.', error: kept.error });
+  });
+
+  it('drops everything when the session ends, and ignores writes queued before', () => {
+    const drafts = createUnsavedDrafts();
+    const kept1 = drafts.issue('user-1', pageA.id);
+    const late = drafts.issue('user-1', pageB.id);
+    if (!kept1 || !late) throw new Error('No ticket');
+    drafts.failed(kept1, kept);
+    drafts.clear();
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    drafts.failed(late, { ...kept, id: pageB.id });
+    expect(drafts.peek('user-1', pageB.id)).toBeUndefined();
+    expect(drafts.pending('user-1', pageB.id)).toBe(false);
+  });
+
+  it('comes back as the draft over the revision it was meant for', () => {
+    expect(restoreUnsavedDraft(kept, snapshotOf(pageA))).toBe('draft');
+  });
+
+  it('comes back as a conflict when its save raised one, or the server moved on since', () => {
+    expect(restoreUnsavedDraft({ ...kept, error: normalizedSaveConflict(pageA.id) }, snapshotOf(pageA))).toBe('conflict');
+    expect(restoreUnsavedDraft(kept, { ...snapshotOf(pageA), content: 'Another client.', updatedAt: '2026-09-01T10:05:00.000Z' })).toBe('conflict');
+  });
+
+  it('does not come back when the server holds it already, or on another page', () => {
+    expect(restoreUnsavedDraft(kept, { ...snapshotOf(pageA), content: kept.content, updatedAt: '2026-09-01T10:05:00.000Z' })).toBeNull();
+    expect(restoreUnsavedDraft(kept, snapshotOf(pageB))).toBeNull();
   });
 });
