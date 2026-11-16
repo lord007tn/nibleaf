@@ -3,6 +3,7 @@ import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteSearchT } from '@nibleaf/i18n/site-search';
 import { useDebouncedValue } from '@tanstack/react-pacer';
@@ -12,9 +13,11 @@ import { Fragment, type ReactNode, type RefObject, useCallback, useEffect, useLa
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { Highlight } from '@/components/site/site-search-highlight';
 import { takeSearchKeystrokes } from '@/components/site/site-search-keystrokes';
+import { useSlashShortcut, writeSlashShortcut } from '@/components/site/site-search-shortcut';
 import { useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
+import { focusDestinationOfNextNavigation } from '@/lib/site-link-navigation';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 import { readerLanguageFirst } from '@/lib/site-search-rank';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
@@ -144,7 +147,8 @@ export default function SiteSearchDialog({
   version?: string;
   /** Configured search prompt (config.search.placeholder); falls back to the localized default. */
   placeholder?: string;
-  /** Which key opens search (config.search.hotkey): ⌘K (default) or a bare '/'. */
+  /** The shortcut the search button shows (config.search.hotkey): ⌘K (default) or a bare '/'.
+   * ⌘K always opens search; '/' does too unless the reader turned it off in the footer. */
   hotkey?: 'cmdk' | 'slash';
   maxResults?: number;
   versions?: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
@@ -168,6 +172,7 @@ export default function SiteSearchDialog({
   const { track } = useSiteAnalytics();
   const router = useRouter();
   const t = siteSearchT(lang);
+  const slashShortcut = useSlashShortcut(projectId);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   // cmdk re-selects the first row whenever the list changes. Only highlight
@@ -180,6 +185,9 @@ export default function SiteSearchDialog({
       readerMovedRef.current = false;
     });
   };
+  // Set when search closes to open a page: focus then lands on that page's
+  // heading (lib/site-link-navigation.ts) instead of going back to the trigger.
+  const openingPageRef = useRef(false);
   const [query, setQuery] = useState('');
   // Results from before the field was emptied don't stand in for a new search:
   // until fresh results arrive, a new search after clearing shows skeletons.
@@ -340,6 +348,8 @@ export default function SiteSearchDialog({
       });
       remember(debouncedQuery);
     }
+    openingPageRef.current = true;
+    focusDestinationOfNextNavigation(() => document.querySelector('[data-theme-surface="search"]') !== null);
     onOpenChange(false);
     void router.navigate({
       href: siteHref(projectId, path, {
@@ -352,6 +362,7 @@ export default function SiteSearchDialog({
 
   useEffect(() => {
     if (!open) return;
+    openingPageRef.current = false;
     setSelectedVersion(version);
     setRecent(readRecent(projectId));
   }, [open, version, projectId]);
@@ -512,7 +523,9 @@ export default function SiteSearchDialog({
         // far). While an IME composition is still open in the held field, nothing
         // may move focus, or the half-composed text would be cut.
         initialFocus={() => cancelPlacementRef.current === null}
-        finalFocus={returnFocus ?? true}
+        // Esc, Cancel or a tap outside return focus to where the reader was; opening
+        // a page leaves it to the destination's heading.
+        finalFocus={() => (openingPageRef.current ? false : (returnFocus?.current ?? true))}
       >
         <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
         <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
@@ -769,11 +782,11 @@ export default function SiteSearchDialog({
 
           <div
             className={cn(
-              'shrink-0 items-center gap-4 border-border/70 border-t px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-muted-foreground text-xs',
-              // Key hints mean nothing on touch screens; keep the bar only for the filters there.
-              showFilters ? 'flex' : 'hidden sm:flex pointer-coarse:hidden!',
+              'flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-border/70 border-t px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-muted-foreground text-xs',
             )}
           >
+            {/* Key hints are for mouse and keyboard users on wider screens. The bar itself
+                shows at every width: it holds the '/' switch, and '/' works everywhere. */}
             <div className="hidden items-center gap-4 sm:flex pointer-coarse:hidden!">
               <span className="inline-flex items-center gap-1.5">
                 <Key>↑</Key>
@@ -791,6 +804,13 @@ export default function SiteSearchDialog({
                 {t('searchKeysClose')}
               </span>
             </div>
+            {/* WCAG 2.1.4: readers can turn the single-key '/' shortcut off (site-search-shortcut.ts). */}
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: the switch inside is the labelled control. */}
+            <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 pointer-coarse:h-11">
+              <Switch size="sm" checked={slashShortcut} onCheckedChange={(on) => writeSlashShortcut(projectId, on)} />
+              <Key>/</Key>
+              {t('searchKeysSlash')}
+            </label>
             {showFilters ? (
               <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
                 {showLanguageFilter ? (

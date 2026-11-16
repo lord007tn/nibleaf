@@ -336,8 +336,9 @@ type SiteAiStatus = {
 
 **Client: `features/site-ai/{api,model,components}`** (ui-overhaul §7):
 
-- `api/`: query and mutation factories (`siteAiQueryOptions`, `useSaveAiKey`, `useSelectAiSource`, `useSetAiAnswers`,
-  `usePrepareDocsForAi`) and route-loader prefetch for `?section=ai`.
+- `api/`: query and mutation factories (`siteAiQueryOptions`, `useSelectAiSource`, `useSetAiAnswers`,
+  `usePrepareDocsForAi`), the key's direct Check and Save (`useProviderKeyRequests`, kept out of every cache), and
+  route-loader prefetch for `?section=ai`.
 - `model/ai.ts` (pure, table-tested):
   - `aiPageState(caps, status, access)` returns `'unavailable' | 'off' | 'on' | 'notWorking'` plus the single headline
     problem.

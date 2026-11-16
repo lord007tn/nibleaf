@@ -67,14 +67,23 @@ export type DraftSettlement = {
 /**
  * The one save in flight: which identity generation it belongs to and, once
  * its request is sent, what it sent and which of those keys the server has
- * echoed (see `PendingSave`).
+ * echoed (see `PendingSave`). `leave` ends its `submit()` when the form moves
+ * to another identity.
  */
-type ActiveSave<T extends DraftValues> = { id: number; generation: number; pending?: PendingSave<T>; outcome?: 'saved' | 'invalid' | 'failed' };
+type ActiveSave<T extends DraftValues> = {
+  id: number;
+  generation: number;
+  pending?: PendingSave<T>;
+  outcome?: 'saved' | 'invalid' | 'failed';
+  leave?: () => void;
+};
 
 /**
  * A TanStack form kept in step with server data (operations/ui-overhaul.md
  * §8.3), never silently dropping an edit:
- * - a new `identity` (another site, another language scope) resets the form;
+ * - a new `identity` (another site, another language scope) resets the form,
+ *   and a save still in flight ends its `submit()` as `'failed'` at once (its
+ *   request runs on), so the new identity's first save isn't held up;
  * - a server change updates fields the person hasn't edited, keeps their
  *   edits, and reports keys both sides changed as `conflicts`, which stay
  *   until resolved or until the draft matches the server again;
@@ -167,8 +176,11 @@ export function useServerDraftForm<T extends DraftValues>({
 
   const form = useForm({
     defaultValues: baseline,
-    onSubmit: async ({ value }) => {
-      const save = activeRef.current;
+    // Each submit names its own save, so validation that ends after an identity
+    // switch can't send under the save the new identity has started since.
+    onSubmitMeta: { save: null } as { save: ActiveSave<T> | null },
+    onSubmit: async ({ value, meta }) => {
+      const save = meta.save;
       if (!save) return;
       const owned = () => save.generation === generationRef.current && activeRef.current?.id === save.id;
       const isCurrent = () => shownRef.current && owned();
@@ -238,8 +250,10 @@ export function useServerDraftForm<T extends DraftValues>({
     identityRef.current = identityKey;
     if (identityChanged) {
       // Something else to edit: start clean. A save still in flight belongs to
-      // the old identity and will find itself no longer current.
+      // the old identity and will find itself no longer current; its submit
+      // ends now, so nothing waiting on it (the save bar) holds up this one's.
       generationRef.current += 1;
+      activeRef.current?.leave?.();
       activeRef.current = null;
       heldRef.current = null;
       setIsSaving(false);
@@ -313,8 +327,12 @@ export function useServerDraftForm<T extends DraftValues>({
     const save: ActiveSave<T> = { id: nextSaveId.current, generation: generationRef.current };
     activeRef.current = save;
     setIsSaving(true);
+    const left = new Promise<void>((resolve) => {
+      save.leave = resolve;
+    });
     try {
-      await form.handleSubmit();
+      // The request runs on after an identity switch; only the waiting ends.
+      await Promise.race([form.handleSubmit({ save }), left]);
       // A save that ends with the form off screen, or on an identity it has since left, reports nothing useful to it.
       return shownRef.current && save.generation === generationRef.current ? (save.outcome ?? 'invalid') : 'failed';
     } finally {

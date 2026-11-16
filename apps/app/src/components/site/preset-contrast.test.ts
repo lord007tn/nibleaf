@@ -223,6 +223,63 @@ describe('preset contrast (PUB-019)', () => {
     expect(projectThemeCss({ styling: { primaryColor: '#5546e8' } } as never)).not.toContain('[data-theme-callouts="solid"]');
   });
 
+  // #682: a tab list nested in a solid callout draws its active label in
+  // `text-primary` (the callout's code accent) on the list's muted fill, which is
+  // lighter than the code surface that accent is shaded for. #b96a3d on Signal
+  // gave #bb6e42: 4.09:1 on #1e2230.
+  it('keeps the labels of a tab list nested in a solid callout readable, for every preset and brand (#682)', () => {
+    // What ships: the active label and indicator use --primary, the others the
+    // muted text, on the boxed and pill lists' muted fill (or the callout's own).
+    const tabs = read('mdx/tabs.tsx');
+    expect(tabs).toContain("i === active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground");
+    const styles = read('../../styles.css');
+    for (const variant of ['boxed', 'pills']) {
+      const start = styles.search(new RegExp(`\\[data-theme-tabs="${variant}"\\]\\s+\\[data-theme-component="tabs-list"\\]`));
+      expect(start).toBeGreaterThan(0);
+      expect(styles.slice(start, styles.indexOf('}', start))).toContain('background: var(--theme-muted)');
+    }
+    const islandOf = (css: string) => {
+      const body = css.match(/\.nibleaf-site-chrome\[data-theme-callouts="solid"\] \[data-theme-component="callout"\]\{([^}]*)\}/)?.[1] ?? '';
+      // Later declarations win, as in the browser.
+      return new Map(
+        body.split(';').map((declaration) => [declaration.slice(0, declaration.indexOf(':')), declaration.slice(declaration.indexOf(':') + 1)]),
+      );
+    };
+    const presets = ['harbor', 'manuscript', 'signal'] as const;
+    const brands = ['#b96a3d', '#5546e8', '#2d25e3', '#3a1408', '#000000', '#0b7a55', '#ffcc00', '#e11d48'];
+    const configs = presets.flatMap((preset) => [
+      { theme: { preset, components: { callouts: 'solid' } } },
+      ...brands.flatMap((brand) => [
+        { theme: { preset, components: { callouts: 'solid' }, colors: { light: { accent: brand }, dark: { accent: brand } } } },
+        { theme: { preset, components: { callouts: 'solid' } }, styling: { primaryColor: brand } },
+      ]),
+    ]);
+    const failures: string[] = [];
+    for (const config of configs) {
+      const island = islandOf(projectThemeCss(config as never));
+      const raw = island.get('--primary') ?? '';
+      const primary = raw === 'var(--theme-code-accent)' ? (island.get('--theme-code-accent') ?? '') : raw;
+      const muted = island.get('--theme-muted') ?? '';
+      const code = island.get('--theme-code') ?? '';
+      const fills = [
+        ['tab list', hoverRgb(muted)],
+        ...(['info', 'success', 'warning', 'danger'] as const).map(
+          (tone) => [`${tone} callout`, hoverMixOklab(hoverRgb(island.get(`--theme-${tone}`) ?? ''), hoverRgb(code), 0.14)] as const,
+        ),
+      ] as const;
+      const label = JSON.stringify(config);
+      for (const [name, fill] of fills) {
+        const active = hoverContrast(hoverRgb(primary), [...fill]);
+        if (active < 4.5) failures.push(`${label}: active label ${primary} on the ${name} ${active.toFixed(2)}:1`);
+      }
+      const inactive = hoverContrast(hoverRgb(island.get('--muted-foreground') ?? ''), hoverRgb(muted));
+      if (inactive < 4.5) failures.push(`${label}: inactive label on the tab list ${inactive.toFixed(2)}:1`);
+    }
+    expect(failures).toEqual([]);
+    // Signal as shipped keeps the code accent itself: its CSS doesn't change.
+    expect(islandOf(projectThemeCss({ theme: { preset: 'signal' } } as never)).get('--primary')).toBe('var(--theme-code-accent)');
+  });
+
   it("draws the code block's language label at a contrast that reads on the dark chrome", () => {
     expect(read('reader-code-block.tsx')).toContain('font-mono text-[10px] text-white/70 uppercase');
   });
@@ -457,6 +514,29 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
     ];
     return checks.filter(([, ratio, target]) => ratio < target).map(([name, ratio]) => `${name}: ${ratio.toFixed(4)}:1`);
   };
+  /** The tint as the browser stores it: composited, then rounded to 8 bits a channel. */
+  const roundedTint = (color: number[], background: string) => hoverOver(hoverRgb(background), color, 0.1).map(Math.round);
+  /** Every target a HEX replacement misses by the margin a kept mix needs (4.51:1), on the tint both as
+   * composited and rounded (#758); a `color-mix()` that was kept is judged by `shortfalls` and the sweep. */
+  const replacementShortfalls = (brand: string) => {
+    const dark = legacyDark(brand);
+    const drawer = drawerRule(dark.css, 'dark');
+    const drawerTokens = drawer ? declarations(drawer) : {};
+    const isHex = (value: string | undefined) => /^#[0-9a-f]{6}$/.test(value ?? '');
+    const checks: [string, number][] = [];
+    const asText = (name: string, color: number[], background: string, onAccent: number[]) =>
+      checks.push(
+        [`${name} on ${background}`, hoverContrast(color, hoverRgb(background))],
+        [`${name} on its tint`, onOwnTint(color, background)],
+        [`${name} on its tint, rounded`, hoverContrast(color, roundedTint(color, background))],
+        [`text on ${name}`, hoverContrast(onAccent, color)],
+      );
+    if (isHex(dark.page['--primary'])) asText('--primary', dark.primary, CANVAS, dark.onPrimary);
+    if (isHex(drawerTokens['--primary'] ?? dark.page['--primary'])) asText('drawer --primary', dark.drawerPrimary, POPOVER, dark.drawerOnPrimary);
+    if (isHex(dark.light['--theme-code-accent']))
+      checks.push(['--theme-code-accent on the code surface', hoverContrast(dark.codeAccent, hoverRgb(CODE))]);
+    return checks.filter(([, ratio]) => ratio < 4.51).map(([name, ratio]) => `${name}: ${ratio.toFixed(4)}:1`);
+  };
 
   it.each([
     ['#000000', 1.36],
@@ -495,6 +575,39 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
     expect(shortfalls('#3a1408')).toEqual([]);
   });
 
+  // #753 held a replacement hex to 4.5:1 exactly, and the active row's tint is rounded when drawn (#758).
+  it.each([
+    ['#2d25e3', ['--primary on its tint: 4.5003:1', '--primary on its tint, rounded: 4.4879:1']],
+    [
+      '#490000',
+      ['text on --primary: 4.5069:1', 'drawer --primary on its tint, rounded: 4.4933:1', '--theme-code-accent on the code surface: 4.5056:1'],
+    ],
+    ['#3a1408', ['--theme-code-accent on the code surface: 4.5041:1']],
+  ] as const)('gives the hex replacements for %s a margin over 4.5:1 on every target (before: %j)', (brand, _before) => {
+    expect(replacementShortfalls(brand)).toEqual([]);
+    expect(shortfalls(brand)).toEqual([]);
+  });
+
+  it("checks #2d25e3's replacement on the tint as the browser rounds it: #5874f1 read 4.4879:1 on [18, 21, 33]", () => {
+    expect(roundedTint(hoverRgb('#5874f1'), CANVAS)).toEqual([18, 21, 33]);
+    expect(hoverContrast(hoverRgb('#5874f1'), roundedTint(hoverRgb('#5874f1'), CANVAS))).toBeCloseTo(4.4879, 4);
+    const dark = legacyDark('#2d25e3');
+    expect(dark.page['--primary']).toBe('#5c77f1');
+    expect(hoverContrast(dark.primary, roundedTint(dark.primary, CANVAS))).toBeGreaterThanOrEqual(4.51);
+    expect(onOwnTint(dark.primary, CANVAS)).toBeGreaterThanOrEqual(4.51);
+  });
+
+  it('keeps the hex #744 chose wherever it already had the margin: #494992 (its mix read 4.5083:1 on its tint)', () => {
+    expect(onOwnTint(hoverMixOklab(hoverRgb('#494992'), [255, 255, 255], 0.72), CANVAS)).toBeCloseTo(4.5083, 4);
+    const dark = legacyDark('#494992');
+    expect([dark.page['--primary'], dark.page['--primary-foreground'], drawerRule(dark.css, 'dark')]).toEqual([
+      '#797db4',
+      '#171717',
+      '--primary:#8387ba;--primary-foreground:#171717',
+    ]);
+    expect(replacementShortfalls('#494992')).toEqual([]);
+  });
+
   it('meets every target for any brand, and keeps each mix wherever it reads with room to spare', () => {
     const clears = (ratio: number) => ratio >= 4.51;
     const levels = [0, 36, 73, 109, 146, 182, 219, 255];
@@ -503,6 +616,7 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
         for (const b of levels) {
           const brand = toHex([r, g, b]);
           expect(shortfalls(brand), brand).toEqual([]);
+          expect(replacementShortfalls(brand), brand).toEqual([]);
           const { page, css } = legacyDark(brand);
           const mixed = hoverMixOklab([r, g, b], [255, 255, 255], 0.72);
           if (clears(hoverContrast(mixed, hoverRgb(CANVAS))) && clears(onOwnTint(mixed, CANVAS)) && clears(hoverContrast(hoverRgb(POPOVER), mixed)))
@@ -544,10 +658,15 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
       if (first === 'legacy') return name === 'legacy default' ? {} : { styling: { primaryColor: name.slice('legacy '.length) } };
       return { theme: { preset: first }, ...(brand ? { styling: { primaryColor: brand } } : {}) };
     };
+    // #682 gives a solid callout its own --primary where the code accent doesn't
+    // read on the callout's lighter fills; with that one value put back, the CSS
+    // is otherwise unchanged.
+    const before682 = (css: string) =>
+      css.replace(/(\[data-theme-callouts="solid"\] \[data-theme-component="callout"\]\{[^}]*;--primary:)[^;}]+/, '$1var(--theme-code-accent)');
     const now = main.map(([name]) => [
       name,
       createHash('sha256')
-        .update(projectThemeCss(configFor(name as string) as never))
+        .update(before682(projectThemeCss(configFor(name as string) as never)))
         .digest('hex'),
     ]);
     expect(now).toEqual(main);
@@ -675,4 +794,32 @@ describe('call-to-action hover in the header and on the not-found page', () => {
       expect(hoverContrast(fill, palette.accent)).toBeGreaterThan(1.1);
     },
   );
+});
+
+// #828 review: accent text on the page shares the accent shade picked at 4.5:1
+// (#613), and inside a solid callout the #682 shade. Fading it on hover
+// (`hover:opacity-80`) took Signal + #b96a3d's #c17951 from 5.01:1 to 3.68:1 on
+// a warning callout. Article links and the breadcrumb trail keep their colour on
+// hover and signal it with the underline instead. Read from the components, so
+// these cases follow what ships.
+describe('accent text keeps its colour on hover', () => {
+  it('styles article links without an opacity hover', () => {
+    const markdown = read('../markdown.tsx');
+    const anchor = markdown.slice(markdown.indexOf('function anchorRenderer'));
+    const classes = anchor.match(/className=\{cn\('([^']*text-primary[^']*)'/)?.[1] ?? '';
+    expect(classes).toContain('text-primary');
+    expect(classes).not.toMatch(/hover:opacity-/);
+    expect(classes).toContain('hover:decoration-2');
+  });
+
+  it('styles the breadcrumb trail, which is accent text, without an opacity hover', () => {
+    const view = read('site-page-view.tsx');
+    const trail = view.slice(view.indexOf("aria-label={tReader('breadcrumb')}"));
+    expect(trail).toMatch(/^aria-label=\{tReader\('breadcrumb'\)\}[\s\S]*?text-primary/);
+    const link = trail.slice(trail.indexOf('<a'), trail.indexOf('</a>'));
+    const classes = link.match(/className="([^"]*)"/)?.[1] ?? '';
+    expect(link).toContain('crumb.path');
+    expect(classes).not.toMatch(/hover:opacity-/);
+    expect(classes).toContain('hover:underline');
+  });
 });
