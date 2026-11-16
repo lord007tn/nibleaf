@@ -225,7 +225,11 @@ describe('GitPipeline over the deployments queries', () => {
     await render({ importing: true });
     const button = host.querySelector<HTMLButtonElement>('button[data-slot="button"]');
     expect(button?.getAttribute('aria-busy')).toBe('true');
-    expect(button?.disabled).toBe(true);
+    // Disabled for presses, but still focusable: a busy press keeps keyboard focus.
+    expect(button?.getAttribute('aria-disabled')).toBe('true');
+    expect(button?.disabled).toBe(false);
+    button?.focus();
+    expect(document.activeElement).toBe(button);
     expect(button?.textContent).toContain(t('settings.git.import.importing'));
     await act(async () => button?.click());
     expect(onImport).not.toHaveBeenCalled();

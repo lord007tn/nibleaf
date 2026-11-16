@@ -902,19 +902,6 @@ const useSetProjectAddonEnabled = (projectId: string, action: 'activate' | 'deac
 export const useActivateProjectAddon = (projectId: string) => useSetProjectAddonEnabled(projectId, 'activate');
 export const useDeactivateProjectAddon = (projectId: string) => useSetProjectAddonEnabled(projectId, 'deactivate');
 
-/** Pull Markdown pages from the configured public Git provider (one-way import). */
-export const useImportFromGit = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async () =>
-      mutateData(await api.app.projects[':projectId'].settings.git.import.$post({ param: { projectId } }), 'Could not import from Git.'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
-    },
-  });
-};
-
 /** Generate or rotate the push-to-deploy webhook secret (admin only). The
  *  secret is server-generated; the settings PATCH can never set it. */
 export const useRotateGitWebhookSecret = (projectId: string) => {

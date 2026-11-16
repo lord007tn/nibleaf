@@ -59,11 +59,18 @@ try {
       .replace("from './section'", "from '@/components/settings/section'")
       .replace("from '@/hooks/api'", "from './hooks'"),
   );
-  // Main's settings mutation as it is on the base (this branch removed it); every other hook is today's.
+  // Main's settings mutation as it is on the base (this branch removed it), and its Git import (removed later);
+  // every other hook is today's.
+  const mainMutations = git('show', `${BASE}:apps/app/src/hooks/api/mutations.ts`);
   const mainHook = /\/\*\* Update workspace\/site settings\.[\s\S]*?\nexport const useUpdateWorkspaceSettings = [\s\S]*?\n};\n/.exec(
-    git('show', `${BASE}:apps/app/src/hooks/api/mutations.ts`),
+    mainMutations,
   )?.[0];
   assert.ok(mainHook, "main's useUpdateWorkspaceSettings");
+  const mainImport =
+    /\/\*\* Pull Markdown pages from the configured public Git provider[\s\S]*?\nexport const useImportFromGit = [\s\S]*?\n};\n/.exec(
+      mainMutations,
+    )?.[0];
+  assert.ok(mainImport, "main's useImportFromGit");
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
     `export * from '@/hooks/api';
@@ -73,7 +80,7 @@ import { mutateData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
-${mainHook}`,
+${mainHook}${mainImport}`,
   );
   // The per-site connection above the legacy form is out of scope: rendered as nothing on both sides.
   await writeFile(resolve(harness, 'git-workflow-stub.tsx'), 'export const GitWorkflow = () => null;\n');

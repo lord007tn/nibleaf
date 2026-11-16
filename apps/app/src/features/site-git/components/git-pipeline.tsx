@@ -100,7 +100,16 @@ export function GitPipeline({
           label={t('settings.git.pipeline.import')}
           detail={importDetail}
           action={
-            <Button size="sm" type="button" variant="outline" loading={importing} onClick={onImport} loadingText={t('settings.git.import.importing')}>
+            // Busy stays in the tab order (aria-disabled, not :disabled), so a press keeps keyboard focus.
+            <Button
+              focusableWhenDisabled={importing}
+              size="sm"
+              type="button"
+              variant="outline"
+              loading={importing}
+              onClick={onImport}
+              loadingText={t('settings.git.import.importing')}
+            >
               <DownloadCloud className="size-3.5" />
               {t('settings.git.import.now')}
             </Button>
