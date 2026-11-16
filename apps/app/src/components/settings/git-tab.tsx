@@ -2,28 +2,20 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { useForm } from '@tanstack/react-form';
 import { ArrowUpRight, Check, Copy, Eye, EyeOff, GitBranch, RefreshCw } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
-import { DirtyStateReporter, SettingsFormSkeleton } from '@/components/project-settings/shared';
+import { SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import { SecretInput } from '@/components/secret-input';
+import { useWriteGitSettings } from '@/features/site-git/api/git-connection';
+import { GitConnectionForm } from '@/features/site-git/components/git-connection-form';
 import { GitPipeline } from '@/features/site-git/components/git-pipeline';
-import {
-  useBranches,
-  useGitWorkflow,
-  useImportFromGit,
-  useLanguages,
-  useRotateGitWebhookSecret,
-  useUpdateWorkspaceSettings,
-  useWorkspaceSettings,
-} from '@/hooks/api';
+import { useGitWorkflow, useImportFromGit, useRotateGitWebhookSecret, useWorkspaceSettings } from '@/hooks/api';
 import { githubRepositoryPath } from '@/lib/git-repository';
 import { copyToClipboard } from '@/lib/invitations';
 import { GitWorkflow, type GitWorkflowPrefill } from './git-workflow';
@@ -258,29 +250,23 @@ export function GitTab({ projectId }: { projectId?: string }) {
   const [prefill, setPrefill] = useState<GitWorkflowPrefill | null>(null);
   const settings = useWorkspaceSettings(projectId);
   const { data } = settings;
-  const update = useUpdateWorkspaceSettings(projectId);
   const importFromGit = useImportFromGit(projectId ?? '');
-  const { data: branches } = useBranches(projectId);
-  const { data: languages } = useLanguages(projectId);
-  const branchOptions: Array<{ value: string | null; label: string }> = [
-    { value: null, label: t('settings.git.defaultBranch') },
-    ...(branches ?? []).map((branch) => ({ value: branch.id, label: branch.name })),
-  ];
-  const languageOptions: Array<{ value: string | null; label: string }> = [
-    { value: null, label: t('settings.git.defaultLanguage') },
-    ...(languages ?? []).map((language) => ({ value: language.id, label: `${language.label} (${language.code})` })),
-  ];
+  // Any write to this site's `git` in flight, from this mount or an earlier one: the instant writes
+  // below and the repository form's save wait for each other (the PATCH replaces `git` whole).
+  const { write, pending: writing, isPending: writePending } = useWriteGitSettings(projectId ?? '');
   const git = { ...DEFAULTS, ...((data?.git ?? {}) as GitConfig) };
-  const [provider, setProvider] = useState<GitConfig['provider']>(git.provider ?? 'github');
   const connected = Boolean((data?.git as GitConfig | undefined)?.connected && (git.provider === 'git' ? git.cloneUrl : git.repo));
-  const isGitLab = provider === 'gitlab';
-  const isGenericGit = provider === 'git';
 
-  const save = (patch: Partial<GitConfig>, message?: string) =>
-    update.mutate(
+  // The instant writes (auto publish, disconnect): the stored connection with one change. One that the
+  // person asked for waits out any other write to this site's `git`; the new connection taking over
+  // (`switchOff`) is sent regardless, as before.
+  const send = (patch: Partial<GitConfig>, message?: string) => {
+    if (!projectId) return;
+    write(
       {
+        projectId,
         git: {
-          provider,
+          provider: git.provider,
           repo: git.repo,
           cloneUrl: git.cloneUrl,
           instanceUrl: git.instanceUrl,
@@ -300,6 +286,10 @@ export function GitTab({ projectId }: { projectId?: string }) {
         onError: (_error) => toast.error(t('settings.git.saveError')),
       },
     );
+  };
+  const save = (patch: Partial<GitConfig>, message?: string) => {
+    if (!writePending()) send(patch, message);
+  };
 
   const runImport = () =>
     importFromGit.mutate(undefined, {
@@ -307,216 +297,19 @@ export function GitTab({ projectId }: { projectId?: string }) {
       onError: (_error) => toast.error(t('settings.git.import.error')),
     });
 
-  const form = useForm({
-    defaultValues: {
-      repo: git.repo,
-      cloneUrl: git.cloneUrl,
-      instanceUrl: git.instanceUrl,
-      branch: git.branch,
-      path: git.path,
-      importBranchId: git.importBranchId,
-      importLanguageId: git.importLanguageId,
-    },
-    onSubmit: async ({ value }) =>
-      save(
-        {
-          provider,
-          repo: provider === 'git' ? undefined : value.repo.trim(),
-          cloneUrl: provider === 'git' ? value.cloneUrl.trim() : undefined,
-          instanceUrl: provider === 'gitlab' ? value.instanceUrl.trim() || 'https://gitlab.com' : undefined,
-          branch: value.branch.trim() || 'main',
-          path: value.path.trim(),
-          importBranchId: value.importBranchId || undefined,
-          importLanguageId: value.importLanguageId || undefined,
-          connected: true,
-        },
-        t('settings.git.repoSaved'),
-      ),
-  });
-
-  useEffect(() => {
-    setProvider(git.provider ?? 'github');
-    form.reset({
-      repo: git.repo,
-      cloneUrl: git.cloneUrl,
-      instanceUrl: git.instanceUrl,
-      branch: git.branch,
-      path: git.path,
-      importBranchId: git.importBranchId,
-      importLanguageId: git.importLanguageId,
-    });
-  }, [form, git.branch, git.cloneUrl, git.importBranchId, git.importLanguageId, git.instanceUrl, git.path, git.provider, git.repo]);
-
   if (settings.isPending) return <SettingsFormSkeleton />;
   if (settings.isError && !data) return <QueryErrorState onRetry={() => void settings.refetch()} retrying={settings.isFetching} />;
 
   const webUrl = repoWebUrl(git);
   const ProviderGlyph = git.provider === 'github' ? GithubIcon : GitBranch;
 
-  const connectForm = (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        form.handleSubmit();
-      }}
-    >
-      <form.Subscribe selector={(state) => !state.isDefaultValue}>
-        {(dirty) => <DirtyStateReporter dirty={dirty || provider !== (git.provider ?? 'github')} />}
-      </form.Subscribe>
-      <div className="mb-4 grid grid-cols-3 gap-2">
-        <Button
-          className="justify-start"
-          onClick={() => setProvider('github')}
-          type="button"
-          variant={provider === 'github' ? 'secondary' : 'outline'}
-        >
-          <GithubIcon className="size-4" />
-          GitHub
-        </Button>
-        <Button
-          className="justify-start"
-          onClick={() => setProvider('gitlab')}
-          type="button"
-          variant={provider === 'gitlab' ? 'secondary' : 'outline'}
-        >
-          <GitBranch className="size-4" />
-          GitLab
-        </Button>
-        <Button className="justify-start" onClick={() => setProvider('git')} type="button" variant={provider === 'git' ? 'secondary' : 'outline'}>
-          <GitBranch className="size-4" />
-          {t('settings.git.provider.git.name')}
-        </Button>
-      </div>
-
-      {isGitLab ? (
-        <form.Field name="instanceUrl">
-          {(field) => (
-            <div className="mb-4 flex flex-col gap-1.5">
-              <Label htmlFor="git-instance-url">{t('settings.git.instanceUrl')}</Label>
-              <Input
-                className="font-mono"
-                dir="ltr"
-                id="git-instance-url"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="https://gitlab.com"
-                value={field.state.value}
-              />
-            </div>
-          )}
-        </form.Field>
-      ) : null}
-
-      {isGenericGit ? (
-        <form.Field name="cloneUrl">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="git-clone-url">{t('settings.git.cloneUrl')}</Label>
-              <Input
-                className="font-mono"
-                dir="ltr"
-                id="git-clone-url"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="https://git.example.com/acme/docs.git"
-                value={field.state.value}
-              />
-            </div>
-          )}
-        </form.Field>
-      ) : (
-        <form.Field name="repo">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="git-repo">{t('settings.git.repoUrl')}</Label>
-              <Input
-                className="font-mono"
-                dir="ltr"
-                id="git-repo"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder={isGitLab ? 'group/project' : 'acme-inc/docs'}
-                value={field.state.value}
-              />
-            </div>
-          )}
-        </form.Field>
-      )}
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <form.Field name="branch">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="git-branch">{t('settings.git.productionBranch')}</Label>
-              <Input
-                className="font-mono"
-                dir="ltr"
-                id="git-branch"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="main"
-                value={field.state.value}
-              />
-            </div>
-          )}
-        </form.Field>
-        <form.Field name="path">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="git-path">{t('settings.git.contentPath')}</Label>
-              <Input
-                className="font-mono"
-                dir="ltr"
-                id="git-path"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="docs"
-                value={field.state.value}
-              />
-            </div>
-          )}
-        </form.Field>
-      </div>
-      {projectId ? (
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <form.Field name="importBranchId">
-            {(field) => (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="git-import-branch">{t('settings.git.importBranch')}</Label>
-                <Select items={branchOptions} onValueChange={(next) => field.handleChange(next ?? '')} value={field.state.value || null}>
-                  <SelectTrigger className="w-full font-mono" dir="ltr" id="git-import-branch">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent dir="ltr">
-                    {branchOptions.map((option) => (
-                      <SelectItem key={option.value ?? ''} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </form.Field>
-          <form.Field name="importLanguageId">
-            {(field) => (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="git-import-language">{t('settings.git.importLanguage')}</Label>
-                <Select items={languageOptions} onValueChange={(next) => field.handleChange(next ?? '')} value={field.state.value || null}>
-                  <SelectTrigger className="w-full" id="git-import-language">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languageOptions.map((option) => (
-                      <SelectItem key={option.value ?? ''} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </form.Field>
-        </div>
-      ) : null}
-      <div className="mt-5 flex items-center justify-between gap-3">
-        {connected ? (
+  const connectForm = projectId ? (
+    <GitConnectionForm
+      connected={connected}
+      disconnect={
+        connected ? (
           <Button
-            loading={update.isPending}
+            loading={writing}
             type="button"
             variant="destructive"
             onClick={async () => {
@@ -532,24 +325,12 @@ export function GitTab({ projectId }: { projectId?: string }) {
           >
             {t('settings.git.disconnect')}
           </Button>
-        ) : (
-          <span />
-        )}
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(isSubmitting) => (
-            <Button
-              loading={update.isPending || isSubmitting}
-              loadingText={t('common.saving')}
-              type="submit"
-              variant={connected ? 'outline' : 'default'}
-            >
-              {connected ? t('settings.git.save') : t('settings.git.connect')}
-            </Button>
-          )}
-        </form.Subscribe>
-      </div>
-    </form>
-  );
+        ) : null
+      }
+      git={data?.git}
+      projectId={projectId}
+    />
+  ) : null;
 
   const legacyControls = (
     <div className="flex flex-col gap-6">
@@ -588,7 +369,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
           projectId={projectId}
           git={git}
           onToggleAutoPublish={(next) => save({ autoPublish: next }, t('settings.git.webhook.autoPublishSaved'))}
-          togglingAutoPublish={update.isPending}
+          togglingAutoPublish={writing}
         />
       ) : null}
       <SettingsSection title={t('settings.git.settingsTitle')} description={t('settings.git.import.description')}>
@@ -633,7 +414,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
           </p>
         </div>
         {replaced ? (
-          <Button loading={update.isPending} onClick={() => void removeLegacy()} type="button" variant="outline">
+          <Button loading={writing} onClick={() => void removeLegacy()} type="button" variant="outline">
             {t('settings.git.legacy.remove')}
           </Button>
         ) : switchable ? (
@@ -654,7 +435,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
           <GitWorkflow
             onConnected={() => {
               // The new connection takes over: switch the legacy import off.
-              if (connected) save({ connected: false }, t('settings.git.legacy.switched'));
+              if (connected) send({ connected: false }, t('settings.git.legacy.switched'));
             }}
             prefill={prefill}
             projectId={projectId}

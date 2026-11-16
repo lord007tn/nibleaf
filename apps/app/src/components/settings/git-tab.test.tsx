@@ -25,6 +25,11 @@ vi.mock('./git-workflow', () => ({
   },
 }));
 const idle = { mutate: vi.fn(), isPending: false };
+// The repository form's save has its own tests (features/site-git); here it only has to render.
+vi.mock('@/features/site-git/api/git-connection', () => ({
+  useSaveGitConnection: () => ({ save: vi.fn(), pending: false, isPending: () => false }),
+  useWriteGitSettings: () => ({ write: state.update, pending: false, isPending: () => false }),
+}));
 vi.mock('@/hooks/api', () => ({
   useBranches: () => ({ data: [] }),
   useDeployments: () => ({ data: state.deployments }),
@@ -33,7 +38,6 @@ vi.mock('@/hooks/api', () => ({
   useImportFromGit: () => idle,
   useLanguages: () => ({ data: [] }),
   useRotateGitWebhookSecret: () => idle,
-  useUpdateWorkspaceSettings: () => ({ mutate: state.update, isPending: false }),
   useWorkspaceSettings: () => ({ isPending: false, isError: false, data: { git: state.legacy } }),
 }));
 

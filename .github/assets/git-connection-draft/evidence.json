@@ -1,0 +1,2342 @@
+{
+  "environment": "Component fixture: main's GitTab (b5c9c7977e4b93246290c2c934f722fce090b664) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient, the settings query and mutations; the settings PATCH answered by interception through the real body validator and main's stored-shape rules; a fictional site; not the signed-in dashboard, production, the server, a repository, an import or a deployment",
+  "base": "b5c9c7977e4b93246290c2c934f722fce090b664",
+  "head": "512e35ab91617a8d598d9ced83e2dc81ebd27598",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "states": {
+        "en-ready-before": {
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "body",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-ready-after": {
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "body",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-refetch-before": {
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-refetch-after": {
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-duringSave-before": {
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Repository saved"],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/handbook",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-duringSave-after": {
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/handbook",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-failed-before": {
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Could not save Git settings"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-failed-after": {
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Could not save Git settings"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-conflict-before": {
+          "dir": "ltr",
+          "repo": "acme-fixture/manual",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/manual",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-conflict-after": {
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "Use their version",
+            "Keep mine",
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": true,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/manual",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-blank-before": {
+          "dir": "ltr",
+          "repo": "",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Could not save Git settings"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-blank-after": {
+          "dir": "ltr",
+          "repo": "",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": false,
+          "invalid": ["git-repo"],
+          "errors": ["Repository path is required"],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-ready-before": {
+          "dir": "rtl",
+          "repo": "acme-fixture/docs",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "body",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-ready-after": {
+          "dir": "rtl",
+          "repo": "acme-fixture/docs",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "body",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-refetch-before": {
+          "dir": "rtl",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-refetch-after": {
+          "dir": "rtl",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "guides",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال",
+            "تجاهل"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-duringSave-before": {
+          "dir": "rtl",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["تم حفظ المستودع"],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/handbook",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-duringSave-after": {
+          "dir": "rtl",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "guides",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال",
+            "تجاهل"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/handbook",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-failed-before": {
+          "dir": "rtl",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-failed-after": {
+          "dir": "rtl",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال",
+            "تجاهل"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-conflict-before": {
+          "dir": "rtl",
+          "repo": "acme-fixture/manual",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/manual",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-conflict-after": {
+          "dir": "rtl",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "استخدم نسختهم",
+            "احتفظ بنسختي",
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال",
+            "تجاهل"
+          ],
+          "conflict": true,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/manual",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-blank-before": {
+          "dir": "rtl",
+          "repo": "",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-blank-after": {
+          "dir": "rtl",
+          "repo": "",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال",
+            "تجاهل"
+          ],
+          "conflict": false,
+          "invalid": ["git-repo"],
+          "errors": ["مسار المستودع مطلوب"],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "states": {
+        "en-ready-before": {
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "body",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-ready-after": {
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "body",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-refetch-before": {
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-refetch-after": {
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-duringSave-before": {
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Repository saved"],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/handbook",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-duringSave-after": {
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/handbook",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-failed-before": {
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Could not save Git settings"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-failed-after": {
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Could not save Git settings"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-conflict-before": {
+          "dir": "ltr",
+          "repo": "acme-fixture/manual",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/manual",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-conflict-after": {
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "Use their version",
+            "Keep mine",
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": true,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/manual",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-blank-before": {
+          "dir": "ltr",
+          "repo": "",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Could not save Git settings"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "en-blank-after": {
+          "dir": "ltr",
+          "repo": "",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": false,
+          "invalid": ["git-repo"],
+          "errors": ["Repository path is required"],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-ready-before": {
+          "dir": "rtl",
+          "repo": "acme-fixture/docs",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "body",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-ready-after": {
+          "dir": "rtl",
+          "repo": "acme-fixture/docs",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "body",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-refetch-before": {
+          "dir": "rtl",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-refetch-after": {
+          "dir": "rtl",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "guides",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال",
+            "تجاهل"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-duringSave-before": {
+          "dir": "rtl",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["تم حفظ المستودع"],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/handbook",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-duringSave-after": {
+          "dir": "rtl",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "guides",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال",
+            "تجاهل"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/handbook",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-failed-before": {
+          "dir": "rtl",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-failed-after": {
+          "dir": "rtl",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال",
+            "تجاهل"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/handbook",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-conflict-before": {
+          "dir": "rtl",
+          "repo": "acme-fixture/manual",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/manual",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-conflict-after": {
+          "dir": "rtl",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "استخدم نسختهم",
+            "احتفظ بنسختي",
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال",
+            "تجاهل"
+          ],
+          "conflict": true,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/manual",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-blank-before": {
+          "dir": "rtl",
+          "repo": "",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "focused": "button",
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              }
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        },
+        "ar-blank-after": {
+          "dir": "rtl",
+          "repo": "",
+          "branch": "main",
+          "path": "docs",
+          "save": { "text": "حفظجار الحفظ…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "رابط Git عام",
+            "الفرع الافتراضي▼",
+            "اللغة الافتراضية▼",
+            "قطع الاتصال",
+            "تجاهل"
+          ],
+          "conflict": false,
+          "invalid": ["git-repo"],
+          "errors": ["مسار المستودع مطلوب"],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "patches": [],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          }
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-before-en-1440.webm",
+      "version": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1/settings" },
+        {
+          "call": "PATCH /api/app/projects/site-1/settings",
+          "body": {
+            "git": {
+              "provider": "github",
+              "repo": "acme-fixture/handbook",
+              "branch": "main",
+              "path": "guides",
+              "connected": true,
+              "autoPublish": true
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1/settings" },
+        {
+          "call": "PATCH /api/app/projects/site-1/settings",
+          "body": {
+            "git": {
+              "provider": "github",
+              "repo": "acme-fixture/docs",
+              "branch": "release",
+              "path": "docs",
+              "connected": true,
+              "autoPublish": true
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1/settings" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "edited: repository and path",
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "requestsSoFar": 1
+        },
+        {
+          "step": "save held: busy",
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": true },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "requestsSoFar": 2
+        },
+        {
+          "step": "another writer changed the branch; refetched while the save is held",
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": true },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "requestsSoFar": 3
+        },
+        {
+          "step": "save refused (500)",
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Could not save Git settings"],
+          "focused": "git-repo",
+          "overflow": false,
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "requestsSoFar": 3
+        },
+        {
+          "step": "retried: saved",
+          "dir": "ltr",
+          "repo": "acme-fixture/docs",
+          "branch": "release",
+          "path": "docs",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Repository saved", "Could not save Git settings"],
+          "focused": "button",
+          "overflow": false,
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "requestsSoFar": 5
+        }
+      ]
+    },
+    {
+      "file": "flow-after-en-1440.webm",
+      "version": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1/settings" },
+        {
+          "call": "PATCH /api/app/projects/site-1/settings",
+          "body": {
+            "git": {
+              "provider": "github",
+              "repo": "acme-fixture/handbook",
+              "branch": "main",
+              "path": "guides",
+              "connected": true,
+              "autoPublish": true
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1/settings" },
+        { "call": "GET /api/app/projects/site-1/settings" },
+        {
+          "call": "PATCH /api/app/projects/site-1/settings",
+          "body": {
+            "git": {
+              "provider": "github",
+              "repo": "acme-fixture/handbook",
+              "branch": "release",
+              "path": "guides",
+              "connected": true,
+              "autoPublish": true
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1/settings" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "edited: repository and path",
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-path",
+          "overflow": false,
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "requestsSoFar": 1
+        },
+        {
+          "step": "save held: busy",
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "main",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": true },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "requestsSoFar": 2
+        },
+        {
+          "step": "another writer changed the branch; refetched while the save is held",
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": true },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": [],
+          "focused": "git-repo",
+          "overflow": false,
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "requestsSoFar": 3
+        },
+        {
+          "step": "save refused (500)",
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect",
+            "Discard"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Could not save Git settings"],
+          "focused": "git-repo",
+          "overflow": false,
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "release",
+            "path": "docs",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "requestsSoFar": 4
+        },
+        {
+          "step": "retried: saved",
+          "dir": "ltr",
+          "repo": "acme-fixture/handbook",
+          "branch": "release",
+          "path": "guides",
+          "save": { "text": "SaveSaving…", "busy": false },
+          "buttons": [
+            "GitHub",
+            "GitLab",
+            "Public Git URL",
+            "Default branch▼",
+            "Default language▼",
+            "Disconnect"
+          ],
+          "conflict": false,
+          "invalid": [],
+          "errors": [],
+          "toasts": ["Repository saved", "Could not save Git settings"],
+          "focused": "button",
+          "overflow": false,
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/handbook",
+            "branch": "release",
+            "path": "guides",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "requestsSoFar": 6
+        }
+      ]
+    }
+  ]
+}
