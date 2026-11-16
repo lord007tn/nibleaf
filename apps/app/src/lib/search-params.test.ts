@@ -129,7 +129,8 @@ describe('search-param readers', () => {
   it.each(Object.entries(routes))('read %s exactly as its zod schema did, keys included', (_route, route) => {
     const keys = 'keys' in route ? route.keys : Object.keys(route.read);
     const parse = 'parse' in route ? route.parse : (search: Record<string, unknown>) => readSearch(search, route.read);
-    for (const search of [...searches(keys), Object.fromEntries(keys.map((key) => [key, 'x'])), { unknown: 'dropped', [keys[0]]: 'ab' }]) {
+    const withUnknownKey = { unknown: 'dropped', ...Object.fromEntries(keys.slice(0, 1).map((key) => [key, 'ab'])) };
+    for (const search of [...searches(keys), Object.fromEntries(keys.map((key) => [key, 'x'])), withUnknownKey]) {
       // toStrictEqual tells a missing key from one set to undefined.
       expect(parse(search)).toStrictEqual(route.zod.parse(search));
     }
