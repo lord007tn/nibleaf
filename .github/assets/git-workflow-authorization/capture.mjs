@@ -86,16 +86,27 @@ const IMPORT_TARGETS = [
   '  importLanguageId: string | null;',
   '',
 ].join('\n');
+// Rotate webhook secret left it later: main's hook, as every base has it, last in the file.
+const ROTATE_HOOK = [
+  '',
+  '',
+  'export const useRotateGitWorkflowWebhookSecret = (projectId: string) =>',
+  '  useGitWorkflowMutation(projectId, async (_: undefined) =>',
+  "    mutateData(await api.app.projects[':projectId'].git['webhook-secret'].$post({ param: { projectId } }), 'Could not rotate the webhook secret.'),",
+  '  );',
+].join('\n');
 const baseHooks = git('show', `${BASE}:${HOOKS}`);
 assert.equal(git('diff', '--name-only', BASE, '--', ...SHARED, `:(exclude)${HOOKS}`), '', 'a module both sides share changed since BASE');
 assert.ok(baseHooks.includes(AUTHORIZE_HOOK) && baseHooks.includes(CONNECT_IMPORT) && baseHooks.includes(CONNECT_HOOK), 'BASE has both hooks');
+assert.ok(baseHooks.endsWith(ROTATE_HOOK), 'BASE ends with the rotate hook');
 assert.equal(
   (await readFile(resolve(root, HOOKS), 'utf8')).replaceAll('\r\n', '\n').trim(),
   baseHooks
     .replace(CONNECT_IMPORT, '')
     .replace('  contentPath: string;\n', `  contentPath: string;\n${IMPORT_TARGETS}`)
     .replace(AUTHORIZE_HOOK, '')
-    .replace(CONNECT_HOOK, ''),
+    .replace(CONNECT_HOOK, '')
+    .replace(ROTATE_HOOK, ''),
   'hooks/api/git-workflow.ts changed since BASE by more than those later changes',
 );
 
@@ -114,7 +125,7 @@ try {
   await writeFile(resolve(harness, 'before/git-workflow-hooks.ts'), baseHooks.replace(/from '\.\/([\w-]+)'/g, "from '@/hooks/api/$1'"));
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
-    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow, useConnectGitWorkflow } from './git-workflow-hooks';\n",
+    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow, useConnectGitWorkflow, useRotateGitWorkflowWebhookSecret } from './git-workflow-hooks';\n",
   );
   await writeFile(
     resolve(harness, 'before/git-workflow.tsx'),
