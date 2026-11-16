@@ -5,18 +5,17 @@ import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { ghostImportBody } from '@nibleaf/validators';
 import { useNavigate } from '@tanstack/react-router';
 import { ArrowUpRight, BookOpen, ChevronDown, DownloadCloud, Ghost, GitBranch, Leaf, Upload } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { type ContentImportSummary, useImportFromGhost, useImportFromGitbook, useImportFromMintlify } from '@/hooks/api';
+import { useGhostImportCommand } from '@/features/site-import/components/use-ghost-import';
+import { isValidImportUrl } from '@/features/site-import/model/ghost-import';
+import { type ContentImportSummary, useImportFromGitbook, useImportFromMintlify } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { importMayStillRun } from './import-errors';
 import { SettingsSection } from './section';
 
-/** Matches the server-side body cap for Ghost exports. */
-const MAX_GHOST_FILE_BYTES = 15 * 1024 * 1024;
 type ImportSource = 'mintlify' | 'gitbook' | 'ghost';
 /** Sources imported from a public GitHub repository (owner/repo + branch). */
 type RepoImportSource = Extract<ImportSource, 'mintlify' | 'gitbook'>;
@@ -29,38 +28,12 @@ const IMPORT_SOURCE_TABS = [
   { id: 'git', icon: GitBranch, label: 'settings.import.git.title' },
 ] as const;
 
-class ImportFileReadError extends Error {
-  readonly code = 'import:file_read';
-
-  constructor() {
-    super('import:file_read');
-    this.name = 'ImportFileReadError';
-  }
-}
-
-const readFileText = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result ?? ''));
-    reader.onerror = () => reject(new ImportFileReadError());
-    reader.readAsText(file);
-  });
-
 const normalizeGithubRepo = (value: string): string =>
   value
     .trim()
     .replace(/^https?:\/\/(?:www\.)?github\.com\//i, '')
     .replace(/\.git$/i, '')
     .replace(/^\/+|\/+$/g, '');
-
-const isValidHttpUrl = (value: string): boolean => {
-  try {
-    const url = new URL(value);
-    return (url.protocol === 'https:' || url.protocol === 'http:') && Boolean(url.hostname) && !url.username && !url.password;
-  } catch {
-    return false;
-  }
-};
 
 function ImportResult({ summary, projectId }: { summary: ContentImportSummary; projectId?: string }) {
   const t = useT();
@@ -154,7 +127,6 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   const navigate = useNavigate();
   const mintlify = useImportFromMintlify(projectId ?? '');
   const gitbook = useImportFromGitbook(projectId ?? '');
-  const ghost = useImportFromGhost(projectId ?? '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [source, setSource] = useState<ImportSource | null>(null);
   const [repo, setRepo] = useState('');
@@ -165,8 +137,9 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   const [ghostUrl, setGhostUrl] = useState('');
   const [ghostFile, setGhostFile] = useState<File | null>(null);
   const [result, setResult] = useState<ContentImportSummary | null>(null);
+  const ghost = useGhostImportCommand({ projectId: projectId ?? '', open: source === 'ghost', file: ghostFile, ghostUrl });
 
-  const pending = mintlify.isPending || gitbook.isPending || ghost.isPending;
+  const pending = mintlify.isPending || gitbook.isPending || ghost.busy;
   const chooseSource = (next: ImportSource) => {
     setSource(next);
     setResult(null);
@@ -200,7 +173,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
         return;
       }
     }
-    if (!(error instanceof ImportFileReadError) && importMayStillRun(error)) {
+    if (importMayStillRun(error)) {
       toast.error(t('settings.import.mayStillRun'), { duration: 20_000 });
       return;
     }
@@ -208,21 +181,17 @@ export function ImportTab({ projectId }: { projectId?: string }) {
       toast.error(source === 'ghost' ? t('settings.import.ghost.invalidJson') : t('settings.import.error'));
       return;
     }
-    if (error instanceof ImportFileReadError) {
-      toast.error(t('settings.import.error'));
-      return;
-    }
     toast.error(t('settings.import.error'));
   };
 
-  const runImport = async () => {
+  const runImport = () => {
     if (isRepoSource(source)) {
       const normalizedRepo = normalizeGithubRepo(repo);
       if (!/^[\w.-]+\/[\w.-]+$/.test(normalizedRepo)) {
         toast.error(t('settings.import.mintlify.invalidRepo'));
         return;
       }
-      if (sourceUrl.trim() && !isValidHttpUrl(sourceUrl.trim())) {
+      if (sourceUrl.trim() && !isValidImportUrl(sourceUrl.trim())) {
         toast.error(t('settings.import.sourceUrl'));
         return;
       }
@@ -242,28 +211,9 @@ export function ImportTab({ projectId }: { projectId?: string }) {
       gitbook.mutate({ ...body, ...(trimmedPath ? { path: trimmedPath } : {}) }, callbacks);
       return;
     }
-    if (source !== 'ghost' || !ghostFile) return;
-    if (!isValidHttpUrl(ghostUrl.trim())) {
-      toast.error(t('settings.import.ghost.invalidUrl'));
-      return;
-    }
-    if (ghostFile.size > MAX_GHOST_FILE_BYTES) {
-      toast.error(t('settings.import.ghost.tooLarge'));
-      return;
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(await readFileText(ghostFile));
-    } catch {
-      toast.error(t('settings.import.ghost.invalidJson'));
-      return;
-    }
-    const document = ghostImportBody.safeParse(parsed);
-    if (!document.success) {
-      toast.error(t('settings.import.ghost.invalidJson'));
-      return;
-    }
-    ghost.mutate({ ...document.data, __nibleafImport: { ghostUrl: ghostUrl.trim() } }, { onSuccess: handleSuccess, onError: handleError });
+    if (source !== 'ghost') return;
+    // One owner reads, checks and sends the file, and reports only into the panel it started in.
+    ghost.start({ refused: (message) => toast.error(t(message)), succeeded: handleSuccess, failed: handleError });
   };
 
   const canImport =
@@ -441,6 +391,8 @@ export function ImportTab({ projectId }: { projectId?: string }) {
               <Button
                 className="ms-auto"
                 disabled={!canImport}
+                // Busy keeps focus on the button, so a keyboard press doesn't drop it to the page.
+                focusableWhenDisabled={pending}
                 loading={pending}
                 loadingText={t('settings.import.running')}
                 onClick={runImport}
