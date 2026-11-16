@@ -1040,10 +1040,10 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
   // Positions where a tag scan outside quotes and braces is known to reach the end
   // of the page with no `>`: from there it reads the same text the same way, so a
   // later scan that gets there stops at once. Without this, every `<` after an
-  // unclosed tag rescanned the rest of the page. HTML and JSX quote differently (a
-  // backtick quotes only in JSX), so each has its own. A scan marks the positions it
-  // passed when it fails.
-  const unclosable = { html: new Uint8Array(0), jsx: new Uint8Array(0) };
+  // unclosed tag rescanned the rest of the page. HTML, JSX and a Frame's opener
+  // quote differently, so each has its own. A scan marks the positions it passed
+  // when it fails.
+  const unclosable = { html: new Uint8Array(0), jsx: new Uint8Array(0), frame: new Uint8Array(0) };
   const passed: number[] = [];
   // Inside `{…}` every scan reads the same way, as JavaScript (HTML or JSX), so
   // where a `{` met outside quotes closes is fixed by its position; a later scan
@@ -1051,12 +1051,14 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
   const expressionEnd = expressionEnds(source);
   /**
    * The index of the `>` that ends the tag whose attributes start at `from`, or -1
-   * when there is none. Quoted attribute values have no backslash escapes, in HTML and
-   * in JSX alike (#579, #714): `title="Old\"` is the title `Old\`, as MDX and the
-   * reader read it. Only a JSX backtick and the JavaScript inside `{…}` have them.
+   * when there is none. HTML attribute values have no backslash escapes
+   * (`title="Old\"` ends at that quote), and nor do a Frame's quoted values (#579):
+   * `caption="Old\"` is the caption `Old\`, as the reader reads it. Only other JSX
+   * and the JavaScript inside `{…}` do.
    */
   const readTag = (from: number, kind: keyof typeof unclosable): number => {
     const isHtml = kind === 'html';
+    const escapes = kind === 'jsx';
     if (unclosable[kind].length === 0) unclosable[kind] = new Uint8Array(source.length + 1);
     const known = unclosable[kind];
     passed.length = 0;
@@ -1067,7 +1069,7 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
       const char = source[cursor] ?? '';
       if (quote) {
         if (escaped) escaped = false;
-        else if (char === '\\' && quote === '`') escaped = true;
+        else if (char === '\\' && (escapes || quote === '`')) escaped = true;
         else if (char === quote) quote = '';
         continue;
       }
@@ -1106,13 +1108,18 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
     const isHtml = !/^[A-Z]/.test(name);
     cursor += name.length;
     if (!/[\s/>]/.test(source[cursor] ?? '')) continue;
-    cursor = readTag(cursor, isHtml ? 'html' : 'jsx');
+    const kind = isHtml ? 'html' : name === 'Frame' && !closing ? 'frame' : 'jsx';
+    const attributesStart = cursor;
+    cursor = readTag(attributesStart, kind);
     if (cursor < 0) {
       // A supported component's opening tag that can't be read to its `>` (an
       // unterminated quote or `{`, an expression the scan can't read) is still
       // that component's tag: it pairs with its closing tag, and the editor keeps
-      // the two and what is between them byte for byte (brokenRanges, #714).
-      if (!isHtml && !closing && SUPPORTED_MDX_COMPONENTS[name.toLowerCase()] && !HTML_ELEMENT_ALIASES.has(name)) {
+      // the two and what is between them byte for byte (brokenRanges, #714). One
+      // that reads with quoted values that have no backslash escapes, as a Frame's
+      // (`title="Old\">`), is left as before: Markdown reads it as HTML.
+      const supported = !isHtml && !closing && SUPPORTED_MDX_COMPONENTS[name.toLowerCase()] && !HTML_ELEMENT_ALIASES.has(name);
+      if (supported && (kind === 'frame' || readTag(attributesStart, 'frame') < 0)) {
         // Only its `<Name` is known; brokenRanges finds how far it is kept.
         const end = i + 1 + name.length;
         tokens.push({ start: i, end, name, raw: source.slice(i, end), closing, selfClosing: false, html: false, broken: true });
@@ -1529,6 +1536,8 @@ function keepRawHtml(
 
 function parseAttributes(raw: string, componentName: string): AttributeToken[] {
   const attrs: AttributeToken[] = [];
+  // A Frame's quoted values have no backslash escapes (see scanTags, #579).
+  const escapes = componentName !== 'Frame';
   let cursor = raw.indexOf(componentName) + componentName.length;
   const limit = raw.length - (raw.endsWith('/>') ? 2 : 1);
   // One reader for the whole tag: its searches are shared, not repeated per attribute.
@@ -1553,8 +1562,7 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
     const quote = raw[cursor];
     if (quote === '"' || quote === "'") {
       const valueStart = ++cursor;
-      // No backslash escapes (see scanTags, #579, #714).
-      while (cursor < limit && raw[cursor] !== quote) cursor++;
+      while (cursor < limit && raw[cursor] !== quote) cursor += escapes && raw[cursor] === '\\' ? 2 : 1;
       value = decodeAttributeValue(raw.slice(valueStart, cursor));
       cursor++;
     } else if (quote === '{') {
