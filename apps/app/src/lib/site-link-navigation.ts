@@ -72,6 +72,55 @@ function takeDestinationFocusRequest(): { closing: () => boolean } | null {
   return request;
 }
 
+/** How long after arriving focus follows a landed heading the page re-renders. */
+const FOLLOW_HEADING_MS = 2000;
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'Fn', 'FnLock', 'Hyper', 'Super', 'OS']);
+
+/**
+ * The article body can re-render just after a page arrives and replace the
+ * heading focus just landed on (focus then falls to the body). Until
+ * FOLLOW_HEADING_MS after arrival, one deadline that a replacement doesn't
+ * extend, focus follows the heading to its new element (`find`, then `focus`).
+ * Anything the reader does ends it for good: focus moving anywhere else, a
+ * pointer press, a key other than a lone modifier, or the next navigation
+ * (the caller's returned stop). A plain function, outside the hook, for the
+ * React Compiler's sake (see takeDestinationFocusRequest).
+ */
+function followLandedHeading(first: HTMLElement, find: () => HTMLElement | null, focus: (target: HTMLElement) => void): () => void {
+  let followed = first;
+  const observer = new MutationObserver(() => {
+    if (followed.isConnected) return;
+    const active = document.activeElement;
+    const next = !active || active === document.body ? find() : null;
+    if (!next) {
+      stop();
+      return;
+    }
+    // Before focusing, so its own focusin isn't taken for the reader moving on.
+    followed = next;
+    focus(next);
+  });
+  const onFocusIn = (event: FocusEvent) => {
+    if (event.target !== followed) stop();
+  };
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (!MODIFIER_KEYS.has(event.key)) stop();
+  };
+  const deadline = window.setTimeout(stop, FOLLOW_HEADING_MS);
+  function stop() {
+    observer.disconnect();
+    window.clearTimeout(deadline);
+    document.removeEventListener('focusin', onFocusIn, true);
+    document.removeEventListener('pointerdown', stop, true);
+    document.removeEventListener('keydown', onKeyDown, true);
+  }
+  observer.observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('focusin', onFocusIn, true);
+  document.addEventListener('pointerdown', stop, true);
+  document.addEventListener('keydown', onKeyDown, true);
+  return stop;
+}
+
 /** Route clicks on links between pages of a published site through the client
  * router instead of a full document load. Links stay plain `<a href>` so they
  * work without JavaScript and in server-rendered HTML.
@@ -90,13 +139,11 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
     let handedOver: { closing: () => boolean } | null = null;
     let dialogObserver: MutationObserver | undefined;
     let restoreTabIndex: (() => void) | undefined;
-    // Follows a landed heading that the page re-renders into a new element.
-    let relandObserver: MutationObserver | undefined;
-    let relandTimer = 0;
-    const stopReland = () => {
-      relandObserver?.disconnect();
-      relandObserver = undefined;
-      window.clearTimeout(relandTimer);
+    // Ends the follow of the last landed heading (followLandedHeading).
+    let stopFollowing: (() => void) | undefined;
+    const stopFollow = () => {
+      stopFollowing?.();
+      stopFollowing = undefined;
     };
     /** Run `then` once the dialog has gone (it may animate out): `closing`
      * says so, or the element focus was in leaves the page. */
@@ -117,7 +164,7 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
       cancelAnimationFrame(frame);
       restoreTabIndex?.();
       dialogObserver?.disconnect();
-      stopReland();
+      stopFollow();
       setAnnouncement('');
       focusOwner = document.activeElement;
       focusDialog = focusOwner?.closest('[role="dialog"], [role="alertdialog"], dialog') ?? null;
@@ -141,13 +188,8 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
           );
           return;
         }
-        const land = (relands = 0) => {
-          const active = document.activeElement;
-          if (active !== document.body && active !== focusOwner && active?.isConnected) {
-            setAnnouncement(heading?.textContent || document.title);
-            return;
-          }
-          // Looked up again on a re-land: the page may have replaced them.
+        // Looked up each time: the page may have replaced them since.
+        const findTarget = () => {
           const page = document.querySelector<HTMLElement>('main');
           let target = page?.querySelector<HTMLElement>('h1') ?? page;
           if (toLocation.hash) {
@@ -157,7 +199,9 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
               // Malformed fragments still announce the destination page.
             }
           }
-          if (!target?.isConnected) return;
+          return target?.isConnected ? target : null;
+        };
+        const focusTarget = (target: HTMLElement) => {
           if (!target.hasAttribute('tabindex')) {
             target.tabIndex = -1;
             const temporaryTarget = target;
@@ -169,25 +213,23 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
             target.addEventListener('blur', restore, { once: true });
           }
           target.focus({ preventScroll: true });
-          // The article body can still re-render just after arriving, replacing
-          // the heading (focus then falls to the body). For a moment, follow it
-          // to its new element, unless the reader has moved on.
-          stopReland();
-          if (relands >= 3) return;
-          const landed = target;
-          relandObserver = new MutationObserver(() => {
-            if (landed.isConnected) return;
-            stopReland();
-            const now = document.activeElement;
-            if (!now || now === document.body) land(relands + 1);
-          });
-          relandObserver.observe(document.body, { childList: true, subtree: true });
-          relandTimer = window.setTimeout(stopReland, 2000);
+        };
+        const land = () => {
+          const active = document.activeElement;
+          if (active !== document.body && active !== focusOwner && active?.isConnected) {
+            setAnnouncement(heading?.textContent || document.title);
+            return;
+          }
+          const target = findTarget();
+          if (!target) return;
+          focusTarget(target);
+          stopFollow();
+          stopFollowing = followLandedHeading(target, findTarget, focusTarget);
         };
         // A modal dialog still closing takes focus back (Base UI restores it to
         // the popup when the focused field goes), so wait until it is gone. By
         // now focus may already have left it, and its popup may be a new element.
-        if (handOver) afterDialog(handOver.closing, () => land());
+        if (handOver) afterDialog(handOver.closing, land);
         else land();
       });
     });
@@ -205,7 +247,7 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
       cancelAnimationFrame(frame);
       restoreTabIndex?.();
       dialogObserver?.disconnect();
-      stopReland();
+      stopFollow();
     };
   }, [router, projectId]);
 

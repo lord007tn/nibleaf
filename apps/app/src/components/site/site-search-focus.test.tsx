@@ -205,6 +205,109 @@ it('follows the heading when the article re-renders it just after arriving', asy
   expect(document.activeElement).toBe(elsewhere);
 });
 
+/** The article body renders again, with new heading elements. */
+const rerenderArticle = () =>
+  act(async () => {
+    const page = document.getElementById('page');
+    if (page) page.innerHTML = router.pages[router.location.pathname] ?? '';
+  });
+/** Opens the Refunds section of Billing from search on Start, and waits for focus to land. */
+async function landOnRefunds() {
+  results.data = [section];
+  const trigger = await openSearchOn('/sites/docs/start');
+  await type('refund');
+  await press('ArrowDown');
+  await press('Enter');
+  await settle();
+  expect(document.activeElement).toBe(document.getElementById('refunds'));
+  return trigger;
+}
+const wait = (ms: number) => act(async () => new Promise((resolve) => setTimeout(resolve, ms)));
+
+it.each([
+  [
+    'moves focus elsewhere and back to the page body',
+    async (trigger: HTMLElement) => {
+      trigger.focus();
+      trigger.blur();
+    },
+  ],
+  [
+    'presses on non-focusable content',
+    async () => {
+      document.querySelector('main p')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+      (document.activeElement as HTMLElement | null)?.blur();
+    },
+  ],
+  [
+    'presses a key',
+    async () => {
+      document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    },
+  ],
+])('never takes focus back once the reader %s, even when the heading is re-rendered', async (_, move) => {
+  const trigger = await landOnRefunds();
+  await act(async () => move(trigger));
+  await rerenderArticle();
+  await settle();
+  expect(document.activeElement).toBe(document.body);
+});
+
+it('keeps following through a lone modifier key', async () => {
+  await landOnRefunds();
+  await act(async () => {
+    document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Shift', bubbles: true }));
+  });
+  await rerenderArticle();
+  await settle();
+  expect(document.activeElement).toBe(document.getElementById('refunds'));
+});
+
+it('follows the heading for 2 s after arriving, a deadline that a re-render does not extend', async () => {
+  await landOnRefunds();
+  // About 1.3 s after arriving: still followed.
+  await wait(1200);
+  await rerenderArticle();
+  await settle();
+  const second = document.getElementById('refunds');
+  expect(document.activeElement).toBe(second);
+  // About 2.3 s after arriving, but only 1 s after the last re-render: no longer.
+  await wait(900);
+  await rerenderArticle();
+  await settle();
+  expect(document.getElementById('refunds')).not.toBe(second);
+  expect(document.activeElement).toBe(document.body);
+});
+
+it('lands focus on the h1 for a result that is the page already open', async () => {
+  results.data = [page];
+  await openSearchOn('/sites/docs/setup');
+  await type('setup');
+  await press('Enter');
+  await settle();
+  expect(router.navigate).toHaveBeenCalledExactlyOnceWith({ href: '/sites/docs/setup' });
+  expect(document.activeElement).toBe(document.querySelector('main h1'));
+});
+
+it('leaves nothing running when the reader unmounts mid-navigation', async () => {
+  results.data = [section];
+  await openSearchOn('/sites/docs/start');
+  await type('refund');
+  await press('ArrowDown');
+  await press('Enter');
+  // Unmount before the dialog has closed and the destination landed.
+  await act(async () => root?.unmount());
+  root = undefined;
+  const leftover = document.createElement('main');
+  leftover.innerHTML = '<h1 id="refunds">Refunds</h1>';
+  document.body.append(leftover);
+  await settle();
+  expect(document.activeElement).toBe(document.body);
+  leftover.innerHTML = '<h1 id="refunds">Refunds</h1>';
+  await settle();
+  expect(document.activeElement).toBe(document.body);
+});
+
 it('lands focus on the section heading for a #section result on the page already open', async () => {
   results.data = [section];
   await openSearchOn('/sites/docs/billing');
