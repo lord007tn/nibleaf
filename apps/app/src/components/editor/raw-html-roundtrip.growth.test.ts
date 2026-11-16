@@ -74,6 +74,14 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
+  // One tag, n attributes whose expressions open a comment that never closes: its
+  // attributes are read with one reader, not one search to the end of the tag each (#714).
+  it('prepares a tag of many attributes opening unclosed comments in one pass', () => {
+    const attributes = (n: number) => `<Card ${'a={/*} '.repeat(n)}/>\n\nAfter.`;
+    const [small, large] = growthMs(parse, attributes(5000), attributes(20_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
   it('prepares a page of expressions opening unclosed comments in one pass', () => {
     const comments = (n: number) => `{${'{/*'.repeat(n)}`;
     const [small, large] = growthMs(parse, comments(10_000), comments(40_000), { budgetMs: 10_000 });

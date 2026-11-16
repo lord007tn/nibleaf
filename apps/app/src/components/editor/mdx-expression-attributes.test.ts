@@ -250,3 +250,30 @@ describe('an opener that can not be read, whose `>` is on a line of its own afte
     expect(again).toBe(saved);
   });
 });
+
+describe('template literals and line terminators in an attribute expression (#714 review)', () => {
+  // A `${…}` is JavaScript: a backtick, brace or `//` inside it ends nothing.
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: a template literal written into the page.
+  const template = '<Card title={`${`//{\n}`}`} icon="x">\n\nB\n\n</Card>';
+
+  it('a substitution holding a template, a `//` and a brace saves unchanged', () => {
+    expect(load(template, 'title').target?.type).toBe('mdxCard');
+    expect(saveTwice(template)).toEqual([template, template]);
+  });
+
+  it('replaces the whole template when the title is edited', () => {
+    expect(setAttribute(template, 'title', 'Edited')).toBe('<Card title="Edited" icon="x">\n\nB\n\n</Card>');
+  });
+
+  // JavaScript ends a `//` comment at U+2028 and U+2029 as it does at a line break.
+  it.each([
+    ['U+2028', '\u2028'],
+    ['U+2029', '\u2029'],
+  ])('a `//` comment ends at %s', (_name, terminator) => {
+    const page = `<Card title={1 // }${terminator}} icon="x">\n\nBody\n\n</Card>`;
+    expect(load(page, 'title').target?.type).toBe('mdxCard');
+    expect(saveTwice(page)).toEqual([page, page]);
+    expect(appendTo(page, 'Body', '!')).toBe(page.replace('Body', 'Body!'));
+    expect(setAttribute(page, 'title', 'Edited')).toBe('<Card title="Edited" icon="x">\n\nBody\n\n</Card>');
+  });
+});

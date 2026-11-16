@@ -6,7 +6,7 @@ import { DOCUMENTATION_COMPONENTS } from '@nibleaf/shared/documentation-componen
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
-import { SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
+import { replaceOpeningAttribute, SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 /*
@@ -48,6 +48,9 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  *   them as a page of its own (that body is top-level content now), and to a fixed
  *   point. Main's save of a childless `<File name="Inner">` body drops its "Inner
  *   text.": that is main's own normalization of that body, standalone, not a new loss.
+ * Each path checks the save after an attribute edit too: a `plain` page's is main's for
+ * the plain-value page, and an `exact` or `body-normalized` page's rewrites only what is
+ * left editable (see the edit oracle below).
  * Every count is asserted exactly, so anything that widens the exception fails here.
  * Every other page still gives main's digest. From the first count of 338 `exact` and
  * 45 `plain`: keeping a broken opener only to its own block (the #714 review) moved 30
@@ -92,6 +95,8 @@ interface Main714Record extends Omit<MainResult, 'nodes'> {
   nodes: string;
   valueText: string;
   plainSaved: string | null;
+  /** Main's save of that plain-value page after its attribute edit. */
+  plainEdited: string | null;
   bodySaved: string | null;
 }
 
@@ -266,15 +271,17 @@ describe('pages without a Frame read as on main', () => {
 
   /** The page's nodes, its save, and its save after the first node with `key` has it
    *  set to `Edited`; and whether a node holds an attribute value with a blank line. */
-  const digest = (page: string, key: string): MainResult & { digest: string; blankLineValue: boolean } => {
+  /** The node the edit sets `key` on: its type, and the opening tag it was read from. */
+  type EditTarget = { type: string; sourceOpen: string };
+  const digest = (page: string, key: string): MainResult & { digest: string; blankLineValue: boolean; target: EditTarget | null } => {
     editor.commands.setContent(page, { emitUpdate: false });
     const nodes: string[] = [];
     let blankLineValue = false;
-    let target: { pos: number; attrs: Record<string, unknown> } | undefined;
+    let target: { pos: number; type: string; attrs: Record<string, unknown> } | undefined;
     editor.state.doc.descendants((node, pos) => {
       nodes.push(node.type.name);
       blankLineValue ||= Object.values(node.attrs).some((value) => typeof value === 'string' && BLANK_LINE.test(value));
-      if (!target && key in node.attrs) target = { pos, attrs: node.attrs };
+      if (!target && key in node.attrs) target = { pos, type: node.type.name, attrs: node.attrs };
     });
     const saved = getMarkdown(editor);
     let edited: string | null = null;
@@ -282,7 +289,8 @@ describe('pages without a Frame read as on main', () => {
       editor.view.dispatch(editor.state.tr.setNodeMarkup(target.pos, undefined, { ...target.attrs, [key]: 'Edited' }));
       edited = getMarkdown(editor);
     }
-    return { digest: digestOf({ nodes, saved, edited }), nodes, saved, edited, blankLineValue };
+    const edit: EditTarget | null = target ? { type: target.type, sourceOpen: String(target.attrs.sourceOpen ?? '') } : null;
+    return { digest: digestOf({ nodes, saved, edited }), nodes, saved, edited, blankLineValue, target: edit };
   };
 
   it(`gives main’s nodes, save and edited save for all ${pages.length} pages, but #721’s and #714’s`, () => {
@@ -301,7 +309,7 @@ describe('pages without a Frame read as on main', () => {
         if (!seeded || !(VALUES_714.has(seeded.value) || seeded.inserted) || !result) continue;
         if (result.saved === page || result.digest !== main.digests[index]) continue;
         const plainPage = `${page.slice(0, seeded.valueAt)}"x"${page.slice(seeded.valueAt + seeded.valueText.length)}`;
-        const plainSaved = seeded.value === REGEX_VALUE ? digest(plainPage, seeded.key).saved : null;
+        const plain = seeded.value === REGEX_VALUE ? digest(plainPage, seeded.key) : null;
         const body = bodyOf(page, seeded);
         const bodySaved = body ? digest(body.body, seeded.key).saved : null;
         records.push({
@@ -310,7 +318,8 @@ describe('pages without a Frame read as on main', () => {
           saved: result.saved,
           edited: result.edited,
           valueText: seeded.valueText,
-          plainSaved,
+          plainSaved: plain?.saved ?? null,
+          plainEdited: plain?.edited ?? null,
           bodySaved,
         });
       }
@@ -334,6 +343,38 @@ describe('pages without a Frame read as on main', () => {
     const plain: string[] = [];
     const bodyNormalized: string[] = [];
     const plainValue = (record: Main714Record) => record.plainSaved?.replace('"x"', record.valueText);
+    // The edit oracle. A `plain` page's edit is main's edit of the plain-value page: as is
+    // when the edit replaced that value, or with the value put back when it edited another
+    // node. On `exact` and `body-normalized` pages, whose opener may be opaque, the edit
+    // sets `key` on what is left editable, and on nothing else: the node it targets is an
+    // opaque one (its source is kept, so the save is unchanged), or a component, whose
+    // authored opening tag alone is rewritten, as the editor rewrites any opening tag; with
+    // nothing to target, there is no edit.
+    const plainEditOk = (result: { edited: string | null }, record: Main714Record): boolean =>
+      result.edited === record.plainEdited || result.edited === record.plainEdited?.replace('"x"', record.valueText);
+    const editOk = (result: { saved: string; edited: string | null; target: EditTarget | null }, key: string): boolean => {
+      const { saved, edited, target } = result;
+      if (!target) return edited === null;
+      if (target.type.startsWith('mdxOpaque')) return edited === saved;
+      // What the edit rewrites, and to what: the node's authored opening tag; or, for a node
+      // with none, the image it is (its title) or the opening tag the editor wrote for it.
+      let from: string;
+      let to: string;
+      if (target.sourceOpen) {
+        const name = /^<([A-Za-z][\w.:-]*)/.exec(target.sourceOpen)?.[1] ?? '';
+        from = target.sourceOpen;
+        to = replaceOpeningAttribute(target.sourceOpen, name, key, 'Edited');
+      } else if (target.type === 'image') {
+        from = /!\[[^\]]*\]\([^)\s]*\)/.exec(saved)?.[0] ?? '';
+        to = `${from.slice(0, -1)} "Edited")`;
+      } else {
+        const name = target.type.replace(/^mdx/, '');
+        from = `<${name}>`;
+        to = `<${name} ${key}="Edited">`;
+      }
+      const at = from ? saved.indexOf(from) : -1;
+      return at >= 0 && edited === `${saved.slice(0, at)}${to}${saved.slice(at + from.length)}`;
+    };
     const withMainBody = (page: string, seeded: SeededPage, record: Main714Record): string | null => {
       const body = bodyOf(page, seeded);
       if (!body || record.bodySaved === null || seeded.closerAt === null) return null;
@@ -348,12 +389,12 @@ describe('pages without a Frame read as on main', () => {
       const page = pages[index]?.page ?? '';
       const record = lossyOnMain.get(index);
       if (record && result.saved === record.saved && result.edited === record.edited) nodesOnly.push(index);
-      if (record && result.saved === page) {
+      const seeded = pages[index]?.seeded;
+      if (record && seeded && result.saved === page && editOk(result, seeded.key)) {
         exact.push(page);
         return [];
       }
-      const seeded = pages[index]?.seeded;
-      if (record && seeded?.value === REGEX_VALUE && result.saved === plainValue(record)) {
+      if (record && seeded?.value === REGEX_VALUE && result.saved === plainValue(record) && plainEditOk(result, record)) {
         plain.push(page);
         return [];
       }
@@ -365,7 +406,8 @@ describe('pages without a Frame read as on main', () => {
         result.saved.startsWith(page.slice(0, seeded.openerEnd)) &&
         result.saved.endsWith(page.slice(seeded.closerAt)) &&
         result.saved === withMainBody(page, seeded, record) &&
-        digest(result.saved, seeded.key).saved === result.saved
+        digest(result.saved, seeded.key).saved === result.saved &&
+        editOk(result, seeded.key)
       ) {
         bodyNormalized.push(page);
         return [];

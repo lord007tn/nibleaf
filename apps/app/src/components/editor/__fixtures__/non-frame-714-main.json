@@ -8,6 +8,7 @@
       "edited": null,
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -17,6 +18,7 @@
       "edited": "Intro.\n\n&lt;Tip title=\"x hidde'n /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -26,6 +28,7 @@
       "edited": "Intro.\n\n&lt;Check title=\"Old\" aria-lab\\\\el=\"L\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -35,6 +38,7 @@
       "edited": null,
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -44,6 +48,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -53,6 +58,7 @@
       "edited": "Intro.\n\n&lt;Step\\` title=\"a \"b\" c\"id=\"x\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -62,6 +68,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -71,6 +78,7 @@
       "edited": "Intro.\n\nSome <Button href=\"Edited\" xml:lang=\"en`\" /></Button> more text.\n\n## Later heading\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -80,6 +88,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -89,6 +98,7 @@
       "edited": null,
       "valueText": "{<b title{=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -98,6 +108,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -107,6 +118,7 @@
       "edited": null,
       "valueText": "{/\"/>}",
       "plainSaved": "Intro.\n\nSome\n\n<RelatedCard title=\"x\"\n>\n\ninline text\n\n</RelatedCard>\n\n more text.\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<RelatedCard title=\"Edited\"\n>\n\ninline text\n\n</RelatedCard>\n\n more text.\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -116,6 +128,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -125,6 +138,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -134,6 +148,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -143,6 +158,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -152,6 +168,7 @@
       "edited": "Intro.\n\nSome\n\n<ResponseExample title=\"Edited\">\n\n> inline text\n\n</ResponseExample>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -161,6 +178,7 @@
       "edited": "Intro.\n\n&lt;RelatedContent title={\"x\" xml:lang=\"en\"\n\n> \n\n<RelatedContent title=\"Edited\">\n\nInner text.\n\n</RelatedContent>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<RelatedContent title=\"Inner\">\n\nInner text.\n\n</RelatedContent>"
     },
     {
@@ -170,6 +188,7 @@
       "edited": "Intro.\n\n&lt;RelatedCard title=\"\\\\xid=\"x\"&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "\"\\x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -179,6 +198,7 @@
       "edited": "Intro.\n\n&lt;Widget title=\"**\"\\` aria-label=\"L\"**\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n</Widget>\n\n## **Later heading**\n\n**Outro.**",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -188,6 +208,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Callout type=\"Inner\">\n\nInner text.\n\n</Callout>"
     },
     {
@@ -197,6 +218,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -206,6 +228,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<CardGroup cols=\"x\" hidden>\n\n<Card>\n\n</Card>\n\n</CardGroup>\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\n<CardGroup cols=\"Edited\" hidden>\n\n<Card>\n\n</Card>\n\n</CardGroup>\n\n## Later heading\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -215,6 +238,7 @@
       "edited": "Intro.\n\nSome &lt;Card title=\"x xml:lang=\"en\"&gt;inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -224,6 +248,7 @@
       "edited": null,
       "valueText": "{() => { return 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -233,6 +258,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -242,6 +268,7 @@
       "edited": null,
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -251,6 +278,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -260,6 +288,7 @@
       "edited": "Intro.\n\n&lt;Expandable title={() =&gt; '{ return 1; }} id=\"x\"&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "{() => '{ return 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -269,6 +298,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -278,6 +308,7 @@
       "edited": null,
       "valueText": "{\"a } \\\" b\"`}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -287,6 +318,7 @@
       "edited": "Intro.\n\n&lt;Folder nam\\`e={<b title=\"</Card>\">x</b>} {...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -296,6 +328,7 @@
       "edited": "Intro.\n\n<File name=\"Edited\"{...props}></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a }\\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -305,6 +338,7 @@
       "edited": null,
       "valueText": "{<b title=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -314,6 +348,7 @@
       "edited": "Intro.\n\n&lt;ResponseExample title={/\"/} '{...props}&gt;\n\n<ResponseExample title=\"Edited\">\n\nInner text.\n\n</ResponseExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n&lt;ResponseExample title=\"x\" '{...props}&gt;\n\n<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n&lt;ResponseExample title=\"x\" '{...props}&gt;\n\n<ResponseExample title=\"Edited\">\n\nInner text.\n\n</ResponseExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>"
     },
     {
@@ -323,6 +358,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -332,6 +368,7 @@
       "edited": null,
       "valueText": "\"`Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -341,6 +378,7 @@
       "edited": null,
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -350,6 +388,7 @@
       "edited": "Intro.\n\nSome\n\n<Check>\n\ntitle={\"x\"} data-x={1}\n\n> inline text\n\n</Check>\n\n more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -359,6 +398,7 @@
       "edited": "Intro.\n\n&lt;Danger title={\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -368,6 +408,7 @@
       "edited": "Intro.\n\n&lt;Steps title=\"ü\" id=\"x\" \\`&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n## Later heading\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -377,6 +418,7 @@
       "edited": "Intro.\n\nSome &lt;Accordion title=\"xid=\"x\"&gt;inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -386,6 +428,7 @@
       "edited": null,
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -395,6 +438,7 @@
       "edited": null,
       "valueText": "{() => { return 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Columns title=\"Inner\">\n\n<Column>\n\nInner text.\n\n</Column>\n\n</Columns>"
     },
     {
@@ -404,6 +448,7 @@
       "edited": "Intro.\n\n<Banner  type=\"Edited\">\n\ntype={/\"/} data-x={1} /&gt;\n\n## Later heading\n\nOutro.\n\n</Banner>",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Banner >\n\ntype=\"x\" data-x={1} /&gt;\n\n## Later heading\n\nOutro.\n\n</Banner>",
+      "plainEdited": "Intro.\n\n<Banner  type=\"Edited\">\n\ntype=\"x\" data-x={1} /&gt;\n\n## Later heading\n\nOutro.\n\n</Banner>",
       "bodySaved": null
     },
     {
@@ -413,6 +458,7 @@
       "edited": null,
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -422,6 +468,7 @@
       "edited": null,
       "valueText": "{\"a } \\\" \"b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -431,6 +478,7 @@
       "edited": "Intro.\n\n<FileTree title=>\n\n<Folder>\n\n'A'id=\"x\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.\n\n</Folder>\n\n</FileTree>",
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -440,6 +488,7 @@
       "edited": "Intro.\n\nSome\n\n<RequestExample title=\"Edited\"b\\\" c\" a.b=\"x\" />\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a \\{\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -449,6 +498,7 @@
       "edited": "Intro.\n\n&lt;RelatedContent title={\"x\" {...prop\\`s}&gt;\n\n**x**\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -458,6 +508,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -467,6 +518,7 @@
       "edited": "Intro.\n\n&lt;Note title={/\"/} data-x={1} /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Note title=\"x\" data-x={1} />\n\n</Callout>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Note title=\"x\" data-x={1} />\n\n</Callout>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -476,6 +528,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -485,6 +538,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Danger title=\"x\"\n  aria-label=\"L\"\n>\n\n**x**\n\n</Danger>\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -494,6 +548,7 @@
       "edited": "Intro.\n\n&lt;Step title=\"x href=\"/docs\"title=\"B\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -503,6 +558,7 @@
       "edited": "Intro.\n\n&lt;AccordionGroup title={/\"/} data-x={1}\n\n> \n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<AccordionGroup title=\"x\" data-x={1}\n>\n\n<Accordion>\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<AccordionGroup title=\"x\" data-x={1}\n>\n\n<Accordion title=\"Edited\">\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "Body text."
     },
     {
@@ -512,6 +568,7 @@
       "edited": "Intro.\n\n&lt;Columns title={**x\\`**}&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x`</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -521,6 +578,7 @@
       "edited": null,
       "valueText": "{() => { return '1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -530,6 +588,7 @@
       "edited": "Intro.\n\nSome &lt;Folder name={/\"/}{...props}\n\n> inline text more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<Folder name=\"x\"{...props}\n>\n\ninline text\n\n</Folder>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<Folder name=\"Edited\"{...props}\n>\n\ninline text\n\n</Folder>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -539,6 +598,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -548,6 +608,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -557,6 +618,7 @@
       "edited": "Intro.\n\nSome &lt;Warning title=\"x id=\"x\" /&gt; more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -566,6 +628,7 @@
       "edited": "Intro.\n\n&lt;Info title=\"A\" href=\"/docs\"title=\"B\"\\`\n\n> \n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -575,6 +638,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome &lt;CardGroup cols=\"x\" xml:\"lang=\"en\"&gt;inline text more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -584,6 +648,7 @@
       "edited": null,
       "valueText": "\"a > b\"\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -593,6 +658,7 @@
       "edited": "Intro.\n\n&lt;Step title'=\"A\" data-x={1} /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -602,6 +668,7 @@
       "edited": "Intro.\n\n&lt;AccordionGroup }title={\"x\"id=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -611,6 +678,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome &lt;ResponseField name=\"x\" {.'..props} /&gt; more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -620,6 +688,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<Columns title=\"x\"{...prop\\s}\n>\n\n<Column>\n\ninline text\n\n</Column>\n\n</Columns>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -629,6 +698,7 @@
       "edited": null,
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -638,6 +708,7 @@
       "edited": "Intro.\n\n<RequestExample title=\"Edited\">\n\n</RequestExample>\n\nOutro.",
       "valueText": "\"ü\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -647,6 +718,7 @@
       "edited": "Intro.\n\n&lt;RelatedCard title=\\`\"ü\"&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -656,6 +728,7 @@
       "edited": "Intro.\n\nSome &lt;Warning title={() =&gt; { return '1; }} a.b=\"x\"\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{() => { return '1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -665,6 +738,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Danger title=\"x\" href=\"/docs\"title=\"B\" />\n\n</Callout>\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -674,6 +748,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<CardGroup cols=\"x\"{...props}\n>\n\n<Card>\n\n![Diagram](/diagram.png)\n\n</Card>\n\n</CardGroup>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<CardGroup cols=\"Edited\"{...props}\n>\n\n<Card>\n\n![Diagram](/diagram.png)\n\n</Card>\n\n</CardGroup>\n\nOutro.",
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -683,6 +758,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -692,6 +768,7 @@
       "edited": "Intro.\n\n&lt;Step t}itle=\"x id=\"x\"\n\n> \n\n<Step title=\"Edited\">\n\nInner text.\n\n</Step>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Step title=\"Inner\">\n\nInner text.\n\n</Step>"
     },
     {
@@ -701,6 +778,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -710,6 +788,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -719,6 +798,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -728,6 +808,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<Columns title=\"x\"\n  aria-label=\"L\"\n\n>\n\n<Column>\n\ninline text\n\n</Column>\n\n</Columns>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -737,6 +818,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -746,6 +828,7 @@
       "edited": "Intro.\n\n<Folder name=\"Edited\"\\\"b\\\" c\" id=\"x\">\n\n**x**\n\n</Folder>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a \"\\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -755,6 +838,7 @@
       "edited": "Intro.\n\n&lt;ApiExample t{itle='Old' id=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -764,6 +848,7 @@
       "edited": null,
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -773,6 +858,7 @@
       "edited": null,
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Check title=\"Inner\">\n\nInner text.\n\n</Check>"
     },
     {
@@ -782,6 +868,7 @@
       "edited": "Intro.\n\n&lt;Warning title={/\"/}id=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Warning title=\"x\"id=\"x\"\n>\n\n![Diagram](/diagram.png)\n\n</Warning>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Warning title=\"x\"id=\"x\"\n>\n\n![Diagram](/diagram.png \"Edited\")\n\n</Warning>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -791,6 +878,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -800,6 +888,7 @@
       "edited": "Intro.\n\nSome\n\n<Card title=\"Edited\">\n\ninline text\n\n</Card>\n\n more text.\n\n## Later heading\n\nOutro.",
       "valueText": "\"Old\\\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -809,6 +898,7 @@
       "edited": "Intro.\n\n&lt;Tabs title={**x**\"} aria-label=\"L\"\n\n> \n\n<Tabs title=\"Inner\">\n\n<Tab title=\"Edited\">\n\nInner text.\n\n</Tab>\n\n</Tabs>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Tabs title=\"Inner\">\n\n<Tab>\n\nInner text.\n\n</Tab>\n\n</Tabs>"
     },
     {
@@ -818,6 +908,7 @@
       "edited": "Intro.\n\nSome &lt;AccordionGroup tit\\`le='A' aria-label=\"L\"\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -827,6 +918,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -836,6 +928,7 @@
       "edited": "Intro.\n\n&lt;Columns title={/\"/} xml:lang=\"en\"\n\n> \n\n**x**\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Columns title=\"x\" xml:lang=\"en\"\n>\n\n<Column>\n\n**x**\n\n</Column>\n\n</Columns>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Columns title=\"x\" xml:lang=\"en\"\n>\n\n<Column>\n\n**x**\n\n</Column>\n\n</Columns>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "**x**"
     },
     {
@@ -845,6 +938,7 @@
       "edited": "Intro.\n\n&lt;Column title={\"a } \\\" b\"} href=\\`\"/docs\"title=\"B\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -854,6 +948,7 @@
       "edited": "Intro.\n\nSome &lt;Button href='A' href=\"/docs\"ti'tle=\"B\"&gt;inline text more text.\n\n<Card title=\"Next\" href=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -863,6 +958,7 @@
       "edited": null,
       "valueText": "{() => { return 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -872,6 +968,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<RequestExample title=\"x\"{...props}>\n\nBody text.\n\n</RequestExample>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<RequestExample title=\"Edited\"{...props}>\n\nBody text.\n\n</RequestExample>\n\nOutro.",
       "bodySaved": "Body text."
     },
     {
@@ -881,6 +978,7 @@
       "edited": null,
       "valueText": "{\"a } \\\\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -890,6 +988,7 @@
       "edited": null,
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -899,6 +998,7 @@
       "edited": "Intro.\n\n&lt;Danger title={<b title=\"</Card>\">x</b>} \"aria-label=\"L\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -908,6 +1008,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -917,6 +1018,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -926,6 +1028,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -935,6 +1038,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -944,6 +1048,7 @@
       "edited": "Intro.\n\n<AccordionGroup title=\"a \\\"b\\\" \\c\"\n>\n\n<Accordion title=\"Edited\">\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
       "valueText": "\"a \\\"b\\\" \\c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -953,6 +1058,7 @@
       "edited": "Intro.\n\nSome &lt;Accordion{ title=\"x /&gt; more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -962,6 +1068,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -971,6 +1078,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Button href=\"x\" xml:lang=\"en\" /></Button> more text.\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome <Button href=\"Edited\" xml:lang=\"en\" /></Button> more text.\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -980,6 +1088,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -989,6 +1098,7 @@
       "edited": "Intro.\n\n&lt;Update label={/\"/} a.b=\"x\"&gt;\n\n<Update label=\"Edited\">\n\nInner text.\n\n</Update>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Update label=\"x\" a.b=\"x\">\n\n<Update label=\"Inner\">\n\nInner text.\n\n</Update>\n\n</Update>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Update label=\"Edited\" a.b=\"x\">\n\n<Update label=\"Inner\">\n\nInner text.\n\n</Update>\n\n</Update>\n\nOutro.",
       "bodySaved": "<Update label=\"Inner\">\n\nInner text.\n\n</Update>"
     },
     {
@@ -998,6 +1108,7 @@
       "edited": "Intro.\n\n&lt;RelatedCard title={'Old' hidden&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -1007,6 +1118,7 @@
       "edited": "Intro.\n\n&lt;Widget title=\"ü\" a\\`ria-label=\"L\"\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n</Widget>\n\n## Later heading\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -1016,6 +1128,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1025,6 +1138,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Warning title=\"x\" a.b=\"x\"\n>\n\n<Warning title=\"Inner\">\n\nInner text.\n\n</Warning>\n\n</Warning>\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "<Warning title=\"Inner\">\n\nInner text.\n\n</Warning>"
     },
     {
@@ -1034,6 +1148,7 @@
       "edited": null,
       "valueText": "\"Ol'd\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1043,6 +1158,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1052,6 +1168,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1061,6 +1178,7 @@
       "edited": null,
       "valueText": "{()> => { return 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1070,6 +1188,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1079,6 +1198,7 @@
       "edited": "Intro.\n\nSome &lt;Expandable title=\"x&gt; a.b=\"x\" /&gt; more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1088,6 +1208,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1097,6 +1218,7 @@
       "edited": "Intro.\n\n&lt;Column title={() =&gt; { retur'n 1; }} hidden /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{() => { retur'n 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1106,6 +1228,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1115,6 +1238,7 @@
       "edited": "Intro.\n\nSome &lt;Button href={\"x\" a.b=\"x\"&gt;inline text more text.\n\n<Card title=\"Next\" href=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1124,6 +1248,7 @@
       "edited": "Intro.\n\nSome <Icon ico\\n='A'\n icon=\"Edited\"></Icon> more text.\n\n## Later heading\n\nOutro.",
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1133,6 +1258,7 @@
       "edited": null,
       "valueText": "{<b title=\"</Card>\">x</b>`}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -1142,6 +1268,7 @@
       "edited": null,
       "valueText": "{\"a } \\\" \"b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -1151,6 +1278,7 @@
       "edited": "Intro.\n\n&lt;ResponseExample title={\"x\"&gt;\n\n<ResponseExample title=\"Edited\">\n\nInner text.\n\n</ResponseExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>"
     },
     {
@@ -1160,6 +1288,7 @@
       "edited": "Intro.\n\n<RelatedContent title=\"Edited\" xml:lang=\"en\"\n\">\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</RelatedContent>\n\n## Later heading\n\nOutro.",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1169,6 +1298,7 @@
       "edited": "Intro.\n\nSome\n\n<RelatedCard title=\"Edited\" {...props}>\n\ninline text\n\n</RelatedCard>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"a } `\\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1178,6 +1308,7 @@
       "edited": null,
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -1187,6 +1318,7 @@
       "edited": "Intro.\n\n&lt;Warning title=\"x href=\"/docs\"title=\"B\"&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -1196,6 +1328,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1205,6 +1338,7 @@
       "edited": "Intro.\n\n&lt;Tabs title={() =&gt; '{ return 1; }}id=\"x\"\n\n> \n\n<Tabs title=\"Inner\">\n\n<Tab title=\"Edited\">\n\nInner text.\n\n</Tab>\n\n</Tabs>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{() => '{ return 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Tabs title=\"Inner\">\n\n<Tab>\n\nInner text.\n\n</Tab>\n\n</Tabs>"
     },
     {
@@ -1214,6 +1348,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Badge color=\"x\" a.b=\"x\">inline text</Badge> more text.\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome <Badge color=\"Edited\" a.b=\"x\">inline text</Badge> more text.\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -1223,6 +1358,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1232,6 +1368,7 @@
       "edited": null,
       "valueText": "{<b title=\"\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1241,6 +1378,7 @@
       "edited": "Intro.\n\nSome\n\n<RelatedCard title=\"Edited\" x\\ml:lang=\"en\">\n\ninline text\n\n</RelatedCard>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1250,6 +1388,7 @@
       "edited": null,
       "valueText": "{<b title=\"\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1259,6 +1398,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Callout type=\"x\" href=\"/docs\"titl\\e=\"B\"\n>\n\nBody text.\n\n</Callout>\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -1268,6 +1408,7 @@
       "edited": null,
       "valueText": "{() => { re\"turn 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1277,6 +1418,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1286,6 +1428,7 @@
       "edited": "Intro.\n\n&lt;Check title=\"x{...props}\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -1295,6 +1438,7 @@
       "edited": "Intro.\n\n&lt;Warning title={\"x\" id=\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -1304,6 +1448,7 @@
       "edited": "Intro.\n\n&lt;Info title={/\"/} href=\"/docs\"title=\"B\"\n\n> \n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Info title=\"x\" href=\"/docs\"title=\"B\"\n>\n\nBody text.\n\n</Info>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Info title=\"x\" href=\"/docs\"title=\"B\"\n>\n\nBody text.\n\n</Info>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "Body text."
     },
     {
@@ -1313,6 +1458,7 @@
       "edited": "Intro.\n\n<CardGroup cols=\"Edited\">\n\n<Card>\n\n=\"ü\" id=\"x\" &gt;\n\n**x**\n\n</Card>\n\n</CardGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1322,6 +1468,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1331,6 +1478,7 @@
       "edited": "Intro.\n\n<CodeGroup title=}\"<b>\" a.b=\"x\">\n\n**x**\n\n</CodeGroup>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1340,6 +1488,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<Expandable title=\"x\"id=\"x\"\n>\n\ninline text\n\n</Expandable>\n\n more text.\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<Expandable title=\"Edited\"id=\"x\"\n>\n\ninline text\n\n</Expandable>\n\n more text.\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -1349,6 +1498,7 @@
       "edited": "Intro.\n\n&lt;Columns title={\"x\" xml:lan\\\\g=\"en\"&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -1358,6 +1508,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -1367,6 +1518,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -1376,6 +1528,7 @@
       "edited": null,
       "valueText": "{() => { retur`n 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -1385,6 +1538,7 @@
       "edited": "Intro.\n\n&lt;File name=\"x{...pr{ops}&gt;\n\n<File name=\"Inner\"></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<File name=\"Inner\"></File>"
     },
     {
@@ -1394,6 +1548,7 @@
       "edited": "Intro.\n\n&lt;ResponseExample title={/\"/}{...\\props}\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<ResponseExample title=\"x\"{...\\props}\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</ResponseExample>\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -1403,6 +1558,7 @@
       "edited": null,
       "valueText": "\"a\" > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1412,6 +1568,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -1421,6 +1578,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1430,6 +1588,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -1439,6 +1598,7 @@
       "edited": "Intro.\n\n&lt;Tab title={/\"/}id=\"x\"&gt;\n\n<Tab title=\"Edited\">\n\nInner text.\n\n</Tab>\n\n## Later heading\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Tab title=\"x\"id=\"x\">\n\n<Tab title=\"Inner\">\n\nInner text.\n\n</Tab>\n\n</Tab>\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Tab title=\"Edited\"id=\"x\">\n\n<Tab title=\"Inner\">\n\nInner text.\n\n</Tab>\n\n</Tab>\n\n## Later heading\n\nOutro.",
       "bodySaved": "<Tab title=\"Inner\">\n\nInner text.\n\n</Tab>"
     },
     {
@@ -1448,6 +1608,7 @@
       "edited": "Intro.\n\n<ParamField path=\"Edited\"{.}..props}>\n\n**x**\n\n</ParamField>\n\n## Later heading\n\nOutro.",
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1457,6 +1618,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -1466,6 +1628,7 @@
       "edited": null,
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1475,6 +1638,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<ApiExample title=\"x\" href=\"/docs\"title=\"B\">\n\ninline text\n\n</ApiExample>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<ApiExample title=\"Edited\" href=\"/docs\"title=\"B\">\n\ninline text\n\n</ApiExample>\n\n more text.\n\n## Later heading\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -1484,6 +1648,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1493,6 +1658,7 @@
       "edited": null,
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1502,6 +1668,7 @@
       "edited": "Intro.\n\n&lt;Card title={\"x\" aria-label=\"L\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1511,6 +1678,7 @@
       "edited": null,
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1520,6 +1688,7 @@
       "edited": "Intro.\n\nSome &lt;Step title=\"x a.b=\"x\"\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1529,6 +1698,7 @@
       "edited": "Intro.\n\nSome\n\n<AccordionGroup tit>\n\n<Accordion title=\"Edited\">\n\nle={\"a } \\\" b\"} hidden\n\n> inline text\n\n</Accordion>\n\n</AccordionGroup>\n\n more text.\n\n## Later heading\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1538,6 +1708,7 @@
       "edited": "Intro.\n\n&lt;ResponseField name\\`=\"**\" {...props}**\n\n> \n\n**x**\n\n<Card title=\"Next\">\n\n**More**\n\n</Card>\n\n**Outro.**",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1547,6 +1718,7 @@
       "edited": "Intro.\n\n&lt;Columns title=\"x\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -1556,6 +1728,7 @@
       "edited": "Intro.\n\nSome &lt;Column title={\"x\" hidden\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1565,6 +1738,7 @@
       "edited": "Intro.\n\nSome &lt;Button href=\"x aria-label=\"L\"\n\n> inline text more text.\n\n<Card title=\"Next\" href=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1574,6 +1748,7 @@
       "edited": "Intro.\n\n&lt;Update label=\"ü\"{...props} /\"&gt;\n\n<Update label=\"Edited\">\n\nInner text.\n\n</Update>\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Update label=\"Inner\">\n\nInner text.\n\n</Update>"
     },
     {
@@ -1583,6 +1758,7 @@
       "edited": null,
       "valueText": "\"a >\" b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1592,6 +1768,7 @@
       "edited": "Intro.\n\n&lt;ApiExample title={\"x\" hidden /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1601,6 +1778,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1610,6 +1788,7 @@
       "edited": "Intro.\n\n&lt;RelatedCard t\"itle=\"Old\" id=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -1619,6 +1798,7 @@
       "edited": null,
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1628,6 +1808,7 @@
       "edited": "Intro.\n\n&lt;Check title={\"x\" {...props}\n\n> \n\n<Check title=\"Inner\">\n\nInner text.\n\n</Check>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Check title=\"Inner\">\n\nInner text.\n\n</Check>"
     },
     {
@@ -1637,6 +1818,7 @@
       "edited": null,
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -1646,6 +1828,7 @@
       "edited": "Intro.\n\n&lt;Danger title={\"x\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1655,6 +1838,7 @@
       "edited": null,
       "valueText": "{a` / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -1664,6 +1848,7 @@
       "edited": "Intro.\n\nSome\n\n<CardGroup cols=\"Edited\">\n\n<Card>\n\ninline text\n\n</Card>\n\n</CardGroup>\n\n more text.\n\n## Later heading\n\nOutro.",
       "valueText": "\"'<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1673,6 +1858,7 @@
       "edited": "Intro.\n\n&lt;CodeGroup title={() =&gt; { return\\` 1; }} href=\"/docs\"title=\"B\"\n\n> \n\n**x**\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{() => { return` 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1682,6 +1868,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -1691,6 +1878,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1700,6 +1888,7 @@
       "edited": "Intro.\n\n&lt;Expandable title=\"A\"{...props} \"&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -1709,6 +1898,7 @@
       "edited": "Intro.\n\nSome &lt;Columns title=\"x\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1718,6 +1908,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -1727,6 +1918,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1736,6 +1928,7 @@
       "edited": null,
       "valueText": "\"\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1745,6 +1938,7 @@
       "edited": "Intro.\n\n&lt;File name'={a / b} hidden\n\n> \n\n<File name=\"Inner\"></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<File name=\"Inner\"></File>"
     },
     {
@@ -1754,6 +1948,7 @@
       "edited": "Intro.\n\n&lt;RequestExample title={/\"/} data-x={1}&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<RequestExample title=\"x\" data-x={1}>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</RequestExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<RequestExample title=\"Edited\" data-x={1}>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</RequestExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -1763,6 +1958,7 @@
       "edited": "Intro.\n\n&lt;ResponseExample title\\`=\"xid=\"x\"&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -1772,6 +1968,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1781,6 +1978,7 @@
       "edited": null,
       "valueText": "\"Old\\}\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1790,6 +1988,7 @@
       "edited": null,
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1799,6 +1998,7 @@
       "edited": null,
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Danger title=\"Inner\">\n\nInner text.\n\n</Danger>"
     },
     {
@@ -1808,6 +2008,7 @@
       "edited": "Intro.\n\n&lt;Step title={&lt;b titl{e=\"</Card>\">x</b>}\n\n> \n\n<Step title=\"Edited\">\n\nInner text.\n\n</Step>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b titl{e=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Step title=\"Inner\">\n\nInner text.\n\n</Step>"
     },
     {
@@ -1817,6 +2018,7 @@
       "edited": "Intro.\n\n<Tabs tit>\n\n<Tab title=\"Edited\">\n\nle={a / b} a.b=\"x\" /&gt;\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.\n\n</Tab>\n\n</Tabs>",
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1826,6 +2028,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1835,6 +2038,7 @@
       "edited": "Intro.\n\nSome &lt;Accordion title={/\"/}id=\"x\" /&gt; more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<Accordion title=\"x\"id=\\\"x\" />\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<Accordion title=\"Edited\"id=\\\"x\" />\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -1844,6 +2048,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Tooltip ti}p=\"x\"\n  aria-label=\"L\"\n /></Tooltip> more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome <Tooltip ti}p=\"x\"\n  aria-label=\"L\"\n  tip=\"Edited\"/></Tooltip> more text.\n\n## Later heading\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -1853,6 +2058,7 @@
       "edited": "Intro.\n\n&lt;Folder name={/\"/} data-x={1}&gt;\n\n<Folder name=\"Inner\">\n\nInner text.\n\n</Folder>\n\n## Later heading\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Folder name=\"x\" data-x={1}>\n\n<Folder name=\"Inner\">\n\nInner text.\n\n</Folder>\n\n</Folder>\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Folder name=\"Edited\" data-x={1}>\n\n<Folder name=\"Inner\">\n\nInner text.\n\n</Folder>\n\n</Folder>\n\n## Later heading\n\nOutro.",
       "bodySaved": "<Folder name=\"Inner\">\n\nInner text.\n\n</Folder>"
     },
     {
@@ -1862,6 +2068,7 @@
       "edited": "Intro.\n\n<RequestExample title=\"Edited\" a.b=\"x\">\n\n**x**\n\n</RequestExample>\n\nOutro.",
       "valueText": "'Old\\>'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1871,6 +2078,7 @@
       "edited": "Intro.\n\n&lt;RelatedContent title={/\"/} xml:lang=\"en\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<RelatedContent title=\"x\" xml:lang=\"en\">\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</RelatedContent>\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -1880,6 +2088,7 @@
       "edited": "Intro.\n\nSome\n\n<RelatedCard title=\"Edited\"{...prop}s}\n>\n\ninline text\n\n</RelatedCard>\n\n more text.\n\n## Later heading\n\nOutro.",
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1889,6 +2098,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1898,6 +2108,7 @@
       "edited": "Intro.\n\nSome &lt;Tip title={\"x\" aria-label=\"L\"\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1907,6 +2118,7 @@
       "edited": "Intro.\n\n&lt;Steps title=\"x aria-label=\"L\"}\n\n> \n\n<Steps title=\"Inner\">\n\n<Step title=\"Edited\">\n\nInner text.\n\n</Step>\n\n</Steps>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Steps title=\"Inner\">\n\n<Step>\n\nInner text.\n\n</Step>\n\n</Steps>"
     },
     {
@@ -1916,6 +2128,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Step title=\"x\" data-x={1} />\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Step title=\"Edited\" data-x={1} />\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -1925,6 +2138,7 @@
       "edited": "Intro.\n\nSome\n\n<Accordion t title=\"Edited\">\n\nitle='Old'\n\n> inline text\n\n</Accordion>\n\n more text.\n\nOutro.",
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1934,6 +2148,7 @@
       "edited": "Intro.\n\n<ParamField path=\"Edited\" xml:lang=\"en\">\n\n**x**\n\n</ParamField>\n\n## Later heading\n\nOutro.",
       "valueText": "\"\\A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1943,6 +2158,7 @@
       "edited": "Intro.\n\n&lt;Columns title=\"x xml:lang=\"en\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -1952,6 +2168,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Banner type=\"x\" a.b=\"x\" />\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Banner type=\"Edited\" a.b=\"x\" />\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -1961,6 +2178,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n&lt;Update label=\"x\"id=\"x\" \"/&gt;\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1970,6 +2188,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<File name=\"x\"\n  aria-label=\"L\"\n />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<File name=\"Edited\"\n  aria-label=\"L\"\n />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -1979,6 +2198,7 @@
       "edited": "Intro.\n\n<RelatedContent title=\"Edited\"ia-label=\"L\"\n>\n\n**x**\n\n</RelatedContent>\n\n## Later heading\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -1988,6 +2208,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -1997,6 +2218,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Widget title=\"Inner\">\n\nInner text.\n\n</Widget>"
     },
     {
@@ -2006,6 +2228,7 @@
       "edited": "Intro.\n\n&lt;Info title={\"x\"} da{ta-x={1}\n\n> \n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -2015,6 +2238,7 @@
       "edited": "Intro.\n\nSome &lt;Card title=\"x{...props} /&gt; more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2024,6 +2248,7 @@
       "edited": null,
       "valueText": "{<b title=\"</Card>\">x<}/b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2033,6 +2258,7 @@
       "edited": "Intro.\n\n<Columns ti\"tle={<b title=\"</Card>\n\n<Column>\n\n\"&gt;x} {...props}&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\n</Column>\n\n</Columns>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -2042,6 +2268,7 @@
       "edited": "Intro.\n\n&lt;Column title={\"x\" href=\"/docs\"title=\"B\"&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -2051,6 +2278,7 @@
       "edited": null,
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2060,6 +2288,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2069,6 +2298,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2078,6 +2308,7 @@
       "edited": null,
       "valueText": "{\"a } \\{\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -2087,6 +2318,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2096,6 +2328,7 @@
       "edited": "Intro.\n\nSome\n\n<Tabs title=\"Old\\\\\" data-x={1}\n>\n\n<Tab title=\"Edited\">\n\ninline text\n\n</Tab>\n\n</Tabs>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"Old\\\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2105,6 +2338,7 @@
       "edited": "Intro.\n\n&lt;Tab title=\"A\"i'd=\"x\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2114,6 +2348,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2123,6 +2358,7 @@
       "edited": "Intro.\n\nSome <Tooltip t tip=\"Edited\">ip={\"x\"} id=\"x\"&gt;inline text</Tooltip> more text.\n\nOutro.",
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2132,6 +2368,7 @@
       "edited": "Intro.\n\nSome <Icon icon=\"Edited\"></Icon> more text.\n\n## Later heading\n\nOutro.",
       "valueText": "{\"a } \\\"' b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2141,6 +2378,7 @@
       "edited": "Intro.\n\nSome &lt;FileTree tit\"le=\"A\" xml:lang=\"en\"\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2150,6 +2388,7 @@
       "edited": "Intro.\n\n&lt;Folder name\"={\"x\" {...props}\n\n> \n\n![Diagram](/diagram.png)\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -2159,6 +2398,7 @@
       "edited": "Intro.\n\n&lt;ApiExample title=\"x\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -2168,6 +2408,7 @@
       "edited": "Intro.\n\n&lt;ResponseExample title=\"x{...props}&gt;\n\n<ResponseExample title=\"Edited\">\n\nInner text.\n\n</ResponseExample>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>"
     },
     {
@@ -2177,6 +2418,7 @@
       "edited": "Intro.\n\n<RelatedContent titl title=\"Edited\">\n\ne={\"a } \\\" b\"} data-x={1}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</RelatedContent>\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -2186,6 +2428,7 @@
       "edited": "Intro.\n\n&lt;Check title={\"x\" aria-label=\"L\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2195,6 +2438,7 @@
       "edited": null,
       "valueText": "{\"x}\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2204,6 +2448,7 @@
       "edited": "Intro.\n\n&lt;AccordionGroup ti{tle={() => { return 1; }}id=\"x\"&gt;\n\n<AccordionGroup title=\"Inner\">\n\n<Accordion title=\"Edited\">\n\nInner text.\n\n</Accordion>\n\n</AccordionGroup>\n\nOutro.",
       "valueText": "{() => { return 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<AccordionGroup title=\"Inner\">\n\n<Accordion>\n\nInner text.\n\n</Accordion>\n\n</AccordionGroup>"
     },
     {
@@ -2213,6 +2458,7 @@
       "edited": "Intro.\n\nSome\n\n<Expandable title=\"Edited\"id=\"x\">\n\ninline text\n\n</Expandable>\n\n more text.\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2222,6 +2468,7 @@
       "edited": null,
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2231,6 +2478,7 @@
       "edited": "Intro.\n\nSome &lt;Column title=\"x\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2240,6 +2488,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2249,6 +2498,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Tooltip tip=\"x\"\n>inline text</Tooltip> more text.\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome <Tooltip tip=\"Edited\"\n>inline text</Tooltip> more text.\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -2258,6 +2508,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Update label=\"x\" hidden />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Update label=\"Edited\" hidden />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -2267,6 +2518,7 @@
       "edited": "Intro.\n\n&lt;Folder{ name={\"x\"id=\"x\"&gt;\n\n<Folder name=\"Edited\">\n\nInner text.\n\n</Folder>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Folder name=\"Inner\">\n\nInner text.\n\n</Folder>"
     },
     {
@@ -2276,6 +2528,7 @@
       "edited": "Intro.\n\n&lt;RequestExample title={\"a } \\\" b\"}id=\"\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -2285,6 +2538,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2294,6 +2548,7 @@
       "edited": null,
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2303,6 +2558,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2312,6 +2568,7 @@
       "edited": "Intro.\n\n&lt;Danger title={\"x\" aria-label=\"L\"\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -2321,6 +2578,7 @@
       "edited": "Intro.\n\n&lt;Info title={/\"/} data-x={1}\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Info title=\"x\" data-x={1}\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Info>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Info title=\"x\" data-x={1}\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Info>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -2330,6 +2588,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2339,6 +2598,7 @@
       "edited": "Intro.\n\n&lt;Step title=\"**\"{...props} '/&gt;**\n\n<Card title=\"Edited\">\n\n**More**\n\n</Card>\n\n**Outro.**",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2348,6 +2608,7 @@
       "edited": "Intro.\n\n&lt;Tab title='Old' hidde}n\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -2357,6 +2618,7 @@
       "edited": "Intro.\n\n<AccordionGroup title=\"a > b\" id=\"x'\"\n>\n\n<Accordion title=\"Edited\">\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Accordion>\n\n</AccordionGroup>\n\nOutro.",
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -2366,6 +2628,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2375,6 +2638,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<ResponseField name=\"x\" a.b=\"x\">\n\n![Diagram](/diagram.png)\n\n</ResponseField>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<ResponseField name=\"Edited\" a.b=\"x\">\n\n![Diagram](/diagram.png)\n\n</ResponseField>\n\nOutro.",
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -2384,6 +2648,7 @@
       "edited": "Intro.\n\n&lt;Columns title={\"x\"id=\"x\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2393,6 +2658,7 @@
       "edited": null,
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2402,6 +2668,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Banner type=\"x\"{...props} />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Banner type=\"Edited\"{...props} />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -2411,6 +2678,7 @@
       "edited": "Intro.\n\nSome &lt;Icon icon={\"x\" {...props}&gt;inline text more text.\n\n<Card title=\"Next\" icon=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2420,6 +2688,7 @@
       "edited": "Intro.\n\n<RelatedCard title=\"Edited\"\n  }aria-label=\"L\"\n>\n\n**x**\n\n</RelatedCard>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -2429,6 +2698,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2438,6 +2708,7 @@
       "edited": "Intro.\n\n&lt;Check title=\"A\" href=\"/docs\"title={\"B\"&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -2447,6 +2718,7 @@
       "edited": null,
       "valueText": "'\"Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2456,6 +2728,7 @@
       "edited": "Intro.\n\n&lt;CardGroup \\`cols=\"A\"id=\"x\"\n\n> \n\n<CardGroup cols=\"Edited\">\n\n<Card>\n\nInner text.\n\n</Card>\n\n</CardGroup>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<CardGroup cols=\"Inner\">\n\n<Card>\n\nInner text.\n\n</Card>\n\n</CardGroup>"
     },
     {
@@ -2465,6 +2738,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2474,6 +2748,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n&lt;ParamField {path=\"x\" aria-label=\"L\" /&gt;\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2483,6 +2758,7 @@
       "edited": "Intro.\n\n&lt;ResponseField {name=\"a &gt; b\" hidden&gt;\n\n<ResponseField name=\"Edited\">\n\nInner text.\n\n</ResponseField>\n\n## Later heading\n\nOutro.",
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<ResponseField name=\"Inner\">\n\nInner text.\n\n</ResponseField>"
     },
     {
@@ -2492,6 +2768,7 @@
       "edited": "Intro.\n\n&lt;Expandable title={'Old' aria-label=\"L\"\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -2501,6 +2778,7 @@
       "edited": null,
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2510,6 +2788,7 @@
       "edited": "Intro.\n\n<File name=\"Edited\" a.b=\"x\"\n></File>\n\nOutro.",
       "valueText": "'Old\\\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -2519,6 +2798,7 @@
       "edited": "Intro.\n\n&lt;RequestExample title={/\"/} {...props}&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<RequestExample title=\"x\" {...props}>\n\nBody text.\n\n</RequestExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<RequestExample title=\"Edited\" {...props}>\n\nBody text.\n\n</RequestExample>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "Body text."
     },
     {
@@ -2528,6 +2808,7 @@
       "edited": "Intro.\n\n&lt;Check title={\"x\"id=\"x\"\n\n> \n\n**x**\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -2537,6 +2818,7 @@
       "edited": "Intro.\n\n&lt;Warning title='Ol\"d'id=\"x\"\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "'Ol\"d\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -2546,6 +2828,7 @@
       "edited": null,
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2555,6 +2838,7 @@
       "edited": "Intro.\n\n&lt;Info title={() => { return 1; }} a\\`.b=\"x\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{() => { return 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2564,6 +2848,7 @@
       "edited": "Intro.\n\n<CardGroup c\\ols=\"<b>\" xml:lang=\"en\"\n cols=\"Edited\">\n\n<Card>\n\nBody text.\n\n</Card>\n\n</CardGroup>\n\n## Later heading\n\nOutro.",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -2573,6 +2858,7 @@
       "edited": null,
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -2582,6 +2868,7 @@
       "edited": null,
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2591,6 +2878,7 @@
       "edited": "Intro.\n\n&lt;Tab title={/\"/}{...props}\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Tab title=\"x\"{...props}\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Tab>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Tab title=\"x\"{...props}\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Tab>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -2600,6 +2888,7 @@
       "edited": "Intro.\n\n&lt;AccordionGroup titl\\\\e={/\"/}id=\"x\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<AccordionGroup titl\\e=\"x\"id=\"x\">\n\n<Accordion>\n\n</Accordion>\n\n</AccordionGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<AccordionGroup titl\\e=\"x\"id=\"x\">\n\n<Accordion title=\"Edited\">\n\n</Accordion>\n\n</AccordionGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -2609,6 +2898,7 @@
       "edited": "Intro.\n\n&lt;CodeGroup title={\"x\" aria-label=\"\\\\L\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2618,6 +2908,7 @@
       "edited": null,
       "valueText": "{/'\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<ParamField path=\"x\" id=\"x\"\n>\n\ninline text\n\n</ParamField>\n\n more text.\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<ParamField path=\"Edited\" id=\"x\"\n>\n\ninline text\n\n</ParamField>\n\n more text.\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -2627,6 +2918,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -2636,6 +2928,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2645,6 +2938,7 @@
       "edited": "Intro.\n\nSome &lt;Icon icon{=\"A\" a.b=\"x\"&gt;inline text more text.\n\n<Card title=\"Next\" icon=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2654,6 +2948,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2663,6 +2958,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2672,6 +2968,7 @@
       "edited": "Intro.\n\n&lt;Warning title={/\"/} {...props}&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "{/\"\\/}",
       "plainSaved": "Intro.\n\n<Warning title=\"x\" {...props}>\n\n![Diagram](/diagram.png)\n\n</Warning>\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Warning title=\"x\" {...props}>\n\n![Diagram](/diagram.png \"Edited\")\n\n</Warning>\n\n## Later heading\n\nOutro.",
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -2681,6 +2978,7 @@
       "edited": "Intro.\n\n&lt;Danger title={/\"/} href=\"/docs\"title=\"B\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Danger title=\"x\" href=\"/docs\"title=\"B\" />\n\n</Callout>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Danger title=\"x\" href=\"/docs\"title=\"B\" />\n\n</Callout>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -2690,6 +2988,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2699,6 +2998,7 @@
       "edited": null,
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2708,6 +3008,7 @@
       "edited": "Intro.\n\nSome\n\n<ResponseField name=\"Edited\" xml:lang=\"en\" />\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{<b titl>e=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2717,6 +3018,7 @@
       "edited": null,
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -2726,6 +3028,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -2735,6 +3038,7 @@
       "edited": null,
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2744,6 +3048,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome &lt;Badge color=\"x\" h'idden&gt;inline text more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2753,6 +3058,7 @@
       "edited": "Intro.\n\nSome &lt;Icon icon=\"a \"b\" c\"' xml:lang=\"en\"\n\n> inline text more text.\n\n<Card title=\"Next\" icon=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2762,6 +3068,7 @@
       "edited": "Intro.\n\n&lt;ResponseExample title'='Old' data-x={1}&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -2771,6 +3078,7 @@
       "edited": null,
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -2780,6 +3088,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" >c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2789,6 +3098,7 @@
       "edited": "Intro.\n\n&lt;Info title={/\"/} hidden /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Info title=\"x\" hidden />\n\n</Callout>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Info title=\"x\" hidden />\n\n</Callout>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -2798,6 +3108,7 @@
       "edited": "Intro.\n\n&lt;Card tit'le={<b title=\"</Card>\">x</b>} {...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -2807,6 +3118,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Tabs title=\"x\" data-x={1}>\n\n<Tab>\n\n</Tab>\n\n</Tabs>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Tabs title=\"x\" data-x={1}>\n\n<Tab title=\"Edited\">\n\n</Tab>\n\n</Tabs>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -2816,6 +3128,7 @@
       "edited": "Intro.\n\n<Tab t title=\"Edited\">\n\nitle={a / b} id=\"x\" &gt;\n\n**x**\n\n</Tab>\n\nOutro.",
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -2825,6 +3138,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2834,6 +3148,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Expandable title=\"x\">\n\n**x**\n\n</Expandable>\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Expandable title=\"Edited\">\n\n**x**\n\n</Expandable>\n\n## Later heading\n\nOutro.",
       "bodySaved": "**x**"
     },
     {
@@ -2843,6 +3158,7 @@
       "edited": "Intro.\n\n<Columns title=\"a \">\n\n<Column>\n\nb\" aria-label=\"L\" &gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n</Column>\n\n</Columns>\n\n## Later heading\n\nOutro.",
       "valueText": "\"a \"> b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -2852,6 +3168,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Column title=\"x\" xml:lang=\"en\">\n\n**x**\n\n</Column>\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -2861,6 +3178,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -2870,6 +3188,7 @@
       "edited": "Intro.\n\nSome <Icon icon=\"Edited\" />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"Ol{d\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2879,6 +3198,7 @@
       "edited": "Intro.\n\n<Update label=\"Edited\" d>\n\nata-x={1}&gt;\n\nBody text.\n\n</Update>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -2888,6 +3208,7 @@
       "edited": "Intro.\n\n&lt;FileTree title\\`=\"A\" id=\"x\"&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -2897,6 +3218,7 @@
       "edited": "Intro.\n\n<ResponseExample title=\"Edited\">\n\n\"x\" {...props} /&gt;\n\n</ResponseExample>\n\n## Later heading\n\nOutro.",
       "valueText": "{>\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2906,6 +3228,7 @@
       "edited": "Intro.\n\n&lt;Note title={/\"/} hidden /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Note title=\"x\" hidden />\n\n</Callout>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Note title=\"x\" hidden />\n\n</Callout>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -2915,6 +3238,7 @@
       "edited": "Intro.\n\nSome\n\n> [!CHECK]\n> /\"/} a.b=\"x\"&gt;inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{>/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<Check title=\"x\" a.b=\"x\">\n\ninline text\n\n</Check>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<Check title=\"x\" a.b=\"x\">\n\ninline text\n\n</Check>\n\n more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -2924,6 +3248,7 @@
       "edited": "Intro.\n\n&lt;Warning title=\"ü\"' xml:lang=\"en\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -2933,6 +3258,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Info title=\"Inner\">\n\nInner text.\n\n</Info>"
     },
     {
@@ -2942,6 +3268,7 @@
       "edited": "Intro.\n\n<Card title=\"Edited\">\n\ntitle=\"**\" /&gt;**\n\n## **Later heading**\n\n**Outro.**\n\n</Card>",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2951,6 +3278,7 @@
       "edited": null,
       "valueText": "{<b title=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2960,6 +3288,7 @@
       "edited": "Intro.\n\n&lt;Tab title={\"x\" aria-label=\"L\"&gt; /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -2969,6 +3298,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<AccordionGroup title=\"x\" href=\"/docs\"title=\"B\">\n\n<Accordion>\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\n<AccordionGroup title=\"x\" href=\"/docs\"title=\"B\">\n\n<Accordion title=\"Edited\">\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
       "bodySaved": "Body text."
     },
     {
@@ -2978,6 +3308,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -2987,6 +3318,7 @@
       "edited": "Intro.\n\nSome\n\n<Expandable title=\"Edited\">\n\n={/\"/}id=\"x\" /&gt; more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.\n\n</Expandable>",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<Expandable title>\n\n=\"x\"id=\"x\" /&gt; more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.\n\n</Expandable>",
+      "plainEdited": "Intro.\n\nSome\n\n<Expandable title=\"Edited\">\n\n=\"x\"id=\"x\" /&gt; more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.\n\n</Expandable>",
       "bodySaved": null
     },
     {
@@ -2996,6 +3328,7 @@
       "edited": "Intro.\n\n&lt;Columns t}itle=\"x\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -3005,6 +3338,7 @@
       "edited": null,
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3014,6 +3348,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3023,6 +3358,7 @@
       "edited": "Intro.\n\n<FileTree title=\"a \\\\\"b\\\" c\">\n\n<Folder>\n\n![Diagram](/diagram.png \"Edited\")\n\n</Folder>\n\n</FileTree>\n\n## Later heading\n\nOutro.",
       "valueText": "\"a \\\\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -3032,6 +3368,7 @@
       "edited": null,
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3041,6 +3378,7 @@
       "edited": "Intro.\n\n&lt;ApiExample title={\"x\"id=\"x\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3050,6 +3388,7 @@
       "edited": "Intro.\n\n&lt;ResponseExample title={\"x\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -3059,6 +3398,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -3068,6 +3408,7 @@
       "edited": "Intro.\n\nSome &lt;Note title={\"a } \\\" b\"} \"id=\"x\"&gt;inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3077,6 +3418,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -3086,6 +3428,7 @@
       "edited": "Intro.\n\nSome &lt;Check title={/\"/} xml:lang=\"en\"&gt;inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<Check title=\"x\" xml:lang=\"en\">\n\ninline text\n\n</Check>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<Check title=\"x\" xml:lang=\"en\">\n\ninline text\n\n</Check>\n\n more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3095,6 +3438,7 @@
       "edited": "Intro.\n\n&lt;Danger title=\"\\`x hidden\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"`x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -3104,6 +3448,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3113,6 +3458,7 @@
       "edited": null,
       "valueText": "{a {/ b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -3122,6 +3468,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n&lt;Step\\` title=\"x\"id=\"x\"&gt;\n\n**x**\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -3131,6 +3478,7 @@
       "edited": "Intro.\n\n<Tabs title={\"a } \\\" b\"}\n  aria-labe\\l=\"L\"\n>\n\n<Tab title=\"Edited\">\n\nBody text.\n\n</Tab>\n\n</Tabs>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -3140,6 +3488,7 @@
       "edited": "Intro.\n\nSome\n\n<Tab title=\"Edited\">\n\n={() => { return 1; }} {...props} /&gt; more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.\n\n</Tab>",
       "valueText": "{() => { return 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3149,6 +3498,7 @@
       "edited": "Intro.\n\nSome\n\n<AccordionGroup ti>\n\n<Accordion title=\"Edited\">\n\ntle=\"Old\" {...props}&gt;inline text\n\n</Accordion>\n\n</AccordionGroup>\n\n more text.\n\nOutro.",
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3158,6 +3508,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3167,6 +3518,7 @@
       "edited": "Intro.\n\n&lt;CodeGroup title={/\"/} href=\"/docs\"title=\"B\"\n\n> \n\n**x**\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<CodeGroup title=\"x\" href=\"/docs\"title=\"B\"\n>\n\n**x**\n\n</CodeGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<CodeGroup title=\"x\" href=\"/docs\"title=\"B\"\n>\n\n**x**\n\n</CodeGroup>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "**x**"
     },
     {
@@ -3176,6 +3528,7 @@
       "edited": "Intro.\n\n&lt;ParamField p\"ath='A' href=\"/docs\"title=\"B\"&gt;\n\n<ParamField path=\"Edited\">\n\nInner text.\n\n</ParamField>\n\n## Later heading\n\nOutro.",
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<ParamField path=\"Inner\">\n\nInner text.\n\n</ParamField>"
     },
     {
@@ -3185,6 +3538,7 @@
       "edited": null,
       "valueText": "{'\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -3194,6 +3548,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -3203,6 +3558,7 @@
       "edited": null,
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3212,6 +3568,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3221,6 +3578,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3230,6 +3588,7 @@
       "edited": "Intro.\n\n&lt;Note title='\"Old'{...props} /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "'\"Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3239,6 +3598,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -3248,6 +3608,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Warning title=\"x\" a.b=\"x\"\n>\n\n<Warning title=\"Inner\">\n\nInner text.\n\n</Warning>\n\n</Warning>\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "<Warning title=\"Inner\">\n\nInner text.\n\n</Warning>"
     },
     {
@@ -3257,6 +3618,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3266,6 +3628,7 @@
       "edited": "Intro.\n\n&lt;Info title=\"x aria-label=\"L\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -3275,6 +3638,7 @@
       "edited": null,
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3284,6 +3648,7 @@
       "edited": "Intro.\n\n<AccordionGroup title=\"ü\" xml:la}ng=\"en\">\n\n<Accordion title=\"Edited\">\n\nBody text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -3293,6 +3658,7 @@
       "edited": "Intro.\n\nSome\n\n<ParamField path=\"Edited\" a.}b=\"x\"\n>\n\ninline text\n\n</ParamField>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3302,6 +3668,7 @@
       "edited": "Intro.\n\n&lt;Column title={\"x\" xm\\`l:lang=\"en\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3311,6 +3678,7 @@
       "edited": "Intro.\n\nSome <Badge color=\"Edited\" a.b=\"x\" /></Badge> more text.\n\n## Later heading\n\nOutro.",
       "valueText": "{\">x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3320,6 +3688,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3329,6 +3698,7 @@
       "edited": null,
       "valueText": "{() => { return 1; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3338,6 +3708,7 @@
       "edited": "Intro.\n\nSome &lt;Folder na\\`me=\"a &gt; b\" {...props} /&gt; more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3347,6 +3718,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3356,6 +3728,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<ResponseExample title=\"x\" id=\"x\"\n>\n\ninline text\n\n</ResponseExample>\n\n more text.\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<ResponseExample title=\"Edited\" id=\"x\"\n>\n\ninline text\n\n</ResponseExample>\n\n more text.\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3365,6 +3738,7 @@
       "edited": "Intro.\n\nSome\n\n<RelatedContent title=\"Edited\"b\\\" c\" id=\"x\"\n>\n\ninline text\n\n</RelatedContent>\n\n more text.\n\nOutro.",
       "valueText": "\"a \\{\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3374,6 +3748,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3383,6 +3758,7 @@
       "edited": "Intro.\n\n&lt;Tip title={\"x\" xml:lang=\"en\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -3392,6 +3768,7 @@
       "edited": "Intro.\n\nSome\n\n<Info titl\\e=\"A\" />\n\n</Callout>\n\n more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3401,6 +3778,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3410,6 +3788,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3419,6 +3798,7 @@
       "edited": "Intro.\n\n&lt;CodeGroup title={/\"/} href=\"/docs\"title=\"B\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<CodeGroup title=\"x\" href=\"/docs\"title=\"B\"\n>\n\n![Diagram](/diagram.png)\n\n</CodeGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<CodeGroup title=\"x\" href=\"/docs\"title=\"B\"\n>\n\n![Diagram](/diagram.png \"Edited\")\n\n</CodeGroup>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -3428,6 +3808,7 @@
       "edited": "Intro.\n\nSome\n\n<Columns t\\itle=\"ü\" id=\"x\">\n\n<Column>\n\n</Column>\n\n</Columns>\n\n more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3437,6 +3818,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -3446,6 +3828,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Badge color=\"x\"{...props}></Badge>\n\n> inline text more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome <Badge color=\"Edited\"{...props}></Badge>\n\n> inline text more text.\n\n## Later heading\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3455,6 +3838,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3464,6 +3848,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Update label=\"x\" {...props} />\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Update label=\"Edited\" {...props} />\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3473,6 +3858,7 @@
       "edited": "Intro.\n\n&lt;Folder name={\"x\"{...props} /&gt;\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3482,6 +3868,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3491,6 +3878,7 @@
       "edited": "Intro.\n\n&lt;ResponseExample title={\"x\" id=\"x\"\n\n> \n\n<ResponseExample title=\"Edited\">\n\nInner text.\n\n</ResponseExample>\n\n## Later heading\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>"
     },
     {
@@ -3500,6 +3888,7 @@
       "edited": "Intro.\n\n&lt;RelatedContent\" title=\"Old\" hidden&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -3509,6 +3898,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3518,6 +3908,7 @@
       "edited": null,
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3527,6 +3918,7 @@
       "edited": "Intro.\n\n&lt;Note title=\"**\" h{idden /&gt;**\n\n<Card title=\"Edited\">\n\n**More**\n\n</Card>\n\n**Outro.**",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3536,6 +3928,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3545,6 +3938,7 @@
       "edited": null,
       "valueText": "\"<b>\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -3554,6 +3948,7 @@
       "edited": null,
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3563,6 +3958,7 @@
       "edited": "Intro.\n\n&lt;AccordionGroup title=\"\"Old\"{...props}\n\n> \n\n<AccordionGroup title=\"Inner\">\n\n<Accordion title=\"Edited\">\n\nInner text.\n\n</Accordion>\n\n</AccordionGroup>\n\n## Later heading\n\nOutro.",
       "valueText": "\"\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<AccordionGroup title=\"Inner\">\n\n<Accordion>\n\nInner text.\n\n</Accordion>\n\n</AccordionGroup>"
     },
     {
@@ -3572,6 +3968,7 @@
       "edited": null,
       "valueText": "{<b title=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3581,6 +3978,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n&lt;CodeGroup ti{tle=\"x\" id=\"x\" /&gt;\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3590,6 +3988,7 @@
       "edited": null,
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3599,6 +3998,7 @@
       "edited": null,
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3608,6 +4008,7 @@
       "edited": "Intro.\n\n&lt;Column title=\"x href\\`=\"/docs\"title=\"B\"&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -3617,6 +4018,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3626,6 +4028,7 @@
       "edited": "Intro.\n\nSome <Icon icon=\"Edited\" href=\"/docs\"ti></Icon>\n\n> inline text more text.\n\n## Later heading\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3635,6 +4038,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<ApiExample title=\"x\"\n  aria-label=\"L\"\n\n>\n\ninline text\n\n</ApiExample>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<ApiExample title=\"Edited\"\n  aria-label=\"L\"\n\n>\n\ninline text\n\n</ApiExample>\n\n more text.\n\n## Later heading\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3644,6 +4048,7 @@
       "edited": null,
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -3653,6 +4058,7 @@
       "edited": "Intro.\n\nSome\n\n<Card title=\"Edited\" href=\"/docs\"title=\"B\">\n\ninline text\n\n</Card>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{<b title>=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3662,6 +4068,7 @@
       "edited": "Intro.\n\nSome\n\n<Tabs t}itle={\"x\"} hidden>\n\n<Tab title=\"Edited\">\n\ninline text\n\n</Tab>\n\n</Tabs>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3671,6 +4078,7 @@
       "edited": null,
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3680,6 +4088,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3689,6 +4098,7 @@
       "edited": "Intro.\n\n&lt;CodeGroup title={/\"/}\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<CodeGroup title=\"x\"\n>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</CodeGroup>\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -3698,6 +4108,7 @@
       "edited": null,
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3707,6 +4118,7 @@
       "edited": "Intro.\n\nSome <Badge co color=\"Edited\">lor={/\"/}&gt;inline text</Badge> more text.\n\n## Later heading\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Badge co>lor=\"x\"&gt;inline text</Badge> more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome <Badge co color=\"Edited\">lor=\"x\"&gt;inline text</Badge> more text.\n\n## Later heading\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3716,6 +4128,7 @@
       "edited": "Intro.\n\nSome <Tooltip ti tip=\"Edited\">p={\"x\"}</Tooltip>\n\n> inline text more text.\n\n## Later heading\n\nOutro.",
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3725,6 +4138,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Warning title=\"x\"id=\"x\" />\n\n</Callout>\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3734,6 +4148,7 @@
       "edited": "Intro.\n\n&lt;Tabs\\\\ title={\"x\" id=\"x\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3743,6 +4158,7 @@
       "edited": "Intro.\n\n&lt;Tab title='\"x data-x={1}&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -3752,6 +4168,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -3761,6 +4178,7 @@
       "edited": "Intro.\n\n&lt;Columns title={/\"/}{...props} /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Columns title=\"x\"{...props}>\n\n<Column>\n\n</Column>\n\n</Columns>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Columns title=\"x\"{...props}>\n\n<Column>\n\n</Column>\n\n</Columns>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3770,6 +4188,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Tooltip tip=\"x\"\n  aria-label=\"L\"\n\n>inline text</Tooltip> more text.\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome <Tooltip tip=\"Edited\"\n  aria-label=\"L\"\n\n>inline text</Tooltip> more text.\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3779,6 +4198,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3788,6 +4208,7 @@
       "edited": "Intro.\n\n<File name=\"Edited\"\n  aria-label=\"L\"\n\n></File>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a \\\"'b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<File name=\"Inner\"></File>"
     },
     {
@@ -3797,6 +4218,7 @@
       "edited": "Intro.\n\n&lt;ApiExample title=\"A\" data-x={1}\\` /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3806,6 +4228,7 @@
       "edited": "Intro.\n\nSome &lt;ResponseExample \\`title={/\"/} hidden\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome &lt;ResponseExample \\`title=\"x\" hidden\n\n> inline text more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome &lt;ResponseExample \\`title=\"x\" hidden\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3815,6 +4238,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<RelatedContent title=\"x\"id=\"x\" />\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\n<RelatedContent title=\"Edited\"id=\"x\" />\n\n## Later heading\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3824,6 +4248,7 @@
       "edited": null,
       "valueText": "\"a \\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3833,6 +4258,7 @@
       "edited": "Intro.\n\n&lt;Note title={\"a } \\\" b\"} \\`id=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -3842,6 +4268,7 @@
       "edited": "Intro.\n\nSome\n\n<Tip title={\"x\"} {...}props}\n>\n\ninline text\n\n</Tip>\n\n more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3851,6 +4278,7 @@
       "edited": null,
       "valueText": "{\"{x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3860,6 +4288,7 @@
       "edited": null,
       "valueText": "{() => { return 1\"; }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -3869,6 +4298,7 @@
       "edited": null,
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3878,6 +4308,7 @@
       "edited": "Intro.\n\nSome &lt;Steps title={\"x\" {...props}{&gt;inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3887,6 +4318,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<ParamField path=\"x\" a.b=\"x\" />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<ParamField path=\"Edited\" a.b=\"x\" />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3896,6 +4328,7 @@
       "edited": null,
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3905,6 +4338,7 @@
       "edited": "Intro.\n\nSome &lt;Button} href=\"**\" /&gt; more text.**\n\n<Card title=\"Next\" href=\"Edited\">\n\n**More**\n\n</Card>\n\n**Outro.**",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3914,6 +4348,7 @@
       "edited": null,
       "valueText": "'\\Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3923,6 +4358,7 @@
       "edited": "Intro.\n\nSome &lt;Icon icon={/\"/}&gt;inline text more text.\n\n<Card title=\"Next\" icon=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Icon icon=\"x\"></Icon> more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome <Icon icon=\"Edited\"></Icon> more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3932,6 +4368,7 @@
       "edited": null,
       "valueText": "{/'\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<Update label=\"x\" xml:lang=\"en\" />\n\n more text.\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<Update label=\"Edited\" xml:lang=\"en\" />\n\n more text.\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -3941,6 +4378,7 @@
       "edited": "Intro.\n\n<FileTree>\n\n<Folder>\n\ntitle=\"a &gt; b\"{...props}&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n</Folder>\n\n</FileTree>\n\nOutro.",
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -3950,6 +4388,7 @@
       "edited": "Intro.\n\n<RequestExample title=\"Edited\"<b>\n\n\" a.b=\"x\"&gt;\n\nBody text.\n\n</RequestExample>\n\nOutro.",
       "valueText": "\"\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -3959,6 +4398,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3968,6 +4408,7 @@
       "edited": "Intro.\n\n&lt;RelatedContent title=\"x xml:lang=\"en\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3977,6 +4418,7 @@
       "edited": "Intro.\n\n&lt;RelatedCard title=\"x{...props} /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3986,6 +4428,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -3995,6 +4438,7 @@
       "edited": null,
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -4004,6 +4448,7 @@
       "edited": "Intro.\n\n&lt;CardGroup cols=\"Ol\\\\d\" hidden\n\n> \n\n<CardGroup cols=\"Edited\">\n\n<Card>\n\nInner text.\n\n</Card>\n\n</CardGroup>\n\n## Later heading\n\nOutro.",
       "valueText": "\"Ol\\d\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<CardGroup cols=\"Inner\">\n\n<Card>\n\nInner text.\n\n</Card>\n\n</CardGroup>"
     },
     {
@@ -4013,6 +4458,7 @@
       "edited": "Intro.\n\nSome &lt;AccordionGroup title={/\"/} {...props}&gt;inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/\\}",
       "plainSaved": "Intro.\n\nSome\n\n<AccordionGroup title=\"x\" {...props}>\n\n<Accordion>\n\ninline text\n\n</Accordion>\n\n</AccordionGroup>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<AccordionGroup title=\"x\" {...props}>\n\n<Accordion title=\"Edited\">\n\ninline text\n\n</Accordion>\n\n</AccordionGroup>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -4022,6 +4468,7 @@
       "edited": "Intro.\n\n&lt;CodeGroup title={\"a } \\\" b\"} aria-{label=\"L\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -4031,6 +4478,7 @@
       "edited": "Intro.\n\nSome\n\n<ResponseField name=\"Edited\" href=\"/`docs\"title=\"B\"\n>\n\ninline text\n\n</ResponseField>\n\n more text.\n\n## Later heading\n\nOutro.",
       "valueText": "\"<b>\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4040,6 +4488,7 @@
       "edited": "Intro.\n\n&lt;Expandable title=\"x data-x={1} /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4049,6 +4498,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Button href=\"x\" xml:lang=\"en\">inline text</Button> more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome <Button href=\"Edited\" xml:lang=\"en\">inline text</Button> more text.\n\n## Later heading\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -4058,6 +4508,7 @@
       "edited": null,
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4067,6 +4518,7 @@
       "edited": "Intro.\n\n&lt;ResponseExample title={() =&gt; { return 1;\" }} a.b=\"x\"&gt;\n\n<ResponseExample title=\"Edited\">\n\nInner text.\n\n</ResponseExample>\n\nOutro.",
       "valueText": "{() => { return 1;\" }}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<ResponseExample title=\"Inner\">\n\nInner text.\n\n</ResponseExample>"
     },
     {
@@ -4076,6 +4528,7 @@
       "edited": null,
       "valueText": "{\"a } \\\" b\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4085,6 +4538,7 @@
       "edited": "Intro.\n\n&lt;Widget title={/\"/}id=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n</Widget>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Widget title=\"x\"id=\"x\"\n>\n\n![Diagram](/diagram.png)\n\n</Widget>\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -4094,6 +4548,7 @@
       "edited": null,
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4103,6 +4558,7 @@
       "edited": "Intro.\n\n&lt;Check title={\"x\" aria-label=\"L\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4112,6 +4568,7 @@
       "edited": "Intro.\n\n&lt;Warning title={/\"/} hidden&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n## Later heading\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Warning title=\"x\" hidden>\n  <iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>\n</Warning>\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -4121,6 +4578,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<CardGroup cols=\"x\" data-x={1}>\n\n<Card>\n\n/&gt;\n\n## Later heading\n\nOutro.\n\n</Card>\n\n</CardGroup>",
+      "plainEdited": "Intro.\n\n<CardGroup cols=\"Edited\" data-x={1}>\n\n<Card>\n\n/&gt;\n\n## Later heading\n\nOutro.\n\n</Card>\n\n</CardGroup>",
       "bodySaved": null
     },
     {
@@ -4130,6 +4588,7 @@
       "edited": "Intro.\n\n&lt;Card title\\`=\"ü\" a.b=\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -4139,6 +4598,7 @@
       "edited": "Intro.\n\n&lt;Steps title={a / b} data-x{={1}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -4148,6 +4608,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4157,6 +4618,7 @@
       "edited": "Intro.\n\n&lt;Tab title='Old' href=\"&gt;/docs\"title=\"B\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4166,6 +4628,7 @@
       "edited": "Intro.\n\n&lt;Accordion titl\"e=\"A\"{...props} /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4175,6 +4638,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4184,6 +4648,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<ResponseField name=\"x\" hidden\n>\n\nBody text.\n\n</ResponseField>\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\n<ResponseField name=\"Edited\" hidden\n>\n\nBody text.\n\n</ResponseField>\n\n## Later heading\n\nOutro.",
       "bodySaved": "Body text."
     },
     {
@@ -4193,6 +4658,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4202,6 +4668,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -4211,6 +4678,7 @@
       "edited": "Intro.\n\n<File name}={a / b} xml:lang=\"en\" name=\"Edited\"></File>\n\n## Later heading\n\nOutro.",
       "valueText": "{a / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<File name=\"Inner\"></File>"
     },
     {
@@ -4220,6 +4688,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4229,6 +4698,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -4238,6 +4708,7 @@
       "edited": null,
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4247,6 +4718,7 @@
       "edited": null,
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Note title=\"Inner\">\n\nInner text.\n\n</Note>"
     },
     {
@@ -4256,6 +4728,7 @@
       "edited": null,
       "valueText": "'A'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4265,6 +4738,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4274,6 +4748,7 @@
       "edited": "Intro.\n\n<Card title=\"Edited\"b\\\" c\">\n\n**x**\n\n</Card>\n\nOutro.",
       "valueText": "\"a \\\\\"b\\\" c\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -4283,6 +4758,7 @@
       "edited": "Intro.\n\n&lt;Step title={&lt;b title=\"&lt;/Car\"d&gt;\"&gt;x} {...props}&gt;\n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{<b title=\"</Car\"d>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -4292,6 +4768,7 @@
       "edited": "Intro.\n\n&lt;CodeGroup title={/\"/} href=\"/docs\"title=\"B\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<CodeGroup title=\"x\" href=\"/docs\"title=\"B\" />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<CodeGroup title=\"x\" href=\"/docs\"title=\"B\" />\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -4301,6 +4778,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -4310,6 +4788,7 @@
       "edited": "Intro.\n\nSome\n\n<ResponseField name=\"Edited\"{...props} />\n\n more text.\n\n## Later heading\n\nOutro.",
       "valueText": "\"a >' b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4319,6 +4798,7 @@
       "edited": "Intro.\n\nSome &lt;Columns title={\"x\"id=\"x\"\n\n> inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4328,6 +4808,7 @@
       "edited": "Intro.\n\n&lt;Column title=\"x href=\"/docs\"title=\"B\"&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -4337,6 +4818,7 @@
       "edited": null,
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4346,6 +4828,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<FileTree title=\"x\" href=\"/docs\"title=\"B\">\n\n<Folder>\n\n</Folder>\n\n</FileTree>\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4355,6 +4838,7 @@
       "edited": "Intro.\n\nSome &lt;RequestExample title={/\"/} a.b=\"x\" /&gt; more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<RequestExample title=\"x\" a.b=\"x\" />\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<RequestExample title=\"Edited\" a.b=\"x\" />\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -4364,6 +4848,7 @@
       "edited": "Intro.\n\n&lt;RelatedContent title=\"x a.b=\"x\"\n\n> \n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -4373,6 +4858,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Widget title=\"x\" xml:lang=\"en\" /> more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4382,6 +4868,7 @@
       "edited": "Intro.\n\n&lt;Tip title=\"a &gt; b\" href'=\"/docs\"title=\"B\"\n\n> \n\n**x**\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -4391,6 +4878,7 @@
       "edited": null,
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4400,6 +4888,7 @@
       "edited": "Intro.\n\n&lt;Card title=\"x hidden\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -4409,6 +4898,7 @@
       "edited": "Intro.\n\n&lt;Accordion title={/\"/} id=\"x\"&gt;\n\n![Diagram](/diagram.png \"Edited\")\n\n## Later heading\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Accordion title=\"x\" id=\"x\">\n\n![Diagram](/diagram.png)\n\n</Accordion>\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Accordion title=\"Edited\" id=\"x\">\n\n![Diagram](/diagram.png)\n\n</Accordion>\n\n## Later heading\n\nOutro.",
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -4418,6 +4908,7 @@
       "edited": null,
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4427,6 +4918,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome <Tooltip tip=\"x\" xml:la\\ng=\"en\">inline text</Tooltip> more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome <Tooltip tip=\"Edited\" xml:la\\ng=\"en\">inline text</Tooltip> more text.\n\n## Later heading\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -4436,6 +4928,7 @@
       "edited": null,
       "valueText": "\"ü`\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<FileTree title=\"Inner\">\n\n<Folder>\n\nInner text.\n\n</Folder>\n\n</FileTree>"
     },
     {
@@ -4445,6 +4938,7 @@
       "edited": "Intro.\n\n&lt;File name={\"x\" {...props} /&gt;\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4454,6 +4948,7 @@
       "edited": "Intro.\n\n<RelatedContent title=\"Edited\"\">\n\n<b title=\"</Card>\n\n\"&gt;x\n\n</RelatedContent>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"A\"\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -4463,6 +4958,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4472,6 +4968,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4481,6 +4978,7 @@
       "edited": null,
       "valueText": "{<b title=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -4490,6 +4988,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Note title=\"Inner\">\n\nInner text.\n\n</Note>"
     },
     {
@@ -4499,6 +4998,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -4508,6 +5008,7 @@
       "edited": "Intro.\n\n&lt;Card title={/\"/} aria-label=\"L\"\n\n> \n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Card title=\"x\"\n  aria-label=\"L\"\n\n>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Card title=\"Edited\"\n  aria-label=\"L\"\n\n>\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n</Card>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -4517,6 +5018,7 @@
       "edited": "Intro.\n\n&lt;Tabs title=\"x xml:lang=\"en\"&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -4526,6 +5028,7 @@
       "edited": "Intro.\n\n&lt;Tab title=\"Old\" data-x={1}&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\nOutro.",
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -4535,6 +5038,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -4544,6 +5048,7 @@
       "edited": "Intro.\n\n&lt;ResponseField name={**x**}{...props}&gt;\n\n<Card title=\"Inner\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "valueText": "{<b title=\"</Card>\\\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -4553,6 +5058,7 @@
       "edited": null,
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\nSome\n\n<Banner type=\"x\" a.b=\"x\" />\n\n more text.\n\n## Later heading\n\nOutro.",
+      "plainEdited": "Intro.\n\nSome\n\n<Banner type=\"Edited\" a.b=\"x\" />\n\n more text.\n\n## Later heading\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -4562,6 +5068,7 @@
       "edited": "Intro.\n\nSome &lt;Icon icon={\"x\"{...props} /&gt; more text.\n\n<Card title=\"Next\" icon=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4571,6 +5078,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4580,6 +5088,7 @@
       "edited": "Intro.\n\nSome\n\n<RequestExample title=\"Edited\"{...props}\n>\n\ninline text\n\n</RequestExample>\n\n more text.\n\nOutro.",
       "valueText": "'Old\\`'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4589,6 +5098,7 @@
       "edited": "Intro.\n\n&lt;RelatedContent title={\"x\"{...props}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -4598,6 +5108,7 @@
       "edited": "Intro.\n\n&lt;Widget title={/\"/} a.b=\"x\" /&gt;\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Widget title=\"x\" a.b=\"x\" />\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Widget title=\"x\" a.b=\"x\" />\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "bodySaved": null
     },
     {
@@ -4607,6 +5118,7 @@
       "edited": null,
       "valueText": "\"ü\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Callout type=\"Inner\">\n\nInner text.\n\n</Callout>"
     },
     {
@@ -4616,6 +5128,7 @@
       "edited": "Intro.\n\n&lt;Danger title={\"x\" a.b{=\"x\"\n\n> \n\n<Danger title=\"Inner\">\n\nInner text.\n\n</Danger>\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Danger title=\"Inner\">\n\nInner text.\n\n</Danger>"
     },
     {
@@ -4625,6 +5138,7 @@
       "edited": "Intro.\n\n&lt;Steps title={/\"/} hidden&gt;\n\n<Steps title=\"Inner\">\n\n<Step title=\"Edited\">\n\nInner text.\n\n</Step>\n\n</Steps>\n\nOutro.",
       "valueText": "{/\"/}",
       "plainSaved": "Intro.\n\n<Steps title=\"x\" hidden>\n\n<Step>\n\n<Steps title=\"Inner\">\n\n<Step>\n\nInner text.\n\n</Step>\n\n</Steps>\n\n</Step>\n\n</Steps>\n\nOutro.",
+      "plainEdited": "Intro.\n\n<Steps title=\"x\" hidden>\n\n<Step title=\"Edited\">\n\n<Steps title=\"Inner\">\n\n<Step>\n\nInner text.\n\n</Step>\n\n</Steps>\n\n</Step>\n\n</Steps>\n\nOutro.",
       "bodySaved": "<Steps title=\"Inner\">\n\n<Step>\n\nInner text.\n\n</Step>\n\n</Steps>"
     },
     {
@@ -4634,6 +5148,7 @@
       "edited": "Intro.\n\n&lt;ResponseField nam{e={<b title=\"</Card>\">x</b>} hidden&gt;\n\n**x**\n\nOutro.",
       "valueText": "{<b title=\"</Card>\">x</b>}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -4643,6 +5158,7 @@
       "edited": "Intro.\n\n&lt;Expandable title={a{ / b}{...props}\n\n> \n\nBody text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{a{ / b}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "Body text."
     },
     {
@@ -4652,6 +5168,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4661,6 +5178,7 @@
       "edited": null,
       "valueText": "\"A\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4670,6 +5188,7 @@
       "edited": "Intro.\n\nSome &lt;Button href=\"x id=\"x\" /&gt; more text.\n\n<Card title=\"Next\" href=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4679,6 +5198,7 @@
       "edited": null,
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4688,6 +5208,7 @@
       "edited": null,
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -4697,6 +5218,7 @@
       "edited": "Intro.\n\n&lt;RelatedContent title=\"x data-x={1}&gt;\n\n<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Edited\"></iframe>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -4706,6 +5228,7 @@
       "edited": "Intro.\n\n&lt;Widget title=\"Old\" id=&gt;\"x\"\n\n> \n\n![Diagram](/diagram.png \"Edited\")\n\n</Widget>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "![Diagram](/diagram.png)"
     },
     {
@@ -4715,6 +5238,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<iframe src=\"https://www.youtube.com/embed/M7lc1UVf-VE\" title=\"Tour\"></iframe>"
     },
     {
@@ -4724,6 +5248,7 @@
       "edited": null,
       "valueText": "\"Old\\\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4733,6 +5258,7 @@
       "edited": "Intro.\n\n<Steps title=\"xid=\"x\"\n>\n\n<b title=\"</Card>\n\n<Step title=\"Edited\">\n\n\"&gt;x\n\n</Step>\n\n</Steps>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "**x**"
     },
     {
@@ -4742,6 +5268,7 @@
       "edited": "Intro.\n\nSome &lt;Tabs title={\"x\" href=\"/docs\"title=\"B\"&gt;inline text more text.\n\n<Card title=\"Edited\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4751,6 +5278,7 @@
       "edited": "Intro.\n\n&lt;Accordion title=\"x {...props}&gt;\n\n<Card title=\"Edited\">\n\nInner text.\n\n</Card>\n\n## Later heading\n\nOutro.",
       "valueText": "\"x",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<Card title=\"Inner\">\n\nInner text.\n\n</Card>"
     },
     {
@@ -4760,6 +5288,7 @@
       "edited": null,
       "valueText": "\"a > b\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4769,6 +5298,7 @@
       "edited": "Intro.\n\n<File name=\"Edited\" \\{...props}></File>\n\n## Later heading\n\nOutro.",
       "valueText": "{\"x\"}",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<File name=\"Inner\"></File>"
     },
     {
@@ -4778,6 +5308,7 @@
       "edited": null,
       "valueText": "{\"x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     },
     {
@@ -4787,6 +5318,7 @@
       "edited": "Intro.\n\n&lt;RelatedCard title='Old' dat}a-x={1}&gt;\n\n<RelatedCard title=\"Edited\">\n\nInner text.\n\n</RelatedCard>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
       "valueText": "'Old\\'",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": "<RelatedCard title=\"Inner\">\n\nInner text.\n\n</RelatedCard>"
     },
     {
@@ -4796,6 +5328,7 @@
       "edited": null,
       "valueText": "{\"'x\"",
       "plainSaved": null,
+      "plainEdited": null,
       "bodySaved": null
     }
   ]

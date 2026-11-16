@@ -655,7 +655,11 @@ const STATEMENT_PAREN_WORDS: ReadonlySet<string> = new Set(['if', 'while', 'for'
 /** Words after which a `{` opens a block. */
 const BLOCK_AFTER_WORDS: ReadonlySet<string> = new Set(['else', 'do', 'try', 'finally']);
 const IDENTIFIER_CHAR = /[\p{ID_Continue}$]/u;
-const LINE_BREAK = /[\r\n]/g;
+/** JavaScript's line terminators: they end a `//` comment, and a regular expression literal can't hold one. */
+const LINE_BREAK = /[\r\n\u2028\u2029]/g;
+const isLineTerminator = (char: string | undefined): boolean => char === '\n' || char === '\r' || char === '\u2028' || char === '\u2029';
+/** How deep `${…}` substitutions may nest in template literals before a scan gives up. */
+const MAX_TEMPLATE_DEPTH = 32;
 /** How many times one expression's scan may read a `/` both ways before it gives up. */
 const MAX_EXPRESSION_FORKS = 16;
 
@@ -682,6 +686,8 @@ interface ExpressionScan {
 interface ExpressionContext {
   source: string;
   budget: number;
+  /** How many template literals the scan is inside (see templateEnd). */
+  depth: number;
   commentEnd: { from: number; at: number };
   lineBreak: { from: number; at: number };
 }
@@ -690,6 +696,7 @@ const expressionContext = (source: string): ExpressionContext => ({
   source,
   // Enough to read every expression on the page a few times over; past it, main's reading.
   budget: 32 * (source.length + 256),
+  depth: 0,
   commentEnd: { from: Number.POSITIVE_INFINITY, at: -1 },
   lineBreak: { from: Number.POSITIVE_INFINITY, at: -1 },
 });
@@ -719,6 +726,35 @@ function quotedEnd(context: ExpressionContext, start: number): number | null {
   return null;
 }
 
+/**
+ * The index of the backtick closing the template literal that opens at `start`, or
+ * null. Each `${…}` in it is read as JavaScript (readExpression), so a backtick,
+ * brace or `//` inside a substitution ends nothing (`` `${`//{`}` ``). Null when it
+ * never closes as read, when substitutions nest deeper than MAX_TEMPLATE_DEPTH, or
+ * when the budget runs out: callers then read the expression as main did.
+ */
+function templateEnd(context: ExpressionContext, start: number): number | null {
+  const { source } = context;
+  if (++context.depth > MAX_TEMPLATE_DEPTH) return null;
+  let i = start + 1;
+  let end: number | null = null;
+  for (; i < source.length; i++) {
+    if (--context.budget < 0) break;
+    const char = source[i];
+    if (char === '\\') i++;
+    else if (char === '`') {
+      end = i;
+      break;
+    } else if (char === '$' && source[i + 1] === '{') {
+      const close = readExpression(context, i + 1, expressionStart(), { count: 0 });
+      if (close === null) break;
+      i = close - 1;
+    }
+  }
+  context.depth--;
+  return end;
+}
+
 /** Where the regular expression literal that opens at `start` ends, its flags
  *  included, or null when it doesn't close on its line. */
 function regexEnd(context: ExpressionContext, start: number): number | null {
@@ -728,10 +764,10 @@ function regexEnd(context: ExpressionContext, start: number): number | null {
   let end: number | null = null;
   for (; i < source.length; i++) {
     const char = source[i];
-    if (char === '\n' || char === '\r') break;
+    if (isLineTerminator(char)) break;
     if (char === '\\') {
       i++;
-      if (source[i] === '\n' || source[i] === '\r') break;
+      if (isLineTerminator(source[i])) break;
     } else if (inClass) inClass = char !== ']';
     else if (char === '[') inClass = true;
     else if (char === '/') {
@@ -791,7 +827,7 @@ function readExpression(
       continue;
     }
     if (char === '"' || char === "'" || char === '`') {
-      const end = quotedEnd(context, i);
+      const end = char === '`' ? templateEnd(context, i) : quotedEnd(context, i);
       if (end === null) break;
       i = end;
       regex = false;
@@ -886,43 +922,10 @@ function readExpression(
 const expressionStart = (): ExpressionScan => ({ regex: true, last: '', word: '', dot: false, braces: [], parens: [] });
 
 /**
- * Main's reading of a `{…}` expression, kept for where the JavaScript reading
- * can't tell (readExpression): braces counted outside quotes, every quote with
- * backslash escapes. On those expressions the editor does exactly what main did.
- */
-function balancedEnd(source: string, start: number, open: string, close: string): number | null {
-  let depth = 0;
-  let quote = '';
-  let escaped = false;
-  for (let i = start; i < source.length; i++) {
-    const char = source[i] ?? '';
-    if (quote) {
-      if (escaped) escaped = false;
-      else if (char === '\\') escaped = true;
-      else if (char === quote) quote = '';
-      continue;
-    }
-    if (char === '"' || char === "'" || char === '`') {
-      quote = char;
-      continue;
-    }
-    if (char === open) depth++;
-    else if (char === close) {
-      depth--;
-      if (depth === 0) return i + 1;
-    }
-  }
-  return null;
-}
-
-/** Where the `{…}` expression that opens at `start` ends: read as JavaScript, or as
- *  main read it where that can't tell (see readExpression). */
-const expressionEnd = (source: string, start: number): number | null =>
-  readExpression(expressionContext(source), start, expressionStart(), { count: 0 }) ?? balancedEnd(source, start, '{', '}');
-
-/**
- * Main's `expressionEnds`: `balancedEnd(source, start, '{', '}')` for many starts,
- * without rescanning. A scan passes other `{`s outside quotes in the same state a
+ * Main's `expressionEnds`, kept for where the JavaScript reading can't tell
+ * (readExpression): braces counted outside quotes, every quote with backslash escapes,
+ * for many starts without rescanning. On those expressions the editor does exactly
+ * what main did. A scan passes other `{`s outside quotes in the same state a
  * scan of their own would start in, so the stack of open braces tells where each of
  * those closes, or that it never does.
  */
@@ -956,7 +959,7 @@ function mainExpressionEnds(source: string): (start: number) => number | null {
 }
 
 /**
- * `expressionEnd(source, start)` for many starts, without rescanning. A scan
+ * Where each `{…}` expression on `source` ends, for many starts, without rescanning. A scan
  * passes other `{`s outside strings, comments and regular expressions in the
  * state a scan of their own would start in, so it tells where each of those
  * closes, or that it never does as read. A later expression the scan already
@@ -1396,6 +1399,8 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
   const escapes = componentName !== 'Frame';
   let cursor = raw.indexOf(componentName) + componentName.length;
   const limit = raw.length - (raw.endsWith('/>') ? 2 : 1);
+  // One reader for the whole tag: its searches are shared, not repeated per attribute.
+  const expressionEnd = expressionEnds(raw);
   while (cursor < limit) {
     while (/\s/.test(raw[cursor] ?? '')) cursor++;
     if (cursor >= limit) break;
@@ -1418,7 +1423,7 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
       value = decodeAttributeValue(raw.slice(valueStart, cursor));
       cursor++;
     } else if (quote === '{') {
-      const end = expressionEnd(raw, cursor) ?? limit;
+      const end = expressionEnd(cursor) ?? limit;
       value = raw.slice(cursor, end);
       cursor = end;
     } else {
