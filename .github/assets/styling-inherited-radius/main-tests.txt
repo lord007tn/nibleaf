@@ -1,0 +1,44 @@
+This branch's styling-settings.source.test.tsx run against main's Styling feature (df4e66581544b727c096da3b845673216b84ddd7: components/styling-settings.tsx and model/styling.ts restored from main, the test file unchanged; real project query and mutation, stand-in API merge).
+Main shows Rounded for an unset radius on Signal (the reader draws Sharp), and a click on that Rounded registers nothing: 0 requests where one save should store it ("expected +0 to be 1"). Harbor and Manuscript fail only on the new inherited/override description, which main does not have.
+
+ ❯ src/features/site-styling/components/styling-settings.source.test.tsx (26 tests | 13 failed) 4541ms
+   ❯ StylingSettings: an unset radius shows the theme’s, and a choice sets the site’s own (13)
+     × Harbor: shows the radius the reader draws, as inherited, with nothing to save and no write 89ms
+     × Signal: shows the radius the reader draws, as inherited, with nothing to save and no write 72ms
+     × Manuscript: shows the radius the reader draws, as inherited, with nothing to save and no write 76ms
+     × Harbor with its own layout radius: shows the radius the reader draws, as inherited, with nothing to save and no write 76ms
+     × Signal with its own layout radius: shows the radius the reader draws, as inherited, with nothing to save and no write 77ms
+     × main regression: Signal, unset; one click on Rounded saves {radius: rounded} in one request, and the reader then draws Rounded 76ms
+     × a click on the inherited radius itself sets it; later theme changes no longer move it 77ms
+     × a color-only save and theme refetches never set it: the shown radius follows the theme, still inherited 91ms
+     × a chosen radius survives a theme refetch; Discard returns to the inherited one 96ms
+     × a failed save keeps the chosen radius; the retry sends it 1087ms
+     × another writer’s radius: "Keep mine" sends mine against theirs; "Use theirs" takes theirs as the site’s own 93ms
+     × a newer choice during the save stays to save, never "Saved"; the next save sends it alone 1087ms
+     × A → B → A with a late completion: the choice shows on no other site, and each site shows what its server holds 138ms
+      Tests  13 failed | 13 passed (26)
+
+First failing assertion per test:
+  Harbor: shows the radius the reader draws, as inherited, with nothing to save and no write
+  Manuscript: shows the radius the reader draws, as inherited, with nothing to save and no write
+AssertionError: expected { label: undefined, source: undefined } to strictly equal { …(2) }
+  Signal: shows the radius the reader draws, as inherited, with nothing to save and no write
+  Harbor with its own layout radius: shows the radius the reader draws, as inherited, with nothing to save and no write
+AssertionError: expected 'settings.styling.radius.rounded' to be 'settings.styling.radius.sharp' // Object.is equality
+  Signal with its own layout radius: shows the radius the reader draws, as inherited, with nothing to save and no write
+AssertionError: expected 'settings.styling.radius.rounded' to be 'settings.styling.radius.pill' // Object.is equality
+  main regression: Signal, unset; one click on Rounded saves {radius: rounded} in one request, and the reader then draws Rounded
+AssertionError: expected 'settings.styling.radius.rounded' to be 'settings.styling.radius.sharp' // Object.is equality
+  a click on the inherited radius itself sets it; later theme changes no longer move it
+AssertionError: expected 'false' to be 'true' // Object.is equality
+  a color-only save and theme refetches never set it: the shown radius follows the theme, still inherited
+AssertionError: expected 'settings.styling.radius.rounded' to be 'settings.styling.radius.sharp' // Object.is equality
+  a chosen radius survives a theme refetch; Discard returns to the inherited one
+AssertionError: expected { label: undefined, source: undefined } to strictly equal { …(2) }
+  a failed save keeps the chosen radius; the retry sends it
+  a newer choice during the save stays to save, never "Saved"; the next save sends it alone
+AssertionError: expected +0 to be 1 // Object.is equality
+  another writer’s radius: "Keep mine" sends mine against theirs; "Use theirs" takes theirs as the site’s own
+AssertionError: expected false to be true // Object.is equality
+  A → B → A with a late completion: the choice shows on no other site, and each site shows what its server holds
+AssertionError: expected { label: undefined, source: undefined } to strictly equal { …(2) }

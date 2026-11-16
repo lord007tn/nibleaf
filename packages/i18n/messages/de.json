@@ -757,6 +757,8 @@
   "settings_styling_radius_sharp": "Scharf",
   "settings_styling_radius_rounded": "Abgerundet",
   "settings_styling_radius_pill": "Pille",
+  "settings_styling_radius_inherited": "Aus dem Design. Wählen Sie eine Option, auch die ausgewählte, um sie für diese Website festzulegen.",
+  "settings_styling_radius_override": "Für diese Website festgelegt. Ein anderes Design ändert das nicht.",
   "settings_typography_title": "Typografie",
   "settings_typography_headingfont_label": "Schriftart der Überschrift",
   "settings_typography_headingfont_hint": "Wird für Seitentitel und Abschnittsüberschriften verwendet.",

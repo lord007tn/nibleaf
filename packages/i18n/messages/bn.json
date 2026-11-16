@@ -747,6 +747,8 @@
   "settings_styling_radius_sharp": "তীক্ষ্ণ",
   "settings_styling_radius_rounded": "গোলাকার",
   "settings_styling_radius_pill": "পিল",
+  "settings_styling_radius_inherited": "থিম থেকে নেওয়া। এই সাইটের জন্য রাখতে যেকোনো বিকল্প বেছে নিন, নির্বাচিতটিও।",
+  "settings_styling_radius_override": "এই সাইটের জন্য সেট করা। থিম বদলালেও এটি বদলাবে না।",
   "settings_typography_title": "টাইপোগ্রাফি",
   "settings_typography_headingfont_label": "শিরোনাম ফন্ট",
   "settings_typography_headingfont_hint": "পৃষ্ঠা শিরোনাম এবং বিভাগ শিরোনাম জন্য ব্যবহৃত.",

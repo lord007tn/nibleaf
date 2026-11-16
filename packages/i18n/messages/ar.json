@@ -815,6 +815,8 @@
   "settings_styling_radius_sharp": "حادّة",
   "settings_styling_radius_rounded": "مستديرة",
   "settings_styling_radius_pill": "كبسولة",
+  "settings_styling_radius_inherited": "مأخوذة من السمة. اختر أي خيار، بما فيه المحدد حاليًا، لتثبيته لهذا الموقع.",
+  "settings_styling_radius_override": "مضبوطة لهذا الموقع. تغيير السمة لن يغيّرها.",
   "settings_typography_title": "الخطوط",
   "settings_typography_headingfont_label": "خط العناوين",
   "settings_typography_headingfont_hint": "يُستخدم لعناوين الصفحات وعناوين الأقسام.",

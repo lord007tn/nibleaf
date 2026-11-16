@@ -1305,6 +1305,8 @@ export const MESSAGE_IDS = {
   'settings.styling.radius.sharp': 'settings_styling_radius_sharp',
   'settings.styling.radius.rounded': 'settings_styling_radius_rounded',
   'settings.styling.radius.pill': 'settings_styling_radius_pill',
+  'settings.styling.radius.inherited': 'settings_styling_radius_inherited',
+  'settings.styling.radius.override': 'settings_styling_radius_override',
   'settings.typography.title': 'settings_typography_title',
   'settings.typography.headingFont.label': 'settings_typography_headingfont_label',
   'settings.typography.headingFont.hint': 'settings_typography_headingfont_hint',

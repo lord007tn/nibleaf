@@ -747,6 +747,8 @@
   "settings_styling_radius_sharp": "Tajam",
   "settings_styling_radius_rounded": "Bulat",
   "settings_styling_radius_pill": "Pil",
+  "settings_styling_radius_inherited": "Dari tema. Pilih opsi mana pun, termasuk yang terpilih, untuk menetapkannya bagi situs ini.",
+  "settings_styling_radius_override": "Ditetapkan untuk situs ini. Mengganti tema tidak mengubahnya.",
   "settings_typography_title": "Tipografi",
   "settings_typography_headingfont_label": "Font judul",
   "settings_typography_headingfont_hint": "Digunakan untuk judul halaman dan judul bagian.",
