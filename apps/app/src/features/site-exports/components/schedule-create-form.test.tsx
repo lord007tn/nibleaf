@@ -197,6 +197,11 @@ describe('creating a schedule', () => {
     expect(errorOf(days)).toBe('Enter a whole number from 1 to 3650.');
     expect(document.activeElement).toBe(time);
 
+    // Pressing Create doesn't blur the field first, so an error appearing above can't shift the button from under the click.
+    const press = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+    await act(async () => button('Create schedule')?.dispatchEvent(press));
+    expect(press.defaultPrevented).toBe(true);
+
     await type(time, '06:30');
     await type(runs, '5');
     await type(days, '30');
@@ -204,6 +209,23 @@ describe('creating a schedule', () => {
     mocks.post.mockResolvedValue(created());
     await click(button('Create schedule'));
     expect(sentBodies()).toEqual([expect.objectContaining({ hour: 6, minute: 30, retentionCount: 5, retentionDays: 30 })]);
+  });
+
+  it('reports every problem on Create, also those in fields never left, when another field already shows one', async () => {
+    await renderForm();
+    const name = field('Schedule name');
+    const time = field('Local run time');
+    await type(name, '');
+    await leave(name);
+    await type(time, '');
+    expect(errorOf(time)).toBeUndefined();
+
+    await click(button('Create schedule'));
+
+    expect(errorOf(name)).toBe('Schedule name is required');
+    expect(errorOf(time)).toBe('Local run time is required');
+    expect(document.activeElement).toBe(name);
+    expect(mocks.post).not.toHaveBeenCalled();
   });
 
   it('sends only the active day, requires it, and lets a hidden one go', async () => {

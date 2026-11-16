@@ -125,12 +125,19 @@ export function ScheduleCreateForm({
   const { form } = draft;
   const pending = draft.isSaving;
 
+  // Once per refused Create, after the fields are editable again: a frozen (disabled) field can't take focus.
+  const focusedRequest = useRef(0);
   useEffect(() => {
-    if (focusRequest > 0) formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-  }, [focusRequest]);
+    if (pending || focusRequest === focusedRequest.current) return;
+    focusedRequest.current = focusRequest;
+    formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+  }, [focusRequest, pending]);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    // TanStack's first submit stops at a field already in error (from a blur) without
+    // checking the rest; check them all so Create reports every problem at once.
+    await form.validateAllFields('submit');
     const result = await draft.submit();
     if (!mounted.current) return;
     if (result === 'invalid') setFocusRequest((count) => count + 1);
@@ -351,7 +358,16 @@ export function ScheduleCreateForm({
         </div>
       ) : null}
       <div className="flex justify-end border-border border-t px-4 py-3 sm:px-5">
-        <Button loading={pending} loadingText={t('settings.exports.workflow.scheduleCreating')} size="sm" type="submit">
+        <Button
+          loading={pending}
+          loadingText={t('settings.exports.workflow.scheduleCreating')}
+          // Pressing Create would blur the field being edited first; its error then
+          // pushes the button down before the release and the click misses. Create
+          // reports every problem itself, so the field keeps focus until then.
+          onMouseDown={(event) => event.preventDefault()}
+          size="sm"
+          type="submit"
+        >
           {t('settings.exports.workflow.createSchedule')}
         </Button>
       </div>
