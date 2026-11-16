@@ -87,6 +87,27 @@ describe('a paragraph added after an unclosed fence stays out of its code (#649)
     expectCodeKept('1. Item\n   - ~~~js\n     a\n      \n      ');
   });
 
+  it('keeps the code of a fence ending a list item when the tight list gets a next item', () => {
+    editor.commands.setContent('- ~~~js\n  a\n   \n   ', { emitUpdate: false });
+    const before = codes();
+    const list = editor.state.doc.firstChild as PMNode;
+    editor.commands.insertContentAt(list.nodeSize - 1, { type: 'listItem', content: [paragraph] });
+    const saved = getMarkdown(editor);
+    editor.commands.setContent(saved, { emitUpdate: false });
+    expect(codes()).toEqual(before);
+    const reloaded = editor.state.doc.firstChild as PMNode;
+    expect([reloaded.childCount, reloaded.lastChild?.textContent]).toEqual([2, 'Appended']);
+    expect(save(saved)).toBe(saved);
+  });
+
+  // Regression guards, which main passes too: a fence that ends its quote is ended
+  // by whatever follows the quote, and one with a block after it in its quote gets
+  // a closing line.
+  it('keeps the code of a fence ending a quote, with a paragraph added after or in the quote', () => {
+    expectCodeKept('> ~~~js\n> a\n>   \n>   ');
+    expectCodeKept('> ~~~js\n> a\n>   \n>   ', true);
+  });
+
   // Regression guards, which main passes too: an unclosed fence that ends where it
   // did keeps its source.
   it('still saves an unclosed fence unchanged where nothing is added to its code', () => {

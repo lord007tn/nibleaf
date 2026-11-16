@@ -354,17 +354,15 @@ function writtenAfter(parent: PMNode, index: number): PMNode | null {
 
 /**
  * Whether an unclosed fence that ends its list items, written as `lines`, still
- * ends where it did when the serializer writes what follows (`next`, in
- * `container`, or a component's closing tag when null). The next item of a tight
- * list follows on the very next line, which ends the fence. Anything else follows
- * a blank line, which markdown-it reads as more of the fence's code when the
- * fence's last line is whitespace (`   ` inside its list item, or `>   ` inside a
- * quote around it): that line is no longer a page's or a container's last, so the
- * blank line after it and the whitespace line both became code (#649). A fence
- * that ends with an empty line or with code is written unclosed, as before.
+ * ends where it did once something is written after those items: not when its
+ * last line is whitespace (`   ` inside its list item, or `>   ` inside a quote
+ * around it). That line is no longer the last of the page or of a container, so
+ * markdown-it reads it, and the blank line the serializer writes before what
+ * follows, as more of the fence's code; before the next item of a tight list it
+ * makes the list loose (#649). A fence that ends with an empty line or with code
+ * is written unclosed, as before.
  */
-function endsBeforeNext(lines: string, container: PMNode, next: PMNode | null): boolean {
-  if (next && LISTS.has(container.type.name) && container.attrs.tight === true) return true;
+function endsBeforeNext(lines: string): boolean {
   return !/^[ \t>]+$/.test(lines.slice(lines.lastIndexOf('\n') + 1));
 }
 
@@ -383,6 +381,7 @@ function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNo
   if (!parent || !('type' in parent) || !FENCE_ENDING_CONTAINERS.has(parent.type.name) || writtenAfter(parent, index)) return null;
   const path = state.path ?? [];
   if (path[path.length - 1]?.node !== node) return null;
+  const lines = String(node.attrs.sourceFenceLines ?? '');
   let quoted = false;
   // The fence, then each container around it in turn, ends with the one around it.
   for (let level = path.length - 1; level >= 0; level--) {
@@ -390,12 +389,11 @@ function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNo
     if (!('type' in container)) return null;
     const name = container.type.name;
     const next = writtenAfter(container, at);
-    const lines = String(node.attrs.sourceFenceLines ?? '');
-    if (next) return quoted || endsBeforeNext(lines, container, next) ? 'container' : null;
+    if (next) return quoted || endsBeforeNext(lines) ? 'container' : null;
     if (name === 'doc') return 'page';
     if (name === 'blockquote') quoted = true;
     // A component's closing tag follows its last block after a blank line.
-    else if (!FENCE_ENDING_CONTAINERS.has(name) && !LISTS.has(name)) return quoted || endsBeforeNext(lines, container, null) ? 'container' : null;
+    else if (!FENCE_ENDING_CONTAINERS.has(name) && !LISTS.has(name)) return quoted || endsBeforeNext(lines) ? 'container' : null;
   }
   return null;
 }
