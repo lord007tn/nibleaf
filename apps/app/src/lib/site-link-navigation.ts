@@ -50,6 +50,18 @@ function siteLinkTarget(element: Element | null, projectId: string, location: Re
   return inSite ? `${url.pathname}${url.search}${url.hash}` : null;
 }
 
+/** Set by a dialog that closes to open a page (search): the destination's
+ * heading takes keyboard focus, as after a sidebar link, instead of the
+ * dialog's trigger. The next navigation consumes it. */
+let destinationFocusRequested = false;
+
+/** Ask for the next navigation to land keyboard focus on the destination: the
+ * `#fragment`'s element when the URL has one, otherwise the page's `h1`. The
+ * caller's dialog must not restore its own focus as it closes. */
+export function focusDestinationOfNextNavigation(): void {
+  destinationFocusRequested = true;
+}
+
 /** Route clicks on links between pages of a published site through the client
  * router instead of a full document load. Links stay plain `<a href>` so they
  * work without JavaScript and in server-rendered HTML.
@@ -64,61 +76,79 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
     let focusOwner: Element | null = null;
     let dialogOwnedFocus = false;
     let focusDialog: Element | null = null;
-    let announcementObserver: MutationObserver | undefined;
+    // Focus handed to the destination by a dialog (focusDestinationOfNextNavigation).
+    let handedOver = false;
+    let dialogObserver: MutationObserver | undefined;
     let restoreTabIndex: (() => void) | undefined;
+    /** Run `then` once the dialog focus was in has gone (it may animate out). */
+    const afterDialog = (then: () => void) => {
+      const check = () => {
+        if (focusDialog?.isConnected) return;
+        dialogObserver?.disconnect();
+        frame = requestAnimationFrame(then);
+      };
+      dialogObserver = new MutationObserver(check);
+      dialogObserver.observe(document.body, { childList: true, subtree: true });
+      check();
+    };
     const beforeNavigate = router.subscribe('onBeforeNavigate', ({ fromLocation, toLocation }) => {
-      if (fromLocation?.href === toLocation.href) return;
+      const handOver = destinationFocusRequested;
+      destinationFocusRequested = false;
+      // A dialog handing over focus still wants it on the page it opened, even the one already open.
+      if (fromLocation?.href === toLocation.href && !handOver) return;
       cancelAnimationFrame(frame);
       restoreTabIndex?.();
-      announcementObserver?.disconnect();
+      dialogObserver?.disconnect();
       setAnnouncement('');
       focusOwner = document.activeElement;
       focusDialog = focusOwner?.closest('[role="dialog"], [role="alertdialog"], dialog') ?? null;
-      dialogOwnedFocus = !!focusDialog;
+      dialogOwnedFocus = !!focusDialog && !handOver;
+      handedOver = handOver;
     });
     const rendered = router.subscribe('onRendered', ({ fromLocation, toLocation }) => {
-      if (!fromLocation || (fromLocation.pathname === toLocation.pathname && fromLocation.searchStr === toLocation.searchStr)) return;
+      const handOver = handedOver;
+      handedOver = false;
+      // Without a hand-over, a `#fragment` jump on the same page leaves focus where it is.
+      if (!fromLocation || (!handOver && fromLocation.pathname === toLocation.pathname && fromLocation.searchStr === toLocation.searchStr)) return;
       frame = requestAnimationFrame(() => {
         const main = document.querySelector<HTMLElement>('main');
         const heading = main?.querySelector<HTMLElement>('h1');
         // Closing a dialog restores its trigger; the live region announces the destination.
         if (dialogOwnedFocus) {
           const title = heading?.textContent || document.title;
-          const announce = () => {
-            if (focusDialog?.isConnected) return;
-            announcementObserver?.disconnect();
-            frame = requestAnimationFrame(() => setAnnouncement(title));
-          };
-          announcementObserver = new MutationObserver(announce);
-          announcementObserver.observe(document.body, { childList: true, subtree: true });
-          announce();
+          afterDialog(() => setAnnouncement(title));
           return;
         }
-        const active = document.activeElement;
-        if (active !== document.body && active !== focusOwner && active?.isConnected) {
-          setAnnouncement(heading?.textContent || document.title);
-          return;
-        }
-        let target = heading ?? main;
-        if (toLocation.hash) {
-          try {
-            target = document.getElementById(decodeURIComponent(toLocation.hash)) ?? target;
-          } catch {
-            // Malformed fragments still announce the destination page.
+        const land = () => {
+          const active = document.activeElement;
+          if (active !== document.body && active !== focusOwner && active?.isConnected) {
+            setAnnouncement(heading?.textContent || document.title);
+            return;
           }
-        }
-        if (!target) return;
-        if (!target.hasAttribute('tabindex')) {
-          target.tabIndex = -1;
-          const temporaryTarget = target;
-          const restore = () => {
-            temporaryTarget.removeAttribute('tabindex');
-            temporaryTarget.removeEventListener('blur', restore);
-          };
-          restoreTabIndex = restore;
-          target.addEventListener('blur', restore, { once: true });
-        }
-        target.focus({ preventScroll: true });
+          let target = heading ?? main;
+          if (toLocation.hash) {
+            try {
+              target = document.getElementById(decodeURIComponent(toLocation.hash)) ?? target;
+            } catch {
+              // Malformed fragments still announce the destination page.
+            }
+          }
+          if (!target?.isConnected) return;
+          if (!target.hasAttribute('tabindex')) {
+            target.tabIndex = -1;
+            const temporaryTarget = target;
+            const restore = () => {
+              temporaryTarget.removeAttribute('tabindex');
+              temporaryTarget.removeEventListener('blur', restore);
+            };
+            restoreTabIndex = restore;
+            target.addEventListener('blur', restore, { once: true });
+          }
+          target.focus({ preventScroll: true });
+        };
+        // A modal dialog still closing would refuse focus outside it, or take it back.
+        if (handOver && focusDialog?.isConnected) afterDialog(land);
+        else land();
       });
     });
     const onClick = (event: MouseEvent) => {
@@ -134,7 +164,7 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
       rendered();
       cancelAnimationFrame(frame);
       restoreTabIndex?.();
-      announcementObserver?.disconnect();
+      dialogObserver?.disconnect();
     };
   }, [router, projectId]);
 
