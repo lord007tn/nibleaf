@@ -1169,9 +1169,24 @@ function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagTo
  */
 const BLANK_LINES = new RegExp(BLANK_LINE.source, 'g');
 /** A line break before an ATX heading line. */
-const HEADING_LINES = /(?:\r\n?|\n) {0,3}#{1,6}(?=[ \t\r\n]|$)/g;
-/** From a blank line: the blank lines, then a line that is only `>`. */
-const LONE_TAG_END = /(?:(?:\r\n?|\n)[ \t]*)+>[ \t]*(?=\r\n?|\n|$)/y;
+const HEADING_LINES = /(?:\r\n|\r(?!\n)|\n) {0,3}#{1,6}(?=[ \t\r\n]|$)/g;
+
+/**
+ * From the line break at `at`: past the blank lines after it, the end of a line that is
+ * only `>` (spaces and tabs aside), or -1. One forward pass, no backtracking.
+ */
+function loneTagEnd(source: string, at: number): number {
+  let i = at;
+  while (i < source.length && (source[i] === '\r' || source[i] === '\n' || source[i] === ' ' || source[i] === '\t')) i++;
+  if (i === at || source[i] !== '>') return -1;
+  // The `>` must start its line: only spaces and tabs between it and the last line break.
+  let back = i - 1;
+  while (source[back] === ' ' || source[back] === '\t') back--;
+  if (source[back] !== '\r' && source[back] !== '\n') return -1;
+  i++;
+  while (source[i] === ' ' || source[i] === '\t') i++;
+  return i >= source.length || source[i] === '\r' || source[i] === '\n' ? i : -1;
+}
 
 function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>): SourceRange[] {
   const ranges: SourceRange[] = [];
@@ -1179,6 +1194,8 @@ function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[]
   // however many openers can't be read (a page of them on one line, say).
   let blankLine = -1;
   let headingLine = -1;
+  let loneFor = -1;
+  let loneEnd = -1;
   let next = 0;
   // A range inside an earlier one is dropped by outermostRanges anyway: never sliced.
   let coveredUntil = -1;
@@ -1203,9 +1220,12 @@ function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[]
       if (end === blankLine && blankLine < limit) {
         // The opener's own `>` on a line of its own after a blank line ends the opener
         // (`<Card title={x\n\n>`): kept with it, rather than read as an empty quote.
-        LONE_TAG_END.lastIndex = blankLine;
-        const tagEnd = LONE_TAG_END.exec(source);
-        if (tagEnd && tagEnd.index + tagEnd[0].length <= limit) end = tagEnd.index + tagEnd[0].length;
+        // Read once per blank line, however many openers end at it.
+        if (loneFor !== blankLine) {
+          loneFor = blankLine;
+          loneEnd = loneTagEnd(source, blankLine);
+        }
+        if (loneEnd >= 0 && loneEnd <= limit) end = loneEnd;
       }
     }
     while (end > token.start && /\s/.test(source[end - 1] ?? '')) end--;
