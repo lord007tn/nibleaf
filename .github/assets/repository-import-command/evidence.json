@@ -1,0 +1,1115 @@
+{
+  "environment": "Component fixture: main's ImportTab and its Mintlify/GitBook hooks (c7a98c48f78f8a6a25efa7711e2f6a351d3f4f8b) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient and the import mutations; a fictional site and repositories; every request answered by interception; not the signed-in dashboard, production, the server's importers or a real repository",
+  "base": "c7a98c48f78f8a6a25efa7711e2f6a351d3f4f8b",
+  "head": "bf04147d25d56986e0c2bb0374bb46c62ad48bfb",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "en": {
+        "before-ready": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-pressed": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "before-staleSuccess": {
+          "dir": "ltr",
+          "panel": "result",
+          "chip": null,
+          "result": "Imported 4 new, updated 1, skipped 0.",
+          "importButton": {
+            "shows": null,
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": null,
+          "focusLost": true,
+          "toasts": ["Import finished"],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "before-staleError": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [
+            "An import is already running for this project. Wait for it to finish before starting another."
+          ],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/gitbook",
+              "body": {
+                "repo": "acme-fixture/guides",
+                "replaceExisting": false,
+                "path": "spaces/guides"
+              }
+            }
+          ]
+        },
+        "after-ready": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-pressed": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "after-staleSuccess": {
+          "dir": "ltr",
+          "panel": "gitbook",
+          "chip": "GitBook",
+          "result": "GitBook",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "after-staleError": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/gitbook",
+              "body": {
+                "repo": "acme-fixture/guides",
+                "replaceExisting": false,
+                "path": "spaces/guides"
+              }
+            }
+          ]
+        }
+      },
+      "ar": {
+        "before-ready": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-pressed": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "جار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "before-staleSuccess": {
+          "dir": "rtl",
+          "panel": "result",
+          "chip": null,
+          "result": "تم استيراد 4 جديدة وتحديث 1 وتخطي 0.",
+          "importButton": {
+            "shows": null,
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": null,
+          "focusLost": true,
+          "toasts": ["اكتمل الاستيراد"],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "before-staleError": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [
+            "يجري استيراد لهذا المشروع بالفعل. انتظر حتى ينتهي قبل بدء استيراد آخر."
+          ],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/gitbook",
+              "body": {
+                "repo": "acme-fixture/guides",
+                "replaceExisting": false,
+                "path": "spaces/guides"
+              }
+            }
+          ]
+        },
+        "after-ready": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-pressed": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "جار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "after-staleSuccess": {
+          "dir": "rtl",
+          "panel": "gitbook",
+          "chip": "GitBook",
+          "result": "GitBook",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "after-staleError": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/gitbook",
+              "body": {
+                "repo": "acme-fixture/guides",
+                "replaceExisting": false,
+                "path": "spaces/guides"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "en": {
+        "before-ready": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-pressed": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "before-staleSuccess": {
+          "dir": "ltr",
+          "panel": "result",
+          "chip": null,
+          "result": "Imported 4 new, updated 1, skipped 0.",
+          "importButton": {
+            "shows": null,
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": null,
+          "focusLost": true,
+          "toasts": ["Import finished"],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "before-staleError": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [
+            "An import is already running for this project. Wait for it to finish before starting another."
+          ],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/gitbook",
+              "body": {
+                "repo": "acme-fixture/guides",
+                "replaceExisting": false,
+                "path": "spaces/guides"
+              }
+            }
+          ]
+        },
+        "after-ready": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-pressed": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "after-staleSuccess": {
+          "dir": "ltr",
+          "panel": "gitbook",
+          "chip": "GitBook",
+          "result": "GitBook",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "after-staleError": {
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/gitbook",
+              "body": {
+                "repo": "acme-fixture/guides",
+                "replaceExisting": false,
+                "path": "spaces/guides"
+              }
+            }
+          ]
+        }
+      },
+      "ar": {
+        "before-ready": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-pressed": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "جار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "before-staleSuccess": {
+          "dir": "rtl",
+          "panel": "result",
+          "chip": null,
+          "result": "تم استيراد 4 جديدة وتحديث 1 وتخطي 0.",
+          "importButton": {
+            "shows": null,
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": null,
+          "focusLost": true,
+          "toasts": ["اكتمل الاستيراد"],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "before-staleError": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [
+            "يجري استيراد لهذا المشروع بالفعل. انتظر حتى ينتهي قبل بدء استيراد آخر."
+          ],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/gitbook",
+              "body": {
+                "repo": "acme-fixture/guides",
+                "replaceExisting": false,
+                "path": "spaces/guides"
+              }
+            }
+          ]
+        },
+        "after-ready": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-pressed": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "جار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "after-staleSuccess": {
+          "dir": "rtl",
+          "panel": "gitbook",
+          "chip": "GitBook",
+          "result": "GitBook",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+              "body": {
+                "repo": "acme-fixture/handbook",
+                "replaceExisting": false
+              }
+            }
+          ]
+        },
+        "after-staleError": {
+          "dir": "rtl",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/gitbook",
+              "body": {
+                "repo": "acme-fixture/guides",
+                "replaceExisting": false,
+                "path": "spaces/guides"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        {
+          "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+          "body": { "repo": "acme-fixture/handbook", "replaceExisting": false }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/settings/import/mintlify",
+          "body": { "repo": "acme-fixture/handbook", "replaceExisting": false }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/settings/import/gitbook",
+          "body": {
+            "repo": "acme-fixture/guides",
+            "replaceExisting": false,
+            "path": "spaces/guides"
+          }
+        }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "Mintlify ready",
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requestsSoFar": 0
+        },
+        {
+          "step": "importing (slow): busy",
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requestsSoFar": 1
+        },
+        {
+          "step": "refused (409): explained once, fields kept",
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [
+            "An import is already running for this project. Wait for it to finish before starting another."
+          ],
+          "refreshed": [],
+          "overflow": false,
+          "requestsSoFar": 1
+        },
+        {
+          "step": "retried: busy",
+          "dir": "ltr",
+          "panel": "mintlify",
+          "chip": "Mintlify",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "https://github.com/acme-fixture/handbook.git",
+          "focusLost": false,
+          "toasts": [
+            "An import is already running for this project. Wait for it to finish before starting another."
+          ],
+          "refreshed": [],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "GitBook chosen while Mintlify runs: still busy",
+          "dir": "ltr",
+          "panel": "gitbook",
+          "chip": "GitBook",
+          "result": "GitBook",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [
+            "An import is already running for this project. Wait for it to finish before starting another."
+          ],
+          "refreshed": [],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "Mintlify finished: nothing replaces the GitBook form",
+          "dir": "ltr",
+          "panel": "gitbook",
+          "chip": "GitBook",
+          "result": "GitBook",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [
+            "An import is already running for this project. Wait for it to finish before starting another."
+          ],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "GitBook importing: busy",
+          "dir": "ltr",
+          "panel": "gitbook",
+          "chip": "GitBook",
+          "result": "GitBook",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "repo": "acme-fixture/guides",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requestsSoFar": 3
+        },
+        {
+          "step": "GitBook imported: the result",
+          "dir": "ltr",
+          "panel": "result",
+          "chip": null,
+          "result": "Imported 4 new, updated 1, skipped 0.",
+          "importButton": {
+            "shows": null,
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "repo": null,
+          "focusLost": false,
+          "toasts": ["Import finished"],
+          "refreshed": [
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"],
+            ["pages", "site-1"],
+            ["projects", "site-1"],
+            ["projects"]
+          ],
+          "overflow": false,
+          "requestsSoFar": 3
+        }
+      ]
+    }
+  ]
+}
