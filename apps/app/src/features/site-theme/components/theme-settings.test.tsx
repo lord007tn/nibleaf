@@ -1119,12 +1119,16 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
     expect(storedTheme()).toMatchObject({ preset: 'harbor' });
   });
 
-  /** A's save is held after its PATCH merged; the editor then remounts A (A → B → A). */
-  const remountDuringSave = async () => {
+  /**
+   * A's save is held after its PATCH merged (or, with `before: 'merge'`, before
+   * it merges, where a failure is decided); the editor then remounts A (A → B → A).
+   */
+  const remountDuringSave = async ({ before = 'answer' }: { before?: 'merge' | 'answer' } = {}) => {
     keyedBySite = true;
     await open();
     const patch = gate();
-    server.holdPatch = patch.promise;
+    if (before === 'merge') server.holdMerge = patch.promise;
+    else server.holdPatch = patch.promise;
     await preset('manuscript');
     await startSave();
     await act(async () => showSite('site-2'));
@@ -1172,7 +1176,8 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
   it.each(['fails', 'succeeds'] as const)(
     'a save whose form unmounted mid-save (#767): when it %s, the site’s turn is given back, nothing is said or focused, and the new form keeps its edit',
     async (outcome) => {
-      const patch = await remountDuringSave();
+      // A failure is decided before the merge, so that is where the failing request waits.
+      const patch = await remountDuringSave({ before: outcome === 'fails' ? 'merge' : 'answer' });
       expect(writeFor(JSON.stringify(['site-1', 'theme']))).toBeDefined();
       await appearance('light');
       const focused = color('canvas');
@@ -1181,6 +1186,9 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
       await patch.open();
       await finished();
       server.failPatch = false;
+      server.holdMerge = undefined;
+      // The request really ended as named: the server stored Manuscript only when it succeeded.
+      expect(storedTheme()).toMatchObject({ preset: outcome === 'fails' ? 'signal' : 'manuscript' });
       // The write owner is released by the request's own end, not by the form that started it.
       expect(writeFor(JSON.stringify(['site-1', 'theme']))).toBeUndefined();
       expect(saveBusy()).toBe(false);
