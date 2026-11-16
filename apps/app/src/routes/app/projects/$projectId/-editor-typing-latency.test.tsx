@@ -1566,6 +1566,11 @@ function serveLikeTheServer(commit: 'request' | 'response') {
 /** Another client saves `content` now, and the route's page query returns it. */
 const foreignCopyNow = (content: string) => foreignCopy(content, nextStamp());
 const conflictShown = () => mounted && (container.textContent ?? '').includes('editor.conflict.body');
+/** The editor says the page is saved, not still saving. */
+const savedShown = () => {
+  const text = container.textContent ?? '';
+  return text.includes('editor.savedShort') && !text.includes('editor.savingShort');
+};
 
 describe("#757: after another client's copy is adopted, the final draft is stored", { timeout: ROUTE_TEST_TIMEOUT }, () => {
   it('repro 1: A commits (response held), undo, another client saves B, B is replaced by A, staying: A is stored', async () => {
@@ -1637,6 +1642,7 @@ describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_
     expect(sent()).toEqual(['original+A', 'original+A']);
     expect(server.content).toBe(withTyped('A'));
     expect(conflictShown()).toBe(false);
+    expect(savedShown()).toBe(true);
   });
 
   it.each(leaves)('repro 2, then %s before the write lands: the final draft is sent again and stored', async (_name, leave) => {
@@ -1700,12 +1706,14 @@ describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_
     await typeAndHoldTheSave();
     await drain();
     expect(server.content).toBe(withTyped('A'));
+    expect(savedShown()).toBe(true);
     undo();
     await leave();
     await drain();
     expect(sent()).toEqual(['original+A', 'original+A', 'original']);
     expect(server.content).toBe(ORIGINAL);
     expect(refused).toBe(0);
+    if (mounted) expect(savedShown()).toBe(true);
   });
 
   it('the retry stores the title, then the loaded title is restored: it is saved', async () => {
@@ -1774,10 +1782,12 @@ describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_
     storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
     await typeAndHoldTheSave();
     await drain();
+    expect(savedShown()).toBe(true);
     await leave();
     await drain();
     expect(sent()).toEqual(['original+A', 'original+A']);
     expect(server.content).toBe(withTyped('A'));
+    if (mounted) expect(savedShown()).toBe(true);
   });
 
   it('a normalized write that is no longer the final draft is not sent again: the final draft is', async () => {
@@ -1824,21 +1834,39 @@ describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_
  * The #728 generator with another client's copy arriving (adopted while the draft
  * is clean, ignored while it is dirty) and the server normalizing the next write,
  * against the real server's stamps and revision check; writes are stored when
- * sent or when they land, per seed. Once every write settles the server holds the
- * final draft, or a write was refused and the editor said so (a revision
- * conflict). Main's results are in `__fixtures__/autosave-adoption-main.json`;
- * this branch never sends more writes than main, except to store a final draft
- * main lost.
+ * sent or when they land, per seed. Each seed ends in one outcome:
+ *
+ * - `stored`: the server holds the final draft;
+ * - `conflict`: the editor showed the conflict banner (a refused write the
+ *   editor never showed, after it unmounted, is not one);
+ * - `untouched`: a known divergence main has too (#790), see `UNTOUCHED_790`;
+ * - `lost`: anything else.
+ *
+ * Main's outcomes are in `__fixtures__/autosave-adoption-main.json`. Every seed
+ * must end `stored` or `conflict`, except the named #790 seeds, which must end
+ * `untouched` as they do on main; and this branch never sends more writes than
+ * main, except to store a final draft main lost. (No seed loses its draft to an
+ * unguarded unmount, #789.)
  */
 const ADOPTION_OPS = [...OPS, 'adopt', 'normalize'] as const;
 const ADOPTION_FIXTURE = resolve(import.meta.dirname, '../../../../components/editor/__fixtures__/autosave-adoption-main.json');
 const RECORDING_ADOPTION = Boolean(process.env.WRITE_AUTOSAVE_ADOPTION_MAIN);
-type AdoptionResult = { writes: number; stored: boolean; conflict: boolean };
+type AdoptionOutcome = 'stored' | 'conflict' | 'untouched' | 'lost';
+type AdoptionResult = { writes: number; outcome: AdoptionOutcome };
 const MAIN_ADOPTION: Record<number, AdoptionResult> = RECORDING_ADOPTION ? {} : JSON.parse(readFileSync(ADOPTION_FIXTURE, 'utf8')).seeds;
 const adoptionResults: Record<number, AdoptionResult> = {};
 afterAll(() => {
-  if (RECORDING_ADOPTION) writeFileSync(ADOPTION_FIXTURE, `${JSON.stringify({ base: 'a716947c', seeds: adoptionResults }, null, 2)}\n`);
+  if (RECORDING_ADOPTION) writeFileSync(ADOPTION_FIXTURE, `${JSON.stringify({ base: 'a804d679', seeds: adoptionResults }, null, 2)}\n`);
 });
+/**
+ * #790, a known divergence main has too, not fixed here: the author types,
+ * another client's copy arrives while the draft is dirty (so it is not
+ * adopted), and the author undoes back to the text the editor loaded. The draft
+ * then compares clean, so nothing is written and no conflict is raised, and the
+ * server keeps the other client's copy. These are the only seeds that end this
+ * way.
+ */
+const UNTOUCHED_790 = new Set<number>([95_756, 246_217]);
 
 describe("#757 differential: adopted copies and normalized writes, against the real server's checks", { timeout: 180_000 }, () => {
   it.each(SEEDS)('seed %i', async (seed) => {
@@ -1848,7 +1876,7 @@ describe("#757 differential: adopted copies and normalized writes, against the r
     serveLikeTheServer(random() < 0.5 ? 'request' : 'response');
     let normalizeFrom = Number.POSITIVE_INFINITY;
     storeAs = (index, content) => (index === normalizeFrom ? `${content}${NORMALIZED}` : content);
-    const foreignTexts = new Set<string>();
+    const foreignTexts: string[] = [];
     let conflict = false;
     const steps: string[] = [];
     for (let step = 0; step < 8; step += 1) {
@@ -1863,8 +1891,8 @@ describe("#757 differential: adopted copies and normalized writes, against the r
       } else if (op === 'blur') await act(async () => window.dispatchEvent(new Event('blur')));
       else if (op === 'hide') await act(async () => hideTab());
       else if (op === 'adopt') {
-        const text = withTyped(`F${foreignTexts.size + 1}`);
-        foreignTexts.add(text.trimEnd());
+        const text = withTyped(`F${foreignTexts.length + 1}`);
+        foreignTexts.push(text.trimEnd());
         await foreignCopyNow(text);
       } else normalizeFrom = attempts.length;
       conflict ||= conflictShown();
@@ -1881,24 +1909,31 @@ describe("#757 differential: adopted copies and normalized writes, against the r
       await unmount();
     } else if (ending === 'unmount') await unmount();
     await drain();
-    conflict ||= conflictShown() || refused > 0;
+    // Only what the editor showed: a write the server refused after the editor
+    // unmounted reached no one.
+    conflict ||= conflictShown();
     // Still open, the editor may since have adopted a newer copy (only while the
     // draft had no unsaved change): what it shows is the final draft.
     if (mounted) finalDraft = getMarkdown(current()).trimEnd();
     const stored = server.content.trimEnd();
-    // Left with no edit of the author's (undone back to a copy it loaded) while
-    // the server holds another client's latest copy: nothing was the author's to save.
-    const untouched = stored === [...foreignTexts].at(-1) && (finalDraft === ORIGINAL.trimEnd() || foreignTexts.has(finalDraft));
-    const result: AdoptionResult = { writes: attempts.length, stored: stored === finalDraft || untouched, conflict };
+    // #790: no edit of the author's left (undone back to the loaded text or an
+    // adopted copy), and the server keeps another client's latest copy.
+    const untouched = stored === foreignTexts.at(-1) && (finalDraft === ORIGINAL.trimEnd() || foreignTexts.includes(finalDraft));
+    const outcome: AdoptionOutcome = stored === finalDraft ? 'stored' : conflict ? 'conflict' : untouched ? 'untouched' : 'lost';
+    const result: AdoptionResult = { writes: attempts.length, outcome };
     adoptionResults[seed] = result;
     if (RECORDING_ADOPTION) return;
     const main = MAIN_ADOPTION[seed];
-    const mainLost = main !== undefined && !main.stored && !main.conflict;
+    const expected: AdoptionOutcome[] = UNTOUCHED_790.has(seed) ? ['untouched'] : ['stored', 'conflict'];
+    // A named exception must be one main has too.
+    const mainSame = UNTOUCHED_790.has(seed) ? main?.outcome === outcome : true;
+    const mainLost = main?.outcome === 'lost' || main?.outcome === 'untouched';
     expect({
       steps,
       main,
-      finalDraftOrConflict: result.stored || result.conflict,
-      writes: result.writes <= (main?.writes ?? -1) || (mainLost && result.stored),
-    }).toEqual({ steps, main, finalDraftOrConflict: true, writes: true });
+      outcome: expected.includes(outcome),
+      mainSame,
+      writes: result.writes <= (main?.writes ?? -1) || (mainLost && outcome === 'stored'),
+    }).toEqual({ steps, main, outcome: true, mainSame: true, writes: true });
   });
 });
