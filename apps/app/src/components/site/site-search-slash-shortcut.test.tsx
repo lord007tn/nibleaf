@@ -11,7 +11,6 @@ vi.mock('@tanstack/react-pacer', () => ({ useDebouncedValue: (value: string) => 
 
 import { SiteSearch } from './site-search';
 import { cancelSearchKeystrokes } from './site-search-keystrokes';
-import { searchKeyShortcuts, useSlashShortcut } from './site-search-shortcut';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
@@ -43,27 +42,13 @@ afterEach(async () => {
 
 type Props = Parameters<typeof SiteSearch>[0];
 
-/** The reader's search trigger, as the site header renders it. */
-function Trigger({ projectId, hotkey }: { projectId: string; hotkey?: 'cmdk' | 'slash' }) {
-  const slashOn = useSlashShortcut(projectId);
-  return <button type="button" data-trigger="" aria-keyshortcuts={searchKeyShortcuts(hotkey, slashOn)} />;
-}
-
 async function render(overrides: Partial<Props> = {}) {
   const container = document.createElement('div');
   document.body.append(container);
   const root = createRoot(container);
   roots.push(root);
   const props = { projectId: 'docs', open: false, lang: 'en', ...overrides, onOpenChange: vi.fn<(open: boolean) => void>() };
-  const rerender = (next: Partial<Props> = {}) =>
-    act(async () =>
-      root.render(
-        <>
-          <Trigger projectId={props.projectId} hotkey={next.hotkey ?? props.hotkey} />
-          <SiteSearch {...props} {...next} />
-        </>,
-      ),
-    );
+  const rerender = (next: Partial<Props> = {}) => act(async () => root.render(<SiteSearch {...props} {...next} />));
   await rerender();
   await act(async () => {
     await vi.dynamicImportSettled();
@@ -72,7 +57,6 @@ async function render(overrides: Partial<Props> = {}) {
 }
 
 const slashSwitch = () => document.querySelector<HTMLElement>('[role="switch"]');
-const triggerShortcuts = () => document.querySelector('[data-trigger]')?.getAttribute('aria-keyshortcuts');
 
 const slash = (init: KeyboardEventInit = {}) =>
   new KeyboardEvent('keydown', { key: '/', code: 'Slash', bubbles: true, cancelable: true, composed: true, ...init });
@@ -308,17 +292,6 @@ describe("the '/' search shortcut readers can turn off (WCAG 2.1.4)", () => {
     }
     expect(gated).toEqual([]);
   });
-
-  it.each([
-    [undefined, 'Control+K Meta+K /'],
-    ['slash', '/ Control+K Meta+K'],
-  ] as const)("lists / in the trigger's aria-keyshortcuts only while it is on (shown shortcut %s)", async (hotkey, on) => {
-    const { rerender } = await render({ hotkey });
-    expect(triggerShortcuts()).toBe(on);
-    await turnSlashOff(rerender);
-    expect(triggerShortcuts()).toBe('Control+K Meta+K');
-    await rerender({ open: true });
-    await act(async () => slashSwitch()?.click());
-    expect(triggerShortcuts()).toBe(on);
-  });
+  // The header trigger's aria-keyshortcuts and key hint follow the switch:
+  // routes/sites/$projectId/-reader-search-shortcut.test.tsx renders the real header.
 });
