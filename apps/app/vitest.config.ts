@@ -11,6 +11,8 @@ export default defineConfig({
     // Vitest 5.0.5 caches typed import.meta.glob<T>, hiding added or removed MDX files.
     fsModuleCache: false,
     include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,mjs}'],
+    // Session memory (the editor's unsaved drafts) is per test, as it is per account.
+    setupFiles: ['./src/test-setup/reset-session-memory.ts'],
   },
   resolve: {
     alias: {

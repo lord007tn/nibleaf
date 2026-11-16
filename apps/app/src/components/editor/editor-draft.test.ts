@@ -327,17 +327,14 @@ describe('unsaved drafts kept after the editor unmounted (#789)', () => {
     expect(drafts.peek('user-1', pageB.id)).toBeUndefined();
   });
 
-  it('keeps nothing for a text whose failure its editor already showed; a changed text is kept again', () => {
+  it('a draft never stored is kept, even after its editor showed an earlier failure of the same text', () => {
     const drafts = createUnsavedDrafts();
     const shown = drafts.issue('user-1', pageA.id);
     const retried = drafts.issue('user-1', pageA.id);
-    const edited = drafts.issue('user-1', pageA.id);
-    if (!shown || !retried || !edited) throw new Error('No ticket');
-    drafts.settled(shown, kept);
+    if (!shown || !retried) throw new Error('No ticket');
+    drafts.settled(shown, true);
     drafts.failed(retried, kept);
-    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
-    drafts.failed(edited, { ...kept, content: 'Edited since.' });
-    expect(drafts.peek('user-1', pageA.id)?.content).toBe('Edited since.');
+    expect(drafts.peek('user-1', pageA.id)).toMatchObject(kept);
   });
 
   it('a later failure shown on screen outranks an earlier one: the earlier is neither kept after it nor left kept', () => {
@@ -347,7 +344,7 @@ describe('unsaved drafts kept after the editor unmounted (#789)', () => {
     const shown = drafts.issue('user-1', pageA.id);
     if (!keptEarlier || !older || !shown) throw new Error('No ticket');
     drafts.failed(keptEarlier, { ...kept, content: 'Kept before.' });
-    drafts.settled(shown, { title: kept.title, content: 'B' });
+    drafts.settled(shown, true);
     expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
     drafts.failed(older, { ...kept, content: 'A' });
     expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
