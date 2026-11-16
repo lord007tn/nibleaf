@@ -4,18 +4,16 @@ import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
 import { MAX_THEME_TEMPLATE_BYTES } from '@nibleaf/shared/themes';
 import { Download, FileJson, Upload } from 'lucide-react';
-import { type ChangeEvent, useEffect, useId, useRef, useState } from 'react';
+import { type ChangeEvent, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Field, Segmented } from '@/components/project-settings/shared';
 import type { ProjectThemeImportResult } from '@/hooks/api';
 import { useThemeExchange } from '../api/hooks';
 import { readTemplateText, type ThemeValues, themeValues } from '../model/theme';
+import type { Operation } from './theme-writes';
 import { useMounted } from './use-mounted';
 
 type ImportMode = 'merge' | 'replace';
-
-/** The one theme write in flight (a save or an import), for the site it started on. */
-export type Operation = { kind: 'save' | 'apply'; identity: string };
 
 /** A server answer, with the template it was for. Shown only while the text and mode it was asked with are unchanged. */
 type Shown = { template: unknown; result: ProjectThemeImportResult };
@@ -49,18 +47,18 @@ export function ThemeExchange({
   projectId,
   slug,
   isDirty,
-  isSaving,
+  writing,
   editMark,
   acquire,
   release,
   discardAfterApply,
   readBack,
-  onApplyingChange,
 }: {
   projectId: string;
   slug: string;
   isDirty: boolean;
-  isSaving: boolean;
+  /** A write for this site holds its turn (a save, this form's apply, or one an earlier mount left running). */
+  writing: boolean;
   /** Counts the person's edits to the draft, so a discard asked for earlier never takes a newer one. */
   editMark: () => number;
   /** Takes the form's write operation, or `null` while another write holds it. */
@@ -70,7 +68,6 @@ export function ThemeExchange({
   discardAfterApply: (mark: number, read: ThemeValues | undefined) => void;
   /** A later read (Refresh) returned these values. */
   readBack: (read: ThemeValues) => void;
-  onApplyingChange: (applying: boolean) => void;
 }) {
   const t = useT();
   const confirm = useConfirm();
@@ -99,21 +96,6 @@ export function ThemeExchange({
     const id = texts.current;
     return () => mounted.current && texts.current === id;
   };
-
-  const applying = useRef(false);
-  const setApplying = (next: boolean) => {
-    applying.current = next;
-    onApplyingChange(next);
-  };
-  const onApplyingChangeRef = useRef(onApplyingChange);
-  onApplyingChangeRef.current = onApplyingChange;
-  // Leaving mid-apply (another site) must not leave the form locked.
-  useEffect(
-    () => () => {
-      if (applying.current) onApplyingChangeRef.current(false);
-    },
-    [],
-  );
 
   const settle = (id: number) => {
     if (mounted.current) setPending((current) => (current === id ? undefined : current));
@@ -175,7 +157,7 @@ export function ThemeExchange({
   };
 
   const apply = async () => {
-    if (!shown || pending !== undefined || isSaving) return;
+    if (!shown || pending !== undefined || writing) return;
     const asked = shown;
     // The inputs the shown preview belongs to: any change retires it, and this apply with it.
     const askedWith = requests.current;
@@ -197,7 +179,6 @@ export function ThemeExchange({
     nextText();
     const request = nextRequest();
     setPending(request.id);
-    setApplying(true);
     let written: Awaited<ReturnType<typeof exchange.apply>> | undefined;
     try {
       written = await exchange.apply(asked.template, asked.result.mode);
@@ -206,7 +187,6 @@ export function ThemeExchange({
       if (mounted.current) toast.error(t('settings.theme.import.applyError'));
     } finally {
       release(owned);
-      if (mounted.current) setApplying(false);
       settle(request.id);
     }
     if (!(written && mounted.current)) return;
@@ -338,7 +318,7 @@ export function ThemeExchange({
               aria-describedby={result.changes.length === 0 ? noChangesId : undefined}
               className="mt-3"
               disabled={result.changes.length === 0}
-              loading={busy || isSaving}
+              loading={busy || writing}
               onClick={apply}
               type="button"
             >

@@ -36,19 +36,12 @@ import {
   withColor,
   withPart,
 } from '../model/theme';
-import { type Operation, ThemeExchange } from './theme-exchange';
+import { ThemeExchange } from './theme-exchange';
 import { ThemeOptionSelect, ThemePresetThumbnail, ThemePreview } from './theme-preview';
+import { acquireWrite, type Operation, releaseWrite, useWriteFor, writeFor } from './theme-writes';
 import { useMounted } from './use-mounted';
 
 const NOTHING_LEFT: ReadonlySet<string> = new Set();
-
-/**
- * The theme write in flight for each site (a save or an import), kept outside
- * the form: the editor remounts the section per site, and a save for site A
- * still running when A's form mounts again (A → B → A) must keep its turn.
- * A write leaves only when it settles, and only its own entry.
- */
-const writes = new Map<string, Operation>();
 
 /**
  * Site configuration → Themes, in the editor's Configuration tab. One
@@ -127,7 +120,6 @@ function ThemeForm({ project }: { project: Project }) {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [left, setLeft] = useState<ReadonlySet<string>>(NOTHING_LEFT);
   const [submitted, setSubmitted] = useState(false);
-  const [applying, setApplying] = useState(false);
   const [stateFor, setStateFor] = useState(identityKey);
   if (stateFor !== identityKey) {
     setStateFor(identityKey);
@@ -138,23 +130,16 @@ function ThemeForm({ project }: { project: Project }) {
   }
   const edits = useRef(0);
 
-  // Save and Apply both write the theme: one at a time per site, owned
-  // synchronously so neither can start between the other's check and its
-  // request (see `writes`). Each releases only its own operation, and one still
-  // running for another site never blocks this one.
+  // Save and Apply both write the theme: one at a time per site, through the
+  // site's write turn (see `theme-writes`). Taking it is synchronous, so
+  // neither can start between the other's check and its request; each gives
+  // back only its own. The form shows this site's write as saving (also one
+  // left running by an earlier mount of this site), and another site's never.
   const identityNow = useRef(identityKey);
   identityNow.current = identityKey;
-  const busy = useCallback(() => writes.has(identityNow.current), []);
-  const acquire = useCallback((kind: Operation['kind']) => {
-    const identity = identityNow.current;
-    if (writes.has(identity)) return null;
-    const owned = { kind, identity };
-    writes.set(identity, owned);
-    return owned;
-  }, []);
-  const release = useCallback((owned: Operation) => {
-    if (writes.get(owned.identity) === owned) writes.delete(owned.identity);
-  }, []);
+  const writing = useWriteFor(identityKey) !== undefined;
+  const busy = useCallback(() => writeFor(identityNow.current) !== undefined, []);
+  const acquire = useCallback((kind: Operation['kind']) => acquireWrite(identityNow.current, kind), []);
 
   const [previewMode, setPreviewMode] = useState<ColorMode>(() => (source.appearance === 'dark' ? 'dark' : 'light'));
   const [previewArabic, setPreviewArabic] = useState(false);
@@ -216,8 +201,9 @@ function ThemeForm({ project }: { project: Project }) {
   /**
    * What the page's save bar reads to decide "Saved": the draft's own
    * settlement (theme and appearance, the form's only authored state), and not
-   * settled while an import is being applied, which writes the theme too and
-   * shows as submitting. Stable, live, and on the draft's identity generation.
+   * settled while any write for this site holds its turn (an import, or a save
+   * an earlier mount of this site left running), which shows as submitting.
+   * Stable, live, and on the draft's identity generation.
    */
   const settlement = useCallback(() => {
     const { settled, generation } = draftSettlement();
@@ -247,9 +233,9 @@ function ThemeForm({ project }: { project: Project }) {
       if (outcome === 'saved' && settled.current) retire();
       return outcome === 'busy' ? 'failed' : outcome;
     } finally {
-      release(owned);
+      releaseWrite(owned);
     }
-  }, [acquire, config, form, release, retire, submitDraft]);
+  }, [acquire, config, form, retire, submitDraft]);
   const discard = useCallback(() => {
     if (isSaving || busy()) return;
     discardDraft();
@@ -257,7 +243,7 @@ function ThemeForm({ project }: { project: Project }) {
   }, [busy, discardDraft, isSaving, retire]);
   const formProps = useSaveRegionForm('site-theme', {
     isDirty: draft.isDirty,
-    isSubmitting: isSaving || applying,
+    isSubmitting: isSaving || writing,
     submit,
     discard,
     settlement,
@@ -554,12 +540,11 @@ function ThemeForm({ project }: { project: Project }) {
         discardAfterApply={discardAfterApply}
         editMark={() => edits.current}
         isDirty={draft.isDirty}
-        isSaving={isSaving}
+        writing={isSaving || writing}
         key={project.id}
-        onApplyingChange={setApplying}
         projectId={project.id}
         readBack={readBack}
-        release={release}
+        release={releaseWrite}
         slug={project.slug}
       />
     </form>

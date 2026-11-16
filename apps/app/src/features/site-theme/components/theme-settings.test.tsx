@@ -12,13 +12,14 @@ import {
 } from '@nibleaf/shared/themes';
 import { parseThemeTemplate } from '@nibleaf/validators';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { act, type ComponentProps, StrictMode, useState } from 'react';
+import { act, type ComponentProps, type ReactNode, StrictMode, useCallback, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeSection } from '@/components/project-settings/theme-section';
 import type { Project } from '@/hooks/api';
 import { projectQueryOptions } from '@/hooks/api/query-options';
+import { useSaveRegionForm } from '@/lib/forms/save-region';
 
 const { statuses } = vi.hoisted(() => ({ statuses: [] as string[] }));
 // Every status the page's save bar renders, frame by frame, so a "Saved" that
@@ -55,6 +56,21 @@ vi.mock('@/hooks/api/query-options', async (importOriginal) => {
         },
       } as never;
     },
+  };
+});
+const sibling = vi.hoisted(() => ({ mounted: false, setDirty: undefined as ((dirty: boolean) => void) | undefined }));
+// Another form in Theme's save bar, when a test asks for one: Theme's own
+// settlement then decides whether a save of that form may say "Saved".
+vi.mock('@/lib/forms/save-region', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/forms/save-region')>();
+  return {
+    ...actual,
+    SaveRegionProvider: ({ children }: { children: ReactNode }) => (
+      <actual.SaveRegionProvider>
+        {children}
+        {sibling.mounted ? <SiblingForm /> : null}
+      </actual.SaveRegionProvider>
+    ),
   };
 });
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, translateFn: (key: string) => key }));
@@ -197,6 +213,26 @@ let queryClient: QueryClient;
 let showSite: (site: Site) => void;
 const downloads: Blob[] = [];
 
+/** A form that saves at once and is settled when clean. */
+function SiblingForm() {
+  const [dirty, setDirty] = useState(false);
+  const dirtyNow = useRef(dirty);
+  dirtyNow.current = dirty;
+  sibling.setDirty = (next) => {
+    dirtyNow.current = next;
+    setDirty(next);
+  };
+  const submit = useCallback(async () => {
+    dirtyNow.current = false;
+    setDirty(false);
+    return 'saved' as const;
+  }, []);
+  const discard = useCallback(() => setDirty(false), []);
+  const settlement = useCallback(() => ({ settled: !dirtyNow.current, generation: 0 }), []);
+  useSaveRegionForm('sibling', { isDirty: dirty, isSubmitting: false, submit, discard, settlement });
+  return null;
+}
+
 /** Whether the section is keyed by site, as the editor's Configuration panel renders it (a site switch remounts it). */
 let keyedBySite = false;
 function Canvas() {
@@ -236,6 +272,7 @@ async function open(config: Config = { ...SIBLINGS, styling: { ...STYLING }, the
 
 beforeEach(() => {
   keyedBySite = false;
+  sibling.mounted = false;
   statuses.length = 0;
   reads.cancelAfterAnswer = undefined;
   server = {
@@ -1071,6 +1108,71 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
     await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('applied'));
     expect(applies()).toHaveLength(1);
     expect(storedTheme()).toMatchObject({ preset: 'harbor' });
+  });
+
+  /** A's save is held after its PATCH merged; the editor then remounts A (A → B → A). */
+  const remountDuringSave = async () => {
+    keyedBySite = true;
+    await open();
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await preset('manuscript');
+    await startSave();
+    await act(async () => showSite('site-2'));
+    await settle();
+    await act(async () => showSite('site-1'));
+    await settle();
+    return patch;
+  };
+  const saveBusy = () => region()?.querySelector('[aria-busy="true"]') != null;
+
+  it('the remounted site shows its own save still running: the bar says saving, Apply waits', async () => {
+    const patch = await remountDuringSave();
+    expect(saveBusy()).toBe(true);
+    await previewTemplate('harbor');
+    const apply = buttonNamed('settings.theme.applyImport');
+    expect(apply.disabled).toBe(true);
+    expect(apply.getAttribute('aria-busy')).toBe('true');
+    await patch.open();
+    await finished();
+    expect(region()).toBeNull();
+    expect(buttonNamed('settings.theme.applyImport').disabled).toBe(false);
+  });
+
+  it.each(['fails', 'succeeds'] as const)(
+    'a sibling save says "Unsaved changes" while the old write runs; when it %s, that clears silently, never "Saved"',
+    async (outcome) => {
+      sibling.mounted = true;
+      const patch = await remountDuringSave();
+      await act(async () => sibling.setDirty?.(true));
+      // The bar's Save waits while a write runs; Ctrl+S still saves the dirty sibling.
+      await act(async () => {
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
+      });
+      await settle();
+      expect(status()).toBe('forms.unsavedChanges');
+      if (outcome === 'fails') server.failPatch = true;
+      await patch.open();
+      await finished();
+      expect(status()).toBe('');
+      expect(region()).toBeNull();
+      expect(statuses).not.toContain('common.saved');
+    },
+  );
+
+  it('a save held for one site never makes another site’s form look busy or refuse its own writes', async () => {
+    const patch = await remountDuringSave();
+    await act(async () => showSite('site-2'));
+    await settle();
+    expect(region()).toBeNull();
+    await preset('signal');
+    expect(saveBusy()).toBe(false);
+    server.holdPatch = undefined;
+    await startSave();
+    await vi.waitFor(() => expect(region()).toBeNull());
+    expect(server.patches.map((entry) => entry.site)).toStrictEqual(['site-1', 'site-2']);
+    await patch.open();
+    await finished();
   });
 
   it('Undo made against a server value never comes back when the server returns to it (A → B → A)', async () => {
