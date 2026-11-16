@@ -67,15 +67,15 @@ export const providerKeyErrorMessage = (t: Translate, error: unknown) =>
  *
  * Both belong to the session this hook was mounted in: once it has ended (or
  * at any await on the way), they send, read and write nothing more and reject
- * with `ProviderKeyObsolete`. Each request's site is the one passed to it.
+ * with `ProviderKeyObsolete`, a failure included. Each request's site is the one passed to it.
  *
  * - `check(projectId, body)`: a new key being tried is not stored. A check of
  *   the saved key (no `apiKey`) records what it learned on the server, so the
  *   site's AI status is read again once it settles, either way, and the call
  *   resolves after that read.
- * - `save(projectId, body)`: the site's drafting capability is read again,
- *   then the answer (the redacted status) replaces the site's AI status and
- *   the call resolves.
+ * - `save(projectId, body)`: the answer (the redacted status) replaces the
+ *   site's AI status as soon as it arrives; the site's drafting capability is
+ *   then read again, and the call resolves after that read.
  */
 export function useProviderKeyRequests() {
   const cache = useQueryClient();
@@ -120,14 +120,15 @@ export function useProviderKeyRequests() {
         if (!response.ok) throw await refusal(response, SAVE_FAILED);
         ({ data } = (await response.json()) as { data: unknown });
       } catch (error) {
-        if (error instanceof ProviderKeyObsolete || error instanceof ApiResponseError) throw error;
-        throw unanswered(error, SAVE_FAILED);
+        // A failure that settles after the session ended is that session's: nothing is reported for it.
+        if (!current() || error instanceof ProviderKeyObsolete) throw new ProviderKeyObsolete();
+        throw error instanceof ApiResponseError ? error : unanswered(error, SAVE_FAILED);
       }
       if (!current()) throw new ProviderKeyObsolete();
+      // Published at once, as the answer arrives: never later, over a status read since.
+      client.setQueryData(queryKeys.workspaceAi.detail(projectId), data);
       await client.invalidateQueries({ queryKey: queryKeys.workspaceAi.draftCapability(projectId) });
       if (!current()) throw new ProviderKeyObsolete();
-      // Last, so the form (keyed by the saved revision) is replaced only once this save has answered.
-      client.setQueryData(queryKeys.workspaceAi.detail(projectId), data);
     },
     [cache, client, generation],
   );

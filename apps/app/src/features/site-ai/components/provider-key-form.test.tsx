@@ -26,7 +26,17 @@ const state = vi.hoisted(() => ({
 vi.mock('../api/hooks', () => ({
   useAiKeyConnection: () => ({ data: { connection: state.connection, canSave: state.canSave } }),
 }));
-vi.mock('./use-provider-key-commands', () => ({ useProviderKeyCommands: () => state.commands }));
+vi.mock('./use-provider-key-commands', () => ({
+  useProviderKeySave: () => ({ saving: state.commands.saving, save: state.commands.save, isSaving: () => false }),
+  useProviderKeyCheck: () => ({
+    checking: state.commands.checking,
+    models: state.commands.models,
+    check: state.commands.check,
+    retire: state.commands.retire,
+    isChecking: () => false,
+    edits: () => 0,
+  }),
+}));
 vi.mock('../api/provider-key', () => ({ providerKeyErrorMessage: () => 'settings.smartAi.error' }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
@@ -164,7 +174,7 @@ describe('ProviderKeyForm', () => {
 
   it('clears the typed key after a save, and starts a fresh form when the saved revision changes', async () => {
     state.connection = { ...STORED };
-    state.commands.save.mockImplementation((_body: unknown, saved: (keyUnchanged: boolean) => void) => saved(true));
+    state.commands.save.mockImplementation((_body: unknown, saved: () => void) => saved());
     await mount();
     await typeKey('another-fake-key-for-the-test');
     await act(async () => consentBox()?.click());
@@ -200,7 +210,7 @@ describe('ProviderKeyForm', () => {
 
   it('saves the key with the chosen model and the connection revision, then closes', async () => {
     state.connection = { id: 'openai', configured: true, revision: 2, verified: true, verifiedAt: null, answerModel: 'gpt-6-luna' };
-    state.commands.save.mockImplementation((_body: unknown, saved: (keyUnchanged: boolean) => void) => saved(true));
+    state.commands.save.mockImplementation((_body: unknown, saved: () => void) => saved());
     const onSaved = vi.fn();
     await mount(onSaved);
     await act(async () => saveButton()?.closest('form')?.requestSubmit());

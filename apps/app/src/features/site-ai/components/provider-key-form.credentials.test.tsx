@@ -25,8 +25,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock('sonner', () => ({ toast: { error: mocks.error, success: mocks.success } }));
 vi.mock('@nibleaf/i18n/react', async () => {
   const { translateFn: translate } = await vi.importActual<typeof import('@nibleaf/i18n')>('@nibleaf/i18n');
-  const t = (key: Parameters<typeof translate>[0], variables?: Parameters<typeof translate>[1]) => translate(key, variables, mocks.locale);
-  return { useT: () => t, useLocale: () => ({ locale: mocks.locale, t }) };
+  // Bound to the language of the render that asked for it, as the app's translator is.
+  const bound = (locale: 'en' | 'ar') => (key: Parameters<typeof translate>[0], variables?: Parameters<typeof translate>[1]) =>
+    translate(key, variables, locale);
+  return { useT: () => bound(mocks.locale), useLocale: () => ({ locale: mocks.locale, t: bound(mocks.locale) }) };
 });
 type Sent = { path: 'check' | 'save'; projectId: string; body: Record<string, unknown> };
 /** Check and Save requests, held until the test answers them, in the order they were sent. */
@@ -423,6 +425,16 @@ describe("a Check's answer belongs to the key, site and provider it was sent for
     expect(verified()).toBe(translateFn('settings.smartAi.modelsVerified', undefined, 'ar'));
   });
 
+  it('a language change while a Check runs words its refusal in the new language', async () => {
+    await show();
+    await type(KEY_A);
+    await pressCheck();
+    mocks.locale = 'ar';
+    await show();
+    await answer(0, (entry) => echoed(400, 'integration:credentials_invalid', entry));
+    await vi.waitFor(() => expect(errors()).toEqual([translateFn('settings.smartAi.invalidKey', undefined, 'ar')]));
+  });
+
   it('Check pressed three times in one task sends one request', async () => {
     await show();
     await type(KEY_A);
@@ -575,7 +587,8 @@ describe('a request belongs to the session it started in', () => {
     await act(async () => resetDashboardSession(client));
     await act(async () => body({ data: detail(3) }));
     await settle();
-    expect(client.getQueryData(queryKeys.workspaceAi.detail('site-a'))).toBeUndefined();
+    // The Save's answer (revision 3) is never written; the panel may read its status afresh for the next session.
+    expect(client.getQueryData(queryKeys.workspaceAi.detail('site-a'))).not.toEqual(detail(3));
     expect(readsOf()).toEqual([]);
     expect(mocks.success).not.toHaveBeenCalled();
     expect(onSaved).not.toHaveBeenCalled();
@@ -605,8 +618,9 @@ describe('a request belongs to the session it started in', () => {
       expect(mocks.success).not.toHaveBeenCalled();
     };
 
-    it('says saved and closes once the capability is read again', async () => {
+    it("publishes the Save's status at once, then says saved and closes once the capability is read again", async () => {
       await saveAndHoldReadback();
+      expect(client.getQueryData(queryKeys.workspaceAi.detail('site-a'))).toEqual(detail(3));
       await act(async () => release());
       await settle();
       expect(mocks.success).toHaveBeenCalledTimes(1);
@@ -614,15 +628,72 @@ describe('a request belongs to the session it started in', () => {
       expect(client.getQueryData(queryKeys.workspaceAi.detail('site-a'))).toEqual(detail(3));
     });
 
-    it('a session ending during that read neither says saved, closes nor writes the status', async () => {
+    it('a newer status read during that wait is kept: the Save never writes its older answer over it', async () => {
+      await saveAndHoldReadback();
+      // Revision 4 lands (another session saved) while the capability read is held.
+      revision = 4;
+      await act(async () => client.refetchQueries({ queryKey: queryKeys.workspaceAi.detail('site-a'), exact: true }));
+      await settle();
+      expect(client.getQueryData(queryKeys.workspaceAi.detail('site-a'))).toEqual(detail(4));
+      await act(async () => release());
+      await settle();
+      expect(client.getQueryData(queryKeys.workspaceAi.detail('site-a'))).toEqual(detail(4));
+      expect(mocks.success).toHaveBeenCalledTimes(1);
+    });
+
+    it('a session ending during that read neither says saved nor closes', async () => {
       await saveAndHoldReadback();
       await act(async () => resetDashboardSession(client));
       await act(async () => release());
       await settle();
       expect(mocks.success).not.toHaveBeenCalled();
       expect(onSaved).not.toHaveBeenCalled();
-      expect(client.getQueryData(queryKeys.workspaceAi.detail('site-a'))).toBeUndefined();
     });
+  });
+
+  it('a session ending while a Save is held reports nothing when it then fails', async () => {
+    await show();
+    await type(KEY_A);
+    await consent();
+    await pressSave();
+    await act(async () => resetDashboardSession(client));
+    const entry = held[0];
+    if (!entry) throw new Error('no request');
+    await act(async () => entry.reject(new TypeError('Failed to fetch')));
+    await settle();
+    expect(errors()).toEqual([]);
+    expect(logged()).toEqual([]);
+    // And a refusal answered after the session ended, likewise (AppGuard remounts the dashboard for the next session).
+    await hide();
+    await show('site-a', 'openai');
+    await type(KEY_A);
+    await consent();
+    await pressSave();
+    await act(async () => resetDashboardSession(client));
+    await answer(1, (sent) => echoed(409, 'database:conflict', sent));
+    expect(errors()).toEqual([]);
+    expect(logged()).toEqual([]);
+  });
+
+  it("programmatic: a session ending while a refusal's body is read reports nothing", async () => {
+    await show();
+    await type(KEY_A);
+    await consent();
+    await pressSave();
+    let body: (value: unknown) => void = () => undefined;
+    const response = json(409, {});
+    vi.spyOn(response, 'json').mockReturnValue(
+      new Promise((done) => {
+        body = done;
+      }),
+    );
+    await answer(0, response);
+    await act(async () => resetDashboardSession(client));
+    await act(async () => body({ error: { code: 'database:conflict', message: `Changed ${KEY_A}` } }));
+    await settle();
+    expect(errors()).toEqual([]);
+    expect(logged()).toEqual([]);
+    expect(onSaved).not.toHaveBeenCalled();
   });
 
   it('programmatic: an edit while Save runs is not cleared by its success', async () => {
