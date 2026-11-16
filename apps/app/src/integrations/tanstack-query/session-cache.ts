@@ -2,11 +2,22 @@ import { CancelledError, type DefaultError, type QueryClient, type UseMutationOp
 import { useMemo } from 'react';
 import { getSessionGeneration, type SessionCache, sessionOf } from './session-generation';
 
+const sessionClearedListeners = new Set<() => void>();
+/** Run `listener` whenever the dashboard drops the account's data: a sign-out or an account change. */
+export function onDashboardSessionCleared(listener: () => void): () => void {
+  sessionClearedListeners.add(listener);
+  return () => {
+    sessionClearedListeners.delete(listener);
+  };
+}
+
 function clearDashboardData(queryClient: QueryClient, session: SessionCache) {
   // Revoke old callbacks' cache access before cancellation can settle a read.
   session.generation += 1;
   session.client = undefined;
   queryClient.clear();
+  // In-memory account data held outside the query cache (the editor's unsaved drafts).
+  for (const listener of sessionClearedListeners) listener();
   if (typeof window === 'undefined') return;
   try {
     for (const key of Object.keys(window.localStorage)) {

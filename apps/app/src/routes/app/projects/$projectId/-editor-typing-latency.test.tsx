@@ -52,6 +52,8 @@ const mocks = vi.hoisted(() => ({
   publish: null as null | { beforePublish: () => Promise<boolean> },
   /** The route's unsupported-tag scans: how many, and the characters scanned. */
   scan: { calls: 0, chars: 0 },
+  /** The signed-in account. */
+  userId: 'user-1',
 }));
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string) => key,
@@ -79,7 +81,7 @@ vi.mock('@tanstack/react-query', () => ({
 vi.mock('@/components/editor/linked-page-history', () => ({ useLinkedPageHistory: () => vi.fn() }));
 vi.mock('@/hooks/api', async () => ({
   useProject: () => ({ data: { id: 'project-1', name: 'Test site', config: {} } }),
-  useProjectMembers: () => ({ data: { members: [{ role: 'member', user: { id: 'user-1' } }] }, isPending: false }),
+  useProjectMembers: () => ({ data: { members: [{ role: 'member', user: { id: mocks.userId } }] }, isPending: false }),
   useAiDraftCapability: () => ({ isPending: false, data: undefined }),
   addressMayFollowTitle: () => false,
   friendlyErrorMessage: (await import('@/hooks/api/errors')).friendlyErrorMessage,
@@ -111,7 +113,7 @@ vi.mock('@/hooks/api/query-options', () => ({
 }));
 vi.mock('@/hooks/api/route-prefetch', () => ({ prefetchScopedPages: vi.fn() }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
-vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'user-1' } }, isPending: false }) }));
+vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: mocks.userId } }, isPending: false }) }));
 vi.mock('@/layouts/project', () => ({
   PublishControl: (props: { beforePublish: () => Promise<boolean> }) => {
     mocks.publish = props;
@@ -296,6 +298,7 @@ const saves = (start: number) => server.patches.map((patch) => [patch.at - start
 beforeEach(() => {
   // A draft an earlier test's editor could not save after it unmounted (#789) is that test's.
   unsavedDrafts.clear();
+  mocks.userId = 'user-1';
   session += 1;
   ended = false;
   inFlight = Promise.resolve();
@@ -1985,6 +1988,120 @@ describe('#789: an unmount while the server normalizes the last write keeps the 
     expect(sent()).toEqual(['original+A', 'original+A', 'original+A']);
     expect(server.content).toBe(withTyped('A'));
     expect(refused).toBe(0);
+  });
+
+  // #799 review (round 1). An unsaved draft is the signed-in account's: never
+  // another account's after a sign-out or an account switch, even from a write
+  // of the old session that fails afterwards.
+  /** Sign out (the dashboard's session reset), then sign in as `next`. */
+  const switchAccount = async (next: string) => {
+    const { resetDashboardSession, syncDashboardSession } = await import('@/integrations/tanstack-query/session-cache');
+    const client = { clear: vi.fn() } as unknown as Parameters<typeof resetDashboardSession>[0];
+    syncDashboardSession(client, mocks.userId);
+    resetDashboardSession(client);
+    syncDashboardSession(client, next);
+    mocks.userId = next;
+  };
+  it('privacy: a draft kept after the unmount is gone once the account signs out; the next account never sees it', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (_index, content) => `${content}${NORMALIZED}`;
+    await typeAndHoldTheSave();
+    await unmount();
+    await drain();
+    await switchAccount('user-2');
+    await reopen();
+    // e30f48c5: the other account's unsaved text, with its conflict banner.
+    expect(getMarkdown(current())).not.toBe(withTyped('A').trimEnd());
+    expect(conflictShown()).toBe(false);
+    expect(unsavedDrafts.peek('user-1', 'page-1')).toBeUndefined();
+  });
+
+  it('privacy: a write of the old session that fails after the sign-out keeps nothing', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (_index, content) => `${content}${NORMALIZED}`;
+    await typeAndHoldTheSave();
+    await unmount();
+    await switchAccount('user-2');
+    await drain();
+    await reopen();
+    expect(getMarkdown(current())).not.toBe(withTyped('A').trimEnd());
+    expect(conflictShown()).toBe(false);
+    expect(unsavedDrafts.peek('user-1', 'page-1')).toBeUndefined();
+    expect(unsavedDrafts.peek('user-2', 'page-1')).toBeUndefined();
+  });
+
+  // A restored conflict holds every save until the review, guarded ones too.
+  it("a draft restored as a conflict over another client's copy: a guarded navigation writes nothing and keeps the banner", async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await unmount();
+    await settleWrite();
+    await settleWrite(false);
+    await drain();
+    server = { ...server, content: withTyped('F'), updatedAt: nextStamp() };
+    await reopen();
+    expect(conflictShown()).toBe(true);
+    const proceeded = await navigate();
+    await drain();
+    // e30f48c5: a third write stored A over F, the banner went and "saved" showed.
+    await expect(proceeded()).rejects.toThrow();
+    expect(server.content).toBe(withTyped('F'));
+    expect(attempts).toHaveLength(2);
+    expect(conflictShown()).toBe(true);
+  });
+
+  // The latest unsaved draft is kept whatever refuses it, the queue included.
+  it('A is stored normalized and sent again, AB is typed, the editor unmounts, the re-send is normalized too: AB is kept and comes back', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (_index, content) => `${content}${NORMALIZED}`;
+    await typeAndHoldTheSave();
+    await settleWrite();
+    key('B');
+    await unmount();
+    await drain();
+    await reopen();
+    expect(getMarkdown(current())).toBe(withTyped('AB').trimEnd());
+    expect(conflictShown()).toBe(true);
+  });
+
+  it('A is refused (another client saved), and the queue refuses AB after the unmount: AB is kept and comes back as a conflict', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    await typeAndHoldTheSave();
+    key('B');
+    await unmount();
+    server = { ...server, content: withTyped('F'), updatedAt: nextStamp() };
+    await drain();
+    await reopen();
+    expect(getMarkdown(current())).toBe(withTyped('AB').trimEnd());
+    expect(conflictShown()).toBe(true);
+    expect(server.content).toBe(withTyped('F'));
+  });
+
+  // A newer save of the page wins over an older write's failure.
+  it('opened again and B is saved there, then the old A write fails: A is not restored over B', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    await typeAndHoldTheSave();
+    await unmount();
+    await reopen();
+    key('B');
+    await advance(700);
+    expect(held).toHaveLength(2);
+    await act(async () => held.splice(1, 1)[0]?.settle(true));
+    await advance(0);
+    await queryFollowsServer();
+    expect(server.content).toBe(withTyped('B'));
+    await settleWrite(false);
+    await drain();
+    expect(server.content).toBe(withTyped('B'));
+    expect(getMarkdown(current())).toBe(withTyped('B').trimEnd());
+    expect(conflictShown()).toBe(false);
   });
 
   // Guards: what main already did right stays so.
