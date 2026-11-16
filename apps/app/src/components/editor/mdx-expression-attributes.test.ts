@@ -160,3 +160,69 @@ describe('an opening tag that never closes its quote or brace (#714)', () => {
     expect(saveTwice(page)).toEqual([page, page]);
   });
 });
+
+/** Every node type in the page, nested ones included. */
+const allNodes = (source: string): string[] => {
+  load(source);
+  const types: string[] = [];
+  editor.state.doc.descendants((node) => {
+    types.push(node.type.name);
+  });
+  return types;
+};
+
+describe('where the JavaScript reading of a `/` can not tell, main’s reading (#714 review)', () => {
+  // A function body's `}` then `/`: both readings close the expression, at different places.
+  it.each([
+    ['LF', 'Before {[function()\n{} / 2]} plus {a / 2} after.'],
+    ['CRLF', 'Before {[function()\r\n{} / 2]} plus {a / 2} after.'],
+  ])('a standalone expression it can not read saves unchanged (%s)', (_label, page) => {
+    expect(saveTwice(page)).toEqual([page, page]);
+  });
+
+  // Seventeen `/`s after function bodies, none of which can start a regular expression.
+  const divisions = new Array(17).fill('function(){} /2').join(',\n');
+
+  it('seventeen divisions after function bodies in a standalone expression save unchanged', () => {
+    const page = `Before {[${divisions}]} after.`;
+    expect(saveTwice(page)).toEqual([page, page]);
+  });
+
+  it('seventeen divisions after function bodies in an attribute leave the Card editable', () => {
+    const page = `<Card title="Tour" data-extra={[${divisions}]}>\n\nBody\n\n</Card>`;
+    expect(load(page, 'title').target?.type).toBe('mdxCard');
+    expect(saveTwice(page)).toEqual([page, page]);
+    expect(setAttribute(page, 'title', 'Edited')).toBe(page.replace('title="Tour"', 'title="Edited"'));
+  });
+});
+
+describe('an opener that can not be read keeps to its own block (#714 review)', () => {
+  it('stops at its own closing tag, leaving the Step after it editable', () => {
+    const page = '<Card title={oops>text</Card><Step />';
+    // The Card is kept byte for byte (main wrote its title as `"{oops"`); the Step moves to
+    // its own block, as it does after any Card (`<Card title="x">text</Card><Step />` too).
+    const saved = '<Card title={oops>text</Card>\n\n<Step />';
+    expect(saveTwice(page)).toEqual([saved, saved]);
+    expect(allNodes(page)).toEqual(['paragraph', 'mdxOpaqueInline', 'mdxStep', 'paragraph', 'paragraph']);
+  });
+
+  it('inside another component, does not cross that component’s closing tag', () => {
+    const page = '<Card title="Outer">\n\n<Step title={oops>\n\nText\n\n</Card>\n\n# Outside\n\n</Step>';
+    expect(saveTwice(page)).toEqual([page, page]);
+    const { nodes } = load(page);
+    expect(nodes[0]).toBe('mdxCard');
+    expect(nodes).toContain('heading');
+    expect(appendTo(page, 'Outside', '!')).toBe(page.replace('# Outside', '# Outside!'));
+  });
+
+  it('with no closing tag, stops before a heading line', () => {
+    const page = '<Card title={oops>\n# Outside\n\n<Step />';
+    // The heading stays a heading. A block followed by a heading with no blank line
+    // gains one when saved, as any component line does (main escapes that heading:
+    // `<Card title="x" />\n# Outside` saves as `<Card title="x" />\n\n\# Outside`).
+    const saved = '<Card title={oops>\n\n# Outside\n\n<Step />';
+    expect(saveTwice(page)).toEqual([saved, saved]);
+    expect(load(page).nodes).toEqual(['mdxOpaqueBlock', 'heading', 'mdxStep', 'paragraph']);
+    expect(appendTo(page, 'Outside', '!')).toBe(saved.replace('# Outside', '# Outside!'));
+  });
+});

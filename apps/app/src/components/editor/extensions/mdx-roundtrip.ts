@@ -452,7 +452,7 @@ interface TagToken {
   /** A raw-text element (`<script>`) with no closing tag: its text runs to the end of the page. */
   runsToEnd?: boolean;
   /** A supported component's opening tag the scan couldn't read to its `>`; it
-   *  ends at the end of its line (see brokenRanges). */
+   *  spans only its `<Name` (see brokenRanges). */
   broken?: boolean;
 }
 
@@ -673,35 +673,75 @@ interface ExpressionScan {
   parens: boolean[];
 }
 
+/**
+ * What one page's expression scans share: how much more they may read before the page
+ * falls back to main's reading (see expressionEnds), and where the last search for a
+ * comment's end and a line break started and what it found, so a search is not
+ * repeated over text an earlier one passed (`{/*{/*{/*…`, #714).
+ */
+interface ExpressionContext {
+  source: string;
+  budget: number;
+  commentEnd: { from: number; at: number };
+  lineBreak: { from: number; at: number };
+}
+
+const expressionContext = (source: string): ExpressionContext => ({
+  source,
+  // Enough to read every expression on the page a few times over; past it, main's reading.
+  budget: 32 * (source.length + 256),
+  commentEnd: { from: Number.POSITIVE_INFINITY, at: -1 },
+  lineBreak: { from: Number.POSITIVE_INFINITY, at: -1 },
+});
+
+/** The first match at or after `from`, reusing the last search when it started no
+ *  later and found nothing before `from`. */
+function searchFrom(memo: { from: number; at: number }, from: number, search: (from: number) => number): number {
+  if (memo.from > from || (memo.at >= 0 && memo.at < from)) {
+    memo.from = from;
+    memo.at = search(from);
+  }
+  return memo.at;
+}
+
 /** The index of the quote closing the string that opens at `start`, or null. */
-function quotedEnd(source: string, start: number): number | null {
+function quotedEnd(context: ExpressionContext, start: number): number | null {
+  const { source } = context;
   const quote = source[start];
   for (let i = start + 1; i < source.length; i++) {
     if (source[i] === '\\') i++;
-    else if (source[i] === quote) return i;
+    else if (source[i] === quote) {
+      context.budget -= i - start;
+      return i;
+    }
   }
+  context.budget -= source.length - start;
   return null;
 }
 
 /** Where the regular expression literal that opens at `start` ends, its flags
  *  included, or null when it doesn't close on its line. */
-function regexEnd(source: string, start: number): number | null {
+function regexEnd(context: ExpressionContext, start: number): number | null {
+  const { source } = context;
   let inClass = false;
-  for (let i = start + 1; i < source.length; i++) {
+  let i = start + 1;
+  let end: number | null = null;
+  for (; i < source.length; i++) {
     const char = source[i];
-    if (char === '\n' || char === '\r') return null;
+    if (char === '\n' || char === '\r') break;
     if (char === '\\') {
       i++;
-      if (source[i] === '\n' || source[i] === '\r') return null;
+      if (source[i] === '\n' || source[i] === '\r') break;
     } else if (inClass) inClass = char !== ']';
     else if (char === '[') inClass = true;
     else if (char === '/') {
-      let end = i + 1;
+      end = i + 1;
       while (end < source.length && IDENTIFIER_CHAR.test(source[end] ?? '')) end++;
-      return end;
+      break;
     }
   }
-  return null;
+  context.budget -= (end ?? i) - start;
+  return end;
 }
 
 /**
@@ -711,41 +751,47 @@ function regexEnd(source: string, start: number): number | null {
  * a quote or brace inside them (`/"}/`, `/* } *\/`) ends nothing (#714). This is
  * not a JavaScript parser: whether a `/` divides or starts a regular expression
  * is told from the token before it. After a block's or function body's `}`, where
- * that token can't tell, the rest is read both ways; a reading that breaks (a
- * regular expression that doesn't close on its line, or no closing brace) is
- * dropped. Null when the expression never closes, or when it can't be read
- * reliably: both readings close it, at different places. `record` hears where
- * each inner `{` closes (or -1, never), up to the first such fork.
+ * that token can't tell, a `/` that can't start a regular expression there (none
+ * closes on its line) divides; otherwise the rest is read both ways, and a reading
+ * that breaks (no closing brace) is dropped. Null when it can't tell: the
+ * expression never closes as read, both readings close it at different places,
+ * more than `MAX_EXPRESSION_FORKS` `/`s are read both ways, or the page's budget
+ * runs out. Callers then read the expression as main did (see expressionEnds).
+ * `record` hears where each inner `{` closes (or -1, never), up to the first fork.
  */
 function readExpression(
-  source: string,
+  context: ExpressionContext,
   from: number,
   scan: ExpressionScan,
   forks: { count: number },
   record?: (open: number, end: number) => void,
 ): number | null {
+  const { source } = context;
   const { braces, parens } = scan;
   let { regex, last, word, dot } = scan;
   for (let i = from; i < source.length; i++) {
+    if (--context.budget < 0) return null;
     const char = source[i] ?? '';
     if (/\s/.test(char)) continue;
     const next = source[i + 1];
     if (char === '/' && next === '/') {
       // A line comment: what follows on its line is not code.
-      LINE_BREAK.lastIndex = i;
-      const end = LINE_BREAK.exec(source)?.index;
-      if (end === undefined) break;
+      const end = searchFrom(context.lineBreak, i, (at) => {
+        LINE_BREAK.lastIndex = at;
+        return LINE_BREAK.exec(source)?.index ?? -1;
+      });
+      if (end < 0) break;
       i = end;
       continue;
     }
     if (char === '/' && next === '*') {
-      const end = source.indexOf('*/', i + 2);
+      const end = searchFrom(context.commentEnd, i + 2, (at) => source.indexOf('*/', at));
       if (end < 0) break;
       i = end + 1;
       continue;
     }
     if (char === '"' || char === "'" || char === '`') {
-      const end = quotedEnd(source, i);
+      const end = quotedEnd(context, i);
       if (end === null) break;
       i = end;
       regex = false;
@@ -754,8 +800,9 @@ function readExpression(
       dot = false;
       continue;
     }
-    if (char === '/' && source[i - 1] !== '<') {
-      if (regex === 'ambiguous') {
+    if (char === '/' && source[i - 1] !== '<' && regex) {
+      const literal = regexEnd(context, i);
+      if (regex === 'ambiguous' && literal !== null) {
         if (++forks.count > MAX_EXPRESSION_FORKS) return null;
         const state = (regex: boolean, last: string): ExpressionScan => ({
           regex,
@@ -765,26 +812,26 @@ function readExpression(
           braces: [...braces],
           parens: [...parens],
         });
-        const literal = regexEnd(source, i);
-        const asRegex = literal === null ? null : readExpression(source, literal, state(false, 'literal'), forks);
-        const asDivision = readExpression(source, i + 1, state(true, '/'), forks);
+        const asRegex = readExpression(context, literal, state(false, 'literal'), forks);
+        const asDivision = readExpression(context, i + 1, state(true, '/'), forks);
         if (asRegex === null) return asDivision;
         return asDivision === null || asDivision === asRegex ? asRegex : null;
       }
-      if (regex) {
-        const end = regexEnd(source, i);
-        if (end === null) return null;
-        i = end - 1;
+      if (regex === true) {
+        if (literal === null) return null;
+        i = literal - 1;
         regex = false;
         last = 'literal';
         word = '';
         dot = false;
         continue;
       }
+      // After a block's `}`, a `/` that can't start a regular expression divides.
     }
     if (IDENTIFIER_CHAR.test(char)) {
       let end = i + 1;
       while (end < source.length && IDENTIFIER_CHAR.test(source[end] ?? '')) end++;
+      context.budget -= end - i;
       const name = source.slice(i, end);
       // After a `.` a keyword is a property name (`obj.return / 2`).
       regex = !dot && REGEX_AFTER_WORDS.has(name);
@@ -838,26 +885,97 @@ function readExpression(
 
 const expressionStart = (): ExpressionScan => ({ regex: true, last: '', word: '', dot: false, braces: [], parens: [] });
 
-/** Where the `{…}` expression that opens at `start` ends: see readExpression. */
-const expressionEnd = (source: string, start: number): number | null => readExpression(source, start, expressionStart(), { count: 0 });
+/**
+ * Main's reading of a `{…}` expression, kept for where the JavaScript reading
+ * can't tell (readExpression): braces counted outside quotes, every quote with
+ * backslash escapes. On those expressions the editor does exactly what main did.
+ */
+function balancedEnd(source: string, start: number, open: string, close: string): number | null {
+  let depth = 0;
+  let quote = '';
+  let escaped = false;
+  for (let i = start; i < source.length; i++) {
+    const char = source[i] ?? '';
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === quote) quote = '';
+      continue;
+    }
+    if (char === '"' || char === "'" || char === '`') {
+      quote = char;
+      continue;
+    }
+    if (char === open) depth++;
+    else if (char === close) {
+      depth--;
+      if (depth === 0) return i + 1;
+    }
+  }
+  return null;
+}
+
+/** Where the `{…}` expression that opens at `start` ends: read as JavaScript, or as
+ *  main read it where that can't tell (see readExpression). */
+const expressionEnd = (source: string, start: number): number | null =>
+  readExpression(expressionContext(source), start, expressionStart(), { count: 0 }) ?? balancedEnd(source, start, '{', '}');
+
+/**
+ * Main's `expressionEnds`: `balancedEnd(source, start, '{', '}')` for many starts,
+ * without rescanning. A scan passes other `{`s outside quotes in the same state a
+ * scan of their own would start in, so the stack of open braces tells where each of
+ * those closes, or that it never does.
+ */
+function mainExpressionEnds(source: string): (start: number) => number | null {
+  const known = new Map<number, number>();
+  return (start) => {
+    const found = known.get(start);
+    if (found !== undefined) return found < 0 ? null : found;
+    const open: number[] = [];
+    let quote = '';
+    let escaped = false;
+    for (let i = start; i < source.length; i++) {
+      const char = source[i] ?? '';
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (char === '\\') escaped = true;
+        else if (char === quote) quote = '';
+        continue;
+      }
+      if (char === '"' || char === "'" || char === '`') quote = char;
+      else if (char === '{') open.push(i);
+      else if (char === '}') {
+        const opened = open.pop();
+        if (opened !== undefined) known.set(opened, i + 1);
+        if (open.length === 0) return i + 1;
+      }
+    }
+    for (const opened of open) known.set(opened, -1);
+    return null;
+  };
+}
 
 /**
  * `expressionEnd(source, start)` for many starts, without rescanning. A scan
  * passes other `{`s outside strings, comments and regular expressions in the
  * state a scan of their own would start in, so it tells where each of those
- * closes, or that it never does. A later expression the scan already passed is
- * answered from that; before, every `{` after an unclosed one rescanned the rest
- * of the page.
+ * closes, or that it never does as read. A later expression the scan already
+ * passed is answered from that; before, every `{` after an unclosed one rescanned
+ * the rest of the page. Where the JavaScript reading can't tell, main's reading
+ * answers, itself without rescanning; and the page's budget keeps the JavaScript
+ * reading to a few passes over the page in all.
  */
 function expressionEnds(source: string): (start: number) => number | null {
+  const context = expressionContext(source);
   const known = new Map<number, number>();
+  const mainEnd = mainExpressionEnds(source);
   return (start) => {
     let found = known.get(start);
     if (found === undefined) {
-      found = readExpression(source, start, expressionStart(), { count: 0 }, (open, end) => known.set(open, end)) ?? -1;
+      found = readExpression(context, start, expressionStart(), { count: 0 }, (open, end) => known.set(open, end)) ?? -1;
       known.set(start, found);
     }
-    return found < 0 ? null : found;
+    return found < 0 ? mainEnd(start) : found;
   };
 }
 
@@ -967,8 +1085,8 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
       // (`title="Old\">`), is left as before: Markdown reads it as HTML.
       const supported = !isHtml && !closing && SUPPORTED_MDX_COMPONENTS[name.toLowerCase()] && !HTML_ELEMENT_ALIASES.has(name);
       if (supported && (kind === 'frame' || readTag(attributesStart, 'frame') < 0)) {
-        LINE_BREAK.lastIndex = i;
-        const end = LINE_BREAK.exec(source)?.index ?? source.length;
+        // Only its `<Name` is known; brokenRanges finds how far it is kept.
+        const end = i + 1 + name.length;
         tokens.push({ start: i, end, name, raw: source.slice(i, end), closing, selfClosing: false, html: false, broken: true });
       }
       continue;
@@ -1037,28 +1155,46 @@ function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagTo
 
 /**
  * A supported component whose opening tag can't be read (see scanTags) is kept
- * byte for byte: from that tag through its closing tag. With no closing tag, to
- * the end of its paragraph (the next blank line), or to the next tag on a later
- * line before that.
- * The editor can't tell its attributes, so it doesn't structure it; read as text,
- * the tag was escaped and its closing tag dropped or moved (#714).
+ * byte for byte, up to the first of: the end of its Markdown block (a blank line or
+ * a heading line), or the next component tag, which it takes only when that is its
+ * own closing tag. Its own text may run on over lines Markdown would start other
+ * blocks with (`<Card title={x\n>`), so those don't end it. So it never holds another component
+ * or crosses the closing tag of one around it; a closing tag of its own that is not
+ * the next tag is kept on its own (strayPartners). The editor can't tell its
+ * attributes, so it doesn't structure it; read as text, the tag was escaped and its
+ * closing tag dropped or moved (#714).
  */
 const BLANK_LINES = new RegExp(BLANK_LINE.source, 'g');
+/** A line break before an ATX heading line. */
+const HEADING_LINES = /(?:\r\n?|\n) {0,3}#{1,6}(?=[ \t\r\n]|$)/g;
 
 function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>): SourceRange[] {
   const ranges: SourceRange[] = [];
+  // Tokens come in page order, so each lookup below only moves forward: one pass in all,
+  // however many openers can't be read (a page of them on one line, say).
+  let blankLine = -1;
+  let headingLine = -1;
+  let next = 0;
+  // A range inside an earlier one is dropped by outermostRanges anyway: never sliced.
+  let coveredUntil = -1;
   for (const [index, token] of tokens.entries()) {
     if (!token.broken) continue;
-    let end = tokens[pairs.get(index) ?? -1]?.end;
-    if (end === undefined) {
+    if (blankLine < token.start) {
       BLANK_LINES.lastIndex = token.start;
-      const blankLine = BLANK_LINES.exec(source)?.index ?? source.length;
-      // The broken token ends at the end of its line (see scanTags).
-      let next = index + 1;
-      while ((tokens[next]?.start ?? source.length) < token.end) next++;
-      end = Math.min(blankLine, tokens[next]?.start ?? source.length);
-      end = token.start + source.slice(token.start, end).trimEnd().length;
+      blankLine = BLANK_LINES.exec(source)?.index ?? source.length;
     }
+    if (headingLine < token.start) {
+      HEADING_LINES.lastIndex = token.start;
+      headingLine = HEADING_LINES.exec(source)?.index ?? source.length;
+    }
+    let end = Math.min(blankLine, headingLine);
+    next = Math.max(next, index + 1);
+    while (tokens[next]?.html) next++;
+    const tag = tokens[next];
+    if (tag && tag.start < end) end = pairs.get(index) === next ? tag.end : tag.start;
+    while (end > token.start && /\s/.test(source[end - 1] ?? '')) end--;
+    if (end <= coveredUntil) continue;
+    coveredUntil = end;
     ranges.push(sourceRange(source, layout, { start: token.start, end }, token.name));
   }
   return ranges;

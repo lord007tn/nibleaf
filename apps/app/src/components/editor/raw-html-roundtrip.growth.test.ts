@@ -63,6 +63,14 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
     const [small, large] = growthMs(parse, tag.repeat(1000), tag.repeat(4000), { budgetMs: 10_000 });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
+
+  // Every `{` after the first opens inside an unclosed comment: each must not search the
+  // rest of the page for its `*/` again (#714).
+  it('prepares a page of expressions opening unclosed comments in one pass', () => {
+    const comments = (n: number) => `{${'{/*'.repeat(n)}`;
+    const [small, large] = growthMs(parse, comments(10_000), comments(40_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
 });
 
 type MarkdownToken = Parameters<typeof annotateFences>[0]['tokens'][number];
