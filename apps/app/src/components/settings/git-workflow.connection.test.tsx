@@ -42,6 +42,7 @@ vi.mock('@/services/api', () => ({
   },
 }));
 
+import { sentGitWorkflowConnectionValues } from '@/features/site-git/model/git-workflow-connection';
 import { queryKeys } from '@/hooks/api/query-keys';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { GitWorkflow } from './git-workflow';
@@ -97,11 +98,22 @@ const seed = (projectId: string, over: Partial<Stored> = {}) => {
     ...over,
   };
 };
-/** What the server answers a PUT with, having stored `settings` (already normalized). */
-const answer = (projectId: string, settings: Partial<Settings>) => {
-  stored[projectId] = { ...stored[projectId], ...settings } as Stored;
+type PutRequest = { param: { projectId: string }; json: Settings & { importBranchId?: string; importLanguageId?: string; token?: string } };
+/**
+ * The server's answer to a PUT, built from the request's own body as `connectGitHub` stores it: the settings
+ * normalized (`sentGitWorkflowConnectionValues`, which workflow.connect.test.ts proves equal to the real action),
+ * the import targets as sent or cleared, and the redacted connection.
+ */
+const serve = ({ param: { projectId }, json: { token: _token, importBranchId, importLanguageId, ...settings } }: PutRequest) => {
+  stored[projectId] = {
+    ...(stored[projectId] as Stored),
+    ...sentGitWorkflowConnectionValues(settings),
+    importBranchId: importBranchId || null,
+    importLanguageId: importLanguageId || null,
+  };
   return json(200, { data: { connection: { ...stored[projectId], credentialConfigured: true, webhookConfigured: true }, webhookSecret: null } });
 };
+const lastPut = () => mocks.put.mock.calls.at(-1)?.[0] as PutRequest;
 const refused = () => json(400, { error: { message: 'Base branch trunk was not found.' } });
 
 /** Lets requests settle: TanStack tells React on a timer, so each tick gets its own act. */
@@ -244,7 +256,7 @@ describe('refetches keep edits', () => {
     await press(buttons().find((item) => item.textContent?.trim() === t('forms.keepMine')));
     expect(conflictShown()).toBe(false);
     expect(shown().baseBranch).toBe('develop');
-    mocks.put.mockImplementationOnce(async () => answer('site-a', { baseBranch: 'develop' }));
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
     await save();
     expect(bodies()[0]?.json.baseBranch).toBe('develop');
     expect(successes()).toEqual([t('settings.git.workflow.connected')]);
@@ -291,13 +303,15 @@ describe('the save', () => {
     expect(bodies()).toHaveLength(1);
 
     await type('git2-update-path', 'typed-during-save');
-    await put.answer(answer('site-a', { repository: 'acme-fixture/moved' }));
+    await put.answer(serve(lastPut()));
     expect(shown()).toMatchObject({ repository: 'acme-fixture/moved', contentPath: 'typed-during-save' });
     expect(isBusy()).toBe(false);
     expect(discardButton()).toBeDefined();
     expect(successes()).toEqual([]);
     // The success refreshed the site's status, and the readback did not wipe the edit.
     expect(reads('site-a')).toBe(2);
+    // The import targets the form never shows are stored as they were.
+    expect(stored['site-a']).toMatchObject({ repository: 'acme-fixture/moved', ...TARGETS });
   });
 
   it('a normalized save reads back as its own echo: clean, "saved" once', async () => {
@@ -305,7 +319,7 @@ describe('the save', () => {
     await type('git2-update-repo', 'HTTPS://GITHUB.COM/acme-fixture/site-a.GIT');
     await type('git2-update-base', ' refs/heads/main ');
     await type('git2-update-path', ' /docs\\guides/ ');
-    mocks.put.mockImplementationOnce(async () => answer('site-a', { contentPath: 'docs/guides' }));
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
     await save();
     expect(shown()).toEqual({ ...SETTINGS, repository: 'acme-fixture/site-a', contentPath: 'docs/guides' });
     expect(conflictShown()).toBe(false);
@@ -321,7 +335,7 @@ describe('the save', () => {
     await act(async () => {
       void client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail('site-a') });
     });
-    mocks.put.mockImplementationOnce(async () => answer('site-a', { contentPath: 'guides' }));
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
     await save();
     expect(bodies()).toHaveLength(0);
     stored['site-a'] = { ...stored['site-a'], importBranchId: 'branch-fixture-2', importLanguageId: null };
@@ -342,7 +356,7 @@ describe('the save', () => {
     expect(field('git2-update-token').value).toBe(TOKEN);
     expect(reads('site-a')).toBe(1);
 
-    mocks.put.mockImplementationOnce(async () => answer('site-a', { baseBranch: 'trunk' }));
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
     await save();
     expect(bodies()[1]?.json).toEqual({ ...SETTINGS, repository: 'acme-fixture/site-a', baseBranch: 'trunk', ...TARGETS, token: TOKEN });
     expect(field('git2-update-token').value).toBe('');
@@ -355,7 +369,7 @@ describe('the token', () => {
     await openConfiguration();
     expect(field('git2-update-token').value).toBe('');
     await type('git2-update-token', '   ');
-    mocks.put.mockImplementation(async () => answer('site-a', {}));
+    mocks.put.mockImplementation(async (request: PutRequest) => serve(request));
     await save();
     expect(bodies()[0]?.json).not.toHaveProperty('token');
 
@@ -380,7 +394,7 @@ describe('the token', () => {
           .map((query) => query.state.data),
       ),
     ).not.toContain(TOKEN);
-    await put.answer(answer('site-a', {}));
+    await put.answer(serve(lastPut()));
     expect(field('git2-update-token').value).toBe('');
   });
 
@@ -391,7 +405,7 @@ describe('the token', () => {
     mocks.put.mockImplementationOnce(() => put.promise);
     await save();
     await type('git2-update-token', NEWER_TOKEN);
-    await put.answer(answer('site-a', {}));
+    await put.answer(serve(lastPut()));
     expect(field('git2-update-token').value).toBe(NEWER_TOKEN);
     expect(successes()).toEqual([]);
     expect(discardButton()).toBeDefined();
@@ -405,7 +419,7 @@ describe('Enter, IME, focus and validation', () => {
     await pressEnter('git2-update-path', { isComposing: true });
     await pressEnter('git2-update-path', { keyCode: 229 } as KeyboardEventInit);
     expect(bodies()).toHaveLength(0);
-    mocks.put.mockImplementationOnce(async () => answer('site-a', { contentPath: 'guides' }));
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
     await pressEnter('git2-update-path');
     expect(bodies()).toHaveLength(1);
     expect(mocks.operations).not.toHaveBeenCalled();
@@ -437,7 +451,7 @@ describe('Enter, IME, focus and validation', () => {
 
     // A clean save ends it.
     await type('git2-update-head', 'nibleaf/docs');
-    mocks.put.mockImplementationOnce(async () => answer('site-a', { contentPath: 'guides' }));
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
     await save();
     await type('git2-update-head', '');
     expect(field('git2-update-head').hasAttribute('aria-invalid')).toBe(false);
@@ -465,7 +479,7 @@ describe('sites, locale and polling', () => {
     await workflow('site-a');
     expect(shown().contentPath).toBe('guides');
     expect(isBusy()).toBe(true);
-    await put.answer(answer('site-a', { contentPath: 'guides' }));
+    await put.answer(serve(lastPut()));
     expect(discardButton()).toBeUndefined();
     expect(successes()).toHaveLength(1);
   });
@@ -501,7 +515,7 @@ describe('sites, locale and polling', () => {
     await press(saveButton());
     expect(bodies()).toHaveLength(1);
 
-    await put.answer(answer('site-a', { contentPath: 'guides' }));
+    await put.answer(serve(lastPut()));
     // The request still refreshed A, and its outcome told nobody.
     expect(stored['site-a']?.contentPath).toBe('guides');
     expect(shown().contentPath).toBe('guides');

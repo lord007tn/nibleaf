@@ -22,7 +22,7 @@ import {
   type StoredGitWorkflowConnection,
   sentGitWorkflowConnectionValues,
 } from '../model/git-workflow-connection';
-import { useIdentityState } from './git-connection-form';
+import { useIdentityState } from './use-identity-state';
 
 const FIELD_IDS: Record<keyof GitWorkflowConnectionValues, string> = {
   repository: 'git2-update-repo',
