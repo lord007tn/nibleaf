@@ -75,14 +75,14 @@ describe('published reader relevance', () => {
     expect(cleanSearchText(`${String.fromCharCode(0xe0_00)}0${String.fromCharCode(0xe0_01)} <b>x</b>`)).toBe('0 x');
   });
 
-  it('returns no fuzzy padding for nonsense or a missing password page', async () => {
+  it('rejects nonsense while allowing a validated one-letter typo', async () => {
     const index = await createDocIndex([
       doc('invoice', 'Invoice', 'Download your invoice.'),
       doc('passport', 'Passport records', 'A passwore is a deliberately close typo in unrelated material.'),
       doc('noise', 'Sense of direction', 'No sense in the xyzv example.'),
     ]);
     expect(await searchDocs(index, 'xqzv nonsense', reader)).toEqual([]);
-    expect(await searchDocs(index, 'password', reader)).toEqual([]);
+    expect((await searchDocs(index, 'password', reader)).map((hit) => hit.id)).toEqual(['passport']);
     expect((await searchDocs(index, 'invoice', reader))[0]?.id).toBe('invoice');
     expect((await searchDocs(index, 'invoi', reader))[0]?.id).toBe('invoice');
   });

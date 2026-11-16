@@ -49,6 +49,17 @@ describe('public docs module boundary', () => {
     expect(forbiddenModuleIds(modules)).toEqual(modules);
   });
 
+  it('forbids zod in public profiles', () => {
+    const zod = [
+      `${root}/node_modules/zod/v4/classic/schemas.js`,
+      `${root}/node_modules/zod/v4/core/schemas.js`,
+      `${root}/node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/classic/coerce.js`,
+      `${root}/node_modules/zod/v4/mini/schemas.js`,
+      `${root}/node_modules/zod/v4/core/core.js`,
+    ];
+    expect(forbiddenModuleIds([...zod, app('lib/search-params.ts'), app('lib/zod-csp.ts')])).toEqual(zod);
+  });
+
   it('allows only feature route ids and search parsers needed by non-split route options', () => {
     expect(forbiddenModuleIds([app('features/site-general/model/ids.ts'), app('features/site-general/model/section-search.ts')])).toEqual([]);
   });

@@ -717,7 +717,11 @@ describe('saves keep their moments and their content (P2-ED-005)', { timeout: RO
     expect(getMarkdown(current())).toContain('a byte.Q');
     expect(getMarkdown(current())).not.toContain('From elsewhere');
     await advance(5000);
-    expect(server.patches.map((patch) => patch.content)).toEqual([withTyped('Q')]);
+    // Nor is the edit saved over that copy without a review (#790): the
+    // conflict banner shows, and the edit stays on screen.
+    expect(server.patches).toEqual([]);
+    expect(container.textContent).toContain('editor.conflict.body');
+    expect(getMarkdown(current())).toContain('a byte.Q');
   });
 
   it('AI assist reads the current text once typing pauses', async () => {
@@ -1457,6 +1461,18 @@ afterAll(() => {
   if (RECORDING_REVIEW) writeFileSync(REVIEW_FIXTURE, `${JSON.stringify({ base: '5eae6bf7', seeds: reviewResults }, null, 2)}\n`);
 });
 
+/**
+ * Whether another client's copy arriving now justifies a conflict (#802 review):
+ * the copy differs from every text this editor sent and every text the server
+ * stored for it, and the editor's draft has a change the server does not hold
+ * (typed and not sent, or sent and not stored yet).
+ */
+function conflictJustified(copy: string) {
+  const draft = getMarkdown(current()).trimEnd();
+  const own = new Set([...attempts.map((write) => write.content.trimEnd()), ...server.patches.map((patch) => patch.content.trimEnd())]);
+  return draft !== server.content.trimEnd() && !own.has(copy.trimEnd());
+}
+
 describe('#735 review differential: foreign copies and normalized writes', { timeout: 180_000 }, () => {
   it.each(REVIEW_SEEDS)('seed %i', async (seed) => {
     const random = seeded(seed);
@@ -1466,6 +1482,8 @@ describe('#735 review differential: foreign copies and normalized writes', { tim
     let normalizeFrom = Number.POSITIVE_INFINITY;
     storeAs = (index, content) => (index === normalizeFrom ? `${content}${NORMALIZED}` : content);
     let foreign = 0;
+    let conflict = false;
+    let justified = false;
     const steps: string[] = [];
     for (let step = 0; step < 8; step += 1) {
       const op = pick(REVIEW_OPS);
@@ -1479,8 +1497,10 @@ describe('#735 review differential: foreign copies and normalized writes', { tim
       } else if (op === 'blur') await act(async () => window.dispatchEvent(new Event('blur')));
       else if (op === 'adopt') {
         foreign += 1;
+        justified ||= conflictJustified(withTyped(`F${foreign}`));
         await foreignCopy(withTyped(`F${foreign}`), `2026-11-14T1${foreign}:00:00.000Z`);
       } else normalizeFrom = attempts.length;
+      conflict ||= conflictShown();
     }
     const ending = pick(ENDINGS);
     steps.push(ending);
@@ -1494,6 +1514,7 @@ describe('#735 review differential: foreign copies and normalized writes', { tim
       await unmount();
     } else if (ending === 'unmount') await unmount();
     await drain();
+    conflict ||= conflictShown();
     const result = { writes: mocks.update.mock.calls.length, stored: server.content.trimEnd() === finalDraft };
     reviewResults[seed] = result;
     const main = MAIN_REVIEW[seed];
@@ -1501,7 +1522,13 @@ describe('#735 review differential: foreign copies and normalized writes', { tim
     // More writes than main only to store a final draft main lost (#757: a
     // normalized final draft is sent once more).
     const writes = result.writes <= (main?.writes ?? -1) || (main?.stored === false && result.stored);
-    expect({ steps, main, writes, stored: result.stored || main?.stored === false }).toEqual({
+    // This mock checks no revision, so main stored some drafts over another
+    // client's copy without asking. Since #790 such a copy, arriving over unsent
+    // changes, is a conflict the author reviews: shown, it counts as kept, but
+    // only where a copy unlike any of this editor's writes arrived over a change
+    // not on the server (#802 review): any other conflict is a failure.
+    const kept = result.stored || (conflict && justified);
+    expect({ steps, main, writes, stored: kept || main?.stored === false }).toEqual({
       steps,
       main,
       writes: true,
@@ -1633,6 +1660,318 @@ describe("#757: after another client's copy is adopted, the final draft is store
     await drain();
     expect(server.content).toBe(withTyped('B'));
     expect(getMarkdown(current())).toBe(withTyped('B').trimEnd());
+  });
+});
+
+/*
+ * #790: the author edits, another client's newer copy arrives while the draft is
+ * dirty (so it is not loaded), and the author undoes back to the text the editor
+ * loaded. The draft then compared clean with that text: nothing was sent, no
+ * conflict was raised, and the server kept the other client's copy while the
+ * editor showed something else.
+ *
+ * Now that copy is a revision conflict as soon as it arrives over unsent
+ * changes: the banner shows, saving pauses, and the author reviews. Their copy
+ * is never written over without that review, and an undo cannot look clean.
+ */
+describe("#790: another client's copy over unsent changes is reviewed, never silently left or overwritten", { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  it('repro: type, another client saves, undo to the loaded text, stay: the conflict banner shows, nothing is written', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    key('A');
+    await foreignCopyNow(withTyped('F'));
+    // Main: no banner here, nor after the undo.
+    expect(conflictShown()).toBe(true);
+    undo();
+    await drain();
+    expect(getMarkdown(current())).toBe(ORIGINAL.trimEnd());
+    expect(conflictShown()).toBe(true);
+    expect(attempts).toHaveLength(0);
+    expect(server.content).toBe(withTyped('F'));
+  });
+
+  it('repro, then the page is closed (pagehide) before the undo is serialized: the banner showed first, nothing is written', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    key('c');
+    await foreignCopyNow(withTyped('F'));
+    expect(conflictShown()).toBe(true);
+    undo();
+    await act(async () => window.dispatchEvent(new Event('pagehide')));
+    await unmount();
+    await drain();
+    expect(attempts).toHaveLength(0);
+    expect(server.content).toBe(withTyped('F'));
+  });
+
+  it('the review keeps the loaded text: it is saved over their copy, from its revision', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    key('A');
+    await foreignCopyNow(withTyped('F'));
+    undo();
+    await advance(SERIALIZE_PAUSE);
+    const review = [...container.querySelectorAll('button')].find((button) => button.textContent === 'editor.conflict.review');
+    if (!review) throw new Error('No review button');
+    await act(async () => review.click());
+    await advance(0);
+    await act(async () => mocks.conflictDialog?.onResolve({ title: 'Page', content: ORIGINAL }));
+    await drain();
+    expect(sent()).toEqual(['original']);
+    expect(server.content).toBe(ORIGINAL);
+    expect(conflictShown()).toBe(false);
+    expect(refused).toBe(0);
+  });
+
+  it('the review takes their copy: it is shown, and nothing is written', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    key('A');
+    await foreignCopyNow(withTyped('F'));
+    const review = [...container.querySelectorAll('button')].find((button) => button.textContent === 'editor.conflict.review');
+    if (!review) throw new Error('No review button');
+    await act(async () => review.click());
+    await advance(0);
+    await act(async () => mocks.conflictDialog?.onResolve({ title: 'Page', content: withTyped('F') }));
+    await drain();
+    expect(getMarkdown(current())).toBe(withTyped('F').trimEnd());
+    expect(attempts).toHaveLength(0);
+    expect(conflictShown()).toBe(false);
+  });
+
+  it('navigating away after their copy arrived: the navigation waits for the review, and nothing is written', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    key('A');
+    await foreignCopyNow(withTyped('F'));
+    const proceeded = await navigate();
+    await drain();
+    // Main: the draft is sent from the loaded revision and refused (409).
+    await expect(proceeded()).rejects.toThrow();
+    expect(attempts).toHaveLength(0);
+    expect(server.content).toBe(withTyped('F'));
+    expect(conflictShown()).toBe(true);
+  });
+
+  // #802 review: a write still pending when the conflict appears lands after it.
+  // Its success set the status back to "saving"/"saved", and the banner and its
+  // Review only show for an error: the editor was stuck, every save held back
+  // and the review out of reach. The conflict now keeps its banner until resolved.
+  const reviewButton = () => [...container.querySelectorAll('button')].find((button) => button.textContent === 'editor.conflict.review');
+  it.each<[string, () => string]>([
+    ['the review keeps the draft: it is saved from their revision', () => withTyped('AB')],
+    ['the review takes their copy: it is shown, and nothing more is written', () => withTyped('F')],
+  ])('an older write lands after their copy made a conflict: the banner and Review stay; %s', async (name, choose) => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    key('B');
+    await foreignCopyNow(withTyped('F'));
+    expect(conflictShown()).toBe(true);
+    await settleWrite();
+    await advance(SERIALIZE_PAUSE);
+    // 69241cb8: the banner and Review were gone here.
+    expect(conflictShown()).toBe(true);
+    const review = reviewButton();
+    if (!review) throw new Error('No review button');
+    // Guarded actions stay held for the review.
+    const proceeded = await navigate();
+    await expect(proceeded()).rejects.toThrow();
+    expect(conflictShown()).toBe(true);
+    await act(async () => review.click());
+    await advance(0);
+    await act(async () => mocks.conflictDialog?.onResolve({ title: 'Page', content: choose() }));
+    await drain();
+    expect(conflictShown()).toBe(false);
+    expect(server.content).toBe(choose());
+    expect(getMarkdown(current())).toBe(choose().trimEnd());
+    expect(sent()).toEqual(name.includes('keeps') ? ['original+A', 'original+AB'] : ['original+A']);
+    expect(refused).toBe(0);
+  });
+
+  // #802 review (round 1). A queued draft is not on the server: it is an unsent
+  // change, so another client's copy over it is a conflict (carries() counted it).
+  it('AB is queued behind A, still at the server, and their copy arrives: the banner shows at once', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(3500);
+    expect(attempts).toHaveLength(1);
+    expect(held).toHaveLength(1);
+    await foreignCopyNow(withTyped('F'));
+    expect(getMarkdown(current())).toBe(withTyped('AB').trimEnd());
+    // a4375a13: no banner.
+    expect(conflictShown()).toBe(true);
+  });
+
+  it('AB is queued behind A, their copy arrives, the author undoes twice and leaves: they were warned first', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(3500);
+    await foreignCopyNow(withTyped('F'));
+    const warned = conflictShown();
+    undo();
+    undo();
+    const final = getMarkdown(current()).trimEnd();
+    await unmount();
+    await drain();
+    expect(server.content.trimEnd() === final || warned).toBe(true);
+    expect(server.content).toBe(withTyped('F'));
+  });
+
+  // The review's resolution has a generation: a write sent before it, failing
+  // after it (its stale revision refused), neither raises nor latches the conflict again.
+  it.each(['mine', 'theirs'] as const)('A is at the server when the review takes %s; A is refused after: the review stands', async (choice) => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await foreignCopyNow(withTyped('F'));
+    expect(conflictShown()).toBe(true);
+    const review = reviewButton();
+    if (!review) throw new Error('No review button');
+    await act(async () => review.click());
+    await advance(0);
+    const content = choice === 'mine' ? withTyped('AB') : withTyped('F');
+    await act(async () => mocks.conflictDialog?.onResolve({ title: 'Page', content }));
+    await settleWrite();
+    await drain();
+    // a4375a13: A's late 409 raised the conflict again, and saving stayed held.
+    expect(conflictShown()).toBe(false);
+    expect(getMarkdown(current())).toBe(content.trimEnd());
+    expect(server.content).toBe(content);
+  });
+
+  // Our own write, stored as other text and refetched before its response:
+  // the conflict raised meanwhile is withdrawn once the response shows the copy
+  // is that write's, and the newer typing is saved without asking the author.
+  it('their copy is our own normalized write, refetched before its response, with AB unsent: AB is saved, no review asked', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await queryFollowsServer();
+    await settleWrite();
+    // a4375a13: the conflict stayed, and AB was never sent.
+    expect(conflictShown()).toBe(false);
+    await drain();
+    expect(server.content).toBe(withTyped('AB'));
+    expect(sent()).toEqual(['original+A', 'original+AB']);
+    expect(refused).toBe(0);
+    expect(conflictShown()).toBe(false);
+  });
+
+  // Cap review: retiring that provisional conflict does not depend on the
+  // editor. Unmounted before the response, or with the review open, the
+  // queued AB is still sent once the response shows the copy was ours.
+  it('our own normalized write refetched, AB queued, the editor unmounts, then the response lands: AB is saved; reopened, no banner', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(3500);
+    expect(attempts).toHaveLength(1);
+    await queryFollowsServer();
+    await unmount();
+    await drain();
+    await reopen();
+    await drain();
+    // 458f3c22: one write, the banner stuck, and AB never saved.
+    expect(server.content).toBe(withTyped('AB'));
+    expect(sent()).toEqual(['original+A', 'original+AB']);
+    expect(refused).toBe(0);
+    expect(conflictShown()).toBe(false);
+  });
+
+  it('our own normalized write refetched, AB queued, the review opened, then the response lands and the review is closed: AB is saved', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(3500);
+    await queryFollowsServer();
+    expect(conflictShown()).toBe(true);
+    const review = reviewButton();
+    if (!review) throw new Error('No review button');
+    await act(async () => review.click());
+    await advance(0);
+    await drain();
+    await act(async () =>
+      (mocks.conflictDialog as { onClose?: (merged: { title: string; content: string }) => void } | null)?.onClose?.({
+        title: 'Page',
+        content: withTyped('AB'),
+      }),
+    );
+    await drain();
+    // 458f3c22: saving stayed held, and AB was never sent.
+    expect(conflictShown()).toBe(false);
+    expect(server.content).toBe(withTyped('AB'));
+    expect(sent()).toEqual(['original+A', 'original+AB']);
+    expect(refused).toBe(0);
+  });
+
+  it('guard: our own write refetched before its response, stored as sent, with AB unsent: AB is saved, no banner', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await queryFollowsServer();
+    expect(conflictShown()).toBe(false);
+    await drain();
+    expect(server.content).toBe(withTyped('AB'));
+  });
+
+  it('guard: the conflict stays reviewable through an older write failing offline, then coming back online', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await foreignCopyNow(withTyped('F'));
+    expect(conflictShown()).toBe(true);
+    const offline = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+    await settleWrite(false);
+    expect(conflictShown()).toBe(true);
+    offline.mockReturnValue(true);
+    await act(async () => window.dispatchEvent(new Event('online')));
+    expect(conflictShown()).toBe(true);
+    expect(reviewButton()).toBeDefined();
+  });
+
+  // Guards: copies that are not over unsent changes load as before.
+  it('guard: their copy arrives while the only change is the write in flight, which the server stored first: it is loaded, with no banner', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    await foreignCopyNow(withTyped('F'));
+    expect(conflictShown()).toBe(false);
+    await drain();
+    expect(getMarkdown(current())).toBe(withTyped('F').trimEnd());
+    expect(conflictShown()).toBe(false);
+    // As on main: the loaded copy differs from the write still pending, so it is
+    // sent once more after it (#728), over its own revision, and not refused.
+    expect(sent()).toEqual(['original+A', 'original+F']);
+    expect(server.content).toBe(withTyped('F'));
+    expect(refused).toBe(0);
+  });
+
+  it('guard: their copy arrives over a clean draft: it is loaded, with no banner', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    await foreignCopyNow(withTyped('F'));
+    await drain();
+    expect(getMarkdown(current())).toBe(withTyped('F').trimEnd());
+    expect(conflictShown()).toBe(false);
+    expect(attempts).toHaveLength(0);
   });
 });
 
@@ -2215,41 +2554,33 @@ describe('#789: an unmount while the server normalizes the last write keeps the 
 
 /*
  * The #728 generator with another client's copy arriving (adopted while the draft
- * is clean, ignored while it is dirty) and the server normalizing the next write,
+ * is clean, a conflict over unsent changes since #790) and the server normalizing the next write,
  * against the real server's stamps and revision check; writes are stored when
  * sent or when they land, per seed. Each seed ends in one outcome:
  *
  * - `stored`: the server holds the final draft;
  * - `conflict`: the editor showed the conflict banner (a refused write the
  *   editor never showed, after it unmounted, is not one);
- * - `untouched`: a known divergence main has too (#790), see `UNTOUCHED_790`;
  * - `lost`: anything else.
  *
- * Main's outcomes are in `__fixtures__/autosave-adoption-main.json`. Every seed
- * must end `stored` or `conflict`, except the named #790 seeds, which must end
- * `untouched` as they do on main; and this branch never sends more writes than
- * main, except to store a final draft main lost. (No seed loses its draft to an
- * unguarded unmount, #789.)
+ * Main's outcomes are in `__fixtures__/autosave-adoption-main.json` (recorded
+ * before #790, so two seeds there end `untouched`: the editor showed the loaded
+ * text while the server held another client's copy). Every seed must end
+ * `stored` or `conflict`, those two included; and this branch never sends more
+ * writes than main, except to store a final draft main lost. (No seed loses its
+ * draft to an unguarded unmount, #789.)
  */
 const ADOPTION_OPS = [...OPS, 'adopt', 'normalize'] as const;
 const ADOPTION_FIXTURE = resolve(import.meta.dirname, '../../../../components/editor/__fixtures__/autosave-adoption-main.json');
 const RECORDING_ADOPTION = Boolean(process.env.WRITE_AUTOSAVE_ADOPTION_MAIN);
-type AdoptionOutcome = 'stored' | 'conflict' | 'untouched' | 'lost';
-type AdoptionResult = { writes: number; outcome: AdoptionOutcome };
+type AdoptionOutcome = 'stored' | 'conflict' | 'lost';
+/** Main's outcomes also name `untouched`, the #790 divergence this branch has none of. */
+type AdoptionResult = { writes: number; outcome: AdoptionOutcome | 'untouched' };
 const MAIN_ADOPTION: Record<number, AdoptionResult> = RECORDING_ADOPTION ? {} : JSON.parse(readFileSync(ADOPTION_FIXTURE, 'utf8')).seeds;
 const adoptionResults: Record<number, AdoptionResult> = {};
 afterAll(() => {
   if (RECORDING_ADOPTION) writeFileSync(ADOPTION_FIXTURE, `${JSON.stringify({ base: 'a804d679', seeds: adoptionResults }, null, 2)}\n`);
 });
-/**
- * #790, a known divergence main has too, not fixed here: the author types,
- * another client's copy arrives while the draft is dirty (so it is not
- * adopted), and the author undoes back to the text the editor loaded. The draft
- * then compares clean, so nothing is written and no conflict is raised, and the
- * server keeps the other client's copy. These are the only seeds that end this
- * way.
- */
-const UNTOUCHED_790 = new Set<number>([95_756, 246_217]);
 
 describe("#757 differential: adopted copies and normalized writes, against the real server's checks", { timeout: 180_000 }, () => {
   it.each(SEEDS)('seed %i', async (seed) => {
@@ -2261,6 +2592,7 @@ describe("#757 differential: adopted copies and normalized writes, against the r
     storeAs = (index, content) => (index === normalizeFrom ? `${content}${NORMALIZED}` : content);
     const foreignTexts: string[] = [];
     let conflict = false;
+    let justified = false;
     const steps: string[] = [];
     for (let step = 0; step < 8; step += 1) {
       const op = pick(ADOPTION_OPS);
@@ -2276,6 +2608,7 @@ describe("#757 differential: adopted copies and normalized writes, against the r
       else if (op === 'adopt') {
         const text = withTyped(`F${foreignTexts.length + 1}`);
         foreignTexts.push(text.trimEnd());
+        justified ||= conflictJustified(text);
         await foreignCopyNow(text);
       } else normalizeFrom = attempts.length;
       conflict ||= conflictShown();
@@ -2299,24 +2632,22 @@ describe("#757 differential: adopted copies and normalized writes, against the r
     // draft had no unsaved change): what it shows is the final draft.
     if (mounted) finalDraft = getMarkdown(current()).trimEnd();
     const stored = server.content.trimEnd();
-    // #790: no edit of the author's left (undone back to the loaded text or an
-    // adopted copy), and the server keeps another client's latest copy.
-    const untouched = stored === foreignTexts.at(-1) && (finalDraft === ORIGINAL.trimEnd() || foreignTexts.includes(finalDraft));
-    const outcome: AdoptionOutcome = stored === finalDraft ? 'stored' : conflict ? 'conflict' : untouched ? 'untouched' : 'lost';
+    const outcome: AdoptionOutcome = stored === finalDraft ? 'stored' : conflict ? 'conflict' : 'lost';
     const result: AdoptionResult = { writes: attempts.length, outcome };
     adoptionResults[seed] = result;
     if (RECORDING_ADOPTION) return;
     const main = MAIN_ADOPTION[seed];
-    const expected: AdoptionOutcome[] = UNTOUCHED_790.has(seed) ? ['untouched'] : ['stored', 'conflict'];
-    // A named exception must be one main has too.
-    const mainSame = UNTOUCHED_790.has(seed) ? main?.outcome === outcome : true;
     const mainLost = main?.outcome === 'lost' || main?.outcome === 'untouched';
+    // Never worse than main: a seed main stored stays stored.
+    const asGood = main?.outcome !== 'stored' || outcome === 'stored';
     expect({
       steps,
       main,
-      outcome: expected.includes(outcome),
-      mainSame,
+      // A conflict only where another client's copy, unlike any of this
+      // editor's writes, arrived over a change not on the server (#802 review).
+      outcome: outcome === 'stored' || (outcome === 'conflict' && justified),
+      asGood,
       writes: result.writes <= (main?.writes ?? -1) || (mainLost && outcome === 'stored'),
-    }).toEqual({ steps, main, outcome: true, mainSame: true, writes: true });
+    }).toEqual({ steps, main, outcome: true, asGood: true, writes: true });
   });
 });
