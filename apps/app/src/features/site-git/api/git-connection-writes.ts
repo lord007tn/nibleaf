@@ -38,7 +38,10 @@ export function startConnectionWrite(client: QueryClient, generation: number, pr
   return () => change(-1);
 }
 
-/** `isWritingConnection`, for rendering. */
+/** No write is in flight while the server renders. */
+const noServerWrite = () => false;
+
+/** `isWritingConnection`, for rendering (server rendering included). */
 export function useWritingConnection(client: QueryClient, generation: number, projectId: string) {
   const subscribe = useCallback(
     (listener: () => void) => {
@@ -50,5 +53,5 @@ export function useWritingConnection(client: QueryClient, generation: number, pr
     },
     [client],
   );
-  return useSyncExternalStore(subscribe, () => isWritingConnection(client, generation, projectId));
+  return useSyncExternalStore(subscribe, () => isWritingConnection(client, generation, projectId), noServerWrite);
 }
