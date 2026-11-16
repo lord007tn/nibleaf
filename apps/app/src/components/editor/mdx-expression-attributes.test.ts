@@ -226,3 +226,27 @@ describe('an opener that can not be read keeps to its own block (#714 review)', 
     expect(appendTo(page, 'Outside', '!')).toBe(saved.replace('# Outside', '# Outside!'));
   });
 });
+
+describe('an opener that can not be read, whose `>` is on a line of its own after a blank line (#714 review)', () => {
+  // frame-main-differential pages 745 and 969: the `>` is the opener's own; it is kept with
+  // it, not read as an empty quote (`> `).
+  it.each([
+    ['745', 'Intro.\n\n<Danger title={"x"\n  aria-label="L"\n\n>\n\n<Card title="Inner">\n\nInner text.\n\n</Card>\n\n</Danger>\n\nOutro.'],
+    [
+      '969',
+      'Intro.\n\n<CardGroup cols={a {/ b}\n  aria-label="L"\n\n>\n\n<Card title="Inner">\n\nInner text.\n\n</Card>\n\n</CardGroup>\n\n<Card title="Next">\n\nMore\n\n</Card>\n\nOutro.',
+    ],
+  ])('page %s saves unchanged, the inner Card still editable', (_index, page) => {
+    expect(saveTwice(page)).toEqual([page, page]);
+    expect(allNodes(page)).toContain('mdxCard');
+  });
+
+  it('page 270 keeps its opener, `>` line included, byte for byte', () => {
+    const opener = 'Intro.\n\n<Tabs title={<b title="</Card>">x</b>"}\n  aria-label="L"\n\n>\n\n';
+    const page = `${opener}<Tabs title="Inner">\n\nInner text.\n\n</Tabs>\n\n</Tabs>\n\n## Later heading\n\nOutro.`;
+    const [saved, again] = saveTwice(page);
+    expect(saved.startsWith(opener)).toBe(true);
+    expect(saved).not.toContain('\n> \n');
+    expect(again).toBe(saved);
+  });
+});

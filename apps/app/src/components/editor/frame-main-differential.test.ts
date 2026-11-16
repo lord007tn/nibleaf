@@ -35,18 +35,32 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * exception covers only a page with one of the values #714 reads differently
  * (`{/"/}`, `"x`, `{"x"`) or a character inserted into its opener (which can leave a
  * quote or brace unterminated), that main's own result saves with a loss; and that page must
- * now either save byte for byte (`exact`), or save exactly what main saves for the
- * same page with that value a plain `"x"` (`plain`): the component is read now, and
- * what is left is how the editor already lays that component out (a self-closing
- * callout, a group's children, an inline body). Both counts are asserted exactly, so
- * anything that widens the exception fails here. Every other page still gives main's
- * digest. Once later work (#714 phase 0b, or after) saves those layouts byte for byte,
- * `plain` shrinks to zero, and the exception should shrink with it.
+ * now take one of three paths:
+ * - `exact`: it saves byte for byte.
+ * - `plain` (the `{/"/}` value): it saves exactly what main saves for the same page with
+ *   that value a plain `"x"`. The component is read now; what is left is how the editor
+ *   already lays that component out (a self-closing callout, a group's children, an
+ *   inline body).
+ * - `body-normalized`: its opener still can't be read and holds another component, so
+ *   the opener is kept byte for byte up to its blank line (or its own lone `>` line) and
+ *   its closing tag on its own (it can't take a body holding a component). It saves the
+ *   opener and closing tag byte for byte, exactly what main saves for the body between
+ *   them as a page of its own (that body is top-level content now), and to a fixed
+ *   point. Main's save of a childless `<File name="Inner">` body drops its "Inner
+ *   text.": that is main's own normalization of that body, standalone, not a new loss.
+ * Every count is asserted exactly, so anything that widens the exception fails here.
+ * Every other page still gives main's digest. From the first count of 338 `exact` and
+ * 45 `plain`: keeping a broken opener only to its own block (the #714 review) moved 30
+ * pages out of `exact`; keeping the whole authored pair when its own closing tag is the
+ * next component tag brought 20 back, and keeping a lone `>` line with its opener 2 more,
+ * so 330 `exact`, 45 `plain` and 8 `body-normalized`. Once later work (#714 phase 0b,
+ * or after) saves those layouts byte for byte, `plain` and `body-normalized` shrink to
+ * zero, and the exception should shrink with them.
  *
  * `__fixtures__/non-frame-714-main.json` holds main's results for those pages, each
- * checked against its digest in `non-frame-main.json`, and the plain-value saves. It
- * was made by running this file against main's `mdx-roundtrip.ts` with
- * `WRITE_NON_FRAME_714_MAIN=1`.
+ * checked against its digest in `non-frame-main.json`, the plain-value saves and main's
+ * saves of their bodies as pages of their own. It was made by running this file against
+ * main's `mdx-roundtrip.ts` with `WRITE_NON_FRAME_714_MAIN=1`.
  *
  * `__fixtures__/non-frame-main.json` holds a digest of main's result for each page;
  * it was made by running this file against main's editor with
@@ -71,13 +85,25 @@ interface MainResult {
 
 /** Main's result for a page #714 may read differently that main saves with a loss (its
  *  nodes joined with commas); for the regular expression value, also main's save of the
- *  same page with the value a plain "x". */
+ *  same page with the value a plain "x"; for a component with a body of blocks, main's
+ *  save of that body as a page of its own. */
 interface Main714Record extends Omit<MainResult, 'nodes'> {
   index: number;
   nodes: string;
   valueText: string;
   plainSaved: string | null;
+  bodySaved: string | null;
 }
+
+/** A component's body between its opener and its closing tag: the blank lines around it,
+ *  and what is between them. */
+const bodyOf = (page: string, seeded: SeededPage): { before: string; body: string; after: string } | null => {
+  if (seeded.closerAt === null) return null;
+  const between = page.slice(seeded.openerEnd, seeded.closerAt);
+  const body = between.trim();
+  const start = between.indexOf(body);
+  return { before: between.slice(0, start), body, after: between.slice(start + body.length) };
+};
 
 const digestOf = ({ nodes, saved, edited }: MainResult): string =>
   createHash('sha256').update(JSON.stringify({ nodes, saved, edited })).digest('hex').slice(0, 16);
@@ -275,10 +301,18 @@ describe('pages without a Frame read as on main', () => {
         if (!seeded || !(VALUES_714.has(seeded.value) || seeded.inserted) || !result) continue;
         if (result.saved === page || result.digest !== main.digests[index]) continue;
         const plainPage = `${page.slice(0, seeded.valueAt)}"x"${page.slice(seeded.valueAt + seeded.valueText.length)}`;
-        // The regular expression value's pages (`plain`) and pages with a body of blocks
-        // (`body-normalized`): main's save with the value a plain "x".
-        const plainSaved = seeded.value === REGEX_VALUE || seeded.closerAt !== null ? digest(plainPage, seeded.key).saved : null;
-        records.push({ index, nodes: result.nodes.join(','), saved: result.saved, edited: result.edited, valueText: seeded.valueText, plainSaved });
+        const plainSaved = seeded.value === REGEX_VALUE ? digest(plainPage, seeded.key).saved : null;
+        const body = bodyOf(page, seeded);
+        const bodySaved = body ? digest(body.body, seeded.key).saved : null;
+        records.push({
+          index,
+          nodes: result.nodes.join(','),
+          saved: result.saved,
+          edited: result.edited,
+          valueText: seeded.valueText,
+          plainSaved,
+          bodySaved,
+        });
       }
       writeFileSync(FIXTURE_714, `${JSON.stringify({ pages: pages.length, records }, null, 2)}\n`);
     }
@@ -293,12 +327,18 @@ describe('pages without a Frame read as on main', () => {
     // #714: see the comment at the top. `exact` pages now save byte for byte; `plain` pages
     // (the regular expression value) save what main saves for the same page with the value
     // a plain "x"; `bodyNormalized` pages keep their unreadable opener and its closing tag
-    // byte for byte, and between them hold the body exactly as main saves it with a
-    // readable opener, and save to a fixed point.
+    // byte for byte, hold between them exactly what main saves for that body as a page of
+    // its own (the opener is opaque, so the body is top-level content), and save to a
+    // fixed point.
     const exact: string[] = [];
     const plain: string[] = [];
     const bodyNormalized: string[] = [];
     const plainValue = (record: Main714Record) => record.plainSaved?.replace('"x"', record.valueText);
+    const withMainBody = (page: string, seeded: SeededPage, record: Main714Record): string | null => {
+      const body = bodyOf(page, seeded);
+      if (!body || record.bodySaved === null || seeded.closerAt === null) return null;
+      return `${page.slice(0, seeded.openerEnd)}${body.before}${record.bodySaved}${body.after}${page.slice(seeded.closerAt)}`;
+    };
     // Pages saved and edited byte for byte as main does, whose nodes alone differ: text
     // with a `{…}` (`{/"/}`) that main's scan misread as a runaway string now loads as an
     // opaque inline expression node, kept byte for byte. Exactly these, by index.
@@ -324,7 +364,7 @@ describe('pages without a Frame read as on main', () => {
         seeded.closerAt !== null &&
         result.saved.startsWith(page.slice(0, seeded.openerEnd)) &&
         result.saved.endsWith(page.slice(seeded.closerAt)) &&
-        result.saved === plainValue(record) &&
+        result.saved === withMainBody(page, seeded, record) &&
         digest(result.saved, seeded.key).saved === result.saved
       ) {
         bodyNormalized.push(page);
@@ -346,9 +386,9 @@ describe('pages without a Frame read as on main', () => {
     expect(differences.slice(0, 3)).toEqual([]);
     expect(lost.map((result) => result.page)).toEqual([]);
     expect(kept.length).toBe(4);
-    expect(exact.length).toBe(328);
+    expect(exact.length).toBe(330);
     expect(plain.length).toBe(45);
-    expect(bodyNormalized.length).toBe(0);
+    expect(bodyNormalized.length).toBe(8);
     expect(nodesOnly).toEqual([132, 943, 972, 1132]);
   }, 600_000);
 });

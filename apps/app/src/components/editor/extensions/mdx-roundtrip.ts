@@ -1170,6 +1170,8 @@ function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagTo
 const BLANK_LINES = new RegExp(BLANK_LINE.source, 'g');
 /** A line break before an ATX heading line. */
 const HEADING_LINES = /(?:\r\n?|\n) {0,3}#{1,6}(?=[ \t\r\n]|$)/g;
+/** From a blank line: the blank lines, then a line that is only `>`. */
+const LONE_TAG_END = /(?:(?:\r\n?|\n)[ \t]*)+>[ \t]*(?=\r\n?|\n|$)/y;
 
 function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>): SourceRange[] {
   const ranges: SourceRange[] = [];
@@ -1195,7 +1197,17 @@ function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[]
     const tag = tokens[next];
     let end: number;
     if (tag && pairs.get(index) === next) end = tag.end;
-    else end = Math.min(blankLine, headingLine, tag?.start ?? source.length);
+    else {
+      const limit = Math.min(headingLine, tag?.start ?? source.length);
+      end = Math.min(blankLine, limit);
+      if (end === blankLine && blankLine < limit) {
+        // The opener's own `>` on a line of its own after a blank line ends the opener
+        // (`<Card title={x\n\n>`): kept with it, rather than read as an empty quote.
+        LONE_TAG_END.lastIndex = blankLine;
+        const tagEnd = LONE_TAG_END.exec(source);
+        if (tagEnd && tagEnd.index + tagEnd[0].length <= limit) end = tagEnd.index + tagEnd[0].length;
+      }
+    }
     while (end > token.start && /\s/.test(source[end - 1] ?? '')) end--;
     if (end <= coveredUntil) continue;
     coveredUntil = end;

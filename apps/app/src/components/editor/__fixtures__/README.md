@@ -27,7 +27,8 @@ main's editor with `WRITE_NON_FRAME_MAIN=1`.
 the pages of that test with a value #714 reads differently or a character inserted into the
 opener, where main saves the page with a loss; each record hashes to its digest in
 `non-frame-main.json`. For the `{/"/}` value it also holds main's save of the same page with the
-value a plain `"x"`. The test's #714 exception reads them. It was made by running that test
+value a plain `"x"`, and for a component with a body of blocks, main's save of that body as a
+page of its own. The test's #714 exception reads them. It was made by running that test
 against main's `mdx-roundtrip.ts` with `WRITE_NON_FRAME_714_MAIN=1`.
 
 `blank-line-attribute-main.json` holds a digest of main's result (nodes with their attributes,
