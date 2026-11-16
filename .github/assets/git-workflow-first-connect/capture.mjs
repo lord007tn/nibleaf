@@ -71,13 +71,23 @@ const REMOVED = [
     '',
   ].join('\n'),
 ];
+// Rotate webhook secret left it later: main's hook, as every base has it, last in the file.
+const ROTATE_HOOK = [
+  '',
+  '',
+  'export const useRotateGitWorkflowWebhookSecret = (projectId: string) =>',
+  '  useGitWorkflowMutation(projectId, async (_: undefined) =>',
+  "    mutateData(await api.app.projects[':projectId'].git['webhook-secret'].$post({ param: { projectId } }), 'Could not rotate the webhook secret.'),",
+  '  );',
+].join('\n');
 const baseHooks = git('show', `${BASE}:${HOOKS}`);
 assert.equal(git('diff', '--name-only', BASE, '--', ...SHARED, `:(exclude)${HOOKS}`), '', 'a module both sides share changed since BASE');
 for (const part of REMOVED) assert.ok(baseHooks.includes(part), 'BASE has useConnectGitWorkflow');
+assert.ok(baseHooks.endsWith(ROTATE_HOOK), 'BASE ends with the rotate hook');
 assert.equal(
   (await readFile(resolve(root, HOOKS), 'utf8')).replaceAll('\r\n', '\n').trim(),
-  REMOVED.reduce((hooks, part) => hooks.replace(part, ''), baseHooks),
-  'hooks/api/git-workflow.ts changed since BASE by more than the removal of useConnectGitWorkflow',
+  [...REMOVED, ROTATE_HOOK].reduce((hooks, part) => hooks.replace(part, ''), baseHooks),
+  'hooks/api/git-workflow.ts changed since BASE by more than the removals of useConnectGitWorkflow and the rotate hook',
 );
 
 let harness;

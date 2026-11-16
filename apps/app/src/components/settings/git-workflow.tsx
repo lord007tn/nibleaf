@@ -17,7 +17,8 @@ import { GitPullRequestPreviews, GitRecentOperations, GitWorkflowStatusHeader } 
 import { useGitAuthorizationCommand } from '@/features/site-git/components/use-git-authorization-command';
 import { useGitFirstConnectCommand } from '@/features/site-git/components/use-git-first-connect-command';
 import { useGitOperationCommand } from '@/features/site-git/components/use-git-operation-command';
-import { friendlyErrorMessage, useDisconnectGitWorkflow, useGitWorkflow, useRotateGitWorkflowWebhookSecret } from '@/hooks/api';
+import { useGitWebhookRotateCommand } from '@/features/site-git/components/use-git-webhook-rotate-command';
+import { friendlyErrorMessage, useDisconnectGitWorkflow, useGitWorkflow } from '@/hooks/api';
 
 type GitIdentity = { login: string; name: string | null };
 
@@ -114,8 +115,18 @@ export function GitWorkflow({
   // The operation panel shown: none while the status loads or failed to load (that screen replaces it).
   const shownPanel = !query.isPending && !query.isError && connection && (intent === 'sync' || intent === 'publish') ? intent : null;
   const operation = useGitOperationCommand({ projectId, panel: shownPanel });
-  const rotate = useRotateGitWorkflowWebhookSecret(projectId);
   const confirm = useConfirm();
+  const rotation = useGitWebhookRotateCommand(projectId, {
+    confirm: () =>
+      confirm({
+        title: t('settings.git.workflow.rotateConfirm.title'),
+        description: t('settings.git.workflow.rotateConfirm.description'),
+        confirmLabel: t('settings.git.workflow.rotateSecret'),
+        destructive: true,
+      }),
+    rotated: setWebhookSecret,
+    failed: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.rotateError')),
+  });
   const operationFailed = (error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.operationError'));
   const activeConflicts = useMemo(
     () => connection?.operations.flatMap((item) => item.conflicts.filter((conflict) => conflict.status === 'OPEN')) ?? [],
@@ -465,25 +476,7 @@ export function GitWorkflow({
               <AlertDescription className="break-all font-mono text-xs">{webhookSecret}</AlertDescription>
             </Alert>
           ) : null}
-          <Button
-            className="mt-3"
-            loading={rotate.isPending}
-            onClick={async () => {
-              const approved = await confirm({
-                title: t('settings.git.workflow.rotateConfirm.title'),
-                description: t('settings.git.workflow.rotateConfirm.description'),
-                confirmLabel: t('settings.git.workflow.rotateSecret'),
-                destructive: true,
-              });
-              if (!approved) return;
-              rotate.mutate(undefined, {
-                onSuccess: (result) => setWebhookSecret(result.webhookSecret),
-                onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.rotateError')),
-              });
-            }}
-            size="sm"
-            variant="outline"
-          >
+          <Button className="mt-3" loading={rotation.busy} onClick={() => void rotation.press()} size="sm" variant="outline">
             {t('settings.git.workflow.rotateSecret')}
           </Button>
         </section>
