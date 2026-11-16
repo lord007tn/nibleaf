@@ -4,7 +4,9 @@ import {
   type DraftState,
   draftUnsavable,
   isDirty,
+  isEditorRevisionConflict,
   nextHydration,
+  normalizedSaveConflict,
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
@@ -22,6 +24,15 @@ const cleanState = (page: ServerSnapshot): DraftState => ({ synced: snapshotOf(p
 describe('nextHydration', () => {
   it('loads the first page when nothing is synced yet', () => {
     expect(nextHydration({ synced: null, draft: { title: '', content: '' } }, pageA)).toEqual(snapshotOf(pageA));
+  });
+
+  it('never loads back a copy an own stored write was based on, whatever its stamp (#757)', () => {
+    const saved = { ...pageA, content: 'Saved from the other copy.', updatedAt: '2026-09-01T09:00:00.000Z' };
+    const older = { ...pageA, content: 'The copy the write was based on.', updatedAt: '2026-09-01T12:00:00.000Z' };
+    const basedOn = (revision: string) => revision === older.updatedAt;
+    expect(nextHydration(cleanState(saved), older, basedOn)).toBeNull();
+    expect(nextHydration(cleanState(saved), older)).toEqual(snapshotOf(older));
+    expect(nextHydration(cleanState(saved), { ...older, updatedAt: '2026-09-01T13:00:00.000Z' }, basedOn)).not.toBeNull();
   });
 
   it('does nothing while the page detail is still loading', () => {
@@ -169,6 +180,14 @@ describe('shouldSaveDraft (#728)', () => {
     expect(shouldSaveDraft(cleanState(pageA), pageA, { ...pageB })).toBe(false);
     expect(shouldSaveDraft({ ...cleanState(pageA), conflicted: true }, pageA, inFlight)).toBe(false);
     expect(shouldSaveDraft(cleanState(pageA), pageB, inFlight)).toBe(false);
+  });
+});
+
+describe('normalizedSaveConflict (#757)', () => {
+  it('is reviewed as a revision conflict, naming the page', () => {
+    const conflict = normalizedSaveConflict('a');
+    expect(isEditorRevisionConflict(conflict)).toBe(true);
+    expect(conflict.details).toEqual({ id: 'a', reason: 'normalized' });
   });
 });
 
