@@ -502,8 +502,8 @@ describe('create site dialog: creation that ends while React hides the dialog (<
   const succeed = (create: Create) => create.resolve({ id: 'site', firstPageId: 'welcome-page' });
   const fail = (create: Create) => create.reject(new Error('injected create failure'));
   const refuse = (create: Create) => create.reject(slugRefusal());
-  /** The later opening, left as it was by the dialog: still on step 2, idle, nothing said. */
-  const expectLaterOpeningUntouched = (close: ReturnType<typeof vi.fn>) => {
+  /** Nothing the create could do to the dialog happened: still on step 2, idle, nothing said, nothing moved. */
+  const expectNothingApplied = (close: ReturnType<typeof vi.fn>) => {
     expect(close).not.toHaveBeenCalled();
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(toast.success).not.toHaveBeenCalled();
@@ -526,33 +526,50 @@ describe('create site dialog: creation that ends while React hides the dialog (<
     return { create, close };
   }
 
-  it('a success while hidden closes the dialog once shown, without navigating or toasting, and the next opening starts fresh', async () => {
-    const { create, close } = await createHeld();
-    await hide(true);
-    await act(async () => create.resolve({ id: 'site', firstPageId: 'welcome-page' }));
-    await hide(false);
-    expect(close).toHaveBeenCalledExactlyOnceWith(false);
-    expect(mocks.navigate).not.toHaveBeenCalled();
-    expect(toast.success).not.toHaveBeenCalled();
-    await click(button('Reopen'));
-    expect(nameField().value).toBe('');
-    expect(busy()).toBe(false);
-  });
+  // A create that ends while the dialog is hidden is quiet: the draft reconciles
+  // and the dialog stops being busy; nothing is replayed once it shows.
+  it.each([
+    // A created site settles the draft on it, which then follows its empty source; the site shows in the list.
+    ['success', succeed, ''],
+    ['failure', fail, 'Acme Docs'],
+    ['slug refusal', refuse, 'Acme Docs'],
+  ])(
+    'a %s while hidden is quiet once shown: no close, navigation, toast, error or refusal, and Create is free',
+    async (_name, settleCreate, name) => {
+      const { create, close } = await createHeld();
+      await hide(true);
+      await act(async () => settleCreate(create));
+      await hide(false);
+      await settle();
+      expectNothingApplied(close);
+      expect(isDisabled(button('newSite.create'))).toBe(false);
+      await click(button('common.back'));
+      expect(nameField().value).toBe(name);
+    },
+  );
 
-  it('a failure while hidden leaves the dialog usable once shown: the error inside it, Create to retry, Cancel to leave', async () => {
+  it('after a quiet failure, Create tries again, and a clean success navigates and closes', async () => {
     const { create, close } = await createHeld();
     await hide(true);
-    await act(async () => create.reject(new Error('injected create failure')));
+    await act(async () => fail(create));
     await hide(false);
-    expect(busy()).toBe(false);
-    expect(close).not.toHaveBeenCalled();
-    expect(document.querySelector('[role="alert"]')?.textContent).toBe('newSite.error');
-    expect(isDisabled(button('newSite.create'))).toBe(false);
     await click(button('newSite.create'));
     await settle();
     expect(mocks.create).toHaveBeenCalledTimes(2);
     expect(mocks.navigate).toHaveBeenCalledOnce();
     expect(close).toHaveBeenCalledWith(false);
+  });
+
+  it('after a quiet slug refusal, a retry refused again shows it on the address step', async () => {
+    const { create, close } = await createHeld();
+    await hide(true);
+    await act(async () => refuse(create));
+    await hide(false);
+    mocks.create.mockRejectedValueOnce(slugRefusal());
+    await click(button('newSite.create'));
+    await settle();
+    expect(close).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('newSite.slugTaken: acme-docs-2');
   });
 
   it('a success while hidden, with a newer value made before the hide: the dialog stays open with it once shown', async () => {
@@ -581,7 +598,7 @@ describe('create site dialog: creation that ends while React hides the dialog (<
     await reopenFromOutside();
     await hide(false);
     await settle();
-    expectLaterOpeningUntouched(close);
+    expectNothingApplied(close);
     await click(button('common.back'));
     expect(nameField().value).toBe(name);
   });
@@ -597,26 +614,51 @@ describe('create site dialog: creation that ends while React hides the dialog (<
     await act(async () => settleCreate(create));
     await hide(false);
     await settle();
-    expectLaterOpeningUntouched(close);
+    expectNothingApplied(close);
   });
 
-  it('a slug refusal while hidden shows on the address step once shown, as on screen', async () => {
-    const { create, close } = await createHeld();
-    await hide(true);
-    await act(async () =>
-      create.reject(
-        new ApiResponseError('taken', 409, 'database:conflict', undefined, undefined, undefined, undefined, {
-          reason: 'slug_taken',
-          suggestedSlug: 'acme-docs-2',
-        }),
-      ),
-    );
-    await hide(false);
-    expect(busy()).toBe(false);
-    expect(close).not.toHaveBeenCalled();
-    expect(document.body.textContent).toContain('newSite.slugTaken: acme-docs-2');
-    expect(isDisabled(button('newSite.continue'))).toBe(true);
-    expect(mocks.navigate).not.toHaveBeenCalled();
+  it.each([
+    ['success', succeed, ''],
+    ['failure', fail, 'Acme Docs'],
+    ['slug refusal', refuse, 'Acme Docs'],
+  ])(
+    'a %s answered after the dialog was closed and opened again while hidden, then shown: the reopened dialog is left as it is',
+    async (_name, settleCreate, name) => {
+      const { create, close } = await createHeld();
+      await hide(true);
+      await reopenFromOutside();
+      await hide(false);
+      await settle();
+      await act(async () => settleCreate(create));
+      await settle();
+      expectNothingApplied(close);
+      await click(button('common.back'));
+      expect(nameField().value).toBe(name);
+    },
+  );
+
+  describe.each([
+    ['answered while hidden', true],
+    ['answered once shown', false],
+  ])('organization A → B → A while hidden, %s', (_when, answerHidden) => {
+    it.each([
+      ['success', succeed],
+      ['failure', fail],
+      ['slug refusal', refuse],
+    ])('a %s for the first A applies nothing to the A it came back to', async (_name, settleCreate) => {
+      const { create, close } = await createHeld();
+      await hide(true);
+      await switchOrganization('org-b');
+      await switchOrganization('org-a');
+      if (answerHidden) await act(async () => settleCreate(create));
+      await hide(false);
+      await settle();
+      if (!answerHidden) {
+        await act(async () => settleCreate(create));
+        await settle();
+      }
+      expectNothingApplied(close);
+    });
   });
 });
 
@@ -653,7 +695,10 @@ describe('create site dialog: a value newer than the created site', () => {
 });
 
 describe('create site dialog: a site created for an organization the dialog has since left', () => {
-  it('leaves the dialog for the new organization as it is: no close, no reset, no navigation, no error', async () => {
+  it.each([
+    ['B', ['org-b']],
+    ['B, then A again', ['org-b', 'org-a']],
+  ])('leaves the dialog as it is after moving to %s: no close, no reset, no navigation, no error', async (_name, organizations) => {
     const create = deferred<{ id: string; firstPageId: string }>();
     mocks.create.mockReturnValueOnce(create.promise);
     const node = document.createElement('div');
@@ -676,8 +721,8 @@ describe('create site dialog: a site created for an organization the dialog has 
     await click(button('newSite.continue'));
     await click(button('newSite.create'));
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org-a' }));
-    // The same dialog now creates for another organization.
-    await view('org-b');
+    // The same dialog now creates for another organization (and maybe A again: a new draft all the same).
+    for (const organizationId of organizations) await view(organizationId);
     await act(async () => create.resolve({ id: 'site', firstPageId: 'welcome-page' }));
     await settle();
     expect(close).not.toHaveBeenCalled();
