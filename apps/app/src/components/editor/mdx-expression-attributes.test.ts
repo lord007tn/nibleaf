@@ -336,3 +336,50 @@ describe('an opener that can not be read inside a container that is not a compon
     expect(appendTo(page, 'Outside', '!')).toBe(expected.replace('# Outside', '# Outside!'));
   });
 });
+
+describe('a broken component right after a callout marker (#714 cap review)', () => {
+  // The callout reader dropped a marker paragraph with no text, and the broken
+  // component kept as source in it, its body with it.
+  const cases = (['NOTE', 'TIP'] as const).flatMap((type) =>
+    (['<Card title="oops>', '<Card title={oops>'] as const).flatMap((opener) =>
+      (['>', '> '] as const).map((blank) => ({
+        type,
+        opener,
+        blank: JSON.stringify(blank),
+        page: `> [!${type}]\n> ${opener}\n${blank}\n> Text\n${blank}\n> </Card>`,
+      })),
+    ),
+  );
+
+  it.each(cases)('[!$type] then $opener, blank lines $blank, saves unchanged', ({ page }) => {
+    expect(saveTwice(page)).toEqual([page, page]);
+    expect(allNodes(page)).toContain('callout');
+  });
+});
+
+describe('a symbol JavaScript does not read in an attribute expression (#714 cap review)', () => {
+  // Not an identifier: the scan can't read it, so the expression is read as main read it,
+  // and the next attribute keeps its own span.
+  const symbols = [
+    ['U+1F600', '\u{1F600}'],
+    ['U+2605', '\u{2605}'],
+    ['U+20AC', '\u{20AC}'],
+  ] as const;
+  const cases = symbols.flatMap(([name, symbol]) =>
+    (['LF', 'CRLF'] as const).map((endings) => {
+      const newline = endings === 'LF' ? '\n' : '\r\n';
+      const page = `<Card title={${symbol} / 2} icon={a / 2}>${newline}${newline}Body${newline}${newline}</Card>`;
+      return { name, endings, page, edited: page.replace(`{${symbol} / 2}`, '"Edited"') };
+    }),
+  );
+
+  it.each(cases)('$name before a division ($endings) saves unchanged, and a title edit keeps icon', ({ page, edited }) => {
+    expect(saveTwice(page)).toEqual([page, page]);
+    expect(setAttribute(page, 'title', 'Edited')).toBe(edited);
+  });
+
+  it('keeps every following attribute on a title edit', () => {
+    const page = '<Card title={\u{1F600} / 2} icon={a / 2} data-keep="yes">\n\nBody\n\n</Card>';
+    expect(setAttribute(page, 'title', 'Edited')).toBe('<Card title="Edited" icon={a / 2} data-keep="yes">\n\nBody\n\n</Card>');
+  });
+});
