@@ -10,7 +10,7 @@ import { useSessionQueryClient } from '@/integrations/tanstack-query/session-cac
 import { getSessionGeneration } from '@/integrations/tanstack-query/session-generation';
 import { api } from '@/services/api';
 
-export type WebhookProviderId = 'slack' | 'discord' | 'zapier';
+type WebhookProviderId = 'slack' | 'discord' | 'zapier';
 
 /**
  * A Connect or Save as pressed: the site and provider it is for, the stored
