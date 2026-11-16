@@ -5,7 +5,6 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
-import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useLocale } from '@nibleaf/i18n/react';
 import { randomUUID } from '@nibleaf/shared/uuid';
 import type { GitOperationBody } from '@nibleaf/validators';
@@ -27,15 +26,14 @@ import { toast } from 'sonner';
 import { FailureMessage } from '@/components/failure-message';
 import { SecretInput } from '@/components/secret-input';
 import { env } from '@/env';
+import { GitConflictCard } from '@/features/site-git/components/git-conflict-card';
 import {
-  type GitConflict as Conflict,
   friendlyErrorMessage,
   useAuthorizeGitWorkflow,
   useConnectGitWorkflow,
   useDisconnectGitWorkflow,
   useGitWorkflow,
   useQueueGitOperation,
-  useResolveGitConflict,
   useRotateGitWorkflowWebhookSecret,
 } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
@@ -82,64 +80,6 @@ function GitWorkflowSkeleton() {
 }
 const statusTone = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' =>
   status === 'FAILED' || status === 'CONFLICT' ? 'destructive' : status === 'SUCCEEDED' || status === 'READY' ? 'default' : 'secondary';
-
-function ConflictCard({ projectId, conflict }: { projectId: string; conflict: Conflict }) {
-  const { t } = useLocale();
-  const [custom, setCustom] = useState(conflict.oursContent ?? '');
-  const resolve = useResolveGitConflict(projectId, conflict.id);
-  const resolveConflict = (resolution: 'OURS' | 'THEIRS' | 'CUSTOM', content?: string | null) =>
-    resolve.mutate(
-      { resolution, ...(resolution === 'CUSTOM' ? { content: content ?? null } : {}) },
-      { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.conflict.error')) },
-    );
-  return (
-    <section className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <code className="text-sm">{conflict.path}</code>
-        <Badge variant="destructive">{t('settings.git.workflow.conflict.badge')}</Badge>
-      </div>
-      <div className="grid gap-3 xl:grid-cols-3">
-        {(
-          [
-            [t('settings.git.workflow.conflict.base'), conflict.baseContent],
-            ['Nibleaf', conflict.oursContent],
-            ['Git', conflict.theirsContent],
-          ] as const
-        ).map(([label, value]) => (
-          <div key={label}>
-            <Label>{label}</Label>
-            <pre className="mt-1 max-h-52 overflow-auto whitespace-pre-wrap rounded-md border bg-background p-3 text-xs">
-              {value ?? t('settings.git.workflow.conflict.deleted')}
-            </pre>
-          </div>
-        ))}
-      </div>
-      <Label className="mt-3" htmlFor={`custom-${conflict.id}`}>
-        {t('settings.git.workflow.conflict.custom')}
-      </Label>
-      <Textarea
-        className="mt-1 min-h-32 font-mono text-xs"
-        id={`custom-${conflict.id}`}
-        onChange={(event) => setCustom(event.target.value)}
-        value={custom}
-      />
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button loading={resolve.isPending} onClick={() => resolveConflict('OURS')} size="sm">
-          {t('settings.git.workflow.conflict.useNibleaf')}
-        </Button>
-        <Button loading={resolve.isPending} onClick={() => resolveConflict('THEIRS')} size="sm" variant="outline">
-          {t('settings.git.workflow.conflict.useGit')}
-        </Button>
-        <Button loading={resolve.isPending} onClick={() => resolveConflict('CUSTOM', custom)} size="sm" variant="secondary">
-          {t('settings.git.workflow.conflict.useCustom')}
-        </Button>
-        <Button loading={resolve.isPending} onClick={() => resolveConflict('CUSTOM', null)} size="sm" variant="destructive">
-          {t('settings.git.workflow.conflict.delete')}
-        </Button>
-      </div>
-    </section>
-  );
-}
 
 /** Repository details carried over from legacy import settings; `key` changes per request. */
 export interface GitWorkflowPrefill {
@@ -493,7 +433,7 @@ export function GitWorkflow({
             <p className="text-muted-foreground text-sm">{t('settings.git.workflow.conflict.description')}</p>
           </div>
           {activeConflicts.map((conflict) => (
-            <ConflictCard conflict={conflict} key={conflict.id} projectId={projectId} />
+            <GitConflictCard conflict={conflict} key={conflict.id} projectId={projectId} />
           ))}
         </section>
       ) : null}
