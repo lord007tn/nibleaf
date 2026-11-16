@@ -5037,5 +5037,5 @@
   "editor_fix_explain_blogrootgroup": "读者会在侧边栏顶部看到这个名称。请按其页面内容重命名该栏目，例如“指南”。",
   "editor_fix_placed": "已高亮 {total} 个中的 {placed} 个",
   "editor_fix_previous": "上一个",
-  "editor_fix_insideblock": "这一处位于可视化编辑器按原样保留的区块中。请以 Markdown 编辑页面来修复。"
+  "editor_fix_insideblock": "位于按原样保留的区块中。请在 Markdown 中修复。"
 }

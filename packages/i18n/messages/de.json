@@ -5124,5 +5124,5 @@
   "editor_fix_explain_blogrootgroup": "Leser sehen diesen Namen oben in der Seitenleiste. Benennen Sie den Bereich nach dem Inhalt seiner Seiten um, zum Beispiel Anleitungen.",
   "editor_fix_placed": "{placed} von {total} hervorgehoben",
   "editor_fix_previous": "Vorherige",
-  "editor_fix_insideblock": "Diese Stelle liegt in einem Block, den der visuelle Editor so belässt, wie er geschrieben wurde. Bearbeiten Sie die Seite als Markdown, um sie zu beheben."
+  "editor_fix_insideblock": "In einem Block, der wie geschrieben bleibt. In Markdown beheben."
 }
