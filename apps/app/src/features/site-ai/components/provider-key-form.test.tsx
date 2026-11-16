@@ -13,14 +13,31 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const state = vi.hoisted(() => ({
   connection: null as Record<string, unknown> | null,
   canSave: true,
-  models: { isPending: false, isSuccess: false, data: undefined as unknown, mutate: vi.fn(), reset: vi.fn() },
-  save: { isPending: false, mutate: vi.fn() },
+  // The form's Check and Save (their requests are covered in provider-key-form.credentials.test.tsx).
+  commands: {
+    checking: false,
+    saving: false,
+    models: null as ReadonlyArray<{ id: string }> | null,
+    check: vi.fn(),
+    save: vi.fn(),
+    retire: vi.fn(),
+  },
 }));
 vi.mock('../api/hooks', () => ({
   useAiKeyConnection: () => ({ data: { connection: state.connection, canSave: state.canSave } }),
-  useAiKeyModels: () => state.models,
-  useSaveAiKey: () => state.save,
 }));
+vi.mock('./use-provider-key-commands', () => ({
+  useProviderKeySave: () => ({ saving: state.commands.saving, save: state.commands.save, isSaving: () => false }),
+  useProviderKeyCheck: () => ({
+    checking: state.commands.checking,
+    models: state.commands.models,
+    check: state.commands.check,
+    retire: state.commands.retire,
+    isChecking: () => false,
+    edits: () => 0,
+  }),
+}));
+vi.mock('../api/provider-key', () => ({ providerKeyErrorMessage: () => 'settings.smartAi.error' }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 
@@ -31,9 +48,9 @@ let root: ReturnType<typeof createRoot> | undefined;
 beforeEach(() => {
   state.connection = null;
   state.canSave = true;
-  Object.assign(state.models, { isPending: false, isSuccess: false, data: undefined });
-  state.models.mutate.mockReset();
-  state.save.mutate.mockReset();
+  Object.assign(state.commands, { checking: false, saving: false, models: null });
+  state.commands.check.mockReset();
+  state.commands.save.mockReset();
 });
 afterEach(async () => {
   await act(async () => root?.unmount());
@@ -116,9 +133,10 @@ describe('ProviderKeyForm', () => {
     expect(saveButton()?.disabled).toBe(false);
     expect(saveButton()?.hasAttribute('aria-describedby')).toBe(false);
     await act(async () => saveButton()?.closest('form')?.requestSubmit());
-    expect(state.save.mutate).toHaveBeenCalledWith(
+    expect(state.commands.save).toHaveBeenCalledWith(
       { providerId: 'openai', answerModel: 'gpt-6-luna', expectedRevision: 2, apiKey: 'another-fake-key-for-the-test', replaceCredential: true },
-      expect.any(Object),
+      expect.any(Function),
+      expect.any(Function),
     );
 
     // Unticking blocks Save again.
@@ -129,10 +147,10 @@ describe('ProviderKeyForm', () => {
 
   it('drops a checked model list and its chosen model when the key changes', async () => {
     state.connection = { ...STORED };
-    Object.assign(state.models, { isSuccess: true, data: { models: [{ id: 'gpt-6-luna' }, { id: 'gpt-6-sol' }] } });
+    state.commands.models = [{ id: 'gpt-6-luna' }, { id: 'gpt-6-sol' }];
     await mount();
     expect(document.querySelector('[role="status"]')?.textContent).toBe('settings.smartAi.modelsVerified');
-    expect(state.models.reset).not.toHaveBeenCalled();
+    expect(state.commands.retire).not.toHaveBeenCalled();
     await act(async () => {
       const trigger = modelTrigger();
       trigger?.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
@@ -149,23 +167,23 @@ describe('ProviderKeyForm', () => {
     });
     expect(modelTrigger()?.textContent).toContain('gpt-6-sol');
     await typeKey('another-fake-key-for-the-test');
-    // The list checked against the old key is reset, and the choice goes back to the stored model.
-    expect(state.models.reset).toHaveBeenCalledTimes(1);
+    // The list checked against the old key is retired, and the choice goes back to the stored model.
+    expect(state.commands.retire).toHaveBeenCalledTimes(1);
     expect(modelTrigger()?.textContent).toContain('gpt-6-luna');
   });
 
   it('clears the typed key after a save, and starts a fresh form when the saved revision changes', async () => {
     state.connection = { ...STORED };
-    state.save.mutate.mockImplementation((_body: unknown, options?: { onSuccess?: () => void }) => options?.onSuccess?.());
+    state.commands.save.mockImplementation((_body: unknown, saved: () => void) => saved());
     await mount();
     await typeKey('another-fake-key-for-the-test');
     await act(async () => consentBox()?.click());
-    state.models.reset.mockClear();
+    state.commands.retire.mockClear();
     await act(async () => saveButton()?.closest('form')?.requestSubmit());
-    expect(state.save.mutate).toHaveBeenCalledTimes(1);
+    expect(state.commands.save).toHaveBeenCalledTimes(1);
     // The secret is not kept in the form once saved, and the list checked with it is dropped.
     expect(keyInput()?.value).toBe('');
-    expect(state.models.reset).toHaveBeenCalledTimes(1);
+    expect(state.commands.retire).toHaveBeenCalledTimes(1);
     expect(consentBox()).toBeNull();
 
     // A key typed against revision 2 does not survive into revision 3 (saved here or in another session).
@@ -180,25 +198,27 @@ describe('ProviderKeyForm', () => {
     expect(consentBox()?.getAttribute('aria-checked')).toBe('false');
   });
 
-  it('leaves mutation errors to the mutations: no error handler of its own', async () => {
+  it('checks the saved key with no key in the body, and hands each command one failure handler', async () => {
     state.connection = { ...STORED };
     await mount();
     const verify = [...document.querySelectorAll('button')].find((item) => item.textContent?.includes('settings.smartAi.verifyModels'));
     await act(async () => verify?.click());
-    expect(state.models.mutate).toHaveBeenCalledWith({ providerId: 'openai' });
-    expect(state.models.mutate.mock.calls[0]).toHaveLength(1);
+    expect(state.commands.check).toHaveBeenCalledExactlyOnceWith({ providerId: 'openai' }, expect.any(Function));
     await act(async () => saveButton()?.closest('form')?.requestSubmit());
-    const [, options] = state.save.mutate.mock.calls[0] ?? [];
-    expect(Object.keys(options as object)).toEqual(['onSuccess']);
+    expect(state.commands.save).toHaveBeenCalledExactlyOnceWith(expect.any(Object), expect.any(Function), expect.any(Function));
   });
 
   it('saves the key with the chosen model and the connection revision, then closes', async () => {
     state.connection = { id: 'openai', configured: true, revision: 2, verified: true, verifiedAt: null, answerModel: 'gpt-6-luna' };
-    state.save.mutate.mockImplementation((_body: unknown, options?: { onSuccess?: () => void }) => options?.onSuccess?.());
+    state.commands.save.mockImplementation((_body: unknown, saved: () => void) => saved());
     const onSaved = vi.fn();
     await mount(onSaved);
     await act(async () => saveButton()?.closest('form')?.requestSubmit());
-    expect(state.save.mutate).toHaveBeenCalledWith({ providerId: 'openai', answerModel: 'gpt-6-luna', expectedRevision: 2 }, expect.any(Object));
+    expect(state.commands.save).toHaveBeenCalledWith(
+      { providerId: 'openai', answerModel: 'gpt-6-luna', expectedRevision: 2 },
+      expect.any(Function),
+      expect.any(Function),
+    );
     expect(onSaved).toHaveBeenCalled();
   });
 });
