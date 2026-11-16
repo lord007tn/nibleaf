@@ -645,6 +645,27 @@ describe('round 2: the session, the adopted read and the cleaned error', () => {
     expect(statusQuery()).toBeUndefined();
   });
 
+  it('a session reset in the same tick as the save, with the status cached: nothing is sent', async () => {
+    await render(<Probe projectId="site-a" />);
+    // A valid, idle status: the save takes it from the cache without a read.
+    client.setQueryData(statusKey, status('site-a'));
+    mocks.put.mockImplementation(async (request: PutRequest) => serve(request));
+    const before = reads('site-a');
+    let outcome: Promise<unknown> = Promise.resolve();
+    await act(async () => {
+      outcome = (probe?.save({ projectId: 'site-a', values }, TOKEN) ?? Promise.resolve()).catch((error: unknown) => error);
+      // Before the save's continuation runs.
+      resetDashboardSession(client);
+    });
+    await settle();
+    expect(await outcome).toBeInstanceOf(Error);
+    expect(mocks.put).not.toHaveBeenCalled();
+    expect(JSON.stringify([mocks.put.mock.calls, mocks.status.mock.calls, mocks.operations.mock.calls])).not.toContain(TOKEN);
+    expect(reads('site-a')).toBe(before);
+    expect(statusQuery()).toBeUndefined();
+    expect(probe?.isPending()).toBe(false);
+  });
+
   it('a session reset while the save waits on a read: no read after it, and the cleared cache stays empty', async () => {
     await render(<Probe projectId="site-a" />);
     client.setQueryData(statusKey, status('site-a'));

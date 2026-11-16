@@ -170,6 +170,8 @@ export function useSaveGitWorkflowConnection(projectId: string) {
       track(cache, key, 1);
       try {
         const status = await latestConfirmedStatus(client, request.projectId, current);
+        // Even a status taken from the cache resumes after a turn: a session that ended meanwhile sends nothing.
+        if (!current()) throw obsolete();
         let result: GitWorkflowConnectionResult;
         try {
           result = await mutateData<GitWorkflowConnectionResult>(
