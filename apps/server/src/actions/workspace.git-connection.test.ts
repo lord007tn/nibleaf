@@ -8,6 +8,7 @@ import {
   gitConnectionValues,
   sentGitConnectionValues,
 } from '../../../app/src/features/site-git/model/git-connection';
+import { type GitInstantChange, gitInstantPayload } from '../../../app/src/features/site-git/model/git-instant-write';
 import { getScopedWorkspaceSettings, updateWorkspaceSettings } from './workspace';
 
 /** Persistence only: what `writeProjectSettings` and the reads touch, in memory. */
@@ -144,5 +145,58 @@ describe('a repository save through the real validator and merge', () => {
     await saveConnection(draft({}));
     expect(db.git).not.toHaveProperty('autoPublish');
     expect(db.git).toMatchObject({ connected: true });
+  });
+});
+
+/** The dashboard's instant write (auto publish, Disconnect, legacy switch-off): the settings it last read, with one change. */
+async function writeInstant(change: GitInstantChange) {
+  const read = await getScopedWorkspaceSettings('org-1', MemberRole.ADMIN, 'website-1');
+  const git = gitInstantPayload(read.git, change);
+  // The serializer before the validator, and after it: accepted unchanged, nothing normalized away.
+  expect(updateWorkspaceSettingsBody.parse({ git })).toEqual({ git });
+  expect(JSON.stringify(git)).not.toMatch(/f00d|webhookSecret|lastSync|lastImportedAt/);
+  await updateWorkspaceSettings('org-1', 'actor-1', updateWorkspaceSettingsBody.parse({ git }), 'website-1');
+  return getScopedWorkspaceSettings('org-1', MemberRole.ADMIN, 'website-1');
+}
+
+describe('an instant write through the real validator and merge (#780)', () => {
+  // Each provider with only its own address stored: no clone URL for GitHub or GitLab, no repository for a Git URL.
+  const CONNECTIONS = {
+    github: { provider: 'github', repo: 'team/docs', branch: 'main', path: 'docs', connected: true, autoPublish: false },
+    gitlab: {
+      provider: 'gitlab',
+      repo: 'group/docs',
+      instanceUrl: 'https://git.example.com',
+      branch: 'release',
+      path: '',
+      importBranchId: 'b1',
+      importLanguageId: 'fr',
+      connected: true,
+      autoPublish: true,
+    },
+    git: { provider: 'git', cloneUrl: 'https://git.example.com/team/docs.git', branch: 'main', path: 'guides', connected: true },
+  } as const;
+  const CHANGES: GitInstantChange[] = [{ autoPublish: true }, { autoPublish: false }, { connected: false }];
+
+  it.each(Object.entries(CONNECTIONS))(
+    '%s: each change stores only that change, and reads it back with the bookkeeping and the secret',
+    async (_provider, connection) => {
+      for (const change of CHANGES) {
+        db.git = { ...connection, ...BOOKKEEPING };
+        const read = await writeInstant(change);
+        expect(db.git).toEqual({ ...connection, ...change, ...BOOKKEEPING });
+        expect(read.git).toEqual({ ...connection, ...change, ...BOOKKEEPING, webhookSecret: 'f00d' });
+        expect(db.secret).toBe('f00d');
+        expect(db.legacy).toEqual({ integrations: { slack: { webhookUrl: 'https://hooks.slack.com/services/x' } } });
+      }
+    },
+  );
+
+  it('a site with nothing stored gains only the change: no repository, never connected', async () => {
+    db.git = {};
+    await writeInstant({ autoPublish: true });
+    expect(db.git).toEqual({ autoPublish: true });
+    await writeInstant({ connected: false });
+    expect(db.git).toEqual({ autoPublish: true, connected: false });
   });
 });

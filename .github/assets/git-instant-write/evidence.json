@@ -1,0 +1,1478 @@
+{
+  "environment": "Component fixture: main's GitTab and features/site-git at a716947c9b4879b413251b1725f84417d07410f6 and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient, the settings query and mutations; the settings PATCH answered by interception through the real body validator (422 refused, 500 thrown, as the route answers) and the server's stored-shape rules; a fictional site; not the signed-in dashboard, production, the server, a repository, an import, a deployment or a webhook",
+  "base": "a716947c9b4879b413251b1725f84417d07410f6",
+  "head": "5439e1f8da210130b30da9d3611001e31f4658fd",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "states": {
+        "en-toggle-before": {
+          "dir": "ltr",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["Could not save Git settings"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "docs",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-toggle-after": {
+          "dir": "ltr",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["Auto-publish updated"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-disconnect-before": {
+          "dir": "ltr",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["Could not save Git settings"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "docs",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": false,
+                  "autoPublish": false
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-disconnect-after": {
+          "dir": "ltr",
+          "autoPublish": null,
+          "legacyShown": false,
+          "toasts": ["Disconnected"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": false,
+                  "autoPublish": false
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": false,
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-switchOff-before": {
+          "dir": "ltr",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["Could not save Git settings"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "gitlab",
+                  "repo": "acme-fixture/handbook",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.acme-fixture.test",
+                  "branch": "release",
+                  "path": "",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": false,
+                  "autoPublish": true
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "gitlab",
+            "repo": "acme-fixture/handbook",
+            "instanceUrl": "https://gitlab.acme-fixture.test",
+            "branch": "release",
+            "path": "",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-switchOff-after": {
+          "dir": "ltr",
+          "autoPublish": null,
+          "legacyShown": false,
+          "toasts": [
+            "Switched to the new connection. The legacy import is off."
+          ],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "gitlab",
+                  "repo": "acme-fixture/handbook",
+                  "instanceUrl": "https://gitlab.acme-fixture.test",
+                  "branch": "release",
+                  "path": "",
+                  "connected": false,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "gitlab",
+            "repo": "acme-fixture/handbook",
+            "instanceUrl": "https://gitlab.acme-fixture.test",
+            "branch": "release",
+            "path": "",
+            "connected": false,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-gitUrl-before": {
+          "dir": "ltr",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["Could not save Git settings"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "git",
+                  "repo": "",
+                  "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "guides",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 422,
+              "validator": [
+                "git.repo: Use the form owner/repo or group/project."
+              ]
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "git",
+            "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+            "branch": "main",
+            "path": "guides",
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-gitUrl-after": {
+          "dir": "ltr",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["Auto-publish updated"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "git",
+                  "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+                  "branch": "main",
+                  "path": "guides",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "git",
+            "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+            "branch": "main",
+            "path": "guides",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-toggle-before": {
+          "dir": "rtl",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "docs",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-toggle-after": {
+          "dir": "rtl",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["تم تحديث النشر التلقائي"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-disconnect-before": {
+          "dir": "rtl",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "docs",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": false,
+                  "autoPublish": false
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-disconnect-after": {
+          "dir": "rtl",
+          "autoPublish": null,
+          "legacyShown": false,
+          "toasts": ["تم قطع الاتصال"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": false,
+                  "autoPublish": false
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": false,
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-switchOff-before": {
+          "dir": "rtl",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "gitlab",
+                  "repo": "acme-fixture/handbook",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.acme-fixture.test",
+                  "branch": "release",
+                  "path": "",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": false,
+                  "autoPublish": true
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "gitlab",
+            "repo": "acme-fixture/handbook",
+            "instanceUrl": "https://gitlab.acme-fixture.test",
+            "branch": "release",
+            "path": "",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-switchOff-after": {
+          "dir": "rtl",
+          "autoPublish": null,
+          "legacyShown": false,
+          "toasts": ["تم الانتقال إلى الاتصال الجديد، وتوقف الاستيراد القديم."],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "gitlab",
+                  "repo": "acme-fixture/handbook",
+                  "instanceUrl": "https://gitlab.acme-fixture.test",
+                  "branch": "release",
+                  "path": "",
+                  "connected": false,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "gitlab",
+            "repo": "acme-fixture/handbook",
+            "instanceUrl": "https://gitlab.acme-fixture.test",
+            "branch": "release",
+            "path": "",
+            "connected": false,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-gitUrl-before": {
+          "dir": "rtl",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "git",
+                  "repo": "",
+                  "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "guides",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 422,
+              "validator": [
+                "git.repo: Use the form owner/repo or group/project."
+              ]
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "git",
+            "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+            "branch": "main",
+            "path": "guides",
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-gitUrl-after": {
+          "dir": "rtl",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["تم تحديث النشر التلقائي"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "git",
+                  "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+                  "branch": "main",
+                  "path": "guides",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "git",
+            "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+            "branch": "main",
+            "path": "guides",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "states": {
+        "en-toggle-before": {
+          "dir": "ltr",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["Could not save Git settings"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "docs",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-toggle-after": {
+          "dir": "ltr",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["Auto-publish updated"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-disconnect-before": {
+          "dir": "ltr",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["Could not save Git settings"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "docs",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": false,
+                  "autoPublish": false
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-disconnect-after": {
+          "dir": "ltr",
+          "autoPublish": null,
+          "legacyShown": false,
+          "toasts": ["Disconnected"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": false,
+                  "autoPublish": false
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": false,
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-switchOff-before": {
+          "dir": "ltr",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["Could not save Git settings"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "gitlab",
+                  "repo": "acme-fixture/handbook",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.acme-fixture.test",
+                  "branch": "release",
+                  "path": "",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": false,
+                  "autoPublish": true
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "gitlab",
+            "repo": "acme-fixture/handbook",
+            "instanceUrl": "https://gitlab.acme-fixture.test",
+            "branch": "release",
+            "path": "",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-switchOff-after": {
+          "dir": "ltr",
+          "autoPublish": null,
+          "legacyShown": false,
+          "toasts": [
+            "Switched to the new connection. The legacy import is off."
+          ],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "gitlab",
+                  "repo": "acme-fixture/handbook",
+                  "instanceUrl": "https://gitlab.acme-fixture.test",
+                  "branch": "release",
+                  "path": "",
+                  "connected": false,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "gitlab",
+            "repo": "acme-fixture/handbook",
+            "instanceUrl": "https://gitlab.acme-fixture.test",
+            "branch": "release",
+            "path": "",
+            "connected": false,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-gitUrl-before": {
+          "dir": "ltr",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["Could not save Git settings"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "git",
+                  "repo": "",
+                  "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "guides",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 422,
+              "validator": [
+                "git.repo: Use the form owner/repo or group/project."
+              ]
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "git",
+            "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+            "branch": "main",
+            "path": "guides",
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "en-gitUrl-after": {
+          "dir": "ltr",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["Auto-publish updated"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "git",
+                  "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+                  "branch": "main",
+                  "path": "guides",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "git",
+            "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+            "branch": "main",
+            "path": "guides",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-toggle-before": {
+          "dir": "rtl",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "docs",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-toggle-after": {
+          "dir": "rtl",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["تم تحديث النشر التلقائي"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-disconnect-before": {
+          "dir": "rtl",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "docs",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": false,
+                  "autoPublish": false
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-disconnect-after": {
+          "dir": "rtl",
+          "autoPublish": null,
+          "legacyShown": false,
+          "toasts": ["تم قطع الاتصال"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "github",
+                  "repo": "acme-fixture/docs",
+                  "branch": "main",
+                  "path": "docs",
+                  "connected": false,
+                  "autoPublish": false
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": false,
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-switchOff-before": {
+          "dir": "rtl",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "gitlab",
+                  "repo": "acme-fixture/handbook",
+                  "cloneUrl": "",
+                  "instanceUrl": "https://gitlab.acme-fixture.test",
+                  "branch": "release",
+                  "path": "",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": false,
+                  "autoPublish": true
+                }
+              },
+              "status": 500,
+              "validator": "threw TypeError: Invalid URL"
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "gitlab",
+            "repo": "acme-fixture/handbook",
+            "instanceUrl": "https://gitlab.acme-fixture.test",
+            "branch": "release",
+            "path": "",
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-switchOff-after": {
+          "dir": "rtl",
+          "autoPublish": null,
+          "legacyShown": false,
+          "toasts": ["تم الانتقال إلى الاتصال الجديد، وتوقف الاستيراد القديم."],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "gitlab",
+                  "repo": "acme-fixture/handbook",
+                  "instanceUrl": "https://gitlab.acme-fixture.test",
+                  "branch": "release",
+                  "path": "",
+                  "connected": false,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "gitlab",
+            "repo": "acme-fixture/handbook",
+            "instanceUrl": "https://gitlab.acme-fixture.test",
+            "branch": "release",
+            "path": "",
+            "connected": false,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-gitUrl-before": {
+          "dir": "rtl",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["تعذر حفظ إعدادات Git"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "git",
+                  "repo": "",
+                  "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+                  "instanceUrl": "https://gitlab.com",
+                  "branch": "main",
+                  "path": "guides",
+                  "importBranchId": "",
+                  "importLanguageId": "",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 422,
+              "validator": [
+                "git.repo: Use the form owner/repo or group/project."
+              ]
+            }
+          ],
+          "stored": {
+            "connected": true,
+            "provider": "git",
+            "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+            "branch": "main",
+            "path": "guides",
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        },
+        "ar-gitUrl-after": {
+          "dir": "rtl",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["تم تحديث النشر التلقائي"],
+          "overflow": false,
+          "patches": [
+            {
+              "call": "PATCH /api/app/projects/site-1/settings",
+              "body": {
+                "git": {
+                  "provider": "git",
+                  "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+                  "branch": "main",
+                  "path": "guides",
+                  "connected": true,
+                  "autoPublish": true
+                }
+              },
+              "status": 200,
+              "parsedEqualsSent": true
+            }
+          ],
+          "stored": {
+            "provider": "git",
+            "cloneUrl": "https://git.acme-fixture.test/acme/docs.git",
+            "branch": "main",
+            "path": "guides",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "secretKept": true
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-after-en-1440.webm",
+      "version": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1/settings" },
+        {
+          "call": "PATCH /api/app/projects/site-1/settings",
+          "body": {
+            "git": {
+              "provider": "github",
+              "repo": "acme-fixture/docs",
+              "branch": "main",
+              "path": "docs",
+              "connected": true,
+              "autoPublish": true
+            }
+          },
+          "status": 200,
+          "parsedEqualsSent": true
+        },
+        { "call": "GET /api/app/projects/site-1/settings" },
+        {
+          "call": "PATCH /api/app/projects/site-1/settings",
+          "body": {
+            "git": {
+              "provider": "github",
+              "repo": "acme-fixture/docs",
+              "branch": "main",
+              "path": "docs",
+              "connected": true,
+              "autoPublish": false
+            }
+          },
+          "status": 200,
+          "parsedEqualsSent": true
+        },
+        { "call": "GET /api/app/projects/site-1/settings" },
+        {
+          "call": "PATCH /api/app/projects/site-1/settings",
+          "body": {
+            "git": {
+              "provider": "github",
+              "repo": "acme-fixture/docs",
+              "branch": "main",
+              "path": "docs",
+              "connected": false,
+              "autoPublish": false
+            }
+          },
+          "status": 200,
+          "parsedEqualsSent": true
+        },
+        { "call": "GET /api/app/projects/site-1/settings" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "ready: GitHub legacy import, no stored clone URL, auto publish off",
+          "dir": "ltr",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": [],
+          "overflow": false,
+          "stored": {
+            "connected": true,
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "lastPatch": null
+        },
+        {
+          "step": "auto publish switched on",
+          "dir": "ltr",
+          "autoPublish": "true",
+          "legacyShown": true,
+          "toasts": ["Auto-publish updated"],
+          "overflow": false,
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": true,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "lastPatch": {
+            "call": "PATCH /api/app/projects/site-1/settings",
+            "body": {
+              "git": {
+                "provider": "github",
+                "repo": "acme-fixture/docs",
+                "branch": "main",
+                "path": "docs",
+                "connected": true,
+                "autoPublish": true
+              }
+            },
+            "status": 200,
+            "parsedEqualsSent": true
+          }
+        },
+        {
+          "step": "auto publish switched off",
+          "dir": "ltr",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["Auto-publish updated", "Auto-publish updated"],
+          "overflow": false,
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "lastPatch": {
+            "call": "PATCH /api/app/projects/site-1/settings",
+            "body": {
+              "git": {
+                "provider": "github",
+                "repo": "acme-fixture/docs",
+                "branch": "main",
+                "path": "docs",
+                "connected": true,
+                "autoPublish": false
+              }
+            },
+            "status": 200,
+            "parsedEqualsSent": true
+          }
+        },
+        {
+          "step": "Disconnect: confirmation open",
+          "dir": "ltr",
+          "autoPublish": "false",
+          "legacyShown": true,
+          "toasts": ["Auto-publish updated", "Auto-publish updated"],
+          "overflow": false,
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": true,
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "lastPatch": {
+            "call": "PATCH /api/app/projects/site-1/settings",
+            "body": {
+              "git": {
+                "provider": "github",
+                "repo": "acme-fixture/docs",
+                "branch": "main",
+                "path": "docs",
+                "connected": true,
+                "autoPublish": false
+              }
+            },
+            "status": 200,
+            "parsedEqualsSent": true
+          }
+        },
+        {
+          "step": "disconnected",
+          "dir": "ltr",
+          "autoPublish": null,
+          "legacyShown": false,
+          "toasts": ["Disconnected", "Auto-publish updated"],
+          "overflow": false,
+          "stored": {
+            "provider": "github",
+            "repo": "acme-fixture/docs",
+            "branch": "main",
+            "path": "docs",
+            "connected": false,
+            "autoPublish": false,
+            "lastImportedAt": "2026-11-15T09:00:00.000Z",
+            "lastSyncAt": "2026-11-15T10:30:00.000Z",
+            "lastSyncStatus": "ok"
+          },
+          "lastPatch": {
+            "call": "PATCH /api/app/projects/site-1/settings",
+            "body": {
+              "git": {
+                "provider": "github",
+                "repo": "acme-fixture/docs",
+                "branch": "main",
+                "path": "docs",
+                "connected": false,
+                "autoPublish": false
+              }
+            },
+            "status": 200,
+            "parsedEqualsSent": true
+          }
+        }
+      ]
+    }
+  ]
+}

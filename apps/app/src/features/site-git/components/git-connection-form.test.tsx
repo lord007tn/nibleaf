@@ -201,9 +201,9 @@ const shown = () => ({
 });
 const toggleAutoPublish = () => host.querySelector<HTMLElement>('[role="switch"]')?.click();
 /**
- * The auto-publish toggle (main's instant save, out of this form's scope) sends
- * the stored connection with main's display defaults filled in, among them a
- * blank clone URL the validator refuses. A stored clone URL lets it save.
+ * A clone URL left from an earlier save, beside a GitHub connection. Before #780
+ * the auto-publish toggle needed it to save (it sent the display defaults,
+ * among them a blank clone URL); it now sends the stored connection, without it.
  */
 const SAVABLE_BY_TOGGLE = { cloneUrl: 'https://git.example.com/team/docs.git' };
 const conflict = () => host.textContent?.includes('en:forms.changedElsewhere') ?? false;
@@ -518,8 +518,7 @@ describe('identity: the site, never the locale', () => {
   });
 
   it('A → B → A while A’s auto-publish write is still running: the new A waits for it, and never replays the old flag', async () => {
-    // A plain Git URL connection that kept a valid repository from before: the instant write's body
-    // (main's helper fills blanks with its display defaults, #780) passes the validator for it.
+    // A plain Git URL connection (before #780, its instant write needed a valid stored repository too).
     db.git['site-a'] = { ...STORED, provider: 'git', cloneUrl: 'https://git.example.com/team/docs.git' };
     await open('site-a');
     const hold = gate();
