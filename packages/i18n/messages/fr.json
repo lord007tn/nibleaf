@@ -757,6 +757,8 @@
   "settings_styling_radius_sharp": "Pointu",
   "settings_styling_radius_rounded": "Arrondi",
   "settings_styling_radius_pill": "Pilule",
+  "settings_styling_radius_inherited": "Hérité du thème. Choisissez une option, même celle sélectionnée, pour la fixer pour ce site.",
+  "settings_styling_radius_override": "Défini pour ce site. Changer de thème ne le modifie pas.",
   "settings_typography_title": "Typographie",
   "settings_typography_headingfont_label": "Police de titre",
   "settings_typography_headingfont_hint": "Utilisé pour les titres de page et les en-têtes de section.",

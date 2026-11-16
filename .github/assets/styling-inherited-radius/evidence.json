@@ -1,0 +1,401 @@
+{
+  "environment": "Component fixture: main's Styling feature (origin/main) and this branch's with the real design system, EN/AR catalogs, project query and save mutation, in an editor-canvas frame; fictional Signal site; GETs and PATCHes answered by interception; not the signed-in dashboard or production",
+  "base": "df4e66581544b727c096da3b845673216b84ddd7",
+  "head": "f30ae6bca1a04fb184398a75b265be5b0eb93388",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "radius-en-1440.png",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "radius": "Rounded",
+        "disabledRadii": 0,
+        "group": null,
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "",
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "beforeRoundedClick": { "saveButtonVisible": false },
+      "inherited": {
+        "dir": "ltr",
+        "radius": "Sharp",
+        "disabledRadii": 0,
+        "group": {
+          "name": "Corner radius",
+          "description": "From the theme. Choose any option, the selected one included, to keep it for this site."
+        },
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "",
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "override": {
+        "dir": "ltr",
+        "radius": "Rounded",
+        "disabledRadii": 0,
+        "group": {
+          "name": "Corner radius",
+          "description": "Set for this site. Changing the theme won’t change it."
+        },
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "Saved",
+        "overflow": false,
+        "requests": [
+          "GET /api/app/projects/site-1",
+          {
+            "call": "PATCH /api/app/projects/site-1",
+            "body": { "config": { "styling": { "radius": "rounded" } } }
+          },
+          "GET /api/app/projects/site-1",
+          "GET /api/app/projects/site-1"
+        ],
+        "pageErrors": [],
+        "server": {
+          "styling": {
+            "primaryColor": "#5546e8",
+            "theme": "dark",
+            "radius": "rounded"
+          }
+        }
+      }
+    },
+    {
+      "file": "radius-en-390.png",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "radius": "Rounded",
+        "disabledRadii": 0,
+        "group": null,
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "",
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "beforeRoundedClick": { "saveButtonVisible": false },
+      "inherited": {
+        "dir": "ltr",
+        "radius": "Sharp",
+        "disabledRadii": 0,
+        "group": {
+          "name": "Corner radius",
+          "description": "From the theme. Choose any option, the selected one included, to keep it for this site."
+        },
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "",
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "override": {
+        "dir": "ltr",
+        "radius": "Rounded",
+        "disabledRadii": 0,
+        "group": {
+          "name": "Corner radius",
+          "description": "Set for this site. Changing the theme won’t change it."
+        },
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "Saved",
+        "overflow": false,
+        "requests": [
+          "GET /api/app/projects/site-1",
+          {
+            "call": "PATCH /api/app/projects/site-1",
+            "body": { "config": { "styling": { "radius": "rounded" } } }
+          },
+          "GET /api/app/projects/site-1",
+          "GET /api/app/projects/site-1"
+        ],
+        "pageErrors": [],
+        "server": {
+          "styling": {
+            "primaryColor": "#5546e8",
+            "theme": "dark",
+            "radius": "rounded"
+          }
+        }
+      }
+    },
+    {
+      "file": "radius-ar-1440.png",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "radius": "مستديرة",
+        "disabledRadii": 0,
+        "group": null,
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "",
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "beforeRoundedClick": { "saveButtonVisible": false },
+      "inherited": {
+        "dir": "rtl",
+        "radius": "حادة",
+        "disabledRadii": 0,
+        "group": {
+          "name": "استدارة الزوايا",
+          "description": "مأخوذة من السمة. اختر أي خيار، بما فيه المحدد حاليا، لتثبيته لهذا الموقع."
+        },
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "",
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "override": {
+        "dir": "rtl",
+        "radius": "مستديرة",
+        "disabledRadii": 0,
+        "group": {
+          "name": "استدارة الزوايا",
+          "description": "مضبوطة لهذا الموقع. تغيير السمة لن يغيرها."
+        },
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "تم الحفظ",
+        "overflow": false,
+        "requests": [
+          "GET /api/app/projects/site-1",
+          {
+            "call": "PATCH /api/app/projects/site-1",
+            "body": { "config": { "styling": { "radius": "rounded" } } }
+          },
+          "GET /api/app/projects/site-1",
+          "GET /api/app/projects/site-1"
+        ],
+        "pageErrors": [],
+        "server": {
+          "styling": {
+            "primaryColor": "#5546e8",
+            "theme": "dark",
+            "radius": "rounded"
+          }
+        }
+      }
+    },
+    {
+      "file": "radius-ar-390.png",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "radius": "مستديرة",
+        "disabledRadii": 0,
+        "group": null,
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "",
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "beforeRoundedClick": { "saveButtonVisible": false },
+      "inherited": {
+        "dir": "rtl",
+        "radius": "حادة",
+        "disabledRadii": 0,
+        "group": {
+          "name": "استدارة الزوايا",
+          "description": "مأخوذة من السمة. اختر أي خيار، بما فيه المحدد حاليا، لتثبيته لهذا الموقع."
+        },
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "",
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "override": {
+        "dir": "rtl",
+        "radius": "مستديرة",
+        "disabledRadii": 0,
+        "group": {
+          "name": "استدارة الزوايا",
+          "description": "مضبوطة لهذا الموقع. تغيير السمة لن يغيرها."
+        },
+        "toasts": [],
+        "saveButtonVisible": false,
+        "status": "تم الحفظ",
+        "overflow": false,
+        "requests": [
+          "GET /api/app/projects/site-1",
+          {
+            "call": "PATCH /api/app/projects/site-1",
+            "body": { "config": { "styling": { "radius": "rounded" } } }
+          },
+          "GET /api/app/projects/site-1",
+          "GET /api/app/projects/site-1"
+        ],
+        "pageErrors": [],
+        "server": {
+          "styling": {
+            "primaryColor": "#5546e8",
+            "theme": "dark",
+            "radius": "rounded"
+          }
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": { "config": { "styling": { "radius": "rounded" } } }
+        },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": { "config": { "styling": { "radius": "rounded" } } }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened: Sharp, inherited from Signal; no save bar",
+          "dir": "ltr",
+          "radius": "Sharp",
+          "disabledRadii": 0,
+          "group": {
+            "name": "Corner radius",
+            "description": "From the theme. Choose any option, the selected one included, to keep it for this site."
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "Space on the already-pressed Sharp: set for this site, to save",
+          "dir": "ltr",
+          "radius": "Sharp",
+          "disabledRadii": 0,
+          "group": {
+            "name": "Corner radius",
+            "description": "Set for this site. Changing the theme won’t change it."
+          },
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "Discard: inherited again",
+          "dir": "ltr",
+          "radius": "Sharp",
+          "disabledRadii": 0,
+          "group": {
+            "name": "Corner radius",
+            "description": "From the theme. Choose any option, the selected one included, to keep it for this site."
+          },
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "clicked Rounded",
+          "dir": "ltr",
+          "radius": "Rounded",
+          "disabledRadii": 0,
+          "group": {
+            "name": "Corner radius",
+            "description": "Set for this site. Changing the theme won’t change it."
+          },
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "a save the server refuses: one error, Rounded kept as the site’s own",
+          "dir": "ltr",
+          "radius": "Rounded",
+          "disabledRadii": 0,
+          "group": {
+            "name": "Corner radius",
+            "description": "Set for this site. Changing the theme won’t change it."
+          },
+          "toasts": ["Could not save"],
+          "saveButtonVisible": true,
+          "status": "",
+          "overflow": false,
+          "requestsSoFar": 2,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "the retry: saved, Rounded is the site’s own",
+          "dir": "ltr",
+          "radius": "Rounded",
+          "disabledRadii": 0,
+          "group": {
+            "name": "Corner radius",
+            "description": "Set for this site. Changing the theme won’t change it."
+          },
+          "toasts": ["Could not save"],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "overflow": false,
+          "requestsSoFar": 5,
+          "server": {
+            "styling": {
+              "primaryColor": "#5546e8",
+              "theme": "dark",
+              "radius": "rounded"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

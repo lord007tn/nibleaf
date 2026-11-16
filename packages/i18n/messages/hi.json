@@ -748,6 +748,8 @@
   "settings_styling_radius_sharp": "तीव्र",
   "settings_styling_radius_rounded": "गोलाकार",
   "settings_styling_radius_pill": "गोली",
+  "settings_styling_radius_inherited": "थीम से लिया गया। इस साइट के लिए तय करने हेतु कोई भी विकल्प चुनें, चुना हुआ भी।",
+  "settings_styling_radius_override": "इस साइट के लिए तय। थीम बदलने से यह नहीं बदलेगा।",
   "settings_typography_title": "टाइपोग्राफी",
   "settings_typography_headingfont_label": "शीर्षक फ़ॉन्ट",
   "settings_typography_headingfont_hint": "पेज शीर्षकों और अनुभाग शीर्षकों के लिए उपयोग किया जाता है।",

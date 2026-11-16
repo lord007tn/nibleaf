@@ -761,6 +761,8 @@
   "settings_styling_radius_sharp": "Острый",
   "settings_styling_radius_rounded": "Закругленный",
   "settings_styling_radius_pill": "Таблетка",
+  "settings_styling_radius_inherited": "Из темы. Выберите любой вариант, даже выбранный, чтобы закрепить его для этого сайта.",
+  "settings_styling_radius_override": "Задано для этого сайта. Смена темы его не изменит.",
   "settings_typography_title": "Типография",
   "settings_typography_headingfont_label": "Шрифт заголовка",
   "settings_typography_headingfont_hint": "Используется для заголовков страниц и заголовков разделов.",
