@@ -10,7 +10,7 @@ import { deriveSiteSlug } from '@nibleaf/shared/site-slug';
 import { type CreateProjectBody, createProjectBody, projectSlug } from '@nibleaf/validators';
 import { useStore } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { FormField } from '@/components/ui/form-field';
 import { env } from '@/env';
@@ -20,6 +20,9 @@ import { useProjectAvailability } from '@/hooks/api/project-availability';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 
 const languageOptions = LANGUAGE_CATALOG.map((language) => ({ value: language.code, label: language.native }));
+
+/** How a create ended: the site exists (`clean`, `unsettled`, or `created` while hidden), or it doesn't. */
+type Ended = { kind: 'clean' | 'unsettled' | 'created' | 'failed' } | { kind: 'refused'; show: () => void };
 
 type NewProjectDialogProps = { open: boolean; onOpenChange: (open: boolean) => void; organizationId: string; organizationName?: string };
 
@@ -34,28 +37,31 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
   const [failure, setFailure] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);
   const completed = useRef(false);
-  /** Set when the site was created but the dialog must stay open: the action's close is ignored once. */
+  /** Set when the action's close must be ignored once: the dialog stays as it is. */
   const keepOpen = useRef(false);
-  /**
-   * How the last create ended once the site existed: `clean` (the draft settled
-   * on it), `unsettled` (the draft holds a value newer than the site: the dialog
-   * stays open with it), or `away` (it ended while React kept the dialog hidden).
-   */
-  const created = useRef<'clean' | 'unsettled' | 'away' | undefined>(undefined);
-  /** A slug refusal that came while the dialog was hidden, shown once it is on screen again. */
-  const heldRefusal = useRef<(() => void) | undefined>(undefined);
-  /** The draft generation of a site created while the dialog was hidden, to settle once it shows. */
-  const createdAway = useRef<number | undefined>(undefined);
-  const onOpenChangeRef = useRef(onOpenChange);
-  onOpenChangeRef.current = onOpenChange;
-  /** After a site was created: the next opening starts over for a new one. */
-  const startOver = useCallback(() => {
-    setGeneration((value) => value + 1);
-    setStep(1);
-    setAddressEdited(false);
-    setEditingAddress(false);
-    setConflict(null);
+  // Which opening of the dialog this is. Counted while rendering, so it moves
+  // even while React keeps the dialog hidden (<Activity> runs no effects then).
+  const [openings, setOpenings] = useState({ open, count: 0 });
+  let opening = openings.count;
+  if (openings.open !== open) {
+    opening += 1;
+    setOpenings({ open, count: opening });
+  }
+  const openingNow = useRef(opening);
+  useLayoutEffect(() => {
+    openingNow.current = opening;
+  }, [opening]);
+  // Whether the dialog is on screen, and how to resume a create that ended while it was hidden.
+  const shown = useRef(false);
+  const resume = useRef<(() => void) | undefined>(undefined);
+  useLayoutEffect(() => {
+    shown.current = true;
+    return () => {
+      shown.current = false;
+    };
   }, []);
+  /** How the create in flight ended, for `createSite` to settle. */
+  const ended = useRef<Ended | undefined>(undefined);
   const destination = useRef<'editor' | 'import'>('editor');
   const projects = useOrganizationProjects(organizationId);
   const draft = useServerDraftForm({
@@ -85,11 +91,11 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
         // Always reported to the draft, which keeps it for a hidden form and drops it otherwise.
         const settled = save.succeeded(submitted);
         if (!save.isCurrent()) {
-          created.current = 'away';
+          ended.current = { kind: 'created' };
           return 'failed';
         }
         toast.success(t('newSite.created'));
-        created.current = settled ? 'clean' : 'unsettled';
+        ended.current = { kind: settled ? 'clean' : 'unsettled' };
         // Moving on would drop a value newer than the site: stay, with the draft.
         if (!settled) return 'saved';
         if (importInstead) {
@@ -114,10 +120,11 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
           setStep(1);
         };
         if (!save.isCurrent()) {
-          // Hidden, not gone: the refusal shows when the dialog is on screen again.
-          if (refused) heldRefusal.current = showRefusal;
+          // `createSite` shows it, if this dialog still owns the create.
+          ended.current = refused ? { kind: 'refused', show: showRefusal } : { kind: 'failed' };
           return 'failed';
         }
+        ended.current = { kind: 'failed' };
         if (refused) showRefusal();
         else setFailure(t('newSite.error'));
         return 'failed';
@@ -155,43 +162,56 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
   // Why Continue can't be pressed yet. An empty name is the one case with no message of its own on the form.
   const continueReason = !ready && !pending && !name ? t('newSite.reason.name') : undefined;
 
-  // Runs again when React shows a hidden dialog, after the draft reconciled what
-  // ended meanwhile: a slug refusal shows now, and a site created meanwhile closes
-  // the dialog only if the draft settled on it; a newer value keeps it open.
+  // React runs this after the draft's own effects (source, then a save that
+  // ended while hidden) when it shows a hidden dialog again: a create that
+  // ended meanwhile resumes here, and reads what the draft holds by then.
   useEffect(() => {
-    const show = heldRefusal.current;
-    heldRefusal.current = undefined;
-    show?.();
-    const away = createdAway.current;
-    createdAway.current = undefined;
-    if (away === undefined) return;
-    const { settled, generation: now } = draft.settlement();
-    if (!settled || now !== away) return;
-    onOpenChangeRef.current(false);
-    startOver();
-  }, [draft.settlement, startOver]);
+    const next = resume.current;
+    resume.current = undefined;
+    next?.();
+  }, []);
 
   /**
    * The step-2 action. Resolving closes the dialog, but only once the site
-   * exists and the draft settled on it. A site created while the draft holds a
-   * newer value keeps the dialog open with it. One created while the dialog was
-   * hidden is settled when it shows (closing without the navigation or the
-   * toast, if the draft settled on it). One created for an earlier draft (the
-   * organization changed meanwhile) leaves the dialog as it is now.
+   * exists and the draft settled on it; a newer value keeps the dialog open
+   * with it. A create that ended while the dialog was hidden waits until it
+   * shows again. Either way, every result (success, failure, slug refusal) is
+   * settled only by the draft generation and the opening of the dialog it
+   * started in: for an earlier draft (another organization) or an earlier
+   * opening, the dialog is left as it is.
    */
   const createSite = async () => {
-    const started = draft.settlement().generation;
-    created.current = undefined;
+    const owner = { generation: draft.settlement().generation, opening };
+    ended.current = undefined;
     await draft.submit();
-    const outcome = created.current;
-    if (draft.settlement().generation !== started) {
+    // Set by the submit handler during the await above.
+    const end = ended.current as Ended | undefined;
+    if (!shown.current)
+      await new Promise<void>((resolve) => {
+        resume.current = resolve;
+      });
+    // Another opening: the dialog ignores this answer, so nothing is set for it.
+    if (openingNow.current !== owner.opening) return;
+    if (draft.settlement().generation !== owner.generation) {
       keepOpen.current = true;
       return;
     }
-    if (!outcome) throw new Error('Site creation was not saved');
-    if (outcome === 'unsettled') keepOpen.current = true;
-    else if (outcome === 'away') createdAway.current = started;
-    else completed.current = true;
+    if (end?.kind === 'clean') {
+      completed.current = true;
+      return;
+    }
+    if (end?.kind === 'unsettled') {
+      keepOpen.current = true;
+      return;
+    }
+    if (end?.kind === 'created') {
+      // Created while hidden: closes (without navigating or toasting) only if the draft settled on it.
+      if (draft.settlement().settled) completed.current = true;
+      else keepOpen.current = true;
+      return;
+    }
+    if (end?.kind === 'refused') end.show();
+    throw new Error('Site creation was not saved');
   };
   const description = organizationName ? t('newSite.descInOrganization', { org: organizationName }) : t('newSite.desc');
 
@@ -204,12 +224,15 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
             keepOpen.current = false;
             return;
           }
-          // Created while hidden: the effect above decides once the draft has reconciled it.
-          if (!next && createdAway.current !== undefined) return;
           onOpenChange(next);
           if (!next && completed.current) {
             completed.current = false;
-            startOver();
+            // The next opening starts over for a new site.
+            setGeneration((value) => value + 1);
+            setStep(1);
+            setAddressEdited(false);
+            setEditingAddress(false);
+            setConflict(null);
           }
         }}
         title={t('newSite.startingPoint')}

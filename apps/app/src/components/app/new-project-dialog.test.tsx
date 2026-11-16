@@ -439,6 +439,10 @@ describe('create site dialog', () => {
 
 describe('create site dialog: creation that ends while React hides the dialog (<Activity>, #767)', () => {
   let hide: (hidden: boolean) => Promise<void>;
+  /** Closes and opens the dialog from outside (its caller), as the person could while it is hidden. */
+  let reopenFromOutside: () => Promise<void>;
+  /** Moves the same dialog to another organization. */
+  let switchOrganization: (organizationId: string) => Promise<void>;
   /** The dialog inside an <Activity>, opened and closed as a caller would. */
   async function renderHideable() {
     const node = document.createElement('div');
@@ -449,10 +453,15 @@ describe('create site dialog: creation that ends while React hides the dialog (<
     clients.push(client);
     const close = vi.fn();
     let setHidden!: (hidden: boolean) => void;
+    let setOpenFromOutside!: (open: boolean) => void;
+    let setOrganization!: (organizationId: string) => void;
     function Harness() {
       const [open, setOpen] = useState(true);
       const [hidden, setHiddenState] = useState(false);
+      const [organizationId, setOrganizationId] = useState('org-a');
       setHidden = setHiddenState;
+      setOpenFromOutside = setOpen;
+      setOrganization = setOrganizationId;
       return (
         <Activity mode={hidden ? 'hidden' : 'visible'}>
           <button type="button" onClick={() => setOpen(true)}>
@@ -460,7 +469,7 @@ describe('create site dialog: creation that ends while React hides the dialog (<
           </button>
           <NewProjectDialog
             open={open}
-            organizationId="org-a"
+            organizationId={organizationId}
             onOpenChange={(next) => {
               close(next);
               setOpen(next);
@@ -477,8 +486,33 @@ describe('create site dialog: creation that ends while React hides the dialog (<
       ),
     );
     hide = (hidden) => act(async () => setHidden(hidden));
+    reopenFromOutside = async () => {
+      await act(async () => setOpenFromOutside(false));
+      await act(async () => setOpenFromOutside(true));
+    };
+    switchOrganization = (organizationId) => act(async () => setOrganization(organizationId));
     return close;
   }
+  const slugRefusal = () =>
+    new ApiResponseError('taken', 409, 'database:conflict', undefined, undefined, undefined, undefined, {
+      reason: 'slug_taken',
+      suggestedSlug: 'acme-docs-2',
+    });
+  type Create = ReturnType<typeof deferred<{ id: string; firstPageId: string }>>;
+  const succeed = (create: Create) => create.resolve({ id: 'site', firstPageId: 'welcome-page' });
+  const fail = (create: Create) => create.reject(new Error('injected create failure'));
+  const refuse = (create: Create) => create.reject(slugRefusal());
+  /** The later opening, left as it was by the dialog: still on step 2, idle, nothing said. */
+  const expectLaterOpeningUntouched = (close: ReturnType<typeof vi.fn>) => {
+    expect(close).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
+    expect(document.body.textContent).toContain('newSite.startingPoint');
+    expect(busy()).toBe(false);
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(document.body.textContent).not.toContain('newSite.slugTaken');
+  };
   const busy = () => document.querySelector('[aria-busy="true"]') !== null;
   /** Names the site, continues, and starts creating it; the create answers when the test says. */
   async function createHeld() {
@@ -533,6 +567,37 @@ describe('create site dialog: creation that ends while React hides the dialog (<
     expect(busy()).toBe(false);
     expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
     expect(element<HTMLInputElement>('input[type="radio"][value="blank"]').checked).toBe(true);
+  });
+
+  it.each([
+    // A created site settles the draft on it, which then follows its empty source: the name goes, as after any create.
+    ['success', succeed, ''],
+    ['failure', fail, 'Acme Docs'],
+    ['slug refusal', refuse, 'Acme Docs'],
+  ])('a %s while hidden, then closed and opened again while hidden: the later opening is left as it is', async (_name, settleCreate, name) => {
+    const { create, close } = await createHeld();
+    await hide(true);
+    await act(async () => settleCreate(create));
+    await reopenFromOutside();
+    await hide(false);
+    await settle();
+    expectLaterOpeningUntouched(close);
+    await click(button('common.back'));
+    expect(nameField().value).toBe(name);
+  });
+
+  it.each([
+    ['success', succeed],
+    ['failure', fail],
+    ['slug refusal', refuse],
+  ])('a %s for organization A, which the hidden dialog left for B: B is left as it is once shown', async (_name, settleCreate) => {
+    const { create, close } = await createHeld();
+    await hide(true);
+    await switchOrganization('org-b');
+    await act(async () => settleCreate(create));
+    await hide(false);
+    await settle();
+    expectLaterOpeningUntouched(close);
   });
 
   it('a slug refusal while hidden shows on the address step once shown, as on screen', async () => {
