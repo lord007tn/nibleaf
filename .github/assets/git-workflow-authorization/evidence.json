@@ -1,0 +1,1433 @@
+{
+  "environment": "Component fixture: main's GitWorkflow, its features/site-git slice and useAuthorizeGitWorkflow (fc7f92e2c435d1017af4fb14233d3aac92870e25) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient (invalidations recorded) and the Git workflow status query; each authorization POST answered by interception (a fictional account, or a 400), optionally held; a fictional site; placeholder tokens written as <TOKEN_A>/<TOKEN_B> labels and masked on screen; not the signed-in dashboard, production, the server or GitHub",
+  "base": "fc7f92e2c435d1017af4fb14233d3aac92870e25",
+  "head": "50d656ed811de0464d6f2cbdb1c3f6ea379b14c8",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "states": {
+        "en-ready-before": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-ready-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-success-before": {
+          "dir": "ltr",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-success-after": {
+          "dir": "ltr",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-refusal-before": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-refusal-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-staleSuccess-before": {
+          "dir": "ltr",
+          "step": 3,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": "GitHub authorized as @fixture-user-a · Fixture User A",
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "tokenWhenAnswered": null,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-staleSuccess-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "tokenWhenAnswered": "<TOKEN_B>",
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-staleRefusal-before": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-staleRefusal-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-sameTick-before": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-sameTick-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-hiddenAnswer-before": {
+          "dir": "ltr",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "wizardHiddenWhileHeld": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-hiddenAnswer-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "wizardHiddenWhileHeld": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-ready-before": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-ready-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-success-before": {
+          "dir": "rtl",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-success-after": {
+          "dir": "rtl",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-refusal-before": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-refusal-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-staleSuccess-before": {
+          "dir": "rtl",
+          "step": 3,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": "تم تفويض GitHub باسم @fixture-user-a · Fixture User A",
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "tokenWhenAnswered": null,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-staleSuccess-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "tokenWhenAnswered": "<TOKEN_B>",
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-staleRefusal-before": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-staleRefusal-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-sameTick-before": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-sameTick-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-hiddenAnswer-before": {
+          "dir": "rtl",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "wizardHiddenWhileHeld": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-hiddenAnswer-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "wizardHiddenWhileHeld": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "states": {
+        "en-ready-before": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-ready-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-success-before": {
+          "dir": "ltr",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-success-after": {
+          "dir": "ltr",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-refusal-before": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-refusal-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-staleSuccess-before": {
+          "dir": "ltr",
+          "step": 3,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": "GitHub authorized as @fixture-user-a · Fixture User A",
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "tokenWhenAnswered": null,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-staleSuccess-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "tokenWhenAnswered": "<TOKEN_B>",
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-staleRefusal-before": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-staleRefusal-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-sameTick-before": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-sameTick-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "en-hiddenAnswer-before": {
+          "dir": "ltr",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "wizardHiddenWhileHeld": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-hiddenAnswer-after": {
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "wizardHiddenWhileHeld": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-ready-before": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-ready-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-success-before": {
+          "dir": "rtl",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-success-after": {
+          "dir": "rtl",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-refusal-before": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-refusal-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-staleSuccess-before": {
+          "dir": "rtl",
+          "step": 3,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": "تم تفويض GitHub باسم @fixture-user-a · Fixture User A",
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "tokenWhenAnswered": null,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-staleSuccess-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "tokenWhenAnswered": "<TOKEN_B>",
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-staleRefusal-before": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 1,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-staleRefusal-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-sameTick-before": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-sameTick-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        "ar-hiddenAnswer-before": {
+          "dir": "rtl",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "wizardHiddenWhileHeld": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-hiddenAnswer-after": {
+          "dir": "rtl",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "wizardHiddenWhileHeld": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-before-en-1440.webm",
+      "version": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "pageErrors": [],
+      "steps": [
+        {
+          "moment": "token A, Authorize held",
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        {
+          "moment": "token edited to B while A is checked",
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        {
+          "moment": "A answered: verified",
+          "dir": "ltr",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        {
+          "moment": "on to the review",
+          "dir": "ltr",
+          "step": 3,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": "GitHub authorized as @fixture-user-a · Fixture User A",
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "flow-after-en-1440.webm",
+      "version": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "pageErrors": [],
+      "steps": [
+        {
+          "moment": "token A, Authorize held",
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_A>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        {
+          "moment": "token edited to B while A is checked",
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            }
+          ]
+        },
+        {
+          "moment": "A answered: verified",
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": false, "disabled": false },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        {
+          "moment": "Authorize again (B), held",
+          "dir": "ltr",
+          "step": 1,
+          "token": "<TOKEN_B>",
+          "tokenMasked": true,
+          "verify": { "busy": true, "disabled": true },
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_B>" }
+            }
+          ]
+        },
+        {
+          "moment": "B answered: verified",
+          "dir": "ltr",
+          "step": 2,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": null,
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_B>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        {
+          "moment": "on to the review",
+          "dir": "ltr",
+          "step": 3,
+          "token": null,
+          "tokenMasked": null,
+          "verify": null,
+          "inlineError": 0,
+          "account": "GitHub authorized as @fixture-user-b",
+          "loadError": null,
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_B>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        }
+      ]
+    }
+  ]
+}

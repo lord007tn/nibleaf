@@ -349,7 +349,7 @@ createRoot(document.getElementById('root')!).render(
       },
     },
     hiddenAnswer: {
-      label: 'Token A checked (held), a status read fails (403) so the error replaces the wizard, A verified, Retry',
+      label: 'Token A checked (held), a status read fails (403) so the error replaces the wizard, then A verified',
       run: async ({ page, server, locale }) => {
         await type(page, TOKENS.A);
         server.hold = true;
@@ -361,7 +361,9 @@ createRoot(document.getElementById('root')!).render(
         server.hold = false;
         server.release();
         await settle(page, 600);
-        await page.locator('button', { hasText: msg(locale, 'common.retry') }).click();
+        // The answer's own status refresh usually brings the wizard back first; otherwise Retry does.
+        const retry = page.locator('button', { hasText: msg(locale, 'common.retry') });
+        if (await retry.count()) await retry.click();
         await settle(page, 600);
       },
     },
@@ -458,7 +460,7 @@ createRoot(document.getElementById('root')!).render(
         return `${where}${token !== null ? ` · field ${token || 'empty'}` : ''}${tokenWhenAnswered !== undefined ? ` · field when answered ${tokenWhenAnswered ?? '(none: moved on)'}` : ''} · POSTs ${posts(requests).length}${sent ? ` [${sent}]` : ''} · Authorize ${verify ? (verify.busy ? 'busy' : verify.disabled ? 'disabled' : 'ready') : 'n/a'} · inline error ${inlineError} · account ${account ? account.replace(/^.*@/, '@') : 'none'} · refreshed ${keys} · toasts ${toasts.length}`;
       };
       const panel = (key) =>
-        `<img src="data:image/png;base64,${shots[key].toString('base64')}" width="${shown}" style="display:block;border:1px solid #bbb"><div style="font-size:11px;margin-top:2px;max-width:${shown}px">${caption(key)}</div>`;
+        `<img src="data:image/png;base64,${shots[key].toString('base64')}" width="${shown}" style="display:block;border:1px solid #bbb"><div style="font-size:11px;margin-top:2px;max-width:${shown}px">${caption(key).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')}</div>`;
       const rows = (locale) =>
         Object.entries(STATES)
           .map(
@@ -491,8 +493,8 @@ createRoot(document.getElementById('root')!).render(
       const { page, errors, requests, server } = await open(context, { locale, version });
       const pause = (ms = 700) => page.waitForTimeout(ms);
       const steps = [];
-      const note = async (step) => {
-        steps.push({ step, ...(await readback(page, locale)), requests: requests.map((item) => ({ ...item })) });
+      const note = async (moment) => {
+        steps.push({ moment, ...(await readback(page, locale)), requests: requests.map((item) => ({ ...item })) });
       };
       await pause();
       await type(page, TOKENS.A);
@@ -532,7 +534,7 @@ createRoot(document.getElementById('root')!).render(
       await video.saveAs(resolve(import.meta.dirname, file));
       recordings.push({ file, version, locale, width, theme: 'light', pageErrors: errors, steps });
     }
-    const flow = (version, prefix) => recordings.find((item) => item.version === version).steps.find(({ step }) => step.startsWith(prefix));
+    const flow = (version, prefix) => recordings.find((item) => item.version === version).steps.find(({ moment }) => moment.startsWith(prefix));
     // Main: still busy after the edit, then moved on with A's account while the field held B.
     assert.equal(flow('before', 'token edited').verify.busy, true);
     assert.equal(flow('before', 'A answered').step, 2);
