@@ -1,4 +1,4 @@
-import type { GitConflictResolutionBody, GitConnectionBody, GitOperationBody } from '@nibleaf/validators';
+import type { GitConnectionBody } from '@nibleaf/validators';
 import { useQuery } from '@tanstack/react-query';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
@@ -68,17 +68,6 @@ const useGitWorkflowMutation = <TVariables, TResult>(projectId: string, mutation
   });
 };
 
-export const useResolveGitConflict = (projectId: string, conflictId: string) =>
-  useGitWorkflowMutation(projectId, async (json: GitConflictResolutionBody) =>
-    mutateData(
-      await api.app.projects[':projectId'].git.conflicts[':conflictId'].resolve.$post({
-        param: { projectId, conflictId },
-        json,
-      }),
-      'Could not resolve the conflict.',
-    ),
-  );
-
 // Authorizing stores the credential, which the status shows (`credentialConfigured`).
 export const useAuthorizeGitWorkflow = (projectId: string) =>
   useGitWorkflowMutation(projectId, async (token: string) =>
@@ -96,14 +85,6 @@ export const useConnectGitWorkflow = (projectId: string) =>
 export const useDisconnectGitWorkflow = (projectId: string) =>
   useGitWorkflowMutation(projectId, async (_: undefined) =>
     mutateData(await api.app.projects[':projectId'].git.connection.$delete({ param: { projectId } }), 'Could not disconnect the repository.'),
-  );
-
-export const useQueueGitOperation = (projectId: string) =>
-  useGitWorkflowMutation(projectId, async (json: GitOperationBody) =>
-    mutateData<GitOperation>(
-      await api.app.projects[':projectId'].git.operations.$post({ param: { projectId }, json }),
-      'Could not queue the Git operation.',
-    ),
   );
 
 export const useRotateGitWorkflowWebhookSecret = (projectId: string) =>

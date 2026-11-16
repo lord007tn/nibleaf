@@ -235,36 +235,42 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
     throw badRequest(`Theme repository validation failed: ${repositoryIssues.map((issue) => issue.message).join(' ')}`);
   }
   const generatedSecret = existing?.webhookSecretEncrypted ? null : randomBytes(32).toString('hex');
-  const connection = await prisma.gitConnection.upsert({
-    where: { projectId },
-    create: {
-      projectId,
-      provider: 'github',
-      repository,
-      baseBranch,
-      headBranch,
-      contentPath,
-      importBranchId: input.importBranchId || null,
-      importLanguageId: input.importLanguageId || null,
-      credentialEncrypted: encryptGitSecret(input.token as string),
-      credentialFingerprint: gitCredentialFingerprint(input.token as string),
-      webhookSecretEncrypted: encryptGitSecret(generatedSecret as string),
-      remoteBaseSha: baseSha,
-      remoteHeadSha: headSha,
-      createdById: actorUserId,
-    },
-    update: {
-      repository,
-      baseBranch,
-      headBranch,
-      contentPath,
-      importBranchId: input.importBranchId || null,
-      importLanguageId: input.importLanguageId || null,
-      remoteBaseSha: baseSha,
-      remoteHeadSha: headSha,
-      ...(input.token ? { credentialEncrypted: encryptGitSecret(input.token), credentialFingerprint: gitCredentialFingerprint(input.token) } : {}),
-    },
-  });
+  const update = {
+    repository,
+    baseBranch,
+    headBranch,
+    contentPath,
+    importBranchId: input.importBranchId || null,
+    importLanguageId: input.importLanguageId || null,
+    remoteBaseSha: baseSha,
+    remoteHeadSha: headSha,
+    ...(input.token ? { credentialEncrypted: encryptGitSecret(input.token), credentialFingerprint: gitCredentialFingerprint(input.token) } : {}),
+  };
+  // Create values exist only for a first connection, which always has a token
+  // (checked above) and a generated webhook secret. An existing connection
+  // keeps its stored credential and webhook secret, so it must not build them.
+  const connection = existing
+    ? await prisma.gitConnection.update({ where: { projectId }, data: update })
+    : await prisma.gitConnection.upsert({
+        where: { projectId },
+        create: {
+          projectId,
+          provider: 'github',
+          repository,
+          baseBranch,
+          headBranch,
+          contentPath,
+          importBranchId: input.importBranchId || null,
+          importLanguageId: input.importLanguageId || null,
+          credentialEncrypted: encryptGitSecret(input.token as string),
+          credentialFingerprint: gitCredentialFingerprint(input.token as string),
+          webhookSecretEncrypted: encryptGitSecret(generatedSecret as string),
+          remoteBaseSha: baseSha,
+          remoteHeadSha: headSha,
+          createdById: actorUserId,
+        },
+        update,
+      });
   const topologyChanged = Boolean(
     existing &&
       (existing.repository !== repository ||

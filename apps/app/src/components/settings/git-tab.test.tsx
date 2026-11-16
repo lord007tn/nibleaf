@@ -30,12 +30,13 @@ vi.mock('@/features/site-git/api/git-connection', () => ({
   useSaveGitConnection: () => ({ save: vi.fn(), pending: false, isPending: () => false }),
   useWriteGitSettings: () => ({ write: state.update, pending: false, isPending: () => false }),
 }));
+// The manual import has its own tests (git-tab.import.test.tsx); here it only has to render.
+vi.mock('@/features/site-git/api/git-import', () => ({ useGitImport: () => ({ pending: false, isPending: () => false, send: vi.fn() }) }));
 vi.mock('@/hooks/api', () => ({
   useBranches: () => ({ data: [] }),
   useDeployments: () => ({ data: state.deployments }),
   useLiveDeployments: () => ({ data: state.live }),
   useGitWorkflow: () => ({ data: state.workflow, isPending: false }),
-  useImportFromGit: () => idle,
   useLanguages: () => ({ data: [] }),
   useRotateGitWebhookSecret: () => idle,
   useWorkspaceSettings: () => ({ isPending: false, isError: false, data: { git: state.legacy } }),

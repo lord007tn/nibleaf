@@ -26,3 +26,42 @@ d8cebd20b108bed388db5f522e18334efcbcbb74:apps/server/src/lib/publish-checks.test
 # Later commits assemble the fake key at runtime; this fingerprint only covers
 # the commit that added it.
 834f17335505aff50a4c68428f5593c8827cb00a:apps/server/src/actions/workspace-ai.status.test.ts:generic-api-key:487
+
+# False positives: synthetic idempotency UUIDs (random per request, never credentials) in
+# PR #787's Git operation model test and its fixture evidence. Later commits use a
+# low-entropy test id and label the evidence keys; these fingerprints only cover the
+# two commits that added them.
+3465aed8d9fdf2202a16f4e99d9e895c0af6b63b:apps/app/src/features/site-git/model/git-operation.test.ts:generic-api-key:5
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:48
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:56
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:82
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:94
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:124
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:167
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:193
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:223
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:268
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:302
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:314
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:344
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:387
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:413
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:443
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:493
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:501
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:527
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:539
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:569
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:612
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:638
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:668
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:713
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:721
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:747
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:759
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:789
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:832
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:858
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:888
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:909
+f6899e7b0bae325eb9af2a571f4df9a89f561fd6:.github/assets/git-workflow-operations/evidence.json:generic-api-key:925

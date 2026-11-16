@@ -1,0 +1,1252 @@
+{
+  "environment": "Component fixture: main's GitWorkflow and its features/site-git slice (a804d679a214b470a6e2c24646b468d4f1cf0e22) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient and the status query; a fictional site and repository; every request answered by interception; not the signed-in dashboard, production, the server or a Git provider",
+  "base": "a804d679a214b470a6e2c24646b468d4f1cf0e22",
+  "head": "2e96fd25b15f5761ddfea93222e6066f9bd2c032",
+  "uncommitted": [],
+  "unchangedSinceBase": [
+    "apps/app/src/hooks/api",
+    "apps/app/src/components/failure-message.tsx",
+    "apps/app/src/components/secret-input.tsx",
+    "apps/app/src/lib",
+    "apps/app/src/env.ts",
+    "apps/app/src/services",
+    "apps/app/src/integrations/tanstack-query",
+    "packages/design-system/src",
+    "packages/i18n",
+    "packages/validators/src",
+    "packages/shared/src"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "timezone": "UTC",
+      "en": {
+        "empty-overview": {
+          "before": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "5e5ce00587423e37b614eed6da165f2bb251374680fedfc396c8ed2eb8472d34",
+            "sha256": {
+              "main": "55b9446a940521b5f4d4a3e01e77159ce8174440801ed8437f5740dd1ab4850c",
+              "header": "f7695a3e1cbc3b03ee65201283eace01cf3690c7d1a80afad723c9bf40c39f4e",
+              "previews": "34968da6a8a819e5dbebd6cc3847693bf1739c5c1c9c38d553397560003fd9b4",
+              "history": "543083e7f13801d24ac4b13d6d77de07a0aa216f3e6937d8a606e9f9df2463bf"
+            }
+          },
+          "after": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "5e5ce00587423e37b614eed6da165f2bb251374680fedfc396c8ed2eb8472d34",
+            "sha256": {
+              "main": "55b9446a940521b5f4d4a3e01e77159ce8174440801ed8437f5740dd1ab4850c",
+              "header": "f7695a3e1cbc3b03ee65201283eace01cf3690c7d1a80afad723c9bf40c39f4e",
+              "previews": "34968da6a8a819e5dbebd6cc3847693bf1739c5c1c9c38d553397560003fd9b4",
+              "history": "543083e7f13801d24ac4b13d6d77de07a0aa216f3e6937d8a606e9f9df2463bf"
+            }
+          }
+        },
+        "mixed-overview": {
+          "before": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [
+              {
+                "name": "#12 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-1",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#7 مسودة الدليل ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-2",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#3 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-3",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#4 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "Open preview",
+                "href": "https://preview.acme-fixture.test/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#5 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "Open preview",
+                "href": "https://preview.acme-fixture.test/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#6 Closed draft ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-6",
+                "target": "_blank",
+                "rel": "noreferrer"
+              }
+            ],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "f00f80cfc91a3cea181ae09aee4931b2822f05c5f24a47c68dc1806261f93c3d",
+            "sha256": {
+              "main": "946ea7ecb5283c3032a2730a562fb044550e882eb42d78e4b8711ce7251e965d",
+              "header": "e81860bb33f76d7919b75e5809953063475042e47abc7be5eb3c67f86bb2ca53",
+              "previews": "87dbcf8fc20882383315432ed69c36a79f33865eaf7795d5393b62e46c1752fa",
+              "history": "775adb2d0bfebfa8718ba2d9425478b208f97c9f03df7c32095b169c4cdec80c"
+            }
+          },
+          "after": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [
+              {
+                "name": "#12 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-1",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#7 مسودة الدليل ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-2",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#3 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-3",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#4 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "Open preview",
+                "href": "https://preview.acme-fixture.test/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#5 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "Open preview",
+                "href": "https://preview.acme-fixture.test/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#6 Closed draft ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-6",
+                "target": "_blank",
+                "rel": "noreferrer"
+              }
+            ],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "f00f80cfc91a3cea181ae09aee4931b2822f05c5f24a47c68dc1806261f93c3d",
+            "sha256": {
+              "main": "946ea7ecb5283c3032a2730a562fb044550e882eb42d78e4b8711ce7251e965d",
+              "header": "e81860bb33f76d7919b75e5809953063475042e47abc7be5eb3c67f86bb2ca53",
+              "previews": "87dbcf8fc20882383315432ed69c36a79f33865eaf7795d5393b62e46c1752fa",
+              "history": "775adb2d0bfebfa8718ba2d9425478b208f97c9f03df7c32095b169c4cdec80c"
+            }
+          }
+        },
+        "failure-overview": {
+          "before": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "ec008d1158ced0b920f5e9361fac3ce96d4564e7769fdb7c192154bbfd796885",
+            "sha256": {
+              "main": "bbb787114644443cf244ad5e5153a411c4b6562a6ced207baf00c25c8b6c96ba",
+              "header": "eb9f242b66baead57d2be520e158bd1080e1c15e9a5a7bdbbd65a27bbdade63c",
+              "previews": "34968da6a8a819e5dbebd6cc3847693bf1739c5c1c9c38d553397560003fd9b4",
+              "history": "8b75684eb6a691840393d404dd05303eb357a2e6272239ec42859099040a4fe7"
+            }
+          },
+          "after": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "ec008d1158ced0b920f5e9361fac3ce96d4564e7769fdb7c192154bbfd796885",
+            "sha256": {
+              "main": "bbb787114644443cf244ad5e5153a411c4b6562a6ced207baf00c25c8b6c96ba",
+              "header": "eb9f242b66baead57d2be520e158bd1080e1c15e9a5a7bdbbd65a27bbdade63c",
+              "previews": "34968da6a8a819e5dbebd6cc3847693bf1739c5c1c9c38d553397560003fd9b4",
+              "history": "8b75684eb6a691840393d404dd05303eb357a2e6272239ec42859099040a4fe7"
+            }
+          }
+        }
+      },
+      "ar": {
+        "empty-overview": {
+          "before": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "c2c4369a18622c8af81696ed465d60d26b41a9c18e8fd63b6c932a65363273f3",
+            "sha256": {
+              "main": "e48732c2fb3c2b7d9484fdb1b6a6f1f4684aa2e24bd91cca4922305b0a1a0af7",
+              "header": "59c23da80faf303500d0cd94d74e4625038c1574eb57f972477fa47ef41ee4d5",
+              "previews": "905d0d2b48675bcc93adeb9293bec151eaa189468c96b1cfef997b0cca29d21f",
+              "history": "5b5fca344b0b403563fa2945688ec7dd1611d4e8d836cdd9001ae5c39af56289"
+            }
+          },
+          "after": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "c2c4369a18622c8af81696ed465d60d26b41a9c18e8fd63b6c932a65363273f3",
+            "sha256": {
+              "main": "e48732c2fb3c2b7d9484fdb1b6a6f1f4684aa2e24bd91cca4922305b0a1a0af7",
+              "header": "59c23da80faf303500d0cd94d74e4625038c1574eb57f972477fa47ef41ee4d5",
+              "previews": "905d0d2b48675bcc93adeb9293bec151eaa189468c96b1cfef997b0cca29d21f",
+              "history": "5b5fca344b0b403563fa2945688ec7dd1611d4e8d836cdd9001ae5c39af56289"
+            }
+          }
+        },
+        "mixed-overview": {
+          "before": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [
+              {
+                "name": "#12 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-1",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#7 مسودة الدليل ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-2",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#3 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-3",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#4 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "فتح المعاينة",
+                "href": "https://preview.acme-fixture.test/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#5 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "فتح المعاينة",
+                "href": "https://preview.acme-fixture.test/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#6 Closed draft ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-6",
+                "target": "_blank",
+                "rel": "noreferrer"
+              }
+            ],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "752c2f950c464f9bdd55a2669ef86b69c71815f77c84a5fd2dd7746b98f84a76",
+            "sha256": {
+              "main": "b56cb40103edd2e36882cc78cc5fb33f47552c6c7c0a6923a4aad4eee9dd5046",
+              "header": "10f5075c9c7fbb5e9ff677dc36e8f728a9d8fe58adb3cd942e87c994ba531af4",
+              "previews": "f769086436300d71d49eb6401e1ccfdca0408c975873776240889384f4644083",
+              "history": "bf9cfd4fe97c4a4ab01c7b93df03813ede915922da6f193ce9b6436cc08e937b"
+            }
+          },
+          "after": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [
+              {
+                "name": "#12 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-1",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#7 مسودة الدليل ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-2",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#3 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-3",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#4 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "فتح المعاينة",
+                "href": "https://preview.acme-fixture.test/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#5 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "فتح المعاينة",
+                "href": "https://preview.acme-fixture.test/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#6 Closed draft ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-6",
+                "target": "_blank",
+                "rel": "noreferrer"
+              }
+            ],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "752c2f950c464f9bdd55a2669ef86b69c71815f77c84a5fd2dd7746b98f84a76",
+            "sha256": {
+              "main": "b56cb40103edd2e36882cc78cc5fb33f47552c6c7c0a6923a4aad4eee9dd5046",
+              "header": "10f5075c9c7fbb5e9ff677dc36e8f728a9d8fe58adb3cd942e87c994ba531af4",
+              "previews": "f769086436300d71d49eb6401e1ccfdca0408c975873776240889384f4644083",
+              "history": "bf9cfd4fe97c4a4ab01c7b93df03813ede915922da6f193ce9b6436cc08e937b"
+            }
+          }
+        },
+        "failure-overview": {
+          "before": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "350d4661f39003d0c1e07e66451d1b53a5ba55ef4782e0b8aa0b6a35e5abdfcf",
+            "sha256": {
+              "main": "3d4d8c1f79dfc5689027ef415a093c6b267edd89c58979c0f9cfc05a0b858c92",
+              "header": "3093d63944e5759019f3c6b04ad255677807a9993bf55fc5319b0362f56caf25",
+              "previews": "905d0d2b48675bcc93adeb9293bec151eaa189468c96b1cfef997b0cca29d21f",
+              "history": "31c4ef9f7d7231585954f2c724e1b38f78f89c8bb3119e87dba93fca52e77b1c"
+            }
+          },
+          "after": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "350d4661f39003d0c1e07e66451d1b53a5ba55ef4782e0b8aa0b6a35e5abdfcf",
+            "sha256": {
+              "main": "3d4d8c1f79dfc5689027ef415a093c6b267edd89c58979c0f9cfc05a0b858c92",
+              "header": "3093d63944e5759019f3c6b04ad255677807a9993bf55fc5319b0362f56caf25",
+              "previews": "905d0d2b48675bcc93adeb9293bec151eaa189468c96b1cfef997b0cca29d21f",
+              "history": "31c4ef9f7d7231585954f2c724e1b38f78f89c8bb3119e87dba93fca52e77b1c"
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "timezone": "UTC",
+      "en": {
+        "empty-overview": {
+          "before": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "748ed723ce52cab44f59798c6bf079190d577ff7b1a4f6128d59e7de4751ac12",
+            "sha256": {
+              "main": "55b9446a940521b5f4d4a3e01e77159ce8174440801ed8437f5740dd1ab4850c",
+              "header": "f7695a3e1cbc3b03ee65201283eace01cf3690c7d1a80afad723c9bf40c39f4e",
+              "previews": "34968da6a8a819e5dbebd6cc3847693bf1739c5c1c9c38d553397560003fd9b4",
+              "history": "543083e7f13801d24ac4b13d6d77de07a0aa216f3e6937d8a606e9f9df2463bf"
+            }
+          },
+          "after": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "748ed723ce52cab44f59798c6bf079190d577ff7b1a4f6128d59e7de4751ac12",
+            "sha256": {
+              "main": "55b9446a940521b5f4d4a3e01e77159ce8174440801ed8437f5740dd1ab4850c",
+              "header": "f7695a3e1cbc3b03ee65201283eace01cf3690c7d1a80afad723c9bf40c39f4e",
+              "previews": "34968da6a8a819e5dbebd6cc3847693bf1739c5c1c9c38d553397560003fd9b4",
+              "history": "543083e7f13801d24ac4b13d6d77de07a0aa216f3e6937d8a606e9f9df2463bf"
+            }
+          }
+        },
+        "mixed-overview": {
+          "before": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [
+              {
+                "name": "#12 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-1",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#7 مسودة الدليل ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-2",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#3 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-3",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#4 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "Open preview",
+                "href": "https://preview.acme-fixture.test/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#5 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "Open preview",
+                "href": "https://preview.acme-fixture.test/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#6 Closed draft ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-6",
+                "target": "_blank",
+                "rel": "noreferrer"
+              }
+            ],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "0a1f1b490918c61399e7d6de012bd3e2702027d86c3d6123f3be84bfb44d1fd3",
+            "sha256": {
+              "main": "946ea7ecb5283c3032a2730a562fb044550e882eb42d78e4b8711ce7251e965d",
+              "header": "e81860bb33f76d7919b75e5809953063475042e47abc7be5eb3c67f86bb2ca53",
+              "previews": "87dbcf8fc20882383315432ed69c36a79f33865eaf7795d5393b62e46c1752fa",
+              "history": "775adb2d0bfebfa8718ba2d9425478b208f97c9f03df7c32095b169c4cdec80c"
+            }
+          },
+          "after": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [
+              {
+                "name": "#12 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-1",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#7 مسودة الدليل ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-2",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#3 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-3",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#4 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "Open preview",
+                "href": "https://preview.acme-fixture.test/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#5 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "Open preview",
+                "href": "https://preview.acme-fixture.test/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#6 Closed draft ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-6",
+                "target": "_blank",
+                "rel": "noreferrer"
+              }
+            ],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "0a1f1b490918c61399e7d6de012bd3e2702027d86c3d6123f3be84bfb44d1fd3",
+            "sha256": {
+              "main": "946ea7ecb5283c3032a2730a562fb044550e882eb42d78e4b8711ce7251e965d",
+              "header": "e81860bb33f76d7919b75e5809953063475042e47abc7be5eb3c67f86bb2ca53",
+              "previews": "87dbcf8fc20882383315432ed69c36a79f33865eaf7795d5393b62e46c1752fa",
+              "history": "775adb2d0bfebfa8718ba2d9425478b208f97c9f03df7c32095b169c4cdec80c"
+            }
+          }
+        },
+        "failure-overview": {
+          "before": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "0e5ffacf8d4d708b670f9e2ed315254ec29320e40b29f06e11ee81bdc29ed99d",
+            "sha256": {
+              "main": "bbb787114644443cf244ad5e5153a411c4b6562a6ced207baf00c25c8b6c96ba",
+              "header": "eb9f242b66baead57d2be520e158bd1080e1c15e9a5a7bdbbd65a27bbdade63c",
+              "previews": "34968da6a8a819e5dbebd6cc3847693bf1739c5c1c9c38d553397560003fd9b4",
+              "history": "8b75684eb6a691840393d404dd05303eb357a2e6272239ec42859099040a4fe7"
+            }
+          },
+          "after": {
+            "dir": "ltr",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "Refresh"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "0e5ffacf8d4d708b670f9e2ed315254ec29320e40b29f06e11ee81bdc29ed99d",
+            "sha256": {
+              "main": "bbb787114644443cf244ad5e5153a411c4b6562a6ced207baf00c25c8b6c96ba",
+              "header": "eb9f242b66baead57d2be520e158bd1080e1c15e9a5a7bdbbd65a27bbdade63c",
+              "previews": "34968da6a8a819e5dbebd6cc3847693bf1739c5c1c9c38d553397560003fd9b4",
+              "history": "8b75684eb6a691840393d404dd05303eb357a2e6272239ec42859099040a4fe7"
+            }
+          }
+        }
+      },
+      "ar": {
+        "empty-overview": {
+          "before": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "f0fbe906e200be5ef46f836997a0dcda6cd8e7b8bf9412e384d45fca49851d9a",
+            "sha256": {
+              "main": "e48732c2fb3c2b7d9484fdb1b6a6f1f4684aa2e24bd91cca4922305b0a1a0af7",
+              "header": "59c23da80faf303500d0cd94d74e4625038c1574eb57f972477fa47ef41ee4d5",
+              "previews": "905d0d2b48675bcc93adeb9293bec151eaa189468c96b1cfef997b0cca29d21f",
+              "history": "5b5fca344b0b403563fa2945688ec7dd1611d4e8d836cdd9001ae5c39af56289"
+            }
+          },
+          "after": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "f0fbe906e200be5ef46f836997a0dcda6cd8e7b8bf9412e384d45fca49851d9a",
+            "sha256": {
+              "main": "e48732c2fb3c2b7d9484fdb1b6a6f1f4684aa2e24bd91cca4922305b0a1a0af7",
+              "header": "59c23da80faf303500d0cd94d74e4625038c1574eb57f972477fa47ef41ee4d5",
+              "previews": "905d0d2b48675bcc93adeb9293bec151eaa189468c96b1cfef997b0cca29d21f",
+              "history": "5b5fca344b0b403563fa2945688ec7dd1611d4e8d836cdd9001ae5c39af56289"
+            }
+          }
+        },
+        "mixed-overview": {
+          "before": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [
+              {
+                "name": "#12 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-1",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#7 مسودة الدليل ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-2",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#3 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-3",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#4 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "فتح المعاينة",
+                "href": "https://preview.acme-fixture.test/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#5 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "فتح المعاينة",
+                "href": "https://preview.acme-fixture.test/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#6 Closed draft ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-6",
+                "target": "_blank",
+                "rel": "noreferrer"
+              }
+            ],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "763dd905641a5d3fafd91a82dec008184eb572d94cac177996f6d2d8d1824538",
+            "sha256": {
+              "main": "b56cb40103edd2e36882cc78cc5fb33f47552c6c7c0a6923a4aad4eee9dd5046",
+              "header": "10f5075c9c7fbb5e9ff677dc36e8f728a9d8fe58adb3cd942e87c994ba531af4",
+              "previews": "f769086436300d71d49eb6401e1ccfdca0408c975873776240889384f4644083",
+              "history": "bf9cfd4fe97c4a4ab01c7b93df03813ede915922da6f193ce9b6436cc08e937b"
+            }
+          },
+          "after": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [
+              {
+                "name": "#12 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-1",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#7 مسودة الدليل ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-2",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#3 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-3",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#4 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "فتح المعاينة",
+                "href": "https://preview.acme-fixture.test/pr-4",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#5 Handbook refresh ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "فتح المعاينة",
+                "href": "https://preview.acme-fixture.test/pr-5",
+                "target": "_blank",
+                "rel": "noreferrer"
+              },
+              {
+                "name": "#6 Closed draft ",
+                "href": "https://git.acme-fixture.test/handbook/pull/pr-6",
+                "target": "_blank",
+                "rel": "noreferrer"
+              }
+            ],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "763dd905641a5d3fafd91a82dec008184eb572d94cac177996f6d2d8d1824538",
+            "sha256": {
+              "main": "b56cb40103edd2e36882cc78cc5fb33f47552c6c7c0a6923a4aad4eee9dd5046",
+              "header": "10f5075c9c7fbb5e9ff677dc36e8f728a9d8fe58adb3cd942e87c994ba531af4",
+              "previews": "f769086436300d71d49eb6401e1ccfdca0408c975873776240889384f4644083",
+              "history": "bf9cfd4fe97c4a4ab01c7b93df03813ede915922da6f193ce9b6436cc08e937b"
+            }
+          }
+        },
+        "failure-overview": {
+          "before": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "5b53dd1b009ed42a4ef9c837b63e4620be78a8d3becd8c957bb3c9d416ea43b4",
+            "sha256": {
+              "main": "3d4d8c1f79dfc5689027ef415a093c6b267edd89c58979c0f9cfc05a0b858c92",
+              "header": "3093d63944e5759019f3c6b04ad255677807a9993bf55fc5319b0362f56caf25",
+              "previews": "905d0d2b48675bcc93adeb9293bec151eaa189468c96b1cfef997b0cca29d21f",
+              "history": "31c4ef9f7d7231585954f2c724e1b38f78f89c8bb3119e87dba93fca52e77b1c"
+            }
+          },
+          "after": {
+            "dir": "rtl",
+            "refresh": {
+              "busy": false,
+              "disabled": false,
+              "focused": false,
+              "name": "تحديث"
+            },
+            "focusOnBody": true,
+            "links": [],
+            "queries": [{ "key": ["git-workflow", "site-1"], "observers": 1 }],
+            "overflow": false,
+            "statusReads": 1,
+            "pixels": "5b53dd1b009ed42a4ef9c837b63e4620be78a8d3becd8c957bb3c9d416ea43b4",
+            "sha256": {
+              "main": "3d4d8c1f79dfc5689027ef415a093c6b267edd89c58979c0f9cfc05a0b858c92",
+              "header": "3093d63944e5759019f3c6b04ad255677807a9993bf55fc5319b0362f56caf25",
+              "previews": "905d0d2b48675bcc93adeb9293bec151eaa189468c96b1cfef997b0cca29d21f",
+              "history": "31c4ef9f7d7231585954f2c724e1b38f78f89c8bb3119e87dba93fca52e77b1c"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "keyboard": [
+    {
+      "width": 390,
+      "locale": "en",
+      "steps": [
+        {
+          "step": "focused",
+          "statusReads": 1,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": true,
+            "name": "Refresh"
+          },
+          "focusOnBody": false
+        },
+        {
+          "step": "Enter: reading (held)",
+          "statusReads": 2,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "Refresh"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "Enter again while busy",
+          "statusReads": 2,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "Refresh"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "read answered",
+          "statusReads": 2,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": false,
+            "name": "Refresh"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "Space: reading (held)",
+          "statusReads": 3,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "Refresh"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "read answered",
+          "statusReads": 3,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": false,
+            "name": "Refresh"
+          },
+          "focusOnBody": true
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "locale": "ar",
+      "steps": [
+        {
+          "step": "focused",
+          "statusReads": 1,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": true,
+            "name": "تحديث"
+          },
+          "focusOnBody": false
+        },
+        {
+          "step": "Enter: reading (held)",
+          "statusReads": 2,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "تحديث"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "Enter again while busy",
+          "statusReads": 2,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "تحديث"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "read answered",
+          "statusReads": 2,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": false,
+            "name": "تحديث"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "Space: reading (held)",
+          "statusReads": 3,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "تحديث"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "read answered",
+          "statusReads": 3,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": false,
+            "name": "تحديث"
+          },
+          "focusOnBody": true
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "locale": "en",
+      "steps": [
+        {
+          "step": "focused",
+          "statusReads": 1,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": true,
+            "name": "Refresh"
+          },
+          "focusOnBody": false
+        },
+        {
+          "step": "Enter: reading (held)",
+          "statusReads": 2,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "Refresh"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "Enter again while busy",
+          "statusReads": 2,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "Refresh"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "read answered",
+          "statusReads": 2,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": false,
+            "name": "Refresh"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "Space: reading (held)",
+          "statusReads": 3,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "Refresh"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "read answered",
+          "statusReads": 3,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": false,
+            "name": "Refresh"
+          },
+          "focusOnBody": true
+        }
+      ]
+    },
+    {
+      "width": 1440,
+      "locale": "ar",
+      "steps": [
+        {
+          "step": "focused",
+          "statusReads": 1,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": true,
+            "name": "تحديث"
+          },
+          "focusOnBody": false
+        },
+        {
+          "step": "Enter: reading (held)",
+          "statusReads": 2,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "تحديث"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "Enter again while busy",
+          "statusReads": 2,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "تحديث"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "read answered",
+          "statusReads": 2,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": false,
+            "name": "تحديث"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "Space: reading (held)",
+          "statusReads": 3,
+          "refresh": {
+            "busy": true,
+            "disabled": true,
+            "focused": false,
+            "name": "تحديث"
+          },
+          "focusOnBody": true
+        },
+        {
+          "step": "read answered",
+          "statusReads": 3,
+          "refresh": {
+            "busy": false,
+            "disabled": false,
+            "focused": false,
+            "name": "تحديث"
+          },
+          "focusOnBody": true
+        }
+      ]
+    }
+  ]
+}

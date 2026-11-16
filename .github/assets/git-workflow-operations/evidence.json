@@ -1,0 +1,1067 @@
+{
+  "environment": "Component fixture: main's GitWorkflow and its useQueueGitOperation (5c7426c6fe121700e303684ccc12b1dfa1f62ab0) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient, the status query and the operation mutation; a fictional site and repository; every request answered by interception; not the signed-in dashboard, production, the server's Git worker or a real Git provider",
+  "base": "5c7426c6fe121700e303684ccc12b1dfa1f62ab0",
+  "head": "3465aed8d9fdf2202a16f4e99d9e895c0af6b63b",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "en": {
+        "before-ready": {
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [],
+          "statusReads": 1
+        },
+        "before-syncPressed": {
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#1>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#2>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-updatePrPressed": {
+          "dir": "ltr",
+          "panel": "Create or update PR",
+          "updatePrButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#3>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#4>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-staleError": {
+          "dir": "ltr",
+          "panel": "Create or update PR",
+          "updatePrButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": ["Could not queue Git operation."],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#5>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-ready": {
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [],
+          "statusReads": 1
+        },
+        "after-syncPressed": {
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#6>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-updatePrPressed": {
+          "dir": "ltr",
+          "panel": "Create or update PR",
+          "updatePrButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#7>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-staleError": {
+          "dir": "ltr",
+          "panel": "Create or update PR",
+          "updatePrButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#8>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        }
+      },
+      "ar": {
+        "before-ready": {
+          "dir": "rtl",
+          "panel": "الاستيراد والمزامنة",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [],
+          "statusReads": 1
+        },
+        "before-syncPressed": {
+          "dir": "rtl",
+          "panel": "الاستيراد والمزامنة",
+          "syncButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#9>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#10>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-updatePrPressed": {
+          "dir": "rtl",
+          "panel": "إنشاء طلب سحب أو تحديثه",
+          "updatePrButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#11>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#12>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-staleError": {
+          "dir": "rtl",
+          "panel": "إنشاء طلب سحب أو تحديثه",
+          "updatePrButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": ["تعذر وضع عملية Git في قائمة الانتظار."],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#13>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-ready": {
+          "dir": "rtl",
+          "panel": "الاستيراد والمزامنة",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [],
+          "statusReads": 1
+        },
+        "after-syncPressed": {
+          "dir": "rtl",
+          "panel": "الاستيراد والمزامنة",
+          "syncButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#14>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-updatePrPressed": {
+          "dir": "rtl",
+          "panel": "إنشاء طلب سحب أو تحديثه",
+          "updatePrButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#15>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-staleError": {
+          "dir": "rtl",
+          "panel": "إنشاء طلب سحب أو تحديثه",
+          "updatePrButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#16>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "en": {
+        "before-ready": {
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [],
+          "statusReads": 1
+        },
+        "before-syncPressed": {
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#17>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#18>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-updatePrPressed": {
+          "dir": "ltr",
+          "panel": "Create or update PR",
+          "updatePrButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#19>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#20>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-staleError": {
+          "dir": "ltr",
+          "panel": "Create or update PR",
+          "updatePrButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": ["Could not queue Git operation."],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#21>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-ready": {
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [],
+          "statusReads": 1
+        },
+        "after-syncPressed": {
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#22>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-updatePrPressed": {
+          "dir": "ltr",
+          "panel": "Create or update PR",
+          "updatePrButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#23>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-staleError": {
+          "dir": "ltr",
+          "panel": "Create or update PR",
+          "updatePrButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#24>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        }
+      },
+      "ar": {
+        "before-ready": {
+          "dir": "rtl",
+          "panel": "الاستيراد والمزامنة",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [],
+          "statusReads": 1
+        },
+        "before-syncPressed": {
+          "dir": "rtl",
+          "panel": "الاستيراد والمزامنة",
+          "syncButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#25>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#26>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-updatePrPressed": {
+          "dir": "rtl",
+          "panel": "إنشاء طلب سحب أو تحديثه",
+          "updatePrButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#27>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#28>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-staleError": {
+          "dir": "rtl",
+          "panel": "إنشاء طلب سحب أو تحديثه",
+          "updatePrButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": ["تعذر وضع عملية Git في قائمة الانتظار."],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#29>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-ready": {
+          "dir": "rtl",
+          "panel": "الاستيراد والمزامنة",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [],
+          "statusReads": 1
+        },
+        "after-syncPressed": {
+          "dir": "rtl",
+          "panel": "الاستيراد والمزامنة",
+          "syncButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#30>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-updatePrPressed": {
+          "dir": "rtl",
+          "panel": "إنشاء طلب سحب أو تحديثه",
+          "updatePrButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#31>",
+                "kind": "PUSH",
+                "commitMessage": "  Refresh the handbook ",
+                "authorName": "Ada Example",
+                "authorEmail": "ada@acme-fixture.test",
+                "createPullRequest": true,
+                "pullRequestTitle": "Handbook refresh"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-staleError": {
+          "dir": "rtl",
+          "panel": "إنشاء طلب سحب أو تحديثه",
+          "updatePrButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/git/operations",
+              "body": {
+                "idempotencyKey": "<idempotency#32>",
+                "kind": "PULL",
+                "sourceRef": "main"
+              }
+            }
+          ],
+          "statusReads": 1
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        {
+          "call": "POST /api/app/projects/site-1/git/operations",
+          "body": {
+            "idempotencyKey": "<idempotency#33>",
+            "kind": "PULL",
+            "sourceRef": "main"
+          }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/git/operations",
+          "body": {
+            "idempotencyKey": "<idempotency#34>",
+            "kind": "PULL",
+            "sourceRef": "main"
+          }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/git/operations",
+          "body": {
+            "idempotencyKey": "<idempotency#35>",
+            "kind": "PUSH",
+            "commitMessage": "  Refresh the handbook ",
+            "authorName": "Ada Example",
+            "authorEmail": "ada@acme-fixture.test",
+            "createPullRequest": true,
+            "pullRequestTitle": "Handbook refresh"
+          }
+        }
+      ],
+      "statusReads": 3,
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "Sync ready",
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": false,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requestsSoFar": 0,
+          "statusReads": 1
+        },
+        {
+          "step": "syncing (held 1.5 s): busy",
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "requestsSoFar": 1,
+          "statusReads": 1
+        },
+        {
+          "step": "refused: explained once, nothing refreshed",
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": ["Could not queue Git operation."],
+          "refreshed": [],
+          "overflow": false,
+          "requestsSoFar": 1,
+          "statusReads": 1
+        },
+        {
+          "step": "retried: busy",
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": ["Could not queue Git operation."],
+          "refreshed": [],
+          "overflow": false,
+          "requestsSoFar": 2,
+          "statusReads": 1
+        },
+        {
+          "step": "queued: the site status read again",
+          "dir": "ltr",
+          "panel": "Import and sync",
+          "syncButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": null,
+          "focusLost": true,
+          "toasts": ["Could not queue Git operation."],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "requestsSoFar": 2,
+          "statusReads": 2
+        },
+        {
+          "step": "Update PR sending: busy",
+          "dir": "ltr",
+          "panel": "Create or update PR",
+          "updatePrButton": {
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "requestsSoFar": 3,
+          "statusReads": 2
+        },
+        {
+          "step": "Update PR queued: fields kept, no success toast",
+          "dir": "ltr",
+          "panel": "Create or update PR",
+          "updatePrButton": {
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "commitMessage": "  Refresh the handbook ",
+          "focusLost": true,
+          "toasts": [],
+          "refreshed": [["git-workflow", "site-1"], ["git-workflow", "site-1"]],
+          "overflow": false,
+          "requestsSoFar": 3,
+          "statusReads": 3
+        }
+      ]
+    }
+  ]
+}

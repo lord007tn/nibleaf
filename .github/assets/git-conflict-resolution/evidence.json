@@ -1,0 +1,3351 @@
+{
+  "environment": "Component fixture: main's GitWorkflow and inline ConflictCard (9f4e4178c438bd13438056f65cf8506381edb865) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient (invalidations recorded) and the Git workflow status query; each resolution POST answered by interception (resolved, or a 409), optionally held, as is the status read after it; fictional sites, repositories and conflicts (ids shown as <id#n>); not the signed-in dashboard, production, the server, a repository or a Git provider",
+  "base": "9f4e4178c438bd13438056f65cf8506381edb865",
+  "head": "7b4440f64e0a1a62cb3ce1f9aacf432018509a3c",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "states": {
+        "en-ready-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-ready-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-sameTick-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# docs/intro.md\n\nEdited in Nibleaf.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "CUSTOM", "content": null }
+            }
+          ]
+        },
+        "en-sameTick-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            }
+          ]
+        },
+        "en-remount-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopenedBusy": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            }
+          ]
+        },
+        "en-remount-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopenedBusy": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-leaveSuccess-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-leaveSuccess-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-leaveRefusal-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-leaveRefusal-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-refusal-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        "en-refusal-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        "en-independent-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#2>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-independent-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#2>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-twoCopies-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 1,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 1,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            }
+          ]
+        },
+        "en-twoCopies-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 1,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 1,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            }
+          ]
+        },
+        "ar-ready-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-ready-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-sameTick-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# docs/intro.md\n\nEdited in Nibleaf.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "CUSTOM", "content": null }
+            }
+          ]
+        },
+        "ar-sameTick-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            }
+          ]
+        },
+        "ar-remount-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopenedBusy": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            }
+          ]
+        },
+        "ar-remount-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopenedBusy": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-leaveSuccess-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-leaveSuccess-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-leaveRefusal-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-leaveRefusal-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-refusal-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": ["غير شخص آخر هذا في الوقت نفسه. حدث الصفحة وحاول مجددا."],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        "ar-refusal-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": ["غير شخص آخر هذا في الوقت نفسه. حدث الصفحة وحاول مجددا."],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        "ar-independent-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#2>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-independent-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#2>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-twoCopies-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 1,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 1,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            }
+          ]
+        },
+        "ar-twoCopies-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 1,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 1,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "states": {
+        "en-ready-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-ready-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-sameTick-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# docs/intro.md\n\nEdited in Nibleaf.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "CUSTOM", "content": null }
+            }
+          ]
+        },
+        "en-sameTick-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            }
+          ]
+        },
+        "en-remount-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopenedBusy": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            }
+          ]
+        },
+        "en-remount-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopenedBusy": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-leaveSuccess-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-leaveSuccess-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-leaveRefusal-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-leaveRefusal-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-refusal-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        "en-refusal-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        "en-independent-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#2>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-independent-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#2>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-twoCopies-before": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 1,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 1,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            }
+          ]
+        },
+        "en-twoCopies-after": {
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 1,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 1,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            }
+          ]
+        },
+        "ar-ready-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-ready-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-sameTick-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# docs/intro.md\n\nEdited in Nibleaf.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "CUSTOM", "content": null }
+            }
+          ]
+        },
+        "ar-sameTick-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            }
+          ]
+        },
+        "ar-remount-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopenedBusy": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            }
+          ]
+        },
+        "ar-remount-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopenedBusy": true,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-leaveSuccess-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-leaveSuccess-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-leaveRefusal-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-leaveRefusal-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-refusal-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": ["غير شخص آخر هذا في الوقت نفسه. حدث الصفحة وحاول مجددا."],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        "ar-refusal-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": ["غير شخص آخر هذا في الوقت نفسه. حدث الصفحة وحاول مجددا."],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        "ar-independent-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#2>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-independent-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#2>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-twoCopies-before": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 1,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 1,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            }
+          ]
+        },
+        "ar-twoCopies-after": {
+          "dir": "rtl",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 1,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 1,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "OURS" }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-before-en-1440.webm",
+      "version": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "Use custom held: busy",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        {
+          "step": "Use custom refused (409)",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        {
+          "step": "retry held: busy",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        {
+          "step": "left for site B while A resolves",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        {
+          "step": "back on site A while it resolves",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        {
+          "step": "Use Git pressed on site A",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            }
+          ]
+        },
+        {
+          "step": "answered: resolved, status read held",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        {
+          "step": "status read: intro.md resolved",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": { "resolution": "THEIRS" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "flow-after-en-1440.webm",
+      "version": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "Use custom held: busy",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        {
+          "step": "Use custom refused (409)",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        {
+          "step": "retry held: busy",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# المقدمة\n\nMerged by hand: both edits kept.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            }
+          ]
+        },
+        {
+          "step": "left for site B while A resolves",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/guide.md",
+              "sides": [
+                "# docs/guide.md\n\nThe shared baseline.\n",
+                "# docs/guide.md\n\nEdited in Nibleaf.\n",
+                "# docs/guide.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/guide.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        {
+          "step": "back on site A while it resolves",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        {
+          "step": "Use Git pressed on site A",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        {
+          "step": "answered: resolved, status read held",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/intro.md",
+              "sides": [
+                "# docs/intro.md\n\nThe shared baseline.\n",
+                "# docs/intro.md\n\nEdited in Nibleaf.\n",
+                "# docs/intro.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/intro.md\n\nEdited in Nibleaf.\n",
+              "busy": [true, true, true, true],
+              "disabled": [true, true, true, true]
+            },
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        {
+          "step": "status read: intro.md resolved",
+          "dir": "ltr",
+          "cards": [
+            {
+              "copy": 0,
+              "path": "docs/setup.md",
+              "sides": [
+                "# docs/setup.md\n\nThe shared baseline.\n",
+                "# docs/setup.md\n\nEdited in Nibleaf.\n",
+                "# docs/setup.md\n\nEdited in Git.\n"
+              ],
+              "custom": "# docs/setup.md\n\nEdited in Nibleaf.\n",
+              "busy": [false, false, false, false],
+              "disabled": [false, false, false, false]
+            }
+          ],
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/conflicts/<id#1>/resolve",
+              "body": {
+                "resolution": "CUSTOM",
+                "content": "# المقدمة\n\nMerged by hand: both edits kept.\n"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        }
+      ]
+    }
+  ]
+}

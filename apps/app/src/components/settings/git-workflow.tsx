@@ -5,40 +5,23 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
-import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useLocale } from '@nibleaf/i18n/react';
-import { randomUUID } from '@nibleaf/shared/uuid';
-import type { GitOperationBody } from '@nibleaf/validators';
-import {
-  AlertTriangle,
-  ArrowLeft,
-  ArrowRight,
-  ArrowUpRight,
-  Check,
-  GitCommit,
-  GitCompare,
-  GitPullRequest,
-  RefreshCw,
-  Settings2,
-  ShieldCheck,
-} from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, Check, GitCommit, GitPullRequest, RefreshCw, Settings2, ShieldCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { FailureMessage } from '@/components/failure-message';
 import { SecretInput } from '@/components/secret-input';
 import { env } from '@/env';
+import { GitConflictCard } from '@/features/site-git/components/git-conflict-card';
+import { GitPullRequestPreviews, GitRecentOperations, GitWorkflowStatusHeader } from '@/features/site-git/components/git-workflow-readouts';
+import { useGitOperationCommand } from '@/features/site-git/components/use-git-operation-command';
 import {
-  type GitConflict as Conflict,
   friendlyErrorMessage,
   useAuthorizeGitWorkflow,
   useConnectGitWorkflow,
   useDisconnectGitWorkflow,
   useGitWorkflow,
-  useQueueGitOperation,
-  useResolveGitConflict,
   useRotateGitWorkflowWebhookSecret,
 } from '@/hooks/api';
-import { localeTag } from '@/lib/format';
 
 type GitIdentity = { login: string; name: string | null };
 
@@ -80,66 +63,6 @@ function GitWorkflowSkeleton() {
     </section>
   );
 }
-const statusTone = (status: string): 'default' | 'secondary' | 'destructive' | 'outline' =>
-  status === 'FAILED' || status === 'CONFLICT' ? 'destructive' : status === 'SUCCEEDED' || status === 'READY' ? 'default' : 'secondary';
-
-function ConflictCard({ projectId, conflict }: { projectId: string; conflict: Conflict }) {
-  const { t } = useLocale();
-  const [custom, setCustom] = useState(conflict.oursContent ?? '');
-  const resolve = useResolveGitConflict(projectId, conflict.id);
-  const resolveConflict = (resolution: 'OURS' | 'THEIRS' | 'CUSTOM', content?: string | null) =>
-    resolve.mutate(
-      { resolution, ...(resolution === 'CUSTOM' ? { content: content ?? null } : {}) },
-      { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.conflict.error')) },
-    );
-  return (
-    <section className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <code className="text-sm">{conflict.path}</code>
-        <Badge variant="destructive">{t('settings.git.workflow.conflict.badge')}</Badge>
-      </div>
-      <div className="grid gap-3 xl:grid-cols-3">
-        {(
-          [
-            [t('settings.git.workflow.conflict.base'), conflict.baseContent],
-            ['Nibleaf', conflict.oursContent],
-            ['Git', conflict.theirsContent],
-          ] as const
-        ).map(([label, value]) => (
-          <div key={label}>
-            <Label>{label}</Label>
-            <pre className="mt-1 max-h-52 overflow-auto whitespace-pre-wrap rounded-md border bg-background p-3 text-xs">
-              {value ?? t('settings.git.workflow.conflict.deleted')}
-            </pre>
-          </div>
-        ))}
-      </div>
-      <Label className="mt-3" htmlFor={`custom-${conflict.id}`}>
-        {t('settings.git.workflow.conflict.custom')}
-      </Label>
-      <Textarea
-        className="mt-1 min-h-32 font-mono text-xs"
-        id={`custom-${conflict.id}`}
-        onChange={(event) => setCustom(event.target.value)}
-        value={custom}
-      />
-      <div className="mt-3 flex flex-wrap gap-2">
-        <Button loading={resolve.isPending} onClick={() => resolveConflict('OURS')} size="sm">
-          {t('settings.git.workflow.conflict.useNibleaf')}
-        </Button>
-        <Button loading={resolve.isPending} onClick={() => resolveConflict('THEIRS')} size="sm" variant="outline">
-          {t('settings.git.workflow.conflict.useGit')}
-        </Button>
-        <Button loading={resolve.isPending} onClick={() => resolveConflict('CUSTOM', custom)} size="sm" variant="secondary">
-          {t('settings.git.workflow.conflict.useCustom')}
-        </Button>
-        <Button loading={resolve.isPending} onClick={() => resolveConflict('CUSTOM', null)} size="sm" variant="destructive">
-          {t('settings.git.workflow.conflict.delete')}
-        </Button>
-      </div>
-    </section>
-  );
-}
 
 /** Repository details carried over from legacy import settings; `key` changes per request. */
 export interface GitWorkflowPrefill {
@@ -160,7 +83,7 @@ export function GitWorkflow({
   /** Called once the new connection is saved. */
   onConnected?: () => void;
 }) {
-  const { locale, t } = useLocale();
+  const { t } = useLocale();
   const [repository, setRepository] = useState('');
   const [baseBranch, setBaseBranch] = useState('main');
   const [headBranch, setHeadBranch] = useState('nibleaf/docs');
@@ -179,7 +102,9 @@ export function GitWorkflow({
   const authorize = useAuthorizeGitWorkflow(projectId);
   const connect = useConnectGitWorkflow(projectId);
   const disconnect = useDisconnectGitWorkflow(projectId);
-  const operation = useQueueGitOperation(projectId);
+  // The operation panel shown: none while the status loads or failed to load (that screen replaces it).
+  const shownPanel = !query.isPending && !query.isError && connection && (intent === 'sync' || intent === 'publish') ? intent : null;
+  const operation = useGitOperationCommand({ projectId, panel: shownPanel });
   const rotate = useRotateGitWorkflowWebhookSecret(projectId);
   const confirm = useConfirm();
   const connectRepository = () =>
@@ -196,10 +121,7 @@ export function GitWorkflow({
         onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.connectError')),
       },
     );
-  const queueOperation = (body: GitOperationBody) =>
-    operation.mutate(body, {
-      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.operationError')),
-    });
+  const operationFailed = (error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.operationError'));
   const activeConflicts = useMemo(
     () => connection?.operations.flatMap((item) => item.conflicts.filter((conflict) => conflict.status === 'OPEN')) ?? [],
     [connection],
@@ -437,32 +359,7 @@ export function GitWorkflow({
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="rounded-xl border border-primary/20 bg-primary/5 p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <GitCompare className="size-5 text-primary" />
-              <h2 className="font-semibold">{t('settings.git.workflow.title')}</h2>
-              <Badge variant={statusTone(connection.lastSyncStatus)}>{connection.lastSyncStatus}</Badge>
-            </div>
-            <p className="mt-1 font-mono text-sm">
-              {connection.repository}: {connection.headBranch} → {connection.baseBranch}
-            </p>
-          </div>
-          <Button loading={query.isFetching} onClick={() => query.refetch()} size="sm" variant="outline">
-            <RefreshCw className="size-4" /> {t('common.refresh')}
-          </Button>
-        </div>
-        {connection.lastSyncError ? (
-          <Alert className="mt-4" variant="destructive">
-            <AlertTriangle />
-            <AlertTitle>{t('settings.git.workflow.lastSyncFailed')}</AlertTitle>
-            <AlertDescription>
-              <FailureMessage context="git" error={connection.lastSyncError} />
-            </AlertDescription>
-          </Alert>
-        ) : null}
-      </section>
+      <GitWorkflowStatusHeader connection={connection} onRefresh={() => query.refetch()} refreshing={query.isFetching} />
 
       <nav aria-label={t('settings.git.workflow.actions')} className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {(
@@ -493,7 +390,7 @@ export function GitWorkflow({
             <p className="text-muted-foreground text-sm">{t('settings.git.workflow.conflict.description')}</p>
           </div>
           {activeConflicts.map((conflict) => (
-            <ConflictCard conflict={conflict} key={conflict.id} projectId={projectId} />
+            <GitConflictCard conflict={conflict} key={conflict.id} projectId={projectId} />
           ))}
         </section>
       ) : null}
@@ -510,8 +407,8 @@ export function GitWorkflow({
           <Button
             className="mt-4"
             disabled={activeConflicts.length > 0}
-            loading={operation.isPending}
-            onClick={() => queueOperation({ idempotencyKey: randomUUID(), kind: 'PULL', sourceRef: connection.baseBranch })}
+            loading={operation.busy}
+            onClick={() => operation.sync(connection.baseBranch, operationFailed)}
           >
             <RefreshCw className="size-4" />{' '}
             {connection.lastSyncedAt ? t('settings.git.workflow.syncLatest') : t('settings.git.workflow.importExisting')}
@@ -548,18 +445,8 @@ export function GitWorkflow({
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
-              loading={operation.isPending}
-              onClick={() =>
-                queueOperation({
-                  idempotencyKey: randomUUID(),
-                  kind: 'PUSH',
-                  commitMessage: message,
-                  authorName,
-                  authorEmail,
-                  createPullRequest: true,
-                  pullRequestTitle: prTitle,
-                })
-              }
+              loading={operation.busy}
+              onClick={() => operation.updatePr({ commitMessage: message, authorName, authorEmail, pullRequestTitle: prTitle }, operationFailed)}
             >
               <GitPullRequest className="size-4" /> {t('settings.git.workflow.updatePr')}
             </Button>
@@ -567,36 +454,7 @@ export function GitWorkflow({
         </section>
       ) : null}
 
-      {intent === 'overview' || intent === 'publish' ? (
-        <section className="rounded-xl border p-5">
-          <h3 className="font-semibold">{t('settings.git.workflow.previewsTitle')}</h3>
-          <div className="mt-3 space-y-2">
-            {connection.pullRequests.length ? (
-              connection.pullRequests.map((pull) => {
-                const preview = pull.previews[0];
-                return (
-                  <div className="flex flex-wrap items-center gap-3 rounded-lg border p-3" key={pull.id}>
-                    <Badge variant={pull.draft ? 'secondary' : 'outline'}>{pull.draft ? t('settings.git.workflow.draft') : pull.state}</Badge>
-                    <a className="font-medium text-sm underline" href={pull.url} rel="noreferrer" target="_blank">
-                      #{pull.number} {pull.title} <ArrowUpRight className="inline size-3" />
-                    </a>
-                    <span className="ms-auto text-muted-foreground text-xs">
-                      {t('settings.git.workflow.preview')}: {preview?.status ?? t('settings.git.workflow.pending')}
-                    </span>
-                    {preview?.url ? (
-                      <a className="text-sm underline" href={preview.url} target="_blank" rel="noreferrer">
-                        {t('settings.git.workflow.openPreview')}
-                      </a>
-                    ) : null}
-                  </div>
-                );
-              })
-            ) : (
-              <p className="text-muted-foreground text-sm">{t('settings.git.workflow.noPr')}</p>
-            )}
-          </div>
-        </section>
-      ) : null}
+      {intent === 'overview' || intent === 'publish' ? <GitPullRequestPreviews pullRequests={connection.pullRequests} /> : null}
 
       {intent === 'connection' ? (
         <>
@@ -694,34 +552,7 @@ export function GitWorkflow({
         </>
       ) : null}
 
-      {intent === 'overview' || intent === 'sync' ? (
-        <section className="rounded-xl border p-5">
-          <h3 className="font-semibold">{t('settings.git.workflow.recentOperations')}</h3>
-          <div className="mt-3 space-y-2">
-            {connection.operations.map((item) => (
-              <div className="rounded-lg border p-3" key={item.id}>
-                <div className="flex items-center gap-2">
-                  <Badge variant={statusTone(item.status)}>{item.status}</Badge>
-                  <span className="text-sm">
-                    {item.kind} {item.commitMessage}
-                  </span>
-                  <span className="ms-auto text-muted-foreground text-xs">{new Date(item.createdAt).toLocaleString(localeTag(locale))}</span>
-                </div>
-                {item.changedFiles?.length ? (
-                  <ul className="mt-2 text-muted-foreground text-xs">
-                    {item.changedFiles.map((file) => (
-                      <li key={file.path}>
-                        {file.status}: <code>{file.path}</code>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                {item.error ? <FailureMessage context="git" error={item.error} /> : null}
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      {intent === 'overview' || intent === 'sync' ? <GitRecentOperations operations={connection.operations} /> : null}
     </div>
   );
 }

@@ -86,9 +86,31 @@ try {
   harness = await mkdtemp(resolve(app, '.git-pipeline-capture-'));
   // Main's card is a private function of its git-tab.tsx: read the base file and export it.
   await mkdir(resolve(harness, 'before'), { recursive: true });
+  // The hooks that file imports and that were removed since: main's own, as they are on the base; every other
+  // hook is today's.
+  const mainMutations = git('show', `${BASE}:apps/app/src/hooks/api/mutations.ts`);
+  const removedHooks = [
+    /\/\*\* Update workspace\/site settings\.[\s\S]*?\nexport const useUpdateWorkspaceSettings = [\s\S]*?\n};\n/.exec(mainMutations)?.[0],
+    /\/\*\* Pull Markdown pages from the configured public Git provider[\s\S]*?\nexport const useImportFromGit = [\s\S]*?\n};\n/.exec(
+      mainMutations,
+    )?.[0],
+  ];
+  assert.ok(removedHooks.every(Boolean), "main's useUpdateWorkspaceSettings and useImportFromGit");
+  await writeFile(
+    resolve(harness, 'before/hooks.ts'),
+    `export * from '@/hooks/api';
+import type { UpdateWorkspaceSettingsBody } from '@nibleaf/validators';
+import type { WorkspaceSettings } from '@/hooks/api';
+import { mutateData } from '@/hooks/api/client-helpers';
+import { queryKeys } from '@/hooks/api/query-keys';
+import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
+import { api } from '@/services/api';
+${removedHooks.join('')}`,
+  );
   await writeFile(
     resolve(harness, 'before/git-tab.tsx'),
     `${git('show', `${BASE}:apps/app/src/components/settings/git-tab.tsx`)
+      .replaceAll("from '@/hooks/api'", "from './hooks'")
       .replace("from './git-workflow'", "from '@/components/settings/git-workflow'")
       .replace("from './section'", "from '@/components/settings/section'")}\nexport { GitPipeline };\n`,
   );

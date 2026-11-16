@@ -15,7 +15,9 @@ import { SecretInput } from '@/components/secret-input';
 import { useWriteGitSettings } from '@/features/site-git/api/git-connection';
 import { GitConnectionForm } from '@/features/site-git/components/git-connection-form';
 import { GitPipeline } from '@/features/site-git/components/git-pipeline';
-import { useGitWorkflow, useImportFromGit, useRotateGitWebhookSecret, useWorkspaceSettings } from '@/hooks/api';
+import { useGitImportCommand } from '@/features/site-git/components/use-git-import';
+import { type GitInstantChange, gitInstantPayload } from '@/features/site-git/model/git-instant-write';
+import { useGitWorkflow, useRotateGitWebhookSecret, useWorkspaceSettings } from '@/hooks/api';
 import { githubRepositoryPath } from '@/lib/git-repository';
 import { copyToClipboard } from '@/lib/invitations';
 import { GitWorkflow, type GitWorkflowPrefill } from './git-workflow';
@@ -250,51 +252,36 @@ export function GitTab({ projectId }: { projectId?: string }) {
   const [prefill, setPrefill] = useState<GitWorkflowPrefill | null>(null);
   const settings = useWorkspaceSettings(projectId);
   const { data } = settings;
-  const importFromGit = useImportFromGit(projectId ?? '');
+  // The manual import: one per site at a time, reported only into this panel (see useGitImportCommand).
+  const gitImport = useGitImportCommand(projectId ?? '');
   // Any write to this site's `git` in flight, from this mount or an earlier one: the instant writes
   // below and the repository form's save wait for each other (the PATCH replaces `git` whole).
   const { write, pending: writing, isPending: writePending } = useWriteGitSettings(projectId ?? '');
   const git = { ...DEFAULTS, ...((data?.git ?? {}) as GitConfig) };
   const connected = Boolean((data?.git as GitConfig | undefined)?.connected && (git.provider === 'git' ? git.cloneUrl : git.repo));
 
-  // The instant writes (auto publish, disconnect): the stored connection with one change. One that the
-  // person asked for waits out any other write to this site's `git`; the new connection taking over
-  // (`switchOff`) is sent regardless, as before.
-  const send = (patch: Partial<GitConfig>, message?: string) => {
+  // The instant writes (auto publish, disconnect): the stored connection as the server returned it, with
+  // one change (`gitInstantPayload`), never the display defaults above or the repository form's draft.
+  // One that the person asked for waits out any other write to this site's `git`; the new connection
+  // taking over (`switchOff`) is sent regardless, as before.
+  const send = (change: GitInstantChange, message?: string) => {
     if (!projectId) return;
     write(
-      {
-        projectId,
-        git: {
-          provider: git.provider,
-          repo: git.repo,
-          cloneUrl: git.cloneUrl,
-          instanceUrl: git.instanceUrl,
-          branch: git.branch,
-          path: git.path,
-          importBranchId: git.importBranchId,
-          importLanguageId: git.importLanguageId,
-          // The PATCH replaces `git` wholesale, so carry the flags a partial
-          // save must not flip (webhook fields are preserved server-side).
-          connected: git.connected,
-          autoPublish: git.autoPublish,
-          ...patch,
-        },
-      },
+      { projectId, git: gitInstantPayload(data?.git, change) },
       {
         onSuccess: () => message && toast.success(message),
         onError: (_error) => toast.error(t('settings.git.saveError')),
       },
     );
   };
-  const save = (patch: Partial<GitConfig>, message?: string) => {
-    if (!writePending()) send(patch, message);
+  const save = (change: GitInstantChange, message?: string) => {
+    if (!writePending()) send(change, message);
   };
 
   const runImport = () =>
-    importFromGit.mutate(undefined, {
-      onSuccess: (summary) => toast.success(t('settings.git.import.result', { imported: summary.imported, updated: summary.updated })),
-      onError: (_error) => toast.error(t('settings.git.import.error')),
+    gitImport.start({
+      succeeded: (summary) => toast.success(t('settings.git.import.result', { imported: summary.imported, updated: summary.updated })),
+      failed: (_error) => toast.error(t('settings.git.import.error')),
     });
 
   if (settings.isPending) return <SettingsFormSkeleton />;
@@ -363,7 +350,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
         </div>
       </section>
 
-      {projectId ? <GitPipeline projectId={projectId} git={git} onImport={runImport} importing={importFromGit.isPending} /> : null}
+      {projectId ? <GitPipeline projectId={projectId} git={git} onImport={runImport} importing={gitImport.busy} /> : null}
       {projectId ? (
         <DeployOnPush
           projectId={projectId}
