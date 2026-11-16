@@ -140,6 +140,30 @@ export function foreignCopyWhileDirty(
   return !Number.isNaN(next) && !Number.isNaN(current) && next > current && !superseded?.(page.updatedAt);
 }
 
+/** Markdown link destinations, `[label](destination` and `[label]: destination`, the parts the server rewrites. */
+const LINK_DESTINATION = /(\]\(\s*)(?:<[^>\n]*>|(?:\\.|\([^()\s]*\)|[^()\s\\])+)|(^ {0,3}\[(?:\\.|[^\]\\\n])*\]:[ \t]*)(?:<[^>\n]*>|\S+)/gm;
+const withoutLinkDestinations = (content: string) =>
+  content.replace(LINK_DESTINATION, (_match, inline?: string, definition?: string) => inline ?? definition ?? '');
+
+/**
+ * Whether `copy`, a newer revision of the page that arrived while `write` was
+ * at the server, may be that write as the server stored it (#825). The server
+ * changes a page's text only by rewriting its link destinations to moved
+ * addresses (`rewrite-page-links.ts` on the server), so the copy must be newer
+ * than the revision the write was sent from and hold the write's title and
+ * content, link destinations aside. Wider than the server (it ignores code
+ * blocks, so it may say yes to more copies), never narrower for that rewrite.
+ */
+export function mayBeNormalizedWrite(copy: ServerSnapshot, write: DraftSnapshot & { base?: string }): boolean {
+  if (copy.title !== write.title || copy.updatedAt === undefined) return false;
+  if (write.base !== undefined) {
+    const next = Date.parse(copy.updatedAt);
+    const base = Date.parse(write.base);
+    if (Number.isNaN(next) || Number.isNaN(base) || next <= base) return false;
+  }
+  return withoutLinkDestinations(copy.content) === withoutLinkDestinations(write.content);
+}
+
 /**
  * Decide whether the draft should be automatically saved to `page`.
  * The draft is only ever saved to the page it was hydrated from.

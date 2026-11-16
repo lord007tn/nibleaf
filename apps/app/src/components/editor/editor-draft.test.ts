@@ -7,6 +7,7 @@ import {
   foreignCopyWhileDirty,
   isDirty,
   isEditorRevisionConflict,
+  mayBeNormalizedWrite,
   nextHydration,
   normalizedSaveConflict,
   restoreUnsavedDraft,
@@ -252,6 +253,29 @@ describe('foreignCopyWhileDirty (#790)', () => {
     expect(foreignCopyWhileDirty(edited, theirs, (revision) => revision === theirs.updatedAt)).toBe(false);
     expect(foreignCopyWhileDirty(edited, { ...theirs, updatedAt: undefined })).toBe(false);
     expect(foreignCopyWhileDirty(edited, { ...pageB })).toBe(false);
+  });
+});
+
+describe('mayBeNormalizedWrite (#825)', () => {
+  const page = (label: string, inline: string, definition: string, title = 'API') =>
+    [`See [${label}](${inline}) and [api][ref].`, '', `[ref]: ${definition} "${title}"`, ''].join('\n');
+  const write = { title: 'Guide', content: page('setup', '/installation', '/api'), base: '2026-09-01T10:00:00.000Z' };
+  const copy = (content: string, updatedAt = '2026-09-01T10:00:01.000Z'): ServerSnapshot => ({ id: 'a', title: 'Guide', content, updatedAt });
+
+  it('is the write with its link destinations rewritten, inline, angle-bracketed or as definitions, at a newer revision', () => {
+    expect(mayBeNormalizedWrite(copy(page('setup', '/en/installation', '/en/api')), write)).toBe(true);
+    expect(mayBeNormalizedWrite(copy(page('setup', '/a/(b)', '<./en api>')), write)).toBe(true);
+    expect(mayBeNormalizedWrite(copy(write.content), { ...write, base: undefined })).toBe(true);
+  });
+
+  it('is not a copy with other text, another title, or no newer revision than the one the write was sent from', () => {
+    expect(mayBeNormalizedWrite(copy(page('set up', '/en/installation', '/en/api')), write)).toBe(false);
+    expect(mayBeNormalizedWrite(copy(page('setup', '/installation', '/api', 'Docs')), write)).toBe(false);
+    expect(mayBeNormalizedWrite(copy(`${write.content}Their line.`), write)).toBe(false);
+    expect(mayBeNormalizedWrite({ ...copy(write.content), title: 'Other' }, write)).toBe(false);
+    expect(mayBeNormalizedWrite(copy(write.content, write.base), write)).toBe(false);
+    expect(mayBeNormalizedWrite(copy(write.content, '2026-09-01T09:00:00.000Z'), write)).toBe(false);
+    expect(mayBeNormalizedWrite({ ...copy(write.content), updatedAt: undefined }, write)).toBe(false);
   });
 });
 

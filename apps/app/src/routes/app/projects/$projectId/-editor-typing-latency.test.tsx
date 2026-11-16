@@ -1975,6 +1975,175 @@ describe("#790: another client's copy over unsent changes is reviewed, never sil
   });
 });
 
+/*
+ * #825: the server stores a write as other text only by rewriting its link
+ * destinations (an address moved). Our own write, stored so and refetched
+ * before its response, flashed the conflict banner until the response withdrew
+ * it. A copy that may be a write of ours at the server, links aside, now holds
+ * its banner until that write settles (or OWN_WRITE_HOLD_MS, 4 s), with saving
+ * paused as before. A copy with other text still shows it at once (#790).
+ */
+describe('#825: our own write, refetched with its links rewritten before its response: no banner', { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  /** The fixture's one link, after the server moved its address. */
+  const rewriteLinks = (content: string) => content.replace('](/installation)', '](/en/installation)');
+  /** Whether the conflict banner was in the page at any moment from now on, not only when checked. */
+  const watchBanner = () => {
+    let seen = conflictShown();
+    const observer = new MutationObserver(() => {
+      seen ||= (document.body.textContent ?? '').includes('editor.conflict.body');
+    });
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    return () => {
+      observer.disconnect();
+      return seen;
+    };
+  };
+  /** Another client moved the linked page: the server rewrote this page's link in a copy of its own, now. */
+  const linksMovedByAnotherClient = () => foreignCopyNow(rewriteLinks(server.content));
+
+  it('repro: A stored with its link rewritten, AB unsent, the refetch before the response: no banner ever, AB saved, none refused', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    storeAs = (index, content) => (index === 0 ? rewriteLinks(content) : content);
+    const banner = watchBanner();
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await queryFollowsServer();
+    expect(server.content).toBe(rewriteLinks(withTyped('A')));
+    await advance(1000);
+    await settleWrite();
+    await drain();
+    // Main: the banner showed from the refetch until the response.
+    expect(banner()).toBe(false);
+    expect(sent()).toEqual(['original+A', 'original+AB']);
+    expect(server.content).toBe(withTyped('AB'));
+    expect(refused).toBe(0);
+    expect(conflictShown()).toBe(false);
+  });
+
+  it("the same with another client's copy: the banner shows once the response settles, and nothing is written over it", async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await linksMovedByAnotherClient();
+    const theirs = rewriteLinks(withTyped('A'));
+    expect(server.content).toBe(theirs);
+    // Main: shown here already.
+    expect(conflictShown()).toBe(false);
+    await settleWrite();
+    expect(conflictShown()).toBe(true);
+    await drain();
+    expect(conflictShown()).toBe(true);
+    expect(sent()).toEqual(['original+A']);
+    expect(server.content).toBe(theirs);
+    expect(getMarkdown(current())).toBe(withTyped('AB').trimEnd());
+  });
+
+  it("another client's copy, and the response does not come: the banner shows at the timeout, and nothing is written over it", async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await linksMovedByAnotherClient();
+    await advance(3900);
+    expect(conflictShown()).toBe(false);
+    await advance(200);
+    expect(conflictShown()).toBe(true);
+    await drain();
+    expect(conflictShown()).toBe(true);
+    expect(sent()).toEqual(['original+A']);
+    expect(server.content).toBe(rewriteLinks(withTyped('A')));
+  });
+
+  it('our own write, and its response comes after the timeout: the banner shows at the timeout, then is withdrawn, and AB is saved', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    storeAs = (index, content) => (index === 0 ? rewriteLinks(content) : content);
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await queryFollowsServer();
+    await advance(3900);
+    expect(conflictShown()).toBe(false);
+    await advance(200);
+    expect(conflictShown()).toBe(true);
+    await settleWrite();
+    expect(conflictShown()).toBe(false);
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+AB']);
+    expect(server.content).toBe(withTyped('AB'));
+    expect(refused).toBe(0);
+  });
+
+  it('navigating away while the banner waits: the navigation is refused, the banner shows at once, and nothing is written', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await linksMovedByAnotherClient();
+    expect(conflictShown()).toBe(false);
+    const proceeded = await navigate();
+    await expect(proceeded()).rejects.toThrow();
+    expect(conflictShown()).toBe(true);
+    await drain();
+    expect(sent()).toEqual(['original+A']);
+    expect(server.content).toBe(rewriteLinks(withTyped('A')));
+  });
+
+  it("another client's copy, and the editor unmounts while the banner waits: reopened, AB is back as a conflict, never written over their copy", async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await linksMovedByAnotherClient();
+    expect(conflictShown()).toBe(false);
+    await unmount();
+    await drain();
+    await reopen();
+    expect(getMarkdown(current())).toBe(withTyped('AB').trimEnd());
+    expect(conflictShown()).toBe(true);
+    await drain();
+    expect(sent()).toEqual(['original+A']);
+    expect(server.content).toBe(rewriteLinks(withTyped('A')));
+  });
+
+  it('our own write, and the editor unmounts while the banner waits: AB is saved once the response lands; reopened, no banner', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    storeAs = (index, content) => (index === 0 ? rewriteLinks(content) : content);
+    const banner = watchBanner();
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await queryFollowsServer();
+    await unmount();
+    await drain();
+    await reopen();
+    await drain();
+    expect(banner()).toBe(false);
+    expect(sent()).toEqual(['original+A', 'original+AB']);
+    expect(server.content).toBe(withTyped('AB'));
+    expect(refused).toBe(0);
+    expect(getMarkdown(current())).toBe(withTyped('AB').trimEnd());
+  });
+
+  it('guard: a copy with other text over A at the server still shows the banner at once (#790)', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('request');
+    await typeAndHoldTheSave();
+    key('B');
+    await advance(SERIALIZE_PAUSE);
+    await foreignCopyNow(rewriteLinks(withTyped('F')));
+    expect(conflictShown()).toBe(true);
+  });
+});
+
 describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_TIMEOUT }, () => {
   it('repro 2: the final draft is stored normalized once: it is sent again, and stored as typed', async () => {
     await open(ORIGINAL);
