@@ -1,0 +1,1365 @@
+{
+  "environment": "Component fixture: main's GitWorkflow (861c6f1fff9287a46fabb0582c024214eceb7f35) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient, the status query and the save mutation; a fictional site and repository; every request answered by interception; no token typed; not the signed-in dashboard, production, the server or a real Git provider",
+  "base": "861c6f1fff9287a46fabb0582c024214eceb7f35",
+  "head": "b48d052f395cd1282eec9c76aa92fe598370100e",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "en": {
+        "before-ready": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        },
+        "before-syncStateRefresh": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "before-changedElsewhere": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "before-savePending": {
+          "dir": "ltr",
+          "fields": {
+            "repository": " https://github.com/acme-fixture/manual.git ",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-readback": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/manual",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": ["GitHub connection saved."],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 2
+        },
+        "before-blankRepository": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": ["Could not connect GitHub."],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": "",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-ready": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        },
+        "after-syncStateRefresh": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "guides",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "after-changedElsewhere": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "develop",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "guides",
+            "tokenTyped": false
+          },
+          "conflict": true,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "after-savePending": {
+          "dir": "ltr",
+          "fields": {
+            "repository": " https://github.com/acme-fixture/manual.git ",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "importBranchId": "<id#1>",
+                "importLanguageId": "<id#2>"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-readback": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/manual",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "importBranchId": "<id#1>",
+                "importLanguageId": "<id#2>"
+              }
+            }
+          ],
+          "statusReads": 2
+        },
+        "after-blankRepository": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": ["git2-update-repo"],
+          "focused": "git2-update-repo",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        }
+      },
+      "ar": {
+        "before-ready": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        },
+        "before-syncStateRefresh": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "before-changedElsewhere": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "before-savePending": {
+          "dir": "rtl",
+          "fields": {
+            "repository": " https://github.com/acme-fixture/manual.git ",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-readback": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/manual",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": ["تم حفظ اتصال GitHub."],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 2
+        },
+        "before-blankRepository": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": ["تعذر الاتصال بـ GitHub."],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": "",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-ready": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        },
+        "after-syncStateRefresh": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "guides",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "after-changedElsewhere": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "develop",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "guides",
+            "tokenTyped": false
+          },
+          "conflict": true,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "after-savePending": {
+          "dir": "rtl",
+          "fields": {
+            "repository": " https://github.com/acme-fixture/manual.git ",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "importBranchId": "<id#1>",
+                "importLanguageId": "<id#2>"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-readback": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/manual",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "importBranchId": "<id#1>",
+                "importLanguageId": "<id#2>"
+              }
+            }
+          ],
+          "statusReads": 2
+        },
+        "after-blankRepository": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": ["git2-update-repo"],
+          "focused": "git2-update-repo",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "en": {
+        "before-ready": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        },
+        "before-syncStateRefresh": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "before-changedElsewhere": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "before-savePending": {
+          "dir": "ltr",
+          "fields": {
+            "repository": " https://github.com/acme-fixture/manual.git ",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-readback": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/manual",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": ["GitHub connection saved."],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 2
+        },
+        "before-blankRepository": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": ["Could not connect GitHub."],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": "",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-ready": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        },
+        "after-syncStateRefresh": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "guides",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "after-changedElsewhere": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "develop",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "guides",
+            "tokenTyped": false
+          },
+          "conflict": true,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "after-savePending": {
+          "dir": "ltr",
+          "fields": {
+            "repository": " https://github.com/acme-fixture/manual.git ",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "importBranchId": "<id#1>",
+                "importLanguageId": "<id#2>"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-readback": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/manual",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "importBranchId": "<id#1>",
+                "importLanguageId": "<id#2>"
+              }
+            }
+          ],
+          "statusReads": 2
+        },
+        "after-blankRepository": {
+          "dir": "ltr",
+          "fields": {
+            "repository": "",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": ["git2-update-repo"],
+          "focused": "git2-update-repo",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        }
+      },
+      "ar": {
+        "before-ready": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        },
+        "before-syncStateRefresh": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "before-changedElsewhere": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "before-savePending": {
+          "dir": "rtl",
+          "fields": {
+            "repository": " https://github.com/acme-fixture/manual.git ",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "before-readback": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/manual",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": ["تم حفظ اتصال GitHub."],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 2
+        },
+        "before-blankRepository": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": ["تعذر الاتصال بـ GitHub."],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": "",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-ready": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        },
+        "after-syncStateRefresh": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "guides",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "after-changedElsewhere": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "develop",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "guides",
+            "tokenTyped": false
+          },
+          "conflict": true,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 2
+        },
+        "after-savePending": {
+          "dir": "rtl",
+          "fields": {
+            "repository": " https://github.com/acme-fixture/manual.git ",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "importBranchId": "<id#1>",
+                "importLanguageId": "<id#2>"
+              }
+            }
+          ],
+          "statusReads": 1
+        },
+        "after-readback": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "acme-fixture/manual",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "typed-during-save",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": "git2-update-path",
+          "toasts": [],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "saves": [
+            {
+              "call": "PUT /api/app/projects/site-1/git/connection",
+              "body": {
+                "repository": " https://github.com/acme-fixture/manual.git ",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "importBranchId": "<id#1>",
+                "importLanguageId": "<id#2>"
+              }
+            }
+          ],
+          "statusReads": 2
+        },
+        "after-blankRepository": {
+          "dir": "rtl",
+          "fields": {
+            "repository": "",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": ["git2-update-repo"],
+          "focused": "git2-update-repo",
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "saves": [],
+          "statusReads": 1
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "saves": [
+        {
+          "call": "PUT /api/app/projects/site-1/git/connection",
+          "body": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "importBranchId": "<id#1>",
+            "importLanguageId": "<id#2>"
+          }
+        },
+        {
+          "call": "PUT /api/app/projects/site-1/git/connection",
+          "body": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "content",
+            "importBranchId": "<id#1>",
+            "importLanguageId": "<id#2>"
+          }
+        }
+      ],
+      "statusReads": 3,
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "ready",
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "main",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "savesSoFar": 0,
+          "statusReads": 1
+        },
+        {
+          "step": "save held: busy",
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "docs",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "savesSoFar": 1,
+          "statusReads": 1
+        },
+        {
+          "step": "refresh during the save: the untouched path follows the server",
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "content",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": null,
+          "toasts": [],
+          "refreshed": [],
+          "overflow": false,
+          "savesSoFar": 1,
+          "statusReads": 2
+        },
+        {
+          "step": "refused: explained once, values kept",
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "content",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": true,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": ["Could not connect GitHub."],
+          "refreshed": [],
+          "overflow": false,
+          "savesSoFar": 1,
+          "statusReads": 2
+        },
+        {
+          "step": "retried: busy",
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "content",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": true,
+          "invalid": [],
+          "focused": null,
+          "toasts": ["Could not connect GitHub."],
+          "refreshed": [],
+          "overflow": false,
+          "savesSoFar": 2,
+          "statusReads": 2
+        },
+        {
+          "step": "saved: readback clean, \"saved\" once",
+          "dir": "ltr",
+          "fields": {
+            "repository": "acme-fixture/handbook",
+            "baseBranch": "trunk",
+            "headBranch": "nibleaf/docs",
+            "contentPath": "content",
+            "tokenTyped": false
+          },
+          "conflict": false,
+          "discard": false,
+          "saveBusy": false,
+          "invalid": [],
+          "focused": null,
+          "toasts": ["GitHub connection saved.", "Could not connect GitHub."],
+          "refreshed": [["git-workflow", "site-1"]],
+          "overflow": false,
+          "savesSoFar": 2,
+          "statusReads": 3
+        }
+      ]
+    }
+  ]
+}

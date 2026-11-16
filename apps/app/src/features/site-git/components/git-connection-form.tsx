@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useT } from '@nibleaf/i18n/react';
 import { useStore } from '@tanstack/react-form';
 import { GitBranch } from 'lucide-react';
-import { type FormEvent, type KeyboardEvent, type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { type FormEvent, type KeyboardEvent, type ReactNode, useCallback, useMemo, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
@@ -24,22 +24,7 @@ import {
   type StoredGit,
   sentGitConnectionValues,
 } from '../model/git-connection';
-
-/**
- * State that belongs to one draft identity (one site's connection). A new
- * identity replaces it while rendering, so nothing from the previous site
- * shows, not even for one frame, and coming back to a site starts fresh.
- */
-function useIdentityState<S>(identity: string, initial: S) {
-  const [state, setState] = useState({ identity, value: initial });
-  let current = state;
-  if (state.identity !== identity) {
-    current = { identity, value: initial };
-    setState(current);
-  }
-  const update = useCallback((next: (previous: S) => S) => setState((previous) => ({ ...previous, value: next(previous.value) })), []);
-  return [current.value, update] as const;
-}
+import { useIdentityState } from './use-identity-state';
 
 const FIELD_IDS: Record<GitConnectionField, string> = { repo: 'git-repo', cloneUrl: 'git-clone-url' };
 

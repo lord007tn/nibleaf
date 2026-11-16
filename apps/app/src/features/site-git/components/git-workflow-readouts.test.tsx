@@ -86,6 +86,8 @@ const connection = (fields: Partial<GitWorkflowStatus>): GitWorkflowStatus => ({
   baseBranch: 'main',
   headBranch: 'nibleaf/docs',
   contentPath: 'docs',
+  importBranchId: null,
+  importLanguageId: null,
   credentialConfigured: true,
   webhookConfigured: true,
   lastSyncStatus: 'SUCCEEDED',
@@ -226,13 +228,16 @@ const canonical = (node: Node): string => {
 const headerOf = (scope: HTMLElement) => sectionWithHeading(scope, 'h2', t('settings.git.workflow.title')) as HTMLElement;
 /** What the connected screen shows, top to bottom: the header, the nav, then each section by its heading. */
 const layout = (scope: HTMLElement) =>
-  [...scope.children].map((child) =>
-    child.querySelector('h2')?.textContent === t('settings.git.workflow.title')
-      ? 'header'
-      : child.tagName === 'NAV'
-        ? 'nav'
-        : (child.querySelector('h3')?.textContent ?? child.tagName),
-  );
+  // A section kept mounted but hidden (the Connection configuration on other panels) is not shown.
+  [...scope.children]
+    .filter((child) => !(child as HTMLElement).hidden)
+    .map((child) =>
+      child.querySelector('h2')?.textContent === t('settings.git.workflow.title')
+        ? 'header'
+        : child.tagName === 'NAV'
+          ? 'nav'
+          : (child.querySelector('h3')?.textContent ?? child.tagName),
+    );
 
 beforeEach(() => {
   mocks.locale = 'en';

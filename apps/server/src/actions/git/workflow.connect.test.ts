@@ -49,6 +49,13 @@ vi.mock('./github', () => ({
   },
 }));
 
+import { gitConnectionBody } from '@nibleaf/validators';
+import {
+  type GitWorkflowConnectionValues,
+  gitWorkflowConnectionPayload,
+  gitWorkflowConnectionValues,
+  sentGitWorkflowConnectionValues,
+} from '../../../../app/src/features/site-git/model/git-workflow-connection';
 import { decryptGitSecret, encryptGitSecret, gitCredentialFingerprint } from './crypto';
 import { connectGitHub } from './workflow';
 
@@ -250,5 +257,50 @@ describe('connectGitHub with the real Git crypto', () => {
     expect(fileStateWrites()).toEqual([
       expect.objectContaining({ create: expect.objectContaining({ branchId: 'branch-2', languageId: 'language-2' }) }),
     ]);
+  });
+});
+
+/**
+ * The dashboard's connected Connection configuration save, end to end on the
+ * server side: the body its own model builds from the typed values and the
+ * latest confirmed status, through the real validator and `connectGitHub`, read
+ * back as the form reads it and judged by the form's own `toSent`.
+ */
+describe("the dashboard's Connection configuration save", () => {
+  const targeted = () => ({ ...storedConnection(), contentPath: 'docs', importBranchId: 'branch-2', importLanguageId: 'language-2' });
+  const typed = (overrides: Partial<GitWorkflowConnectionValues>) => ({ ...gitWorkflowConnectionValues(targeted()), ...overrides });
+
+  it.each([
+    ['a GitHub URL with .git and padding', typed({ repository: '  https://github.com/acme/moved.git  ' })],
+    ['refs/heads/ branches', typed({ baseBranch: ' refs/heads/main ', headBranch: 'refs/heads/nibleaf/edit' })],
+    ['a path with slashes and backslashes', typed({ contentPath: ' /contentguides/ ' })],
+    ['a blank path (the repository root)', typed({ contentPath: '   ' })],
+  ])('stores %s as the form expects, keeping the import targets and the stored credential', async (_name, values) => {
+    const stored = targeted();
+    installConnection(stored);
+    // The latest confirmed status: what the status endpoint returns for the stored row.
+    const { credentialEncrypted: _credential, webhookSecretEncrypted: _webhook, ...status } = stored;
+
+    const body = gitConnectionBody.parse(gitWorkflowConnectionPayload(values, status, '   '));
+    const result = await connectGitHub('project-1', 'user-1', body);
+
+    expect(gitWorkflowConnectionValues(result.connection)).toEqual(sentGitWorkflowConnectionValues(values));
+    expect(result.connection).toMatchObject({ importBranchId: 'branch-2', importLanguageId: 'language-2', credentialConfigured: true });
+    expect(savedData()).not.toHaveProperty('credentialEncrypted');
+    expect(savedData()).not.toHaveProperty('webhookSecretEncrypted');
+    // A blank token is left out: the stored credential is the one used.
+    expect(mocks.providerTokens).toEqual([STORED_TOKEN]);
+  });
+
+  it('stores the readback the form adopts for a typed URL', async () => {
+    installConnection(targeted());
+    const values = typed({ repository: 'HTTPS://GITHUB.COM/acme/moved.GIT', contentPath: 'docs/' });
+    const result = await connectGitHub('project-1', 'user-1', gitConnectionBody.parse(gitWorkflowConnectionPayload(values, targeted())));
+    expect(gitWorkflowConnectionValues(result.connection)).toEqual({
+      repository: 'acme/moved',
+      baseBranch: 'main',
+      headBranch: 'nibleaf/docs',
+      contentPath: 'docs',
+    });
   });
 });
