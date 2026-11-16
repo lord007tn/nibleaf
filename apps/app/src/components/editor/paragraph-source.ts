@@ -2,6 +2,7 @@ import Paragraph from '@tiptap/extension-paragraph';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
+import { markTightLists } from './list-item-source';
 import type { MarkdownOutput } from './markdown-output';
 
 /*
@@ -53,6 +54,7 @@ export function joinedSourceLines(source: string): string | null {
 interface MarkdownToken {
   type: string;
   tag: string;
+  map: [number, number] | null;
   content: string;
   hidden: boolean;
   children: MarkdownToken[] | null;
@@ -60,7 +62,34 @@ interface MarkdownToken {
 }
 
 interface MarkdownCoreState<T extends MarkdownToken> {
+  src: string;
   tokens: T[];
+}
+
+/*
+ * A quote's paragraph can go on over lines with no `>` (lazy continuation lines,
+ * `> one` then `two`). Its inline source is the same either way, and the quote's
+ * serializer writes `> ` at the start of every line, so such a line was saved with
+ * a `>` added (#638). A paragraph with a lazy line keeps its lines as written too:
+ * its source is followed by a blank line (which no paragraph's source holds) and
+ * the lines, prefixes included. They are written back while the paragraph reads
+ * the same and still sits in the same containers (see `writeLazyLines`).
+ */
+const LAZY_LINES = '\n\n';
+
+/** The lines of a paragraph inside `quotes` quotes, as written, when one of them
+ *  is a lazy line: a line after the first with fewer `>` before its text. Null when
+ *  there is none, or a line's text isn't the end of its line as written. */
+function lazyLines(source: string, written: readonly string[], quotes: number): readonly string[] | null {
+  const texts = source.split('\n');
+  if (texts.length < 2 || written.length !== texts.length) return null;
+  let lazy = false;
+  for (const [index, line] of written.entries()) {
+    const text = texts[index] as string;
+    if (!line.endsWith(text)) return null;
+    if (index > 0 && (line.slice(0, line.length - text.length).match(/>/g)?.length ?? 0) < quotes) lazy = true;
+  }
+  return lazy ? written : null;
 }
 
 const LIST_OPEN = new Set(['bullet_list_open', 'ordered_list_open']);
@@ -81,6 +110,8 @@ const TASK_ITEM = /^\[[ xX]\][ \t]/;
  */
 function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   const { tokens } = state;
+  let lines: string[] | null = null;
+  let quotes = 0;
   /** Open lists, innermost last: whether they hold a paragraph shown in the source,
    *  and one shown here. A list hands both to the list around it when it closes. */
   const lists: Array<{ token: T; shown: boolean; revealed: boolean }> = [];
@@ -96,12 +127,23 @@ function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>
         parent.revealed ||= list.revealed;
       }
     }
+    if (token.type === 'blockquote_open') quotes += 1;
+    if (token.type === 'blockquote_close') quotes -= 1;
     if (token.type !== 'paragraph_open') continue;
     const inline = tokens[index + 1];
     const close = tokens[index + 2];
     if (inline?.type !== 'inline' || close?.type !== 'paragraph_close') continue;
     // An empty paragraph is a fence's lead (fence-source.ts), which handles its list.
     if (list && !token.hidden && inline.content !== '') list.shown = true;
+    // A quote's paragraph is never hidden, and may have a lazy line (see `LAZY_LINES`).
+    if (quotes > 0 && token.map && inline.content.includes('\n')) {
+      lines ??= state.src.split('\n');
+      const lazy = lazyLines(inline.content, lines.slice(token.map[0], token.map[1]), quotes);
+      if (lazy) {
+        token.attrSet(SOURCE_ATTRIBUTE, encodeMdxSource(inline.content + LAZY_LINES + lazy.join('\n')));
+        continue;
+      }
+    }
     if (joinedSourceLines(inline.content) === null) continue;
     if (token.hidden) {
       // A task item's checkbox is read from the start of its text by a later rule.
@@ -139,9 +181,33 @@ function softBreaksAsSpaces<T extends MarkdownToken>(state: MarkdownCoreState<T>
   }
 }
 
+/**
+ * What the serializer writes for a paragraph read from `source`, without the
+ * container prefixes it writes after each line break: a soft break and the spaces
+ * around it as one space, a hard break as a backslash and a line break (the spaces
+ * of a trailing-space break dropped), each next line without its leading spaces.
+ */
+function serializedSource(source: string): string {
+  const lines = source.split('\n');
+  const last = lines.length - 1;
+  let result = '';
+  for (const [index, line] of lines.entries()) {
+    let text = index > 0 ? line.replace(/^[ \t]+/, '') : line;
+    if (index === last) result += text;
+    else if (text.endsWith('\\')) result += `${text}\n`;
+    else if (text.endsWith('  ')) result += `${text.replace(/ +$/, '')}\\\n`;
+    else {
+      if (text.endsWith(' ')) text = text.slice(0, -1);
+      result += `${text} `;
+    }
+  }
+  return result;
+}
+
 /** The parts of prosemirror-markdown's serializer state a paragraph is written with. */
 interface ParagraphSerializeState {
   output: MarkdownOutput;
+  delim: string;
   write: (content?: string) => void;
   text: (text: string, escapeText?: boolean) => void;
   renderInline: (node: PMNode) => void;
@@ -153,7 +219,8 @@ interface ParagraphSerializeState {
  * they do (see the note at the top), otherwise the serializer's single line.
  */
 function writeParagraph(state: ParagraphSerializeState, node: PMNode): void {
-  const source = String(node.attrs.sourceParagraph ?? '');
+  const [source = '', written] = String(node.attrs.sourceParagraph ?? '').split(LAZY_LINES);
+  if (written && writeLazyLines(state, node, source, written.split('\n'))) return;
   const joined = source ? joinedSourceLines(source) : null;
   if (joined === null) {
     state.renderInline(node);
@@ -172,6 +239,33 @@ function writeParagraph(state: ParagraphSerializeState, node: PMNode): void {
     state.text(source, false);
   }
   state.closeBlock(node);
+}
+
+/**
+ * Write a quote paragraph with a lazy line as its lines were written (see
+ * `LAZY_LINES`), while it reads the same: the serializer's own output for it, with
+ * the prefixes after its line breaks taken off, is what the lines give
+ * (`serializedSource`), and its first line, after what the containers already wrote
+ * of it, is the first line as written, so it sits in the same containers.
+ * Otherwise false, with nothing written but the containers' prefix.
+ */
+function writeLazyLines(state: ParagraphSerializeState, node: PMNode, source: string, written: readonly string[]): boolean {
+  state.write();
+  const { output } = state;
+  const lineStart = output.lineStart();
+  const start = output.length;
+  if (output.sliceFrom(lineStart) + source.slice(0, source.indexOf('\n')) !== written[0]) return false;
+  state.renderInline(node);
+  const breaks = state.delim === '' ? null : `\n${state.delim}`;
+  const rendered = output.sliceFrom(start);
+  if ((breaks ? rendered.replaceAll(breaks, '\n') : rendered) !== serializedSource(source)) {
+    output.truncate(start);
+    return false;
+  }
+  output.truncate(lineStart);
+  output.append(written.join('\n'));
+  state.closeBlock(node);
+  return true;
 }
 
 const paragraphParsers = new WeakSet<object>();
@@ -203,6 +297,8 @@ export const SourceParagraph = Paragraph.extend({
           setup(markdownit) {
             if (paragraphParsers.has(markdownit)) return;
             markdownit.core.ruler.after('block', 'nibleaf_paragraph_source', (state) => annotateParagraphs(state));
+            // Reads markdown-it's tight lists before a hidden paragraph is shown (list-item-source.ts).
+            markdownit.core.ruler.before('nibleaf_paragraph_source', 'nibleaf_tight_lists', (state) => markTightLists(state));
             markdownit.core.ruler.after('inline', 'nibleaf_soft_breaks', (state) => softBreaksAsSpaces(state));
             paragraphParsers.add(markdownit);
           },

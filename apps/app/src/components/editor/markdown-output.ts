@@ -3,6 +3,7 @@ import type { Fragment, Mark, Node as PMNode } from '@tiptap/pm/model';
 import { MarkdownSerializerState } from 'prosemirror-markdown';
 import { Markdown } from 'tiptap-markdown';
 import { normalizeLineEndings, readLineEndings, restoreLineEndings, type SourceLineEndings } from './line-endings';
+import { type ListItemSerializeState, writeListItem } from './list-item-source';
 
 /*
  * Saving a page writes its Markdown into one output buffer (#612). The serializer
@@ -173,6 +174,9 @@ const SerializerState = MarkdownSerializerState as unknown as new (
 class LinearMarkdownSerializerState extends SerializerState {
   declare output: MarkdownOutput;
   inTable = false;
+  /** The nodes being rendered, outermost first, each with its parent and index: a
+   *  fence reads what comes after the containers it ends (fence-source.ts). */
+  readonly path: Array<{ node: PMNode; parent: PMNode | Fragment; index: number }> = [];
   private readonly inlines: InlineState[] = [];
   private readonly scanDelims: ScanDelims;
 
@@ -227,7 +231,12 @@ class LinearMarkdownSerializerState extends SerializerState {
 
   // tiptap-markdown's MarkdownSerializerState (src/serialize/state.js) from here on.
   override render(node: PMNode, parent: PMNode, index: number): void {
-    super.render(node, parent, index);
+    this.path.push({ node, parent, index });
+    try {
+      super.render(node, parent, index);
+    } finally {
+      this.path.pop();
+    }
     const top = this.inlines[this.inlines.length - 1];
     // A run that starts at position 0 is never trimmed there either.
     if (top?.start && top.end) {
@@ -320,7 +329,10 @@ export const LinearMarkdown = Markdown.extend({
     const { serializer } = storage;
     const scanDelims = scanDelimsOf(this.editor);
     serializer.serialize = (content) => {
-      const state = new LinearMarkdownSerializerState(serializer.nodes, serializer.marks, { hardBreakNodeName: 'hardBreak' }, scanDelims);
+      const { nodes } = serializer;
+      // List items keep a tight list tight around a fence (list-item-source.ts).
+      if (nodes.listItem) nodes.listItem = (state, node) => writeListItem(state as unknown as ListItemSerializeState, node);
+      const state = new LinearMarkdownSerializerState(nodes, serializer.marks, { hardBreakNodeName: 'hardBreak' }, scanDelims);
       state.renderContent(content as PMNode);
       return state.output.toString();
     };
