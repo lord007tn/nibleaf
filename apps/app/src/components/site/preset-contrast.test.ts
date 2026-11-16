@@ -738,3 +738,31 @@ describe('call-to-action hover in the header and on the not-found page', () => {
     },
   );
 });
+
+// #828 review: accent text on the page shares the accent shade picked at 4.5:1
+// (#613), and inside a solid callout the #682 shade. Fading it on hover
+// (`hover:opacity-80`) took Signal + #b96a3d's #c17951 from 5.01:1 to 3.68:1 on
+// a warning callout. Article links and the breadcrumb trail keep their colour on
+// hover and signal it with the underline instead. Read from the components, so
+// these cases follow what ships.
+describe('accent text keeps its colour on hover', () => {
+  it('styles article links without an opacity hover', () => {
+    const markdown = read('../markdown.tsx');
+    const anchor = markdown.slice(markdown.indexOf('function anchorRenderer'));
+    const classes = anchor.match(/className=\{cn\('([^']*text-primary[^']*)'/)?.[1] ?? '';
+    expect(classes).toContain('text-primary');
+    expect(classes).not.toMatch(/hover:opacity-/);
+    expect(classes).toContain('hover:decoration-2');
+  });
+
+  it('styles the breadcrumb trail, which is accent text, without an opacity hover', () => {
+    const view = read('site-page-view.tsx');
+    const trail = view.slice(view.indexOf("aria-label={tReader('breadcrumb')}"));
+    expect(trail).toMatch(/^aria-label=\{tReader\('breadcrumb'\)\}[\s\S]*?text-primary/);
+    const link = trail.slice(trail.indexOf('<a'), trail.indexOf('</a>'));
+    const classes = link.match(/className="([^"]*)"/)?.[1] ?? '';
+    expect(link).toContain('crumb.path');
+    expect(classes).not.toMatch(/hover:opacity-/);
+    expect(classes).toContain('hover:underline');
+  });
+});
