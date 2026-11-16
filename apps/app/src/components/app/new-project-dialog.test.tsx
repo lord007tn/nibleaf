@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Activity, act, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
@@ -443,6 +444,8 @@ describe('create site dialog: creation that ends while React hides the dialog (<
   let reopenFromOutside: () => Promise<void>;
   /** Moves the same dialog to another organization. */
   let switchOrganization: (organizationId: string) => Promise<void>;
+  /** The same changes, committed synchronously from wherever the test calls them (a microtask, say). */
+  let commit: { organization: (organizationId: string) => void; open: (open: boolean) => void };
   /** The dialog inside an <Activity>, opened and closed as a caller would. */
   async function renderHideable() {
     const node = document.createElement('div');
@@ -491,6 +494,10 @@ describe('create site dialog: creation that ends while React hides the dialog (<
       await act(async () => setOpenFromOutside(true));
     };
     switchOrganization = (organizationId) => act(async () => setOrganization(organizationId));
+    commit = {
+      organization: (organizationId) => flushSync(() => setOrganization(organizationId)),
+      open: (value) => flushSync(() => setOpenFromOutside(value)),
+    };
     return close;
   }
   const slugRefusal = () =>
@@ -515,12 +522,13 @@ describe('create site dialog: creation that ends while React hides the dialog (<
   };
   const busy = () => document.querySelector('[aria-busy="true"]') !== null;
   /** Names the site, continues, and starts creating it; the create answers when the test says. */
-  async function createHeld() {
+  async function createHeld({ press = true } = {}) {
     const create = deferred<{ id: string; firstPageId: string }>();
     mocks.create.mockReturnValueOnce(create.promise);
     const close = await renderHideable();
     await nameSite();
     await click(button('newSite.continue'));
+    if (!press) return { create, close };
     await click(button('newSite.create'));
     expect(busy()).toBe(true);
     return { create, close };
@@ -558,6 +566,48 @@ describe('create site dialog: creation that ends while React hides the dialog (<
     await act(async () => settleCreate(create));
     await settle();
     expectNothingApplied(close);
+  });
+
+  describe('at the submission boundary (on screen, no hiding)', () => {
+    it.each([
+      ['success', succeed],
+      ['failure', fail],
+      ['slug refusal', refuse],
+    ])('a %s whose dialog moves to organization B right after the request answers applies nothing to B', async (_name, settleCreate) => {
+      const { create, close } = await createHeld();
+      await act(async () => {
+        // The submit handler resumes first (the request answered); then B commits, before the action resumes.
+        settleCreate(create);
+        queueMicrotask(() => commit.organization('org-b'));
+      });
+      await settle();
+      expectNothingApplied(close);
+    });
+
+    it.each([
+      ['success', succeed, ''],
+      ['failure', fail, 'Acme Docs'],
+      ['slug refusal', refuse, 'Acme Docs'],
+    ])(
+      'a %s for a dialog closed and opened again while Create was validating applies nothing to the new opening',
+      async (_name, settleCreate, name) => {
+        const { create, close } = await createHeld({ press: false });
+        await act(async () => {
+          button('newSite.create').click();
+          queueMicrotask(() => {
+            commit.open(false);
+            commit.open(true);
+          });
+        });
+        expect(mocks.create).toHaveBeenCalledOnce();
+        await act(async () => settleCreate(create));
+        await settle();
+        expectNothingApplied(close);
+        await click(button('common.back'));
+        expect(document.body.textContent).not.toContain('newSite.error');
+        expect(nameField().value).toBe(name);
+      },
+    );
   });
 
   it('after a quiet failure, Create tries again, and a clean success navigates and closes', async () => {

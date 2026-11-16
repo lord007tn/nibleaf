@@ -22,10 +22,23 @@ import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 const languageOptions = LANGUAGE_CATALOG.map((language) => ({ value: language.code, label: language.native }));
 
 /**
- * How a create this dialog still owns ended: the site exists and the draft
- * settled on it (`clean`) or holds a newer value (`unsettled`), or it failed.
+ * How a create ended, recorded only while the dialog still owned it: the site
+ * exists and the draft settled on it (`clean`, with where to go) or holds a
+ * newer value (`unsettled`); it was refused before any request (`invalid`); or
+ * it failed, with the address the server refused if it did.
  */
-type Ended = 'clean' | 'unsettled' | 'failed';
+type Ended =
+  | { kind: 'clean'; project: { id: string; firstPageId?: string | null }; importInstead: boolean }
+  | { kind: 'unsettled' }
+  | { kind: 'invalid' }
+  | { kind: 'failed'; refusal?: { slug: string; suggestion: string } };
+
+/**
+ * Who a create is for, taken when Create is pressed (before validation) and
+ * kept to the end: the dialog opening, the organization epoch and the draft
+ * generation; and how it ended (`Ended`).
+ */
+type Owner = { opening: number; epoch: number; generation: number; ended?: Ended };
 
 type NewProjectDialogProps = { open: boolean; onOpenChange: (open: boolean) => void; organizationId: string; organizationName?: string };
 
@@ -57,8 +70,16 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
   useLayoutEffect(() => {
     seenNow.current = { opening, epoch };
   }, [opening, epoch]);
-  /** How the create in flight ended, if this dialog still owns it. */
-  const ended = useRef<Ended | undefined>(undefined);
+  /** The create in flight, if any. */
+  const attempt = useRef<Owner | undefined>(undefined);
+  // Whether the dialog is on screen (React can keep it hidden in an <Activity>).
+  const shown = useRef(false);
+  useLayoutEffect(() => {
+    shown.current = true;
+    return () => {
+      shown.current = false;
+    };
+  }, []);
   const destination = useRef<'editor' | 'import'>('editor');
   const projects = useOrganizationProjects(organizationId);
   const draft = useServerDraftForm({
@@ -71,17 +92,16 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
       >,
       starter: 'product-docs' as NonNullable<CreateProjectBody['starter']>,
     },
+    // Records how the create ended, while the dialog owns it; `createSite` applies it.
     onSubmit: async (submitted, save) => {
+      const owner = attempt.current;
+      if (!owner) return 'failed';
+      const owns = () => save.isCurrent() && stillOwns(owner);
       if (!ready) {
-        ended.current = 'failed';
+        owner.ended = { kind: 'invalid' };
         return 'invalid';
       }
-      // The one check before any effect this create has on the dialog: still on
-      // screen, on the same draft, in the same opening and organization epoch.
-      // Otherwise it ends quietly: the draft reconciles, nothing else happens.
-      const owner = { opening, epoch };
-      const owns = () => save.isCurrent() && seenNow.current.opening === owner.opening && seenNow.current.epoch === owner.epoch;
-      setFailure(null);
+      if (owns()) setFailure(null);
       const importInstead = destination.current === 'import';
       try {
         const project = await create.mutateAsync(
@@ -96,40 +116,29 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
         // Always reported to the draft, which keeps it for a hidden form and drops it otherwise.
         const settled = save.succeeded(submitted);
         if (!owns()) return 'failed';
-        toast.success(t('newSite.created'));
-        ended.current = settled ? 'clean' : 'unsettled';
-        // Moving on would drop a value newer than the site: stay, with the draft.
-        if (!settled) return 'saved';
-        if (importInstead) {
-          void navigate({ to: '/app/projects/$projectId/settings', params: { projectId: project.id }, search: { section: 'contentImport' } });
-        } else {
-          void navigate({
-            to: '/app/projects/$projectId/editor',
-            params: { projectId: project.id },
-            search: { page: project.firstPageId ?? undefined },
-          });
-        }
+        owner.ended = settled ? { kind: 'clean', project, importInstead } : { kind: 'unsettled' };
         return 'saved';
       } catch (error) {
         save.failed();
+        if (!owns()) return 'failed';
         const refused = error instanceof ApiResponseError && error.status === 409 && error.reason === 'slug_taken';
         const suggestion = error instanceof ApiResponseError && typeof error.details?.suggestedSlug === 'string' ? error.details.suggestedSlug : '';
-        const showRefusal = () => {
-          form.setFieldValue('slug', slug);
-          setEditingAddress(true);
-          setAddressEdited(true);
-          setConflict({ slug, suggestion });
-          setStep(1);
-        };
-        if (!owns()) return 'failed';
-        ended.current = 'failed';
-        if (refused) showRefusal();
-        else setFailure(t('newSite.error'));
+        owner.ended = { kind: 'failed', refusal: refused ? { slug, suggestion } : undefined };
         return 'failed';
       }
     },
   });
   const { form, isSaving: pending } = draft;
+  /**
+   * Whether the dialog still owns a create: on screen, in the same opening,
+   * organization epoch and draft generation as when Create was pressed. Read
+   * live after each await, right before the effects it allows.
+   */
+  const stillOwns = (owner: Owner) =>
+    shown.current &&
+    seenNow.current.opening === owner.opening &&
+    seenNow.current.epoch === owner.epoch &&
+    draft.settlement().generation === owner.generation;
   const values = useStore(form.store, (state) => state.values);
   const name = values.name.trim();
   const derived = deriveSiteSlug(name);
@@ -161,24 +170,63 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
   const continueReason = !ready && !pending && !name ? t('newSite.reason.name') : undefined;
 
   /**
-   * The step-2 action. Resolving closes the dialog: only after a clean create
-   * this dialog still owns. A failure it owns rejects, so the dialog shows it.
-   * A newer value, or a create the dialog no longer owns (it was hidden,
-   * closed and opened again, or moved to another organization), resolves with
-   * the dialog's close ignored: busy ends, and nothing else changes.
+   * The step-2 action, and the one place a create has effects on the dialog,
+   * after its last await and only while the dialog still owns it: a clean
+   * create toasts, navigates and resolves (the dialog closes); a newer value
+   * toasts and keeps the dialog open with it; a failure shows here, or on the
+   * address step for a refused address. Anything else (a create the dialog no
+   * longer owns: hidden, closed and opened again, another organization)
+   * resolves with the dialog's close ignored: busy ends, nothing else changes.
    */
   const createSite = async () => {
-    const startedIn = opening;
-    ended.current = undefined;
-    await draft.submit();
-    // Set by the submit handler during the await above.
-    const end = ended.current as Ended | undefined;
-    if (end === 'clean') {
+    const owner: Owner = { opening, epoch, generation: draft.settlement().generation };
+    // A create from an earlier opening still runs: this press starts nothing.
+    if (attempt.current) {
+      keepOpen.current = owner.opening;
+      return;
+    }
+    attempt.current = owner;
+    try {
+      await draft.submit();
+    } finally {
+      attempt.current = undefined;
+    }
+    const end = owner.ended;
+    if (!end || !stillOwns(owner)) {
+      keepOpen.current = owner.opening;
+      return;
+    }
+    if (end.kind === 'clean' || end.kind === 'unsettled') toast.success(t('newSite.created'));
+    if (end.kind === 'clean') {
+      const { project, importInstead } = end;
+      if (importInstead) {
+        void navigate({ to: '/app/projects/$projectId/settings', params: { projectId: project.id }, search: { section: 'contentImport' } });
+      } else {
+        void navigate({
+          to: '/app/projects/$projectId/editor',
+          params: { projectId: project.id },
+          search: { page: project.firstPageId ?? undefined },
+        });
+      }
       completed.current = true;
       return;
     }
-    if (end === 'failed') throw new Error('Site creation was not saved');
-    keepOpen.current = startedIn;
+    // Moving on would drop a value newer than the site: stay, with the draft.
+    if (end.kind === 'unsettled') {
+      keepOpen.current = owner.opening;
+      return;
+    }
+    if (end.kind === 'failed') {
+      const { refusal } = end;
+      if (refusal) {
+        form.setFieldValue('slug', refusal.slug);
+        setEditingAddress(true);
+        setAddressEdited(true);
+        setConflict(refusal);
+        setStep(1);
+      } else setFailure(t('newSite.error'));
+    }
+    throw new Error('Site creation was not saved');
   };
   const description = organizationName ? t('newSite.descInOrganization', { org: organizationName }) : t('newSite.desc');
 
