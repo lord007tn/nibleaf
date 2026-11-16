@@ -127,7 +127,6 @@ import {
 } from '@/hooks/api/query-options';
 import { prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
-import { onDashboardSessionCleared } from '@/integrations/tanstack-query/session-cache';
 import { PublishControl } from '@/layouts/project';
 import { draftPreviewHref } from '@/lib/draft-preview';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
@@ -137,8 +136,6 @@ import { typographyVars } from '@/lib/typography';
 import { useSession } from '@/services/auth-client';
 
 const PageHistoryPanel = lazy(() => import('@/components/editor/page-history-panel'));
-// Unsaved drafts are the signed-in account's: signing out or switching accounts drops them (#789).
-onDashboardSessionCleared(() => unsavedDrafts.clear());
 
 export const Route = createFileRoute('/app/projects/$projectId/editor')({
   // Deep links from the dashboard: `?page=<id>` opens a specific page (e.g. a
@@ -722,7 +719,7 @@ function EditorPage() {
           const reviewed = isSupersededWrite(error) || resolution !== saveQueue.resolution(draft.id);
           if (unseen && !reviewed) {
             unsavedDrafts.failed(ticket, { id: draft.id, title: draft.title, content: draft.content, base: saveQueue.baseFor(draft), error });
-          } else unsavedDrafts.settled(ticket);
+          } else unsavedDrafts.settled(ticket, reviewed ? undefined : draft);
         },
       );
     }
@@ -757,22 +754,6 @@ function EditorPage() {
   useEffect(() => {
     if (conflictedPageId && isEditorRevisionConflict(saveError)) saveQueue.raiseConflict(conflictedPageId, saveError);
   }, [conflictedPageId, saveError, saveQueue]);
-  // Unmounting under an unresolved conflict drops the draft (nothing can be
-  // sent): keep it, with its conflict, for the next editor of the page.
-  useEffect(
-    () => () => {
-      editorDraftRef.current?.flush();
-      const { page: current, synced: currentSynced, draft } = draftRef.current;
-      if (!current || currentSynced?.id !== current.id || autosaveGateRef.current.conflictedPageId !== current.id) return;
-      if (!isDirty({ synced: currentSynced, draft })) return;
-      const ticket = unsavedDrafts.issue(ownerRef.current, current.id);
-      if (ticket) {
-        const error = restoredDraftConflict(current.id);
-        unsavedDrafts.failed(ticket, { id: current.id, ...draft, base: currentSynced.updatedAt, error });
-      }
-    },
-    [],
-  );
   // A refusal with its own fix (the page is too large) says so; other failures
   // keep the general "could not be saved" wording.
   const saveFailedMessage = (error: unknown) => (isPageTooLarge(error) ? friendlyErrorMessage(t, error, 'editor.saveError') : t('editor.saveError'));

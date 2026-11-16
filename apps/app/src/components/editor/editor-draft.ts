@@ -1,3 +1,5 @@
+import { onSessionCleared } from '@/lib/session-cleared';
+
 /**
  * Pure decision logic for the page editor's local draft.
  *
@@ -135,7 +137,7 @@ export const isEditorRevisionConflict = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && error.code === 'page:revision_conflict';
 
 /** A conflict the editor reviews like the server's revision conflict: saving pauses until the author resolves it. */
-export const draftConflict = <R extends string>(
+const draftConflict = <R extends string>(
   id: string,
   reason: R,
   message: string,
@@ -188,6 +190,8 @@ export function createUnsavedDrafts() {
   let seq = 0;
   const drafts = new Map<string, UnsavedDraft & { seq: number }>();
   const storedUpTo = new Map<string, number>();
+  /** Per page, the text whose failure an editor showed: its author was told it was not saved. */
+  const reported = new Map<string, string>();
   const unsettled = new Map<string, number>();
   const listeners = new Set<() => void>();
   const keyOf = (owner: string, id: string) => JSON.stringify([owner, id]);
@@ -217,6 +221,7 @@ export function createUnsavedDrafts() {
       if (!settle(ticket)) return;
       const key = keyOf(ticket.owner, ticket.id);
       storedUpTo.set(key, Math.max(storedUpTo.get(key) ?? 0, ticket.seq));
+      reported.delete(key);
       const kept = drafts.get(key);
       if (kept && kept.seq < ticket.seq) drafts.delete(key);
       changed();
@@ -227,12 +232,17 @@ export function createUnsavedDrafts() {
       const key = keyOf(ticket.owner, ticket.id);
       const kept = drafts.get(key);
       const outdated = ticket.seq <= (storedUpTo.get(key) ?? 0) || (kept !== undefined && kept.seq > ticket.seq);
-      if (!outdated && draft.id === ticket.id) drafts.set(key, { ...draft, seq: ticket.seq });
+      // Its editor already said this very text was not saved: not a silent loss.
+      const told = reported.get(key) === JSON.stringify([draft.title, draft.content]);
+      if (!outdated && !told && draft.id === ticket.id) drafts.set(key, { ...draft, seq: ticket.seq });
       changed();
     },
-    /** The write settled, and its editor shows how (or it no longer counts): nothing to keep. */
-    settled(ticket: DraftTicket) {
-      if (settle(ticket)) changed();
+    /** The write settled, and its editor shows how (or it no longer counts): nothing to keep.
+     *  `shown` is the draft whose failure the editor showed its author. */
+    settled(ticket: DraftTicket, shown?: DraftSnapshot) {
+      if (!settle(ticket)) return;
+      if (shown) reported.set(keyOf(ticket.owner, ticket.id), JSON.stringify([shown.title, shown.content]));
+      changed();
     },
     /** Whether a write of page `id` by `owner` has not settled yet. */
     pending: (owner: string | null | undefined, id: string): boolean => Boolean(owner) && unsettled.has(keyOf(owner as string, id)),
@@ -254,6 +264,7 @@ export function createUnsavedDrafts() {
       generation += 1;
       drafts.clear();
       storedUpTo.clear();
+      reported.clear();
       unsettled.clear();
       changed();
     },
@@ -268,6 +279,8 @@ export function createUnsavedDrafts() {
 
 /** This session's unsaved drafts (the editor route mounts and unmounts; they stay). */
 export const unsavedDrafts = createUnsavedDrafts();
+// They are the signed-in account's: signing out or switching accounts drops them.
+onSessionCleared(() => unsavedDrafts.clear());
 
 /**
  * How a kept draft returns to an editor that shows its page as `synced`, with no
