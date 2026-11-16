@@ -9,6 +9,7 @@ const topics = [
   ['Agent commission', 'عمولة الوكيل'],
   ['WhatsApp', 'واتساب'],
   ['Reports', 'التقارير'],
+  ['Publish your changes', 'نشر التغييرات'],
 ] as const;
 const queries = [
   'cancel reservation',
@@ -20,6 +21,12 @@ const queries = [
   'إلغاء الحجز',
   'الفاتورة',
   'xqzv nonsense',
+  'publish',
+  'publsh',
+  'publixh',
+  'publiish',
+  'publsh changes',
+  'appi',
 ];
 const docs = (language: 'en' | 'ar'): SearchDoc[] =>
   Array.from({ length: 150 }, (_, index) => {

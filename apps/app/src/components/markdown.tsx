@@ -184,7 +184,7 @@ function anchorRenderer(site: SiteLinkContext | undefined) {
     }
     return (
       <a
-        className={cn('font-medium text-primary underline underline-offset-4 hover:opacity-80', className)}
+        className={cn('font-medium text-primary underline underline-offset-4 hover:decoration-2', className)}
         href={resolveDocHref(href, site)}
         {...props}
       />
