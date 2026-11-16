@@ -10,7 +10,8 @@ import { Check } from 'lucide-react';
 import { type FormEvent, useId, useState } from 'react';
 import { toast } from 'sonner';
 import { SecretInput } from '@/components/secret-input';
-import { useAiKeyConnection, useAiKeyModels, useSaveAiKey } from '../api/hooks';
+import { useAiKeyConnection } from '../api/hooks';
+import { providerKeyErrorMessage } from '../api/provider-key';
 import type { AiKeyProvider } from '../model/ai';
 import {
   checkRequest,
@@ -22,6 +23,7 @@ import {
   providerKeyFormState,
   saveRequest,
 } from '../model/provider-key-form';
+import { useProviderKeyCommands } from './use-provider-key-commands';
 
 const STEP_LABEL: Record<ProviderKeyStep, MessageKey> = {
   key: 'settings.smartAi.step.key',
@@ -42,14 +44,25 @@ const SAVE_BLOCK: Record<ProviderKeySaveBlock, MessageKey> = {
  * answers page: paste the key, check it (which loads its models), choose a
  * model, save. Choosing the source is the card's radio, not this form.
  * PR 4 of operations/ux/ai-and-integrations.md replaces it with one dialog.
- * What the form shows and sends is decided in `model/provider-key-form.ts`.
- * Failed requests are toasted once, in plain words, by the mutations.
+ * What the form shows and sends is decided in `model/provider-key-form.ts`;
+ * Check and Save run in `useProviderKeyCommands`, which keeps the key out of
+ * every cache. A failure is toasted once, in plain words, and never with what
+ * the server said.
  */
 export function ProviderKeyForm({ projectId, providerId, onSaved }: { projectId: string; providerId: AiKeyProvider; onSaved?: () => void }) {
   const query = useAiKeyConnection(projectId, providerId);
   if (!query.data) return <Skeleton aria-hidden className="h-40 w-full" />;
   const provider = providerForForm(providerId, query.data.connection);
-  return <KeyForm canSave={query.data.canSave} key={providerFormKey(provider)} onSaved={onSaved} projectId={projectId} provider={provider} />;
+  // Keyed by site too: a key typed (or checked) for one site never carries over to another.
+  return (
+    <KeyForm
+      canSave={query.data.canSave}
+      key={`${projectId}:${providerFormKey(provider)}`}
+      onSaved={onSaved}
+      projectId={projectId}
+      provider={provider}
+    />
+  );
 }
 
 function KeyForm({
@@ -68,30 +81,34 @@ function KeyForm({
   const [apiKey, setApiKey] = useState('');
   const [answerModel, setAnswerModel] = useState(provider.answerModel ?? '');
   const [replace, setReplace] = useState(false);
-  const models = useAiKeyModels(projectId);
-  const save = useSaveAiKey(projectId);
-  const options = modelOptions(models.data?.models, provider);
+  const commands = useProviderKeyCommands({ projectId, providerId: provider.id });
+  const options = modelOptions(commands.models ?? undefined, provider);
   const form = providerKeyFormState({
     provider,
     canSave,
     apiKey,
     answerModel,
     replace,
-    checked: models.isSuccess,
-    busy: save.isPending || models.isPending,
+    checked: commands.models !== null,
+    busy: commands.saving || commands.checking,
     modelCount: options.length,
   });
+  const failed = (error: unknown) => toast.error(providerKeyErrorMessage(t, error));
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    // No onError here: the mutation toasts its own failure, once.
-    save.mutate(saveRequest({ provider, apiKey, answerModel, replace }), {
-      onSuccess: () => {
-        setApiKey('');
-        models.reset();
+    commands.save(
+      saveRequest({ provider, apiKey, answerModel, replace }),
+      (keyUnchanged) => {
+        // A key typed after the press is not this save's to clear.
+        if (keyUnchanged) {
+          setApiKey('');
+          commands.retire();
+        }
         toast.success(t('common.saved'));
         onSaved?.();
       },
-    });
+      failed,
+    );
   };
   return (
     <div className="min-w-0 space-y-4 rounded-lg border bg-muted/20 p-4" data-testid="ai-key-form">
@@ -119,9 +136,9 @@ function KeyForm({
             id={`${id}-key`}
             name="ai-provider-api-key"
             onChange={(event) => {
-              // A new key makes the checked model list, and a model chosen from it, stale.
+              // A new key makes the checked model list (or a check still running), and a model chosen from it, stale.
               setApiKey(event.target.value);
-              models.reset();
+              commands.retire();
               setAnswerModel(provider.answerModel ?? '');
             }}
             value={apiKey}
@@ -141,8 +158,8 @@ function KeyForm({
         ) : null}
         <Button
           disabled={!form.canCheck}
-          loading={models.isPending}
-          onClick={() => models.mutate(checkRequest(provider, apiKey))}
+          loading={commands.checking}
+          onClick={() => commands.check(checkRequest(provider, apiKey), failed)}
           type="button"
           variant="outline"
         >
@@ -167,7 +184,7 @@ function KeyForm({
             </SelectContent>
           </Select>
         </div>
-        {models.isSuccess ? (
+        {commands.models ? (
           <p className="text-muted-foreground text-xs" role="status">
             {t(options.length > 0 ? 'settings.smartAi.modelsVerified' : 'settings.smartAi.noModels')}
           </p>
@@ -175,7 +192,7 @@ function KeyForm({
         <Button
           aria-describedby={form.shownSaveBlock ? `${id}-save-why` : undefined}
           disabled={!form.canSubmit}
-          loading={save.isPending}
+          loading={commands.saving}
           type="submit"
         >
           {t('common.save')}
