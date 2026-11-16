@@ -58,6 +58,23 @@ describe('plain search snippets', () => {
     }
   });
 
+  it.each(['keyword', 'stored-chunk'] as const)('preserves an escaped terminal pipe in a borderless table through the %s path', async (path) => {
+    const content = 'Name | Symbol\n--- | ---\nmode | left \\|';
+    const expected = 'Name · Symbol mode · left |';
+    if (path === 'keyword') {
+      const index = await createDocIndex([doc(content)], 'english');
+      const [hit] = await searchDocs(index, 'mode', { relevance: 'reader' });
+      expect(hit?.snippet).toBe(expected);
+    } else {
+      const [chunk] = chunkSearchDocument(
+        { projectId: 'site', deploymentId: 'published', versionSlug: 'main' },
+        { ...doc(content), headings: [], language: 'en', visible: true },
+      );
+      if (!chunk) throw new Error('missing table chunk');
+      expect(searchChunkSnippet(chunk, 'mode')).toBe(expected);
+    }
+  });
+
   it('preserves literal code, identifiers and non-table pipes', () => {
     expect(cleanSearchText('`Map<T>` and SITE_BASE_DOMAIN and a | b')).toBe('Map<T> and SITE_BASE_DOMAIN and a | b');
     expect(cleanSearchText('| Code | Label |\n| --- | --- |\n| `a|b` | Left \\| right |')).toBe('Code · Label a|b · Left | right');

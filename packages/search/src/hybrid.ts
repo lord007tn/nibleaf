@@ -121,11 +121,25 @@ const restoreCode = (value: string, code: readonly string[]): string =>
 
 /** Code spans are already held out, so their literal pipes stay untouched. */
 const cleanTableRows = (lines: string[]): string[] => {
-  const cells = (line: string) =>
-    line
-      .trim()
-      .replace(/^\||\|$/g, '')
-      .split(/(?<!\\)\|/);
+  const cells = (line: string) => {
+    const row = line.trim();
+    const parts: string[] = [];
+    let start = 0;
+    let backslashes = 0;
+    for (let index = 0; index < row.length; index += 1) {
+      const char = row[index];
+      if (char === '|' && backslashes % 2 === 0) {
+        parts.push(row.slice(start, index));
+        start = index + 1;
+      }
+      backslashes = char === '\\' ? backslashes + 1 : 0;
+    }
+    parts.push(row.slice(start));
+    // Only an unescaped border produces an empty outer cell during the split.
+    if (row.startsWith('|') && parts.length > 1) parts.shift();
+    if (start === row.length && row.endsWith('|') && parts.length > 1) parts.pop();
+    return parts;
+  };
   const separator = (line: string) => line.includes('|') && cells(line).every((cell) => /^\s*:?-{3,}:?\s*$/.test(cell));
   let table = false;
   return lines.map((line, index) => {
