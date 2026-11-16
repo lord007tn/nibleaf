@@ -15,14 +15,10 @@ import { GitConflictCard } from '@/features/site-git/components/git-conflict-car
 import { GitWorkflowConnectionForm } from '@/features/site-git/components/git-workflow-connection-form';
 import { GitPullRequestPreviews, GitRecentOperations, GitWorkflowStatusHeader } from '@/features/site-git/components/git-workflow-readouts';
 import { useGitAuthorizationCommand } from '@/features/site-git/components/use-git-authorization-command';
+import { useGitFirstConnectCommand } from '@/features/site-git/components/use-git-first-connect-command';
 import { useGitOperationCommand } from '@/features/site-git/components/use-git-operation-command';
-import {
-  friendlyErrorMessage,
-  useConnectGitWorkflow,
-  useDisconnectGitWorkflow,
-  useGitWorkflow,
-  useRotateGitWorkflowWebhookSecret,
-} from '@/hooks/api';
+import { useGitWebhookRotateCommand } from '@/features/site-git/components/use-git-webhook-rotate-command';
+import { friendlyErrorMessage, useDisconnectGitWorkflow, useGitWorkflow } from '@/hooks/api';
 
 type GitIdentity = { login: string; name: string | null };
 
@@ -102,27 +98,35 @@ export function GitWorkflow({
   const connection = query.data;
   // The connect wizard shows only once the status says the site is not connected.
   const authorize = useGitAuthorizationCommand({ projectId, shown: !query.isPending && !query.isError && !connection });
-  const connect = useConnectGitWorkflow(projectId);
+  const connect = useGitFirstConnectCommand(projectId, {
+    connected: (result, sent) => {
+      setWebhookSecret(result.webhookSecret);
+      // A token typed since the press is kept, with the account checked for it.
+      if (token === sent.token) {
+        setToken('');
+        setAuthorizedAccount(null);
+      }
+      toast.success(t('settings.git.workflow.connected'));
+      onConnected?.();
+    },
+    failed: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.connectError')),
+  });
   const disconnect = useDisconnectGitWorkflow(projectId);
   // The operation panel shown: none while the status loads or failed to load (that screen replaces it).
   const shownPanel = !query.isPending && !query.isError && connection && (intent === 'sync' || intent === 'publish') ? intent : null;
   const operation = useGitOperationCommand({ projectId, panel: shownPanel });
-  const rotate = useRotateGitWorkflowWebhookSecret(projectId);
   const confirm = useConfirm();
-  const connectRepository = () =>
-    connect.mutate(
-      { repository, baseBranch, headBranch, contentPath, token: token || undefined },
-      {
-        onSuccess: (result) => {
-          setWebhookSecret(result.webhookSecret);
-          setToken('');
-          setAuthorizedAccount(null);
-          toast.success(t('settings.git.workflow.connected'));
-          onConnected?.();
-        },
-        onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.connectError')),
-      },
-    );
+  const rotation = useGitWebhookRotateCommand(projectId, {
+    confirm: () =>
+      confirm({
+        title: t('settings.git.workflow.rotateConfirm.title'),
+        description: t('settings.git.workflow.rotateConfirm.description'),
+        confirmLabel: t('settings.git.workflow.rotateSecret'),
+        destructive: true,
+      }),
+    rotated: setWebhookSecret,
+    failed: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.rotateError')),
+  });
   const operationFailed = (error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.operationError'));
   const activeConflicts = useMemo(
     () => connection?.operations.flatMap((item) => item.conflicts.filter((conflict) => conflict.status === 'OPEN')) ?? [],
@@ -345,8 +349,8 @@ export function GitWorkflow({
               <Button
                 className="w-full sm:w-auto"
                 disabled={!authorizedAccount || !repository || !token}
-                loading={connect.isPending}
-                onClick={connectRepository}
+                loading={connect.busy}
+                onClick={() => connect.press({ repository, baseBranch, headBranch, contentPath, token: token || undefined })}
                 loadingText={t('settings.git.workflow.verifying')}
               >
                 {t('settings.git.workflow.connect')}
@@ -472,25 +476,7 @@ export function GitWorkflow({
               <AlertDescription className="break-all font-mono text-xs">{webhookSecret}</AlertDescription>
             </Alert>
           ) : null}
-          <Button
-            className="mt-3"
-            loading={rotate.isPending}
-            onClick={async () => {
-              const approved = await confirm({
-                title: t('settings.git.workflow.rotateConfirm.title'),
-                description: t('settings.git.workflow.rotateConfirm.description'),
-                confirmLabel: t('settings.git.workflow.rotateSecret'),
-                destructive: true,
-              });
-              if (!approved) return;
-              rotate.mutate(undefined, {
-                onSuccess: (result) => setWebhookSecret(result.webhookSecret),
-                onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.rotateError')),
-              });
-            }}
-            size="sm"
-            variant="outline"
-          >
+          <Button className="mt-3" loading={rotation.busy} onClick={() => void rotation.press()} size="sm" variant="outline">
             {t('settings.git.workflow.rotateSecret')}
           </Button>
         </section>

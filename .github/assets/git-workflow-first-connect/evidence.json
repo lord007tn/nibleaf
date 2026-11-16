@@ -1,0 +1,2227 @@
+{
+  "environment": "Component fixture: main's GitWorkflow, its features/site-git slice and useConnectGitWorkflow (dd302202092fbb2775df3f0c7605086c7225bc16) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient (invalidations recorded) and the Git workflow status query; authorization and connection requests answered by interception (a fictional account; a stored connection with a fictional one-time secret, or a 400), optionally held; fictional sites; the placeholder token and secrets written as <TOKEN_A>/<SECRET_n> labels and masked on screen; not the signed-in dashboard, production, the server or GitHub",
+  "base": "dd302202092fbb2775df3f0c7605086c7225bc16",
+  "head": "a82d13dcacc47f75cd60365a5a142f52fd4596a6",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "states": {
+        "en-review-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-review-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-held-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-held-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-refused-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Could not connect GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-refused-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Could not connect GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-connected-before": {
+          "dir": "ltr",
+          "step": null,
+          "tokenMasked": null,
+          "connect": null,
+          "connected": true,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": ["GitHub connection saved."],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "retained": {
+            "cache": {
+              "<TOKEN_A>": ["mutations", "dehydrateAll"],
+              "<SECRET_1>": ["mutations", "dehydrateAll"]
+            },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-connected-after": {
+          "dir": "ltr",
+          "step": null,
+          "tokenMasked": null,
+          "connect": null,
+          "connected": true,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": ["GitHub connection saved."],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-echo-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Could not connect GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": ["<TOKEN_A>"]
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-echo-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Could not connect GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-returned-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "connectOnReturn": { "busy": false, "disabled": false },
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-returned-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "connectOnReturn": { "busy": true, "disabled": true },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-sameTick-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-sameTick-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-review-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-review-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-held-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-held-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-refused-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["تعذر الاتصال بـ GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-refused-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["تعذر الاتصال بـ GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-connected-before": {
+          "dir": "rtl",
+          "step": null,
+          "tokenMasked": null,
+          "connect": null,
+          "connected": true,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": ["تم حفظ اتصال GitHub."],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "retained": {
+            "cache": {
+              "<TOKEN_A>": ["mutations", "dehydrateAll"],
+              "<SECRET_1>": ["mutations", "dehydrateAll"]
+            },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-connected-after": {
+          "dir": "rtl",
+          "step": null,
+          "tokenMasked": null,
+          "connect": null,
+          "connected": true,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": ["تم حفظ اتصال GitHub."],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-echo-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["تعذر الاتصال بـ GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": ["<TOKEN_A>"]
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-echo-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["تعذر الاتصال بـ GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-returned-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "connectOnReturn": { "busy": false, "disabled": false },
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-returned-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "connectOnReturn": { "busy": true, "disabled": true },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-sameTick-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-sameTick-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "states": {
+        "en-review-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-review-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-held-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-held-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-refused-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Could not connect GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-refused-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Could not connect GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-connected-before": {
+          "dir": "ltr",
+          "step": null,
+          "tokenMasked": null,
+          "connect": null,
+          "connected": true,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": ["GitHub connection saved."],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "retained": {
+            "cache": {
+              "<TOKEN_A>": ["mutations", "dehydrateAll"],
+              "<SECRET_1>": ["mutations", "dehydrateAll"]
+            },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-connected-after": {
+          "dir": "ltr",
+          "step": null,
+          "tokenMasked": null,
+          "connect": null,
+          "connected": true,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": ["GitHub connection saved."],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-echo-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Could not connect GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": ["<TOKEN_A>"]
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-echo-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Could not connect GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-returned-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "connectOnReturn": { "busy": false, "disabled": false },
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-returned-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "connectOnReturn": { "busy": true, "disabled": true },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-sameTick-before": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "en-sameTick-after": {
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-review-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-review-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-held-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-held-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-refused-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["تعذر الاتصال بـ GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-refused-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["تعذر الاتصال بـ GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-connected-before": {
+          "dir": "rtl",
+          "step": null,
+          "tokenMasked": null,
+          "connect": null,
+          "connected": true,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": ["تم حفظ اتصال GitHub."],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "retained": {
+            "cache": {
+              "<TOKEN_A>": ["mutations", "dehydrateAll"],
+              "<SECRET_1>": ["mutations", "dehydrateAll"]
+            },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-connected-after": {
+          "dir": "rtl",
+          "step": null,
+          "tokenMasked": null,
+          "connect": null,
+          "connected": true,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": ["تم حفظ اتصال GitHub."],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-echo-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["تعذر الاتصال بـ GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": ["<TOKEN_A>"]
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-echo-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["تعذر الاتصال بـ GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-returned-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "connectOnReturn": { "busy": false, "disabled": false },
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-returned-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "connectOnReturn": { "busy": true, "disabled": true },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-sameTick-before": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": {
+            "cache": { "<TOKEN_A>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        "ar-sameTick-after": {
+          "dir": "rtl",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-after-en-1440.webm",
+      "version": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "pageErrors": [],
+      "steps": [
+        {
+          "moment": "token checked, on to the review",
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        {
+          "moment": "Connect pressed, held",
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        {
+          "moment": "refused: one toast, the review kept, Connect ready",
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": false, "disabled": false },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Could not connect GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        {
+          "moment": "Connect again, held",
+          "dir": "ltr",
+          "step": 3,
+          "tokenMasked": null,
+          "connect": { "busy": true, "disabled": true },
+          "connected": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Could not connect GitHub."],
+          "invalidated": [["git-workflow", "site-a"]],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            }
+          ]
+        },
+        {
+          "moment": "stored and read back: connected",
+          "dir": "ltr",
+          "step": null,
+          "tokenMasked": null,
+          "connect": null,
+          "connected": true,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["GitHub connection saved.", "Could not connect GitHub."],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        {
+          "moment": "Connection panel: the one-time secret (masked)",
+          "dir": "ltr",
+          "step": null,
+          "tokenMasked": null,
+          "connect": null,
+          "connected": true,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": ["GitHub connection saved."],
+          "invalidated": [
+            ["git-workflow", "site-a"],
+            ["git-workflow", "site-a"]
+          ],
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/authorize",
+              "body": { "token": "<TOKEN_A>" }
+            },
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            {
+              "call": "PUT /api/app/projects/site-a/git/connection",
+              "body": {
+                "repository": "acme-fixture/handbook",
+                "baseBranch": "main",
+                "headBranch": "nibleaf/docs",
+                "contentPath": "docs",
+                "token": "<TOKEN_A>"
+              }
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        }
+      ]
+    }
+  ]
+}

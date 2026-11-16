@@ -50,6 +50,77 @@ function siteLinkTarget(element: Element | null, projectId: string, location: Re
   return inSite ? `${url.pathname}${url.search}${url.hash}` : null;
 }
 
+/** Set by a dialog that closes to open a page (search): the destination's
+ * heading takes keyboard focus, as after a sidebar link, instead of the
+ * dialog's trigger. The next navigation consumes it. */
+let destinationFocusRequest: { closing: () => boolean } | null = null;
+
+/** Ask for the next navigation to land keyboard focus on the destination: the
+ * `#fragment`'s element when the URL has one, otherwise the page's `h1`, once
+ * the dialog closing as it navigates has left the page (`closing` turns
+ * false). The dialog must not restore its own focus as it closes. */
+export function focusDestinationOfNextNavigation(closing: () => boolean): void {
+  destinationFocusRequest = { closing };
+}
+
+/** The pending hand-over, if any, clearing it. Kept outside the hook: the React
+ * Compiler, which compiles hooks, inlined a read of this module variable past
+ * the write that clears it, so the hook never saw the request. */
+function takeDestinationFocusRequest(): { closing: () => boolean } | null {
+  const request = destinationFocusRequest;
+  destinationFocusRequest = null;
+  return request;
+}
+
+/** How long after arriving focus follows a landed heading the page re-renders. */
+const FOLLOW_HEADING_MS = 2000;
+const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'CapsLock', 'Fn', 'FnLock', 'Hyper', 'Super', 'OS']);
+
+/**
+ * The article body can re-render just after a page arrives and replace the
+ * heading focus just landed on (focus then falls to the body). Until
+ * FOLLOW_HEADING_MS after arrival, one deadline that a replacement doesn't
+ * extend, focus follows the heading to its new element (`find`, then `focus`).
+ * Anything the reader does ends it for good: focus moving anywhere else, a
+ * pointer press, a key other than a lone modifier, or the next navigation
+ * (the caller's returned stop). A plain function, outside the hook, for the
+ * React Compiler's sake (see takeDestinationFocusRequest).
+ */
+function followLandedHeading(first: HTMLElement, find: () => HTMLElement | null, focus: (target: HTMLElement) => void): () => void {
+  let followed = first;
+  const observer = new MutationObserver(() => {
+    if (followed.isConnected) return;
+    const active = document.activeElement;
+    const next = !active || active === document.body ? find() : null;
+    if (!next) {
+      stop();
+      return;
+    }
+    // Before focusing, so its own focusin isn't taken for the reader moving on.
+    followed = next;
+    focus(next);
+  });
+  const onFocusIn = (event: FocusEvent) => {
+    if (event.target !== followed) stop();
+  };
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (!MODIFIER_KEYS.has(event.key)) stop();
+  };
+  const deadline = window.setTimeout(stop, FOLLOW_HEADING_MS);
+  function stop() {
+    observer.disconnect();
+    window.clearTimeout(deadline);
+    document.removeEventListener('focusin', onFocusIn, true);
+    document.removeEventListener('pointerdown', stop, true);
+    document.removeEventListener('keydown', onKeyDown, true);
+  }
+  observer.observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('focusin', onFocusIn, true);
+  document.addEventListener('pointerdown', stop, true);
+  document.addEventListener('keydown', onKeyDown, true);
+  return stop;
+}
+
 /** Route clicks on links between pages of a published site through the client
  * router instead of a full document load. Links stay plain `<a href>` so they
  * work without JavaScript and in server-rendered HTML.
@@ -64,61 +135,102 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
     let focusOwner: Element | null = null;
     let dialogOwnedFocus = false;
     let focusDialog: Element | null = null;
-    let announcementObserver: MutationObserver | undefined;
+    // Focus handed to the destination by a closing dialog (focusDestinationOfNextNavigation).
+    let handedOver: { closing: () => boolean } | null = null;
+    let dialogObserver: MutationObserver | undefined;
     let restoreTabIndex: (() => void) | undefined;
+    // Ends the follow of the last landed heading (followLandedHeading).
+    let stopFollowing: (() => void) | undefined;
+    const stopFollow = () => {
+      stopFollowing?.();
+      stopFollowing = undefined;
+    };
+    /** Run `then` once the dialog has gone (it may animate out): `closing`
+     * says so, or the element focus was in leaves the page. */
+    const afterDialog = (closing: () => boolean, then: () => void) => {
+      const check = () => {
+        if (closing()) return;
+        dialogObserver?.disconnect();
+        frame = requestAnimationFrame(then);
+      };
+      dialogObserver = new MutationObserver(check);
+      dialogObserver.observe(document.body, { childList: true, subtree: true });
+      check();
+    };
     const beforeNavigate = router.subscribe('onBeforeNavigate', ({ fromLocation, toLocation }) => {
-      if (fromLocation?.href === toLocation.href) return;
+      const handOver = takeDestinationFocusRequest();
+      // A dialog handing over focus still wants it on the page it opened, even the one already open.
+      if (fromLocation?.href === toLocation.href && !handOver) return;
       cancelAnimationFrame(frame);
       restoreTabIndex?.();
-      announcementObserver?.disconnect();
+      dialogObserver?.disconnect();
+      stopFollow();
       setAnnouncement('');
       focusOwner = document.activeElement;
       focusDialog = focusOwner?.closest('[role="dialog"], [role="alertdialog"], dialog') ?? null;
-      dialogOwnedFocus = !!focusDialog;
+      dialogOwnedFocus = !!focusDialog && !handOver;
+      handedOver = handOver;
     });
     const rendered = router.subscribe('onRendered', ({ fromLocation, toLocation }) => {
-      if (!fromLocation || (fromLocation.pathname === toLocation.pathname && fromLocation.searchStr === toLocation.searchStr)) return;
+      const handOver = handedOver;
+      handedOver = null;
+      // Without a hand-over, a `#fragment` jump on the same page leaves focus where it is.
+      if (!fromLocation || (!handOver && fromLocation.pathname === toLocation.pathname && fromLocation.searchStr === toLocation.searchStr)) return;
       frame = requestAnimationFrame(() => {
         const main = document.querySelector<HTMLElement>('main');
         const heading = main?.querySelector<HTMLElement>('h1');
         // Closing a dialog restores its trigger; the live region announces the destination.
         if (dialogOwnedFocus) {
           const title = heading?.textContent || document.title;
-          const announce = () => {
-            if (focusDialog?.isConnected) return;
-            announcementObserver?.disconnect();
-            frame = requestAnimationFrame(() => setAnnouncement(title));
-          };
-          announcementObserver = new MutationObserver(announce);
-          announcementObserver.observe(document.body, { childList: true, subtree: true });
-          announce();
+          afterDialog(
+            () => !!focusDialog?.isConnected,
+            () => setAnnouncement(title),
+          );
           return;
         }
-        const active = document.activeElement;
-        if (active !== document.body && active !== focusOwner && active?.isConnected) {
-          setAnnouncement(heading?.textContent || document.title);
-          return;
-        }
-        let target = heading ?? main;
-        if (toLocation.hash) {
-          try {
-            target = document.getElementById(decodeURIComponent(toLocation.hash)) ?? target;
-          } catch {
-            // Malformed fragments still announce the destination page.
+        // Looked up each time: the page may have replaced them since.
+        const findTarget = () => {
+          const page = document.querySelector<HTMLElement>('main');
+          let target = page?.querySelector<HTMLElement>('h1') ?? page;
+          if (toLocation.hash) {
+            try {
+              target = document.getElementById(decodeURIComponent(toLocation.hash)) ?? target;
+            } catch {
+              // Malformed fragments still announce the destination page.
+            }
           }
-        }
-        if (!target) return;
-        if (!target.hasAttribute('tabindex')) {
-          target.tabIndex = -1;
-          const temporaryTarget = target;
-          const restore = () => {
-            temporaryTarget.removeAttribute('tabindex');
-            temporaryTarget.removeEventListener('blur', restore);
-          };
-          restoreTabIndex = restore;
-          target.addEventListener('blur', restore, { once: true });
-        }
-        target.focus({ preventScroll: true });
+          return target?.isConnected ? target : null;
+        };
+        const focusTarget = (target: HTMLElement) => {
+          if (!target.hasAttribute('tabindex')) {
+            target.tabIndex = -1;
+            const temporaryTarget = target;
+            const restore = () => {
+              temporaryTarget.removeAttribute('tabindex');
+              temporaryTarget.removeEventListener('blur', restore);
+            };
+            restoreTabIndex = restore;
+            target.addEventListener('blur', restore, { once: true });
+          }
+          target.focus({ preventScroll: true });
+        };
+        const land = () => {
+          const active = document.activeElement;
+          if (active !== document.body && active !== focusOwner && active?.isConnected) {
+            setAnnouncement(heading?.textContent || document.title);
+            return;
+          }
+          const target = findTarget();
+          if (!target) return;
+          focusTarget(target);
+          stopFollow();
+          stopFollowing = followLandedHeading(target, findTarget, focusTarget);
+        };
+        // A modal dialog still closing takes focus back (Base UI restores it to
+        // the popup when the focused field goes), so wait until it is gone. By
+        // now focus may already have left it, and its popup may be a new element.
+        if (handOver) afterDialog(handOver.closing, land);
+        else land();
       });
     });
     const onClick = (event: MouseEvent) => {
@@ -134,7 +246,8 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
       rendered();
       cancelAnimationFrame(frame);
       restoreTabIndex?.();
-      announcementObserver?.disconnect();
+      dialogObserver?.disconnect();
+      stopFollow();
     };
   }, [router, projectId]);
 
