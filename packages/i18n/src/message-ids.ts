@@ -570,6 +570,7 @@ export const MESSAGE_IDS = {
   'site.searchKeysNavigate': 'site_searchkeysnavigate',
   'site.searchKeysOpen': 'site_searchkeysopen',
   'site.searchKeysClose': 'site_searchkeysclose',
+  'site.searchKeysSlash': 'site_searchkeysslash',
   'site.searchVersionLabel': 'site_searchversionlabel',
   'site.searchAllLanguages': 'site_searchalllanguages',
   'brand.oss': 'brand_oss',

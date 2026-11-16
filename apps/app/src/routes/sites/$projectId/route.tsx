@@ -25,6 +25,7 @@ import { firstLeafPath, isVersionIndependentNavNode, leadingPages, SiteNav } fro
 import type { PrivateSiteGate } from '@/components/site/site-private-gate';
 import { SiteReaderContext, type SiteReaderContextValue } from '@/components/site/site-reader-context';
 import { openSiteSearch, preloadSiteSearch, SiteSearch } from '@/components/site/site-search';
+import { searchKeyShortcuts, useSlashShortcut } from '@/components/site/site-search-shortcut';
 import { SiteSignOut } from '@/components/site/site-sign-out';
 import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
@@ -175,6 +176,8 @@ function SiteChrome() {
   }, []);
   // SSR renders the platform-neutral label; the client corrects it after hydration.
   const searchShortcut = useSearchShortcutLabel();
+  // '/' opens search unless the reader turned it off in search's footer (WCAG 2.1.4).
+  const slashShortcut = useSlashShortcut(projectId);
   const committedLocation = useRouterState({ select: (s) => s.resolvedLocation ?? s.location });
   const pathname = committedLocation.pathname;
   const parsedPath = parseSiteLanguagePath(siteRoutePath(pathname), site?.languages ?? []);
@@ -613,7 +616,7 @@ function SiteChrome() {
                         onPointerEnter={preloadSiteSearch}
                         onPointerDown={preloadSiteSearch}
                         onTouchStart={preloadSiteSearch}
-                        aria-keyshortcuts={searchHotkey === 'slash' ? '/' : 'Control+K Meta+K'}
+                        aria-keyshortcuts={searchKeyShortcuts(searchHotkey, slashShortcut)}
                         data-theme-region="search-trigger"
                         type="button"
                       >
@@ -625,7 +628,7 @@ function SiteChrome() {
                           dir="ltr"
                           aria-hidden
                         >
-                          {searchHotkey === 'slash' ? '/' : searchShortcut}
+                          {searchHotkey === 'slash' && slashShortcut ? '/' : searchShortcut}
                         </kbd>
                       </button>
                     ) : null}
