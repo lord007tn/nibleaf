@@ -1,0 +1,74 @@
+The lifecycle suite (apps/app/src/features/site-theme/components/theme-settings.test.tsx) run against main's
+theme-section.tsx at 27b4003d1 (unchanged at e904f936e, the merge base after merging main), swapped in for the compatibility entry it imports. Most failures are
+structure main never had (the save bar, Undo boundaries, marked colours, the import confirmation). Two real
+regressions are shown in detail at the end.
+
+     × main regression: a refetch reaches a clean draft (main seeded it once, on mount)
+     × a refetch keeps a dirty edit to another key and takes the server’s value for the rest
+     × main regression: a theme-only save never replays Styling’s colour or radius over a newer value
+     × an appearance-only save sends `styling: { theme }` alone and keeps the authored theme as stored
+     × a colour edit sends the authored theme with every optional part as it was, and no resolved default
+     × an unset appearance stays unset: "system" on it is no change, and a theme save never stores one
+     × Enter in the template box never saves; Ctrl+S saves once, and not again while saving
+     × a failed save keeps the draft and its Undo, says why once, and claims nothing
+     × edits made during a save survive it, stay unsaved, and Undo steps back only to what was saved
+     × no late Undo after a settled save or a Discard
+     × a real change elsewhere offers Use theirs and Keep mine; Keep mine stores the whole authored theme
+     × Use theirs takes their theme and leaves no Undo across it
+     × a stored failing colour is explained but not marked until it is left or a save is tried
+     × a save is refused before any request: the failing colour is marked and focused, in the mode it fails in
+     × an invalid colour entered during a save stays marked after the save confirms, until Discard
+     × Use theirs clears a problem it resolves
+     × a preview writes nothing; a mode change retires it; a late preview never lands over newer text
+     × Apply writes at once and the clean draft shows what was applied; a failed apply keeps the text and preview
+     × Apply with unsaved edits asks first: keeping them writes nothing; discarding applies, and an edit made meanwhile stays
+     × Apply with unsaved edits, discarded and untouched since, leaves a clean draft on the applied theme
+     × a slow file read never overwrites text typed since, and a late preview never reaches another site
+     × a late apply for one site neither toasts on another nor leaves its form locked
+      Tests  22 failed | 4 passed (26)
+
+--- the regressions, in detail ---
+ FAIL  src/features/site-theme/components/theme-settings.test.tsx > Theme Studio follows the project query > main regression: a refetch reaches a clean draft (main seeded it once, on mount)
+AssertionError: expected 'signal' to be 'manuscript' // Object.is equality
+
+Expected: "manuscript"
+Received: "signal"
+
+ ❯ src/features/site-theme/components/theme-settings.test.tsx:301:28
+    299|     expect(activePreset()).toBe('signal');
+    300|     await elsewhere((config) => ({ ...config, theme: { version: 1, pre…
+    301|     expect(activePreset()).toBe('manuscript');
+       |                            ^
+    302|     expect(region()).toBeNull();
+    303|     expect(undoButton().disabled).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/22]⎯
+
+ FAIL  src/features/site-theme/components/theme-settings.test.tsx > a save sends only what changed > main regression: a theme-only save never replays Styling’s colour or radius over a newer value
+AssertionError: expected { theme: { version: 1, …(5) }, …(1) } to strictly equal { theme: ObjectContaining{…} }
+
+- Expected
++ Received
+
+@@ -1,6 +1,11 @@
+  {
++   "styling": {
++     "primaryColor": "#5546e8",
++     "radius": "pill",
++     "theme": "dark",
++   },
+    "theme": {
+      "colors": {
+        "dark": {
+          "accent": "#e39b7d",
+          "accentForeground": "#24110a",
+
+ ❯ src/features/site-theme/components/theme-settings.test.tsx:343:25
+    341|     await preset('manuscript');
+    342|     await save();
+    343|     expect(lastPatch()).toStrictEqual({ theme: expect.objectContaining…
+       |                         ^
+    344|     expect(storedStyling()).toStrictEqual({ ...STYLING, primaryColor: …
+    345|     expect(server.config['site-1'].seo).toStrictEqual(SIBLINGS.seo);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/22]⎯
