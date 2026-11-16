@@ -1,7 +1,7 @@
 {
   "environment": "Component fixture: main's GitWorkflow (861c6f1fff9287a46fabb0582c024214eceb7f35) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient, the status query and the save mutation; a fictional site and repository; every request answered by interception; no token typed; not the signed-in dashboard, production, the server or a real Git provider",
   "base": "861c6f1fff9287a46fabb0582c024214eceb7f35",
-  "head": "e96649608dbb9686413553be6daa128d656b9e61",
+  "head": "b48d052f395cd1282eec9c76aa92fe598370100e",
   "uncommitted": [],
   "attempted": 0,
   "captures": [
