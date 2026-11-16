@@ -53,13 +53,23 @@ function siteLinkTarget(element: Element | null, projectId: string, location: Re
 /** Set by a dialog that closes to open a page (search): the destination's
  * heading takes keyboard focus, as after a sidebar link, instead of the
  * dialog's trigger. The next navigation consumes it. */
-let destinationFocusRequested = false;
+let destinationFocusRequest: { closing: () => boolean } | null = null;
 
 /** Ask for the next navigation to land keyboard focus on the destination: the
- * `#fragment`'s element when the URL has one, otherwise the page's `h1`. The
- * caller's dialog must not restore its own focus as it closes. */
-export function focusDestinationOfNextNavigation(): void {
-  destinationFocusRequested = true;
+ * `#fragment`'s element when the URL has one, otherwise the page's `h1`, once
+ * the dialog closing as it navigates has left the page (`closing` turns
+ * false). The dialog must not restore its own focus as it closes. */
+export function focusDestinationOfNextNavigation(closing: () => boolean): void {
+  destinationFocusRequest = { closing };
+}
+
+/** The pending hand-over, if any, clearing it. Kept outside the hook: the React
+ * Compiler, which compiles hooks, inlined a read of this module variable past
+ * the write that clears it, so the hook never saw the request. */
+function takeDestinationFocusRequest(): { closing: () => boolean } | null {
+  const request = destinationFocusRequest;
+  destinationFocusRequest = null;
+  return request;
 }
 
 /** Route clicks on links between pages of a published site through the client
@@ -76,14 +86,23 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
     let focusOwner: Element | null = null;
     let dialogOwnedFocus = false;
     let focusDialog: Element | null = null;
-    // Focus handed to the destination by a dialog (focusDestinationOfNextNavigation).
-    let handedOver = false;
+    // Focus handed to the destination by a closing dialog (focusDestinationOfNextNavigation).
+    let handedOver: { closing: () => boolean } | null = null;
     let dialogObserver: MutationObserver | undefined;
     let restoreTabIndex: (() => void) | undefined;
-    /** Run `then` once the dialog focus was in has gone (it may animate out). */
-    const afterDialog = (then: () => void) => {
+    // Follows a landed heading that the page re-renders into a new element.
+    let relandObserver: MutationObserver | undefined;
+    let relandTimer = 0;
+    const stopReland = () => {
+      relandObserver?.disconnect();
+      relandObserver = undefined;
+      window.clearTimeout(relandTimer);
+    };
+    /** Run `then` once the dialog has gone (it may animate out): `closing`
+     * says so, or the element focus was in leaves the page. */
+    const afterDialog = (closing: () => boolean, then: () => void) => {
       const check = () => {
-        if (focusDialog?.isConnected) return;
+        if (closing()) return;
         dialogObserver?.disconnect();
         frame = requestAnimationFrame(then);
       };
@@ -92,13 +111,13 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
       check();
     };
     const beforeNavigate = router.subscribe('onBeforeNavigate', ({ fromLocation, toLocation }) => {
-      const handOver = destinationFocusRequested;
-      destinationFocusRequested = false;
+      const handOver = takeDestinationFocusRequest();
       // A dialog handing over focus still wants it on the page it opened, even the one already open.
       if (fromLocation?.href === toLocation.href && !handOver) return;
       cancelAnimationFrame(frame);
       restoreTabIndex?.();
       dialogObserver?.disconnect();
+      stopReland();
       setAnnouncement('');
       focusOwner = document.activeElement;
       focusDialog = focusOwner?.closest('[role="dialog"], [role="alertdialog"], dialog') ?? null;
@@ -107,7 +126,7 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
     });
     const rendered = router.subscribe('onRendered', ({ fromLocation, toLocation }) => {
       const handOver = handedOver;
-      handedOver = false;
+      handedOver = null;
       // Without a hand-over, a `#fragment` jump on the same page leaves focus where it is.
       if (!fromLocation || (!handOver && fromLocation.pathname === toLocation.pathname && fromLocation.searchStr === toLocation.searchStr)) return;
       frame = requestAnimationFrame(() => {
@@ -116,16 +135,21 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
         // Closing a dialog restores its trigger; the live region announces the destination.
         if (dialogOwnedFocus) {
           const title = heading?.textContent || document.title;
-          afterDialog(() => setAnnouncement(title));
+          afterDialog(
+            () => !!focusDialog?.isConnected,
+            () => setAnnouncement(title),
+          );
           return;
         }
-        const land = () => {
+        const land = (relands = 0) => {
           const active = document.activeElement;
           if (active !== document.body && active !== focusOwner && active?.isConnected) {
             setAnnouncement(heading?.textContent || document.title);
             return;
           }
-          let target = heading ?? main;
+          // Looked up again on a re-land: the page may have replaced them.
+          const page = document.querySelector<HTMLElement>('main');
+          let target = page?.querySelector<HTMLElement>('h1') ?? page;
           if (toLocation.hash) {
             try {
               target = document.getElementById(decodeURIComponent(toLocation.hash)) ?? target;
@@ -145,9 +169,25 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
             target.addEventListener('blur', restore, { once: true });
           }
           target.focus({ preventScroll: true });
+          // The article body can still re-render just after arriving, replacing
+          // the heading (focus then falls to the body). For a moment, follow it
+          // to its new element, unless the reader has moved on.
+          stopReland();
+          if (relands >= 3) return;
+          const landed = target;
+          relandObserver = new MutationObserver(() => {
+            if (landed.isConnected) return;
+            stopReland();
+            const now = document.activeElement;
+            if (!now || now === document.body) land(relands + 1);
+          });
+          relandObserver.observe(document.body, { childList: true, subtree: true });
+          relandTimer = window.setTimeout(stopReland, 2000);
         };
-        // A modal dialog still closing would refuse focus outside it, or take it back.
-        if (handOver && focusDialog?.isConnected) afterDialog(land);
+        // A modal dialog still closing takes focus back (Base UI restores it to
+        // the popup when the focused field goes), so wait until it is gone. By
+        // now focus may already have left it, and its popup may be a new element.
+        if (handOver) afterDialog(handOver.closing, () => land());
         else land();
       });
     });
@@ -165,6 +205,7 @@ export function useSiteLinkNavigation(projectId: string, { publicSite = false }:
       cancelAnimationFrame(frame);
       restoreTabIndex?.();
       dialogObserver?.disconnect();
+      stopReland();
     };
   }, [router, projectId]);
 

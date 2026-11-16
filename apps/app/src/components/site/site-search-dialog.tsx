@@ -345,7 +345,7 @@ export default function SiteSearchDialog({
       remember(debouncedQuery);
     }
     openingPageRef.current = true;
-    focusDestinationOfNextNavigation();
+    focusDestinationOfNextNavigation(() => document.querySelector('[data-theme-surface="search"]') !== null);
     onOpenChange(false);
     void router.navigate({
       href: siteHref(projectId, path, {

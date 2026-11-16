@@ -176,6 +176,35 @@ it('lands focus on the section heading for a #section result on another page', a
   expect(document.activeElement).toBe(document.getElementById('refunds'));
 });
 
+it('follows the heading when the article re-renders it just after arriving', async () => {
+  results.data = [section];
+  await openSearchOn('/sites/docs/start');
+  await type('refund');
+  await press('ArrowDown');
+  await press('Enter');
+  await settle();
+  const first = document.getElementById('refunds');
+  expect(document.activeElement).toBe(first);
+  // The article body renders again, with new heading elements.
+  await act(async () => {
+    const page = document.getElementById('page');
+    if (page) page.innerHTML = router.pages['/sites/docs/billing'] ?? '';
+  });
+  await settle();
+  const second = document.getElementById('refunds');
+  expect(second).not.toBe(first);
+  expect(document.activeElement).toBe(second);
+  // Once the reader moves on, a later re-render leaves focus alone.
+  const elsewhere = document.querySelector<HTMLButtonElement>('[data-trigger]');
+  await act(async () => elsewhere?.focus());
+  await act(async () => {
+    const page = document.getElementById('page');
+    if (page) page.innerHTML = router.pages['/sites/docs/billing'] ?? '';
+  });
+  await settle();
+  expect(document.activeElement).toBe(elsewhere);
+});
+
 it('lands focus on the section heading for a #section result on the page already open', async () => {
   results.data = [section];
   await openSearchOn('/sites/docs/billing');
