@@ -147,7 +147,7 @@ export const cleanSearchText = (value: string): string => {
     .split('\n')
     .map((line) => {
       const markers = line.trim().replace(/[ \t]/g, '');
-      return markers.length >= 3 && /^[-*_]+$/.test(markers) ? '' : line;
+      return markers === '$$' || (markers.length >= 3 && /^[-*_]+$/.test(markers)) ? '' : line;
     });
   const cleaned = stripMarkdownLinks(cleanTableRows(lines).join('\n'))
     // MDX and HTML are layout. CLI placeholders such as <name> stay readable.

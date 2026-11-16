@@ -46,6 +46,7 @@ describe('plain search snippets', () => {
     ['  # Publish ##\n  - changes\n2) safely', 'Publish changes safely', ['Publish', 'changes', 'safely']],
     ['<Callout><strong>Publish</strong> changes</Callout>', 'Publish changes', ['Publish', 'changes']],
     ['$energy$ and $$mass$$', 'energy and mass', ['energy', 'mass']],
+    ['$$\nenergy = mass\n$$', 'energy = mass', ['energy', 'mass']],
     ['**انشر** _التغييرات_، [بأمان](/ar).', 'انشر التغييرات، بأمان.', ['انشر', 'التغييرات', 'بأمان']],
   ] as const)('removes prose markup: %s', async (content, expected, words) => {
     expect(cleanSearchText(content)).toBe(expected);
