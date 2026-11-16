@@ -617,7 +617,8 @@ describe('Enter, IME, focus and validation', () => {
     await settle();
     expect(dirty.size).toBe(0);
     await type('git-repo', '');
-    // A fresh draft: nothing shows until the field is left or a save is tried.
+    // A fresh draft: nothing shows until a save is tried, not even once the field is left.
+    await act(async () => field('git-repo').dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
     expect(field('git-repo').getAttribute('aria-invalid')).toBeNull();
   });
 
@@ -631,7 +632,7 @@ describe('Enter, IME, focus and validation', () => {
     await settle();
     await type('git-repo', '');
     expect(field('git-repo').getAttribute('aria-invalid')).toBeNull();
-    await act(async () => field('git-repo').dispatchEvent(new FocusEvent('focusout', { bubbles: true })));
+    await act(async () => submitButton().click());
     expect(field('git-repo').getAttribute('aria-invalid')).toBe('true');
   });
 });

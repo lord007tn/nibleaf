@@ -41,10 +41,6 @@ function useIdentityState<S>(identity: string, initial: S) {
   return [current.value, update] as const;
 }
 
-/** Whether the required field's problem may show: once it was left or a save was tried. */
-type Reveal = { left: boolean; attempted: boolean };
-const HIDDEN: Reveal = { left: false, attempted: false };
-
 const FIELD_IDS: Record<GitConnectionField, string> = { repo: 'git-repo', cloneUrl: 'git-clone-url' };
 
 /**
@@ -77,7 +73,9 @@ export function GitConnectionForm({
   const { data: languages } = useLanguages(projectId);
   const source = useMemo(() => gitConnectionValues(git), [git]);
   const identity = JSON.stringify([projectId, 'git-connection']);
-  const [reveal, setReveal] = useIdentityState(identity, HIDDEN);
+  // Whether the required field's problem shows: once a save was tried. Not on leaving the field, which
+  // would move the buttons under a pointer already pressing Save.
+  const [attempted, setAttempted] = useIdentityState(identity, false);
   const formRef = useRef<HTMLFormElement>(null);
 
   const { form, ...draft } = useServerDraftForm<GitConnectionValues>({
@@ -94,7 +92,7 @@ export function GitConnectionForm({
         const saved = await save({ projectId, values });
         // Only a draft left clean says "saved": an edit made meanwhile, or a conflict, stays on screen to finish.
         if (outcome.succeeded(gitConnectionValues(saved.git))) {
-          setReveal(() => HIDDEN);
+          setAttempted(() => false);
           toast.success(t('settings.git.repoSaved'));
         }
         return 'saved';
@@ -114,14 +112,14 @@ export function GitConnectionForm({
   const submit = useCallback(async () => {
     if (busy || savePending()) return;
     // A try reveals the missing field before it takes focus.
-    flushSync(() => setReveal((previous) => (previous.attempted ? previous : { ...previous, attempted: true })));
+    flushSync(() => setAttempted(() => true));
     if ((await submitDraft()) === 'invalid') formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-  }, [busy, savePending, setReveal, submitDraft]);
+  }, [busy, savePending, setAttempted, submitDraft]);
   const discard = useCallback(() => {
     if (isSaving) return;
     discardDraft();
-    setReveal(() => HIDDEN);
-  }, [discardDraft, isSaving, setReveal]);
+    setAttempted(() => false);
+  }, [discardDraft, isSaving, setAttempted]);
 
   // An Enter that confirms an IME composition must not save; the key itself still reaches the IME.
   // Implicit submission happens in the same task as its keydown, so it is remembered until the task ends.
@@ -143,10 +141,9 @@ export function GitConnectionForm({
   const { provider } = values;
   const missing = missingGitConnectionField(values);
   const problem = (field: GitConnectionField) =>
-    missing === field && (reveal.left || reveal.attempted)
+    missing === field && attempted
       ? t('validation.required', { label: t(field === 'repo' ? 'settings.git.repoUrl' : 'settings.git.cloneUrl') })
       : undefined;
-  const leave = () => setReveal((previous) => (previous.left ? previous : { ...previous, left: true }));
 
   const branchOptions: Array<{ value: string | null; label: string }> = [
     { value: null, label: t('settings.git.defaultBranch') },
@@ -176,7 +173,6 @@ export function GitConnectionForm({
               className="font-mono"
               dir="ltr"
               id={FIELD_IDS[field]}
-              onBlur={leave}
               onChange={(event) => item.handleChange(event.target.value)}
               placeholder={placeholder}
               value={item.state.value}
