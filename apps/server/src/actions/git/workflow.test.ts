@@ -100,8 +100,10 @@ vi.mock('./reconcile', () => ({
 }));
 
 import { buildThemeRepository, THEME_REPOSITORY_DOCS_CONFIG_PATH, THEME_REPOSITORY_MANIFEST_PATH } from '@nibleaf/shared/theme-repository';
+import { gitConnectionBody } from '@nibleaf/validators';
 import { serializeGitPage } from '../importers/content';
 import { applyGitContentChanges, type ObservedPage } from './apply';
+import { encryptGitSecret } from './crypto';
 import { connectGitHub, processGitOperation } from './workflow';
 
 const actualContent = await vi.importActual<typeof import('../importers/content')>('../importers/content');
@@ -355,6 +357,92 @@ describe('connectGitHub', () => {
 
     expect(mocks.prisma.gitConnection.upsert).not.toHaveBeenCalled();
     expect(ledgerWrites()).toEqual([]);
+  });
+
+  /**
+   * The dashboard's connected Connection configuration save
+   * (apps/app/src/features/site-git/model/git-workflow-connection.ts): its
+   * body through the real validator and `connectGitHub`, with mocked provider
+   * and persistence. Same table as the model's tests: typed → stored.
+   */
+  describe('a connected configuration save', () => {
+    const values = (overrides: Record<string, string> = {}) => ({
+      repository: 'acme-fixture/docs',
+      baseBranch: 'main',
+      headBranch: 'nibleaf/docs',
+      contentPath: 'docs',
+      ...overrides,
+    });
+    const existing = {
+      ...connection,
+      ...values(),
+      importBranchId: 'branch-fixture-1',
+      importLanguageId: 'language-fixture-1',
+      credentialEncrypted: 'encrypted-credential-fixture',
+      credentialFingerprint: 'fingerprint-fixture',
+      webhookSecretEncrypted: 'encrypted-webhook-fixture',
+    };
+    const targets = { importBranchId: 'branch-fixture-1', importLanguageId: 'language-fixture-1' };
+    const NORMALIZED: Array<[string, Record<string, string>, Record<string, string>]> = [
+      [
+        'a GitHub URL with .git and padding',
+        values({ repository: '  https://github.com/acme-fixture/moved.git  ' }),
+        values({ repository: 'acme-fixture/moved' }),
+      ],
+      ['an upper-case URL prefix and suffix', values({ repository: 'HTTPS://GITHUB.COM/acme-fixture/docs.GIT' }), values()],
+      [
+        'refs/heads/ branches',
+        values({ baseBranch: ' refs/heads/trunk ', headBranch: 'refs/heads/nibleaf/edit' }),
+        values({ baseBranch: 'trunk', headBranch: 'nibleaf/edit' }),
+      ],
+      ['a path with slashes and backslashes', values({ contentPath: ' /content\\guides/ ' }), values({ contentPath: 'content/guides' })],
+      ['a blank path (the repository root)', values({ contentPath: '   ' }), values({ contentPath: '' })],
+    ];
+    const update = () => (mocks.prisma.gitConnection.upsert.mock.calls[0]?.[0] as { update: Record<string, unknown> } | undefined)?.update;
+
+    beforeEach(() => {
+      mocks.prisma.gitConnection.findUnique.mockResolvedValue(existing);
+      mocks.prisma.gitConnection.upsert.mockImplementation(async ({ update: data }: { update: Record<string, unknown> }) => ({
+        ...existing,
+        ...data,
+      }));
+      mocks.prisma.branch.findFirst.mockResolvedValue({ id: 'branch-fixture-1', name: 'Fixture' });
+      mocks.prisma.language.findFirst.mockResolvedValue({ id: 'language-fixture-1', code: 'en' });
+    });
+
+    it.each(NORMALIZED)(
+      'stores %s as the dashboard expects, keeping the import targets, credential and webhook secret',
+      async (_name, typed, stored) => {
+        const body = gitConnectionBody.parse({ ...typed, ...targets });
+        const result = await connectGitHub('project-1', 'user-1', body);
+
+        expect(update()).toEqual({ ...stored, ...targets, remoteBaseSha: expect.any(String), remoteHeadSha: expect.any(String) });
+        expect(result.connection).toMatchObject({ ...stored, ...targets, credentialConfigured: true, webhookConfigured: true });
+        expect(result.connection).not.toHaveProperty('credentialEncrypted');
+        expect(result.connection).not.toHaveProperty('webhookSecretEncrypted');
+        expect(result.webhookSecret).toBeNull();
+        expect(encryptGitSecret).not.toHaveBeenCalled();
+      },
+    );
+
+    it('resending the stored targets with unchanged settings is no topology change', async () => {
+      await connectGitHub('project-1', 'user-1', gitConnectionBody.parse({ ...values(), ...targets }));
+      expect(mocks.prisma.gitFileState.deleteMany).not.toHaveBeenCalled();
+    });
+
+    it('a body without the targets clears them (main sent none) and resets the file states', async () => {
+      await connectGitHub('project-1', 'user-1', gitConnectionBody.parse(values()));
+      expect(update()).toMatchObject({ importBranchId: null, importLanguageId: null });
+      expect(mocks.prisma.gitFileState.deleteMany).toHaveBeenCalledWith({ where: { connectionId: existing.id } });
+    });
+
+    it('a typed token replaces the stored credential; the webhook secret stays', async () => {
+      const token = 'fixture-token-0000000000000000';
+      await connectGitHub('project-1', 'user-1', gitConnectionBody.parse({ ...values(), ...targets, token }));
+      expect(encryptGitSecret).toHaveBeenCalledWith(token);
+      expect(update()).toHaveProperty('credentialEncrypted');
+      expect(update()).not.toHaveProperty('webhookSecretEncrypted');
+    });
   });
 });
 

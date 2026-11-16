@@ -17,7 +17,6 @@ import {
   GitCompare,
   GitPullRequest,
   RefreshCw,
-  Settings2,
   ShieldCheck,
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -25,6 +24,7 @@ import { toast } from 'sonner';
 import { FailureMessage } from '@/components/failure-message';
 import { SecretInput } from '@/components/secret-input';
 import { env } from '@/env';
+import { GitWorkflowConnectionForm } from '@/features/site-git/components/git-workflow-connection-form';
 import { useGitOperationCommand } from '@/features/site-git/components/use-git-operation-command';
 import {
   type GitConflict as Conflict,
@@ -586,100 +586,77 @@ export function GitWorkflow({
       ) : null}
 
       {intent === 'connection' ? (
-        <>
-          <section className="rounded-xl border p-5">
-            <h3 className="font-semibold">{t('settings.git.webhook.title')}</h3>
-            <p className="text-muted-foreground text-sm">{t('settings.git.workflow.webhookDescription')}</p>
-            <Label className="mt-3" htmlFor="git2-webhook">
-              {t('settings.git.webhook.url')}
-            </Label>
-            <Input className="font-mono text-xs" id="git2-webhook" readOnly value={webhookUrl} />
-            {webhookSecret ? (
-              <Alert className="mt-3">
-                <ShieldCheck />
-                <AlertTitle>{t('settings.git.workflow.copySecret')}</AlertTitle>
-                <AlertDescription className="break-all font-mono text-xs">{webhookSecret}</AlertDescription>
-              </Alert>
-            ) : null}
-            <Button
-              className="mt-3"
-              loading={rotate.isPending}
-              onClick={async () => {
-                const approved = await confirm({
-                  title: t('settings.git.workflow.rotateConfirm.title'),
-                  description: t('settings.git.workflow.rotateConfirm.description'),
-                  confirmLabel: t('settings.git.workflow.rotateSecret'),
-                  destructive: true,
-                });
-                if (!approved) return;
-                rotate.mutate(undefined, {
-                  onSuccess: (result) => setWebhookSecret(result.webhookSecret),
-                  onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.rotateError')),
-                });
-              }}
-              size="sm"
-              variant="outline"
-            >
-              {t('settings.git.workflow.rotateSecret')}
-            </Button>
-          </section>
-
-          <section className="rounded-xl border p-5">
-            <div className="flex items-center gap-2">
-              <Settings2 className="size-5" />
-              <h3 className="font-semibold">{t('settings.git.workflow.configuration')}</h3>
-            </div>
-            <p className="text-muted-foreground text-sm">{t('settings.git.workflow.configurationDescription')}</p>
-            <div className="mt-4 grid gap-4 md:grid-cols-2">
-              <div>
-                <Label htmlFor="git2-update-repo">{t('settings.git.repository.title')}</Label>
-                <Input id="git2-update-repo" onChange={(e) => setRepository(e.target.value)} value={repository} />
-              </div>
-              <div>
-                <Label htmlFor="git2-update-token">{t('settings.git.workflow.rotateToken')}</Label>
-                <SecretInput id="git2-update-token" name="github-access-token" onChange={(e) => setToken(e.target.value)} value={token} />
-              </div>
-              <div>
-                <Label htmlFor="git2-update-base">{t('settings.git.workflow.baseBranch')}</Label>
-                <Input id="git2-update-base" onChange={(e) => setBaseBranch(e.target.value)} value={baseBranch} />
-              </div>
-              <div>
-                <Label htmlFor="git2-update-head">{t('settings.git.workflow.headBranch')}</Label>
-                <Input id="git2-update-head" onChange={(e) => setHeadBranch(e.target.value)} value={headBranch} />
-              </div>
-              <div>
-                <Label htmlFor="git2-update-path">{t('settings.git.contentPath')}</Label>
-                <Input id="git2-update-path" onChange={(e) => setContentPath(e.target.value)} value={contentPath} />
-              </div>
-            </div>
-            <div className="mt-4 flex flex-wrap justify-between gap-2">
-              <Button
-                loading={disconnect.isPending}
-                onClick={async () => {
-                  // The same localized dialog as every other destructive action, naming what it affects.
-                  const approved = await confirm({
-                    title: t('settings.git.workflow.disconnectTitle', { repository: connection.repository }),
-                    description: t('settings.git.workflow.disconnectConfirm'),
-                    confirmLabel: t('settings.git.disconnect'),
-                    destructive: true,
-                  });
-                  if (!approved) return;
-                  disconnect.mutate(undefined, {
-                    onSuccess: () => toast.success(t('settings.git.workflow.disconnected')),
-                    onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.disconnectError')),
-                  });
-                }}
-                variant="destructive"
-              >
-                {t('settings.git.disconnect')}
-              </Button>
-              <Button loading={connect.isPending} onClick={connectRepository} variant="outline" loadingText={t('common.saving')}>
-                {t('settings.git.workflow.saveConnection')}
-              </Button>
-            </div>
-          </section>
-        </>
+        <section className="rounded-xl border p-5">
+          <h3 className="font-semibold">{t('settings.git.webhook.title')}</h3>
+          <p className="text-muted-foreground text-sm">{t('settings.git.workflow.webhookDescription')}</p>
+          <Label className="mt-3" htmlFor="git2-webhook">
+            {t('settings.git.webhook.url')}
+          </Label>
+          <Input className="font-mono text-xs" id="git2-webhook" readOnly value={webhookUrl} />
+          {webhookSecret ? (
+            <Alert className="mt-3">
+              <ShieldCheck />
+              <AlertTitle>{t('settings.git.workflow.copySecret')}</AlertTitle>
+              <AlertDescription className="break-all font-mono text-xs">{webhookSecret}</AlertDescription>
+            </Alert>
+          ) : null}
+          <Button
+            className="mt-3"
+            loading={rotate.isPending}
+            onClick={async () => {
+              const approved = await confirm({
+                title: t('settings.git.workflow.rotateConfirm.title'),
+                description: t('settings.git.workflow.rotateConfirm.description'),
+                confirmLabel: t('settings.git.workflow.rotateSecret'),
+                destructive: true,
+              });
+              if (!approved) return;
+              rotate.mutate(undefined, {
+                onSuccess: (result) => setWebhookSecret(result.webhookSecret),
+                onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.rotateError')),
+              });
+            }}
+            size="sm"
+            variant="outline"
+          >
+            {t('settings.git.workflow.rotateSecret')}
+          </Button>
+        </section>
       ) : null}
+
+      {/* Mounted while other panels show, so its edits and a save in flight outlive a panel switch. */}
+      <GitWorkflowConnectionForm
+        connection={connection}
+        disconnect={
+          <Button
+            loading={disconnect.isPending}
+            onClick={async () => {
+              // The same localized dialog as every other destructive action, naming what it affects.
+              const approved = await confirm({
+                title: t('settings.git.workflow.disconnectTitle', { repository: connection.repository }),
+                description: t('settings.git.workflow.disconnectConfirm'),
+                confirmLabel: t('settings.git.disconnect'),
+                destructive: true,
+              });
+              if (!approved) return;
+              disconnect.mutate(undefined, {
+                onSuccess: () => toast.success(t('settings.git.workflow.disconnected')),
+                onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.disconnectError')),
+              });
+            }}
+            type="button"
+            variant="destructive"
+          >
+            {t('settings.git.disconnect')}
+          </Button>
+        }
+        hidden={intent !== 'connection'}
+        onSaved={(result) => {
+          setWebhookSecret(result.webhookSecret);
+          onConnected?.();
+        }}
+        projectId={projectId}
+      />
 
       {intent === 'overview' || intent === 'sync' ? (
         <section className="rounded-xl border p-5">
