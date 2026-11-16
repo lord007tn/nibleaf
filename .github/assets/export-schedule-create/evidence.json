@@ -1,0 +1,1112 @@
+{
+  "environment": "Component fixture: main's ExportsSection (origin/main) and this branch's with the real design system, EN/AR catalogs, query hooks and create mutation; fictional site; every request answered by interception; not the signed-in dashboard or production",
+  "base": "176033a4ac888cdc9673d86d147137e940856de2",
+  "head": "e3c277deb27126d88cee6ae2273859911d008578",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "en": {
+        "before-default": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Nightly archive",
+            "IANA timezoneAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "SchedulesDaily▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "12",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "Create schedule",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "before-invalid": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "",
+            "IANA timezoneAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "SchedulesDaily▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "Local run time": "",
+            "Runs to retain": "0",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": "Local run time",
+          "create": {
+            "text": "Create schedule",
+            "disabled": true,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "before-retry": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Handbook archive",
+            "IANA timezoneAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "SchedulesDaily▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "12",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "Create schedule",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [
+            "This site already has the most schedules allowed. Remove one to add another."
+          ],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments",
+            {
+              "call": "POST /api/app/projects/site-1/exports/schedules",
+              "body": {
+                "name": "Handbook archive",
+                "formats": ["MARKDOWN", "PDF", "STATIC_HTML"],
+                "cadence": "DAILY",
+                "timezone": "Africa/Lagos",
+                "hour": 2,
+                "minute": 0,
+                "retentionCount": 12,
+                "retentionDays": 90
+              }
+            }
+          ]
+        },
+        "after-default": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Nightly archive",
+            "IANA timezone": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "Schedules": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "12",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "Create scheduleCreating schedule…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "after-invalid": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "",
+            "IANA timezone": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "Schedules": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "Local run time": "",
+            "Runs to retain": "",
+            "Retention days": "90"
+          },
+          "invalid": [
+            {
+              "field": "Schedule name",
+              "message": "Schedule name is required"
+            },
+            {
+              "field": "Local run time",
+              "message": "Local run time is required"
+            },
+            {
+              "field": "Runs to retain",
+              "message": "Runs to retain is required"
+            }
+          ],
+          "focused": "Schedule name",
+          "create": {
+            "text": "Create scheduleCreating schedule…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "after-retry": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Handbook archive",
+            "IANA timezone": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "Schedules": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "12",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": null,
+          "create": {
+            "text": "Create scheduleCreating schedule…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [
+            "This site already has the most schedules allowed. Remove one to add another."
+          ],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments",
+            {
+              "call": "POST /api/app/projects/site-1/exports/schedules",
+              "body": {
+                "name": "Handbook archive",
+                "formats": ["MARKDOWN", "PDF", "STATIC_HTML"],
+                "cadence": "DAILY",
+                "timezone": "Africa/Lagos",
+                "hour": 2,
+                "minute": 0,
+                "retentionCount": 12,
+                "retentionDays": 90
+              }
+            }
+          ]
+        }
+      },
+      "ar": {
+        "before-default": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "أرشيف ليلي",
+            "المنطقة الزمنية IANAAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنيةيوميا▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "02:00",
+            "عدد العمليات المحفوظة": "12",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "إنشاء جدول",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "before-invalid": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "",
+            "المنطقة الزمنية IANAAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنيةيوميا▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "",
+            "عدد العمليات المحفوظة": "0",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [],
+          "focused": "وقت التشغيل المحلي",
+          "create": {
+            "text": "إنشاء جدول",
+            "disabled": true,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "before-retry": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "أرشيف الدليل",
+            "المنطقة الزمنية IANAAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنيةيوميا▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "02:00",
+            "عدد العمليات المحفوظة": "12",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "إنشاء جدول",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [
+            "وصل هذا الموقع إلى الحد الأقصى من الجداول الزمنية. احذف جدولا لإضافة آخر."
+          ],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments",
+            {
+              "call": "POST /api/app/projects/site-1/exports/schedules",
+              "body": {
+                "name": "أرشيف الدليل",
+                "formats": ["MARKDOWN", "PDF", "STATIC_HTML"],
+                "cadence": "DAILY",
+                "timezone": "Africa/Lagos",
+                "hour": 2,
+                "minute": 0,
+                "retentionCount": 12,
+                "retentionDays": 90
+              }
+            }
+          ]
+        },
+        "after-default": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "أرشيف ليلي",
+            "المنطقة الزمنية IANA": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنية": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "02:00",
+            "عدد العمليات المحفوظة": "12",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "إنشاء جدولجار إنشاء الجدول…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "after-invalid": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "",
+            "المنطقة الزمنية IANA": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنية": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "",
+            "عدد العمليات المحفوظة": "",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [
+            { "field": "اسم الجدول", "message": "اسم الجدول مطلوب" },
+            {
+              "field": "وقت التشغيل المحلي",
+              "message": "وقت التشغيل المحلي مطلوب"
+            },
+            {
+              "field": "عدد العمليات المحفوظة",
+              "message": "عدد العمليات المحفوظة مطلوب"
+            }
+          ],
+          "focused": "اسم الجدول",
+          "create": {
+            "text": "إنشاء جدولجار إنشاء الجدول…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "after-retry": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "أرشيف الدليل",
+            "المنطقة الزمنية IANA": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنية": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "02:00",
+            "عدد العمليات المحفوظة": "12",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [],
+          "focused": null,
+          "create": {
+            "text": "إنشاء جدولجار إنشاء الجدول…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [
+            "وصل هذا الموقع إلى الحد الأقصى من الجداول الزمنية. احذف جدولا لإضافة آخر."
+          ],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments",
+            {
+              "call": "POST /api/app/projects/site-1/exports/schedules",
+              "body": {
+                "name": "أرشيف الدليل",
+                "formats": ["MARKDOWN", "PDF", "STATIC_HTML"],
+                "cadence": "DAILY",
+                "timezone": "Africa/Lagos",
+                "hour": 2,
+                "minute": 0,
+                "retentionCount": 12,
+                "retentionDays": 90
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "en": {
+        "before-default": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Nightly archive",
+            "IANA timezoneAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "SchedulesDaily▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "12",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "Create schedule",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "before-invalid": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "",
+            "IANA timezoneAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "SchedulesDaily▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "Local run time": "",
+            "Runs to retain": "0",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": "Local run time",
+          "create": {
+            "text": "Create schedule",
+            "disabled": true,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "before-retry": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Handbook archive",
+            "IANA timezoneAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "SchedulesDaily▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "12",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "Create schedule",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [
+            "This site already has the most schedules allowed. Remove one to add another."
+          ],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments",
+            {
+              "call": "POST /api/app/projects/site-1/exports/schedules",
+              "body": {
+                "name": "Handbook archive",
+                "formats": ["MARKDOWN", "PDF", "STATIC_HTML"],
+                "cadence": "DAILY",
+                "timezone": "Africa/Lagos",
+                "hour": 2,
+                "minute": 0,
+                "retentionCount": 12,
+                "retentionDays": 90
+              }
+            }
+          ]
+        },
+        "after-default": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Nightly archive",
+            "IANA timezone": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "Schedules": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "12",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "Create scheduleCreating schedule…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "after-invalid": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "",
+            "IANA timezone": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "Schedules": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "Local run time": "",
+            "Runs to retain": "",
+            "Retention days": "90"
+          },
+          "invalid": [
+            {
+              "field": "Schedule name",
+              "message": "Schedule name is required"
+            },
+            {
+              "field": "Local run time",
+              "message": "Local run time is required"
+            },
+            {
+              "field": "Runs to retain",
+              "message": "Runs to retain is required"
+            }
+          ],
+          "focused": "Schedule name",
+          "create": {
+            "text": "Create scheduleCreating schedule…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "after-retry": {
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Handbook archive",
+            "IANA timezone": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "Schedules": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "12",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": null,
+          "create": {
+            "text": "Create scheduleCreating schedule…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [
+            "This site already has the most schedules allowed. Remove one to add another."
+          ],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments",
+            {
+              "call": "POST /api/app/projects/site-1/exports/schedules",
+              "body": {
+                "name": "Handbook archive",
+                "formats": ["MARKDOWN", "PDF", "STATIC_HTML"],
+                "cadence": "DAILY",
+                "timezone": "Africa/Lagos",
+                "hour": 2,
+                "minute": 0,
+                "retentionCount": 12,
+                "retentionDays": 90
+              }
+            }
+          ]
+        }
+      },
+      "ar": {
+        "before-default": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "أرشيف ليلي",
+            "المنطقة الزمنية IANAAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنيةيوميا▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "02:00",
+            "عدد العمليات المحفوظة": "12",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "إنشاء جدول",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "before-invalid": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "",
+            "المنطقة الزمنية IANAAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنيةيوميا▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "",
+            "عدد العمليات المحفوظة": "0",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [],
+          "focused": "وقت التشغيل المحلي",
+          "create": {
+            "text": "إنشاء جدول",
+            "disabled": true,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "before-retry": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "أرشيف الدليل",
+            "المنطقة الزمنية IANAAfrica/Lagos▼": "",
+            "base-ui-_r_j_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنيةيوميا▼": "",
+            "base-ui-_r_m_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "02:00",
+            "عدد العمليات المحفوظة": "12",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "إنشاء جدول",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [
+            "وصل هذا الموقع إلى الحد الأقصى من الجداول الزمنية. احذف جدولا لإضافة آخر."
+          ],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments",
+            {
+              "call": "POST /api/app/projects/site-1/exports/schedules",
+              "body": {
+                "name": "أرشيف الدليل",
+                "formats": ["MARKDOWN", "PDF", "STATIC_HTML"],
+                "cadence": "DAILY",
+                "timezone": "Africa/Lagos",
+                "hour": 2,
+                "minute": 0,
+                "retentionCount": 12,
+                "retentionDays": 90
+              }
+            }
+          ]
+        },
+        "after-default": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "أرشيف ليلي",
+            "المنطقة الزمنية IANA": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنية": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "02:00",
+            "عدد العمليات المحفوظة": "12",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "إنشاء جدولجار إنشاء الجدول…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "after-invalid": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "",
+            "المنطقة الزمنية IANA": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنية": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "",
+            "عدد العمليات المحفوظة": "",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [
+            { "field": "اسم الجدول", "message": "اسم الجدول مطلوب" },
+            {
+              "field": "وقت التشغيل المحلي",
+              "message": "وقت التشغيل المحلي مطلوب"
+            },
+            {
+              "field": "عدد العمليات المحفوظة",
+              "message": "عدد العمليات المحفوظة مطلوب"
+            }
+          ],
+          "focused": "اسم الجدول",
+          "create": {
+            "text": "إنشاء جدولجار إنشاء الجدول…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments"
+          ]
+        },
+        "after-retry": {
+          "dir": "rtl",
+          "formOpen": true,
+          "fields": {
+            "اسم الجدول": "أرشيف الدليل",
+            "المنطقة الزمنية IANA": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "الجداول الزمنية": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "وقت التشغيل المحلي": "02:00",
+            "عدد العمليات المحفوظة": "12",
+            "أيام الاحتفاظ": "90"
+          },
+          "invalid": [],
+          "focused": null,
+          "create": {
+            "text": "إنشاء جدولجار إنشاء الجدول…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [
+            "وصل هذا الموقع إلى الحد الأقصى من الجداول الزمنية. احذف جدولا لإضافة آخر."
+          ],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/exports",
+            "GET /api/app/projects/site-1/exports/schedules",
+            "GET /api/app/projects/site-1",
+            "GET /api/app/projects/site-1/deployments",
+            {
+              "call": "POST /api/app/projects/site-1/exports/schedules",
+              "body": {
+                "name": "أرشيف الدليل",
+                "formats": ["MARKDOWN", "PDF", "STATIC_HTML"],
+                "cadence": "DAILY",
+                "timezone": "Africa/Lagos",
+                "hour": 2,
+                "minute": 0,
+                "retentionCount": 12,
+                "retentionDays": 90
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1/exports" },
+        { "call": "GET /api/app/projects/site-1/exports/schedules" },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1/deployments" },
+        {
+          "call": "POST /api/app/projects/site-1/exports/schedules",
+          "body": {
+            "name": "Handbook weekly archive",
+            "formats": ["MARKDOWN", "PDF", "STATIC_HTML"],
+            "cadence": "DAILY",
+            "timezone": "Africa/Lagos",
+            "hour": 2,
+            "minute": 0,
+            "retentionCount": 30,
+            "retentionDays": 90
+          }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/exports/schedules",
+          "body": {
+            "name": "Handbook weekly archive",
+            "formats": ["MARKDOWN", "PDF", "STATIC_HTML"],
+            "cadence": "DAILY",
+            "timezone": "Africa/Lagos",
+            "hour": 2,
+            "minute": 0,
+            "retentionCount": 30,
+            "retentionDays": 90
+          }
+        },
+        { "call": "GET /api/app/projects/site-1/exports" },
+        { "call": "GET /api/app/projects/site-1/exports/schedules" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened: defaults, nothing invalid",
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Nightly archive",
+            "IANA timezone": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "Schedules": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "12",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": "",
+          "create": {
+            "text": "Create scheduleCreating schedule…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requestsSoFar": 4,
+          "stored": 0
+        },
+        {
+          "step": "typed a name and 30 runs to retain",
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Handbook weekly archive",
+            "IANA timezone": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "Schedules": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "30",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": "Runs to retain",
+          "create": {
+            "text": "Create scheduleCreating schedule…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requestsSoFar": 4,
+          "stored": 0
+        },
+        {
+          "step": "creating: fields frozen, Create shows progress",
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Handbook weekly archive",
+            "IANA timezone": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "Schedules": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "30",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": null,
+          "create": {
+            "text": "Create scheduleCreating schedule…",
+            "disabled": true,
+            "loading": true
+          },
+          "alerts": [],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requestsSoFar": 5,
+          "stored": 0
+        },
+        {
+          "step": "refused: one error, everything kept for a retry",
+          "dir": "ltr",
+          "formOpen": true,
+          "fields": {
+            "Schedule name": "Handbook weekly archive",
+            "IANA timezone": "",
+            "base-ui-_r_p_-hidden-input": "Africa/Lagos",
+            "Schedules": "",
+            "base-ui-_r_u_-hidden-input": "DAILY",
+            "Local run time": "02:00",
+            "Runs to retain": "30",
+            "Retention days": "90"
+          },
+          "invalid": [],
+          "focused": null,
+          "create": {
+            "text": "Create scheduleCreating schedule…",
+            "disabled": false,
+            "loading": false
+          },
+          "alerts": ["Could not save"],
+          "toasts": [],
+          "scheduleRows": [],
+          "overflow": false,
+          "requestsSoFar": 5,
+          "stored": 0
+        },
+        {
+          "step": "retry: created, announced and closed; the list reads the new schedule back",
+          "dir": "ltr",
+          "formOpen": false,
+          "fields": {},
+          "invalid": [],
+          "focused": null,
+          "create": null,
+          "alerts": [],
+          "toasts": ["Archive schedule created."],
+          "scheduleRows": ["Handbook weekly archive"],
+          "overflow": false,
+          "requestsSoFar": 8,
+          "stored": 1
+        }
+      ]
+    }
+  ]
+}
