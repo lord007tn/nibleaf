@@ -53,9 +53,10 @@ try {
       .replace("from '@/hooks/api'", "from './hooks'"),
   );
   const mainMutations = git('show', `${BASE}:apps/app/src/hooks/api/mutations.ts`);
-  const mainHooks = /\/\*\* One-way import of a public Mintlify GitHub docs repo[\s\S]*?\n};\n\n\/\*\* One-way import of a public GitBook[\s\S]*?\n};\n/.exec(
-    mainMutations,
-  )?.[0];
+  const mainHooks =
+    /\/\*\* One-way import of a public Mintlify GitHub docs repo[\s\S]*?\n};\n\n\/\*\* One-way import of a public GitBook[\s\S]*?\n};\n/.exec(
+      mainMutations,
+    )?.[0];
   assert.ok(mainHooks, "main's useImportFromMintlify and useImportFromGitbook");
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
