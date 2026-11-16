@@ -4,7 +4,7 @@ import { create, insertMultiple, type Orama, search } from '@orama/orama';
 import { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText } from './arabic';
 import { cleanSearchText } from './hybrid';
 import { keys } from './keys';
-import { readerRelevanceFloor, readerRelevanceScore, readerSearchFields, readerSearchTerms } from './reader-relevance';
+import { readerRelevanceFloor, readerRelevanceScore, readerSearchFields, readerSearchTerms, readerTypoRelevanceScore } from './reader-relevance';
 import { foldSearchText, oramaTokenizerConfig } from './tokenizer';
 
 export * from './analytics';
@@ -161,7 +161,7 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
 
 export interface SearchOptions {
   limit?: number;
-  /** Published keyword search requires lexical evidence and never uses edit-distance padding. */
+  /** Published keyword search ranks lexical evidence first, then validated one-edit matches. */
   relevance?: 'reader';
   /** Maximum Levenshtein distance. The effective distance is reduced for short
    * tokens to avoid noisy matches such as API -> app. */
@@ -246,15 +246,38 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
   const limit = options.limit ?? 12;
   const candidateLimit = Math.min(Math.max(limit * 2, 24), 64);
   const directLimit = Math.max(limit, candidateLimit);
-  const readerHits = (ids: string[]): SearchHit[] => {
+  const readerHits = async (ids: string[]): Promise<SearchHit[]> => {
     const terms = readerSearchTerms(rawQuery, language);
     const candidates = ids.map((id) => ({ id, score: readerRelevanceScore(terms, readerDocuments.get(db)?.get(id)?.fields ?? []) }));
     const floor = readerRelevanceFloor(Math.max(0, ...candidates.map((hit) => hit.score)));
-    return candidates
+    const lexical = candidates
       .filter((hit) => hit.score >= floor)
       .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
       .slice(0, limit)
       .map(({ id, score }) => toSearchHit(db, id, score, rawQuery, arabic, readerDocuments.get(db)?.get(id)?.text ?? '', language));
+    if (lexical.length >= limit || options.tolerance === 0 || ![...terms].some((word) => word.length >= 5)) return lexical;
+
+    const approximate = await search(db, {
+      term: query,
+      properties: EXACT_PROPERTIES,
+      tolerance: 1,
+      boost: EXACT_BOOST,
+      limit: candidateLimit,
+    });
+    const lexicalIds = new Set(lexical.map((hit) => hit.id));
+    const typos = approximate.hits
+      .map((hit) => String(hit.document.id))
+      .filter((id) => !lexicalIds.has(id))
+      .map((id) => ({ id, score: readerTypoRelevanceScore(terms, readerDocuments.get(db)?.get(id)?.fields ?? []) }));
+    const typoFloor = readerRelevanceFloor(Math.max(0, ...typos.map((hit) => hit.score)));
+    return lexical.concat(
+      typos
+        .filter((hit) => hit.score >= typoFloor)
+        .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
+        .slice(0, limit - lexical.length)
+        // Keep typo scores below the lexical floor (0.5) for score consumers.
+        .map(({ id, score }) => toSearchHit(db, id, score / 10, rawQuery, arabic, readerDocuments.get(db)?.get(id)?.text ?? '', language)),
+    );
   };
 
   // Preserve the single-channel behavior and scores for every non-Arabic
