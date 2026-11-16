@@ -1,12 +1,7 @@
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import type { IntegrationCatalogEntry, IntegrationConnectionSummary, IntegrationProviderId } from '@nibleaf/shared/integrations';
-import type {
-  CreateProjectIntegrationBody,
-  IntegrationRevisionBody,
-  UpdateProjectIntegrationBody,
-  VerifyProjectIntegrationBody,
-} from '@nibleaf/validators';
+import type { IntegrationRevisionBody, VerifyProjectIntegrationBody } from '@nibleaf/validators';
 import { useQuery } from '@tanstack/react-query';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
@@ -23,18 +18,34 @@ const REQUEST_FAILED = 'Integration request failed.';
 
 /** What a person can do about an integration failure, keyed by the server's
  *  error code; anything else falls back to the status-based wording. */
-const INTEGRATION_ERROR_KEYS: Partial<Record<string, MessageKey>> = {
-  'integration:revision_conflict': 'error.conflict',
-  'integration:idempotency_conflict': 'error.conflict',
-  'integration:rate_limited': 'error.rateLimited',
-  'integration:credentials_invalid': 'settings.integrations.errorCredentialsInvalid',
-  'integration:verification_failed': 'settings.integrations.errorVerificationFailed',
-  'integration:provider_unavailable': 'settings.integrations.errorProviderUnavailable',
-};
+const INTEGRATION_ERROR_KEYS = new Map<string, MessageKey>([
+  ['integration:revision_conflict', 'error.conflict'],
+  ['integration:idempotency_conflict', 'error.conflict'],
+  ['integration:rate_limited', 'error.rateLimited'],
+  ['integration:credentials_invalid', 'settings.integrations.errorCredentialsInvalid'],
+  ['integration:verification_failed', 'settings.integrations.errorVerificationFailed'],
+  ['integration:provider_unavailable', 'settings.integrations.errorProviderUnavailable'],
+]);
 
 export const integrationErrorMessage = (t: Translate, error: unknown): string => {
-  const key = error instanceof ApiResponseError && error.code ? INTEGRATION_ERROR_KEYS[error.code] : undefined;
+  const key = error instanceof ApiResponseError && error.code ? INTEGRATION_ERROR_KEYS.get(error.code) : undefined;
   return key ? t(key) : friendlyErrorMessage(t, error, 'settings.integrations.actionError');
+};
+
+/**
+ * A failed integration request as it may be kept and logged: only the HTTP
+ * status, a code `integrationErrorMessage` words, and a numeric Retry-After.
+ * The server's message, details and any other code are dropped, since they
+ * could echo a credential the request sent.
+ */
+export const safeIntegrationError = (error: unknown): Error => {
+  if (error instanceof ApiResponseError) {
+    const status = Number.isInteger(error.status) && error.status >= 400 && error.status <= 599 ? error.status : 500;
+    const code = error.code && INTEGRATION_ERROR_KEYS.has(error.code) ? error.code : undefined;
+    const retryAfter = error.retryAfter && /^\d{1,6}$/.test(error.retryAfter) ? error.retryAfter : undefined;
+    return new ApiResponseError(REQUEST_FAILED, status, code, retryAfter);
+  }
+  return error instanceof TypeError ? new TypeError(REQUEST_FAILED) : new Error(REQUEST_FAILED);
 };
 
 /** The catalog with each provider's connection. The tab shows its own error
@@ -57,19 +68,6 @@ const useIntegrationMutation = <TVariables, TResult>(projectId: string, mutation
     },
   });
 };
-
-export const useCreateProjectIntegration = (projectId: string) =>
-  useIntegrationMutation(projectId, async (json: CreateProjectIntegrationBody) =>
-    mutateData<IntegrationConnectionSummary>(await api.app.projects[':projectId'].integrations.$post({ param: { projectId }, json }), REQUEST_FAILED),
-  );
-
-export const useUpdateProjectIntegration = (projectId: string) =>
-  useIntegrationMutation(projectId, async ({ providerId, body }: { providerId: ConfigurableProviderId; body: UpdateProjectIntegrationBody }) =>
-    mutateData<IntegrationConnectionSummary>(
-      await api.app.projects[':projectId'].integrations[':providerId'].$patch({ param: { projectId, providerId }, json: body }),
-      REQUEST_FAILED,
-    ),
-  );
 
 const useStatusProjectIntegration = (projectId: string, action: 'activate' | 'deactivate') =>
   useIntegrationMutation(projectId, async ({ providerId, body }: { providerId: ConfigurableProviderId; body: IntegrationRevisionBody }) => {
