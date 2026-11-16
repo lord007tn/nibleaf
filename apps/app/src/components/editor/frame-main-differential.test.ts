@@ -149,10 +149,13 @@ const COMPONENTS: ReadonlyArray<readonly [tag: string, key: string, inline: bool
 ];
 
 /** The generated attribute values #714 reads differently: a regular expression with a
- *  quote in it, an unterminated quote and an unterminated brace. */
-const VALUES_714: ReadonlySet<string> = new Set(['{/"/}', '"x', '{"x"']);
-/** The one of them whose pages have a plain-value counterpart (see the #714 exception). */
+ *  quote in it, an unterminated quote and an unterminated brace; and (phase 0b) quoted
+ *  values with a backslash before a quote, found with no escapes as MDX reads them. */
 const REGEX_VALUE = '{/"/}';
+const BACKSLASH_VALUES: ReadonlySet<string> = new Set(['"Old\\"', "'Old\\'", '"a \\"b\\" c"']);
+const VALUES_714: ReadonlySet<string> = new Set([REGEX_VALUE, '"x', '{"x"', ...BACKSLASH_VALUES]);
+/** The ones whose pages have a plain-value counterpart (see the #714 exception). */
+const PLAIN_VALUES: ReadonlySet<string> = new Set([REGEX_VALUE, ...BACKSLASH_VALUES]);
 
 interface SeededPage {
   page: string;
@@ -332,7 +335,7 @@ describe('pages without a Frame read as on main', () => {
         if (!seeded || !(VALUES_714.has(seeded.value) || seeded.inserted) || !result) continue;
         if (result.saved === page || result.digest !== main.digests[index]) continue;
         const plainPage = `${page.slice(0, seeded.valueAt)}"x"${page.slice(seeded.valueAt + seeded.valueText.length)}`;
-        const plain = seeded.value === REGEX_VALUE ? digest(plainPage, seeded.key) : null;
+        const plain = PLAIN_VALUES.has(seeded.value) ? digest(plainPage, seeded.key) : null;
         // The plain value's offset in main's edited save, when the edit left it: the value
         // is the opener's first attribute, so its `="x"` is the page's first (an inserted
         // character may be in its name: `co>lor=`, `ti}p=`).
@@ -424,7 +427,7 @@ describe('pages without a Frame read as on main', () => {
       }
       if (
         record &&
-        seeded?.value === REGEX_VALUE &&
+        PLAIN_VALUES.has(seeded?.value ?? '') &&
         result.saved === plainValue(record) &&
         result.edited === plainEditExpected(record, seeded.key, result.target)
       ) {
@@ -434,7 +437,7 @@ describe('pages without a Frame read as on main', () => {
       if (
         record &&
         seeded &&
-        seeded.value !== REGEX_VALUE &&
+        !PLAIN_VALUES.has(seeded.value) &&
         seeded.closerAt !== null &&
         result.saved.startsWith(page.slice(0, seeded.openerEnd)) &&
         result.saved.endsWith(page.slice(seeded.closerAt)) &&
@@ -455,6 +458,10 @@ describe('pages without a Frame read as on main', () => {
       return !saved.startsWith(opener) || !saved.endsWith(fromClose) || digest(saved, 'title').saved !== saved;
     });
     const differences = changed.filter((result) => !result.blankLineValue).map((result) => result.page);
+    writeFileSync(
+      'C:/Users/raedb/AppData/Local/Temp/claude/5c88bf8c1a4201cc/d4b1ce2d-1638-4073-bf8f-e930f5320cdd/scratchpad/fmdiff.json',
+      JSON.stringify(changed.filter((result) => !result.blankLineValue).map((result) => ({ page: result.page, saved: result.saved, edited: result.edited, target: result.target, index: pages.findIndex((entry) => entry.page === result.page) }))),
+    );
     console.info(
       `[frame-main-differential] ${pages.length} pages, ${differences.length} differences, ${kept.length} kept by #721, #714 ${exact.length} exact, ${plain.length} as a plain value and ${bodyNormalized.length} body-normalized`,
     );

@@ -15,6 +15,12 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * edit rewrites only the caption, to its first matching quote. Main dropped most
  * of these Frames.
  *
+ * And #714 phase 0b: every component's opener is found with no backslash escapes,
+ * so a page main lost bytes on (`<Card title="Old\" id="x">`, where main dropped
+ * `id`) is kept and saved byte for byte, and its title edit rewrites only the title;
+ * 99 pages, counted. An edit is never worse than main's: where main saved the page
+ * byte for byte (`title="a \"b\" c"`), its values and edit are main's own.
+ *
  * `__fixtures__/jsx-openers-main.json` holds main's results (main 14209455) and
  * whether `@mdx-js/mdx` compiles each page; it was made by running this generator
  * against main's editor. The test checks that the fixture holds exactly these pages.
@@ -88,6 +94,7 @@ describe('component opening tags, as main reads them', () => {
   it(`gives main’s nodes, save and edited save for all ${pages.length} pages, except #579’s Frames`, () => {
     const differences: Array<{ source: string; expected: Result; head: Result }> = [];
     let frames = 0;
+    let savedFixes = 0;
     for (const [index, { tag, key, value, source }] of pages.entries()) {
       const fromMain = main[index] as (typeof main)[number];
       const head = read(source, key);
@@ -99,10 +106,22 @@ describe('component opening tags, as main reads them', () => {
           saved: source,
           edited: source.replace(/caption="[^"]*"/, 'caption="Edited"'),
         };
+      } else if (value.includes('\\') && fromMain.saved !== source) {
+        // #714: a backslash before a quote, where main lost bytes. The page is kept
+        // and saved byte for byte, and an edit rewrites only the title, to its first
+        // matching quote (main's edit dropped the attributes after it, or there was
+        // none). Where main saved the page byte for byte, everything is still main's.
+        savedFixes++;
+        expected = {
+          nodes: ['paragraph', 'text', `mdx${tag}`, 'paragraph', 'text', 'paragraph'],
+          saved: source,
+          edited: source.replace(/title="[^"]*"/, 'title="Edited"'),
+        };
       }
       if (JSON.stringify(head) !== JSON.stringify(expected)) differences.push({ source, expected, head });
     }
     expect(differences.slice(0, 3)).toEqual([]);
     expect(frames).toBe(51);
+    expect(savedFixes).toBe(99);
   }, 60_000);
 });
