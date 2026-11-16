@@ -119,6 +119,28 @@ const extractCode = (value: string): { prose: string; code: string[] } => {
 const restoreCode = (value: string, code: readonly string[]): string =>
   value.replace(CODE_PLACEHOLDER, (_, index: string) => ` ${code[Number(index)] ?? ''} `);
 
+/** Code spans are already held out, so their literal pipes stay untouched. */
+const cleanTableRows = (lines: string[]): string[] => {
+  const cells = (line: string) =>
+    line
+      .trim()
+      .replace(/^\||\|$/g, '')
+      .split(/(?<!\\)\|/);
+  const separator = (line: string) => line.includes('|') && cells(line).every((cell) => /^\s*:?-{3,}:?\s*$/.test(cell));
+  let table = false;
+  return lines.map((line, index) => {
+    if (separator(line)) return '';
+    // A persisted chunk can start halfway through a table, after its header.
+    if (separator(lines[index + 1] ?? '') || /^\s*\|.*\|\s*$/.test(line)) table = true;
+    if (!line.includes('|') || !line.trim()) table = false;
+    return table
+      ? cells(line)
+          .map((cell) => cell.trim().replace(/\\\|/g, '|'))
+          .join(' · ')
+      : line;
+  });
+};
+
 export const cleanSearchText = (value: string): string => {
   const { prose, code } = extractCode(value);
   const lines = withoutComments(prose)
@@ -127,7 +149,7 @@ export const cleanSearchText = (value: string): string => {
       const markers = line.trim().replace(/[ \t]/g, '');
       return markers.length >= 3 && /^[-*_]+$/.test(markers) ? '' : line;
     });
-  const cleaned = stripMarkdownLinks(lines.join('\n'))
+  const cleaned = stripMarkdownLinks(cleanTableRows(lines).join('\n'))
     // MDX and HTML are layout. CLI placeholders such as <name> stay readable.
     // Attributes are bounded, so an unclosed tag can't make the scan quadratic.
     // Code is held out above, so this only ever strips markup from prose.
@@ -137,12 +159,14 @@ export const cleanSearchText = (value: string): string => {
   const prosePass = cleaned
     .replace(/\[!\w+\]/g, ' ')
     .replace(/(^|\s)\\[-*+]\s*(?:\d+[-.)]\s*)?/gm, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^(?:>\s*|[-*+]\s+)/gm, '')
+    .replace(/^ {0,3}#{1,6}[ \t]+(.*)$/gm, (_, heading: string) => heading.replace(/[ \t]+#+[ \t]*$/, ''))
+    .replace(/^[ \t]*(?:>\s*|[-*+]\s+)/gm, '')
     .replace(/^[ \t]*\d+[.)][ \t]+/gm, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/~~([^~]+)~~/g, '$1')
-    .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|$)/g, '$1$2');
+    .replace(/(^|[^\p{L}\p{M}\p{N}_])__([^_\n]+)__(?=$|[^\p{L}\p{M}\p{N}_])/gu, '$1$2')
+    .replace(/(^|[^\p{L}\p{M}\p{N}_])[*_]([^*_\n]+)[*_](?=$|[^\p{L}\p{M}\p{N}_])/gu, '$1$2')
+    .replace(/(^|[^\\])(\${1,2})(?=\S)([^$\n]*?[^\s$\\])\2(?!\d)/g, '$1$3');
   // Code comes back verbatim, after every prose rule has run.
   return restoreCode(prosePass, code)
     .replace(/\s+/g, ' ')
