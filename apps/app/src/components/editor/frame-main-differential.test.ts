@@ -284,10 +284,15 @@ describe('pages without a Frame read as on main', () => {
     // save what main saves for the same page with the value a plain "x".
     const exact: string[] = [];
     const plain: string[] = [];
+    // Pages saved and edited byte for byte as main does, whose nodes alone differ: text
+    // with a `{…}` (`{/"/}`) that main's scan misread as a runaway string now loads as an
+    // opaque inline expression node, kept byte for byte. Exactly these, by index.
+    const nodesOnly: number[] = [];
     const changed = results.flatMap((result, index) => {
       if (result.digest === main.digests[index]) return [];
       const page = pages[index]?.page ?? '';
       const record = lossyOnMain.get(index);
+      if (record && result.saved === record.saved && result.edited === record.edited) nodesOnly.push(index);
       if (record && result.saved === page) {
         exact.push(page);
         return [];
@@ -313,6 +318,7 @@ describe('pages without a Frame read as on main', () => {
     expect(lost.map((result) => result.page)).toEqual([]);
     expect(kept.length).toBe(4);
     expect(exact.length).toBe(338);
-    expect(plain.length).toBe(44);
+    expect(plain.length).toBe(45);
+    expect(nodesOnly).toEqual([132, 943, 972, 1132]);
   }, 600_000);
 });
