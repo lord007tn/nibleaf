@@ -5,27 +5,25 @@ import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-r
 import { Mail } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { z } from 'zod';
 import { AuthCodeField } from '@/components/auth-email-code';
 import { AuthLayout } from '@/layouts/auth';
 import { friendlyAuthError, isCodeLockedError } from '@/lib/auth-errors';
 import { useAuthT } from '@/lib/auth-messages';
 import { afterAuthDestination } from '@/lib/invitations';
+import { oneOf, readSearch, text } from '@/lib/search-params';
 import { authClient, useSession } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)/verify-email')({
   component: VerifyEmailPage,
   validateSearch: (search) =>
-    z
-      .object({
-        email: z.string().optional().catch(undefined),
-        token: z.string().optional().catch(undefined),
-        invite: z.string().optional().catch(undefined),
-        // The dashboard page that sent a signed-out visitor here (checked by afterAuthDestination).
-        next: z.string().optional().catch(undefined),
-        delivery: z.enum(['sent', 'failed']).optional().catch(undefined),
-      })
-      .parse(search),
+    readSearch(search, {
+      email: text,
+      token: text,
+      invite: text,
+      // The dashboard page that sent a signed-out visitor here (checked by afterAuthDestination).
+      next: text,
+      delivery: oneOf(['sent', 'failed']),
+    }),
 });
 
 function VerifyEmailPage() {

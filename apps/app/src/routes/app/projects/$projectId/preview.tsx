@@ -8,7 +8,6 @@ import { displayTitle } from '@nibleaf/shared/page-title';
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 import { ArrowLeft, ChevronDown, Eye } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
-import { z } from 'zod';
 import { publishedVersionSlugFor } from '@/components/editor/docs-version';
 import { Markdown, useMathReady } from '@/components/markdown';
 import { QueryErrorState } from '@/components/query-error-state';
@@ -23,17 +22,16 @@ import { defaultScopeId, prefetchScopedPages } from '@/hooks/api/route-prefetch'
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
+import { boundedText, readSearch } from '@/lib/search-params';
 import { projectThemeStyle, projectThemeVariables, resolveProjectTheme } from '@/lib/site-theme';
 
 export const Route = createFileRoute('/app/projects/$projectId/preview')({
   validateSearch: (search) =>
-    z
-      .object({
-        branchId: z.string().min(1).optional().catch(undefined),
-        languageId: z.string().min(1).optional().catch(undefined),
-        pageId: z.string().min(1).optional().catch(undefined),
-      })
-      .parse(search),
+    readSearch(search, {
+      branchId: boundedText(1),
+      languageId: boundedText(1),
+      pageId: boundedText(1),
+    }),
   loaderDeps: ({ search: { branchId, languageId, pageId } }) => ({ branchId, languageId, pageId }),
   // The parent route prefetches the site, languages and branches; this adds the
   // previewed page list and, for a deep link, the page itself.

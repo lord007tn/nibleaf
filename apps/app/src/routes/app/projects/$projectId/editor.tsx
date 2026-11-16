@@ -42,7 +42,6 @@ import {
 } from 'lucide-react';
 import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { z } from 'zod';
 import { ActiveBranchContext } from '@/components/editor/active-branch-context';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
@@ -136,6 +135,7 @@ import { draftPreviewHref } from '@/lib/draft-preview';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
 import { copyToClipboard } from '@/lib/invitations';
 import { resolveProjectEditAccess } from '@/lib/project-settings-access';
+import { boundedText, flag, oneOf, readSearch } from '@/lib/search-params';
 import { typographyVars } from '@/lib/typography';
 import { useSession } from '@/services/auth-client';
 
@@ -145,16 +145,14 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
   // Deep links from the dashboard: `?page=<id>` opens a specific page (e.g. a
   // publish-check issue), `?publish=true` opens the publish flow directly.
   validateSearch: (search) =>
-    z
-      .object({
-        firstPublish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
-        page: z.string().min(1).optional().catch(undefined),
-        // A publish check's Fix (contract: @nibleaf/shared/publish-check-codes): PublishFixBar lands on it, then they are dropped.
-        fix: z.enum(PUBLISH_CHECK_CODES).optional().catch(undefined),
-        fixTarget: z.string().min(1).optional().catch(undefined),
-        publish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
-      })
-      .parse(search),
+    readSearch(search, {
+      firstPublish: flag,
+      page: boundedText(1),
+      // A publish check's Fix (contract: @nibleaf/shared/publish-check-codes): PublishFixBar lands on it, then they are dropped.
+      fix: oneOf(PUBLISH_CHECK_CODES),
+      fixTarget: boundedText(1),
+      publish: flag,
+    }),
   loaderDeps: ({ search: { page } }) => ({ page }),
   // The parent route prefetches the site, languages, branches and publishes. This
   // adds the page tree (every language, default branch), the site's AI drafting

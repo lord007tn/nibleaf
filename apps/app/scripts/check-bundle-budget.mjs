@@ -70,9 +70,16 @@ const profiles = {
 // hands down. Product pages no longer load the reader's SEO, theme, redirect and
 // chrome-copy chunks (about 44 KiB). Measured with #703 on main: 322,990 and
 // 326,001 bytes (CI); the margin is ~1 KiB.
+// public-docs and public-docs-index 345_100 → 274_400 (PUB-017): zod no longer
+// reaches published pages. Eager routes read their search params with
+// lib/search-params.ts, the reader's MDX props use plain checks, its language
+// and nav helpers load apart from @nibleaf/shared/site (and its add-on schemas),
+// and zod-csp sets zod's global config without importing zod. This also takes
+// in READER-05's trims, which kept the old budget. Measured 266.02 and 264.68 KiB
+// (about 272,404 and 271,032 bytes) locally; the margin is ~2 KiB.
 const gzipBudgets = {
-  'public-docs': 345_100,
-  'public-docs-index': 345_100,
+  'public-docs': 274_400,
+  'public-docs-index': 274_400,
   'auth-sign-in': 324_100,
   'auth-sign-up': 327_100,
 };
