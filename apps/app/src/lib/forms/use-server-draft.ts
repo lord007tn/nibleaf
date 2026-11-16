@@ -81,7 +81,9 @@ type ActiveSave<T extends DraftValues> = {
 /**
  * A TanStack form kept in step with server data (operations/ui-overhaul.md
  * §8.3), never silently dropping an edit:
- * - a new `identity` (another site, another language scope) resets the form;
+ * - a new `identity` (another site, another language scope) resets the form,
+ *   and a save still in flight ends its `submit()` as `'failed'` at once (its
+ *   request runs on), so the new identity's first save isn't held up;
  * - a server change updates fields the person hasn't edited, keeps their
  *   edits, and reports keys both sides changed as `conflicts`, which stay
  *   until resolved or until the draft matches the server again;
