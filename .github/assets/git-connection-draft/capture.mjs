@@ -56,7 +56,24 @@ try {
     resolve(harness, 'before/git-tab.tsx'),
     git('show', `${BASE}:apps/app/src/components/settings/git-tab.tsx`)
       .replace("from './git-workflow'", "from '@/components/settings/git-workflow'")
-      .replace("from './section'", "from '@/components/settings/section'"),
+      .replace("from './section'", "from '@/components/settings/section'")
+      .replace("from '@/hooks/api'", "from './hooks'"),
+  );
+  // Main's settings mutation as it is on the base (this branch removed it); every other hook is today's.
+  const mainHook = /\/\*\* Update workspace\/site settings\.[\s\S]*?\nexport const useUpdateWorkspaceSettings = [\s\S]*?\n};\n/.exec(
+    git('show', `${BASE}:apps/app/src/hooks/api/mutations.ts`),
+  )?.[0];
+  assert.ok(mainHook, "main's useUpdateWorkspaceSettings");
+  await writeFile(
+    resolve(harness, 'before/hooks.ts'),
+    `export * from '@/hooks/api';
+import type { UpdateWorkspaceSettingsBody } from '@nibleaf/validators';
+import type { WorkspaceSettings } from '@/hooks/api';
+import { mutateData } from '@/hooks/api/client-helpers';
+import { queryKeys } from '@/hooks/api/query-keys';
+import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
+import { api } from '@/services/api';
+${mainHook}`,
   );
   // The per-site connection above the legacy form is out of scope: rendered as nothing on both sides.
   await writeFile(resolve(harness, 'git-workflow-stub.tsx'), 'export const GitWorkflow = () => null;\n');
