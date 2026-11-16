@@ -1,5 +1,5 @@
-import { hashKey, type QueryClient, useQueryClient as useCacheClient } from '@tanstack/react-query';
-import { useCallback, useSyncExternalStore } from 'react';
+import { hashKey, type Query, type QueryClient, useQueryClient as useCacheClient } from '@tanstack/react-query';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { GitWorkflowStatus } from '@/hooks/api';
 import { ApiResponseError, mutateData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
@@ -32,8 +32,8 @@ const savingOf = (client: QueryClient): Saving => {
   }
   return saving;
 };
-const slot = (client: QueryClient, projectId: string) => JSON.stringify([getSessionGeneration(client), projectId]);
-const isSaving = (client: QueryClient, projectId: string) => (savingOf(client).counts.get(slot(client, projectId)) ?? 0) > 0;
+const slot = (generation: number, projectId: string) => JSON.stringify([generation, projectId]);
+const isSaving = (client: QueryClient, generation: number, projectId: string) => (savingOf(client).counts.get(slot(generation, projectId)) ?? 0) > 0;
 const track = (client: QueryClient, key: string, change: 1 | -1) => {
   const { counts, listeners } = savingOf(client);
   const count = (counts.get(key) ?? 0) + change;
@@ -42,33 +42,42 @@ const track = (client: QueryClient, key: string, change: 1 | -1) => {
   for (const listener of listeners) listener();
 };
 
+/** Thrown once the session a save started in has ended: nothing more is read or sent for it. */
+const obsolete = () => new Error(FAILED);
+
 /**
  * Waits for a read of the site's status that the cache adopts: the read in
- * flight, or a new one when none is. True with the status it stored; false
- * when that read failed, paused offline, was removed, or was cancelled back to
- * the data it started from (whose targets are then not known to be current).
+ * flight, or a new one when none is. Adopted means that query's own fetch
+ * completed (a `success` that isn't a manual `setQueryData` write); it then
+ * gives the status that fetch stored. Not adopted: the read failed, paused
+ * offline, was removed, or was cancelled back to the data it started from
+ * (whose targets are then not known to be current).
  */
 function adoptedRead(client: QueryClient, projectId: string) {
   const options = gitWorkflowQueryOptions(projectId);
   const hash = hashKey(options.queryKey);
   return new Promise<{ adopted: true; status: GitWorkflowStatus | null } | { adopted: false }>((resolve) => {
+    // The query whose fetch this read joined or started; events of any other query object are not its outcome.
+    let joined: Query | undefined;
     const unsubscribe = client.getQueryCache().subscribe((event) => {
-      if (event.query.queryHash !== hash) return;
+      if (!joined || event.query !== joined) return;
       let adopted: boolean | undefined;
       if (event.type === 'removed') adopted = false;
       else if (event.type === 'updated') {
-        const { type } = event.action;
-        if (type === 'success') adopted = true;
-        else if (type === 'error' || type === 'pause' || (type === 'setState' && event.query.state.fetchStatus === 'idle')) adopted = false;
+        const { action } = event;
+        if (action.type === 'success') adopted = action.manual ? undefined : true;
+        else if (action.type === 'error' || action.type === 'pause' || (action.type === 'setState' && joined.state.fetchStatus === 'idle'))
+          adopted = false;
       }
       if (adopted === undefined) return;
       unsubscribe();
-      resolve(adopted ? { adopted, status: event.query.state.data as GitWorkflowStatus | null } : { adopted });
+      resolve(adopted ? { adopted, status: joined.state.data as GitWorkflowStatus | null } : { adopted });
     });
-    // Joins the read in flight (a refresh, a poll, an invalidation), or starts one. One already paused offline
-    // tells nothing more until the connection is back.
+    // Joins the read in flight (a refresh, a poll, an invalidation), or starts one; either way, that query's fetch.
     client.fetchQuery({ ...options, staleTime: 0 }).catch(() => undefined);
-    if (client.getQueryCache().get(hash)?.state.fetchStatus === 'paused') {
+    joined = client.getQueryCache().get(hash);
+    // No query to watch, or one already paused offline, tells nothing more now.
+    if (!joined || joined.state.fetchStatus === 'paused') {
       unsubscribe();
       resolve({ adopted: false });
     }
@@ -80,27 +89,36 @@ function adoptedRead(client: QueryClient, projectId: string) {
  * back: the cached status while nothing is reading it and it is valid;
  * otherwise the read in flight, or a new one, once the cache adopts it. A read
  * that isn't adopted is followed by one more; if that isn't adopted either,
- * the save fails rather than send targets that may be stale.
+ * the save fails rather than send targets that may be stale. `current` is
+ * checked before each read starts and after each ends: once the session the
+ * save started in has ended, nothing more is read.
  */
-async function latestConfirmedStatus(client: QueryClient, projectId: string) {
+async function latestConfirmedStatus(client: QueryClient, projectId: string, current: () => boolean) {
+  if (!current()) throw obsolete();
   const state = client.getQueryCache().find<GitWorkflowStatus | null>({ queryKey: gitWorkflowQueryOptions(projectId).queryKey, exact: true })?.state;
   if (state && state.data !== undefined && state.fetchStatus === 'idle' && !state.isInvalidated) return state.data;
   for (let attempt = 0; attempt < 2; attempt += 1) {
+    if (!current()) throw obsolete();
     const read = await adoptedRead(client, projectId);
+    if (!current()) throw obsolete();
     if (read.adopted) return read.status;
   }
   throw new Error(FAILED);
 }
 
 /**
- * The error a save reports: its status and code, so the caller's friendly
- * message is the one it was, but never the server's message or body, which
- * could echo what was sent.
+ * The error a save reports. Only what is known safe is kept: the HTTP status
+ * (a number) and a numeric `Retry-After`. Never the server's message, body,
+ * code, reason or details, any of which could echo what was sent. This route
+ * returns no code or reason that the friendly message maps (its codes are
+ * `http:bad_request`, `database:not_found`, auth and validation ones), so the
+ * message shown is the one the full error gave.
  */
 const sanitized = (error: unknown) => {
   if (error instanceof ApiResponseError) {
-    const reason = error.reason;
-    return new ApiResponseError(FAILED, error.status, error.code, error.retryAfter, undefined, undefined, undefined, reason ? { reason } : undefined);
+    const status = Number.isInteger(error.status) && error.status >= 400 && error.status <= 599 ? error.status : 500;
+    const retryAfter = error.retryAfter && /^\d{1,6}$/.test(error.retryAfter) ? error.retryAfter : undefined;
+    return new ApiResponseError(FAILED, status, undefined, retryAfter);
   }
   return error instanceof TypeError ? new TypeError(FAILED) : new Error(FAILED);
 };
@@ -118,7 +136,8 @@ const sanitized = (error: unknown) => {
  * - on success, refreshes the status of the site the request was for, whatever
  *   the page shows by then, and resolves after that read with the PUT's
  *   answer; a failure refreshes nothing;
- * - is never retried, and does nothing to the cache once the account changed.
+ * - is never retried; once the session this hook belongs to has ended, it
+ *   reads, sends and refreshes nothing.
  *
  * `pending` and `isPending()` say whether a save for `projectId` is in flight
  * from any instance in this session: `pending` for rendering, `isPending()`
@@ -128,6 +147,9 @@ const sanitized = (error: unknown) => {
 export function useSaveGitWorkflowConnection(projectId: string) {
   const cache = useCacheClient();
   const client = useSessionQueryClient();
+  // The session this hook belongs to (dashboard hooks remount for another account); a save from it after that
+  // session ended reads and sends nothing.
+  const generation = useMemo(() => getSessionGeneration(cache), [cache]);
   const subscribe = useCallback(
     (listener: () => void) => {
       const { listeners } = savingOf(cache);
@@ -138,17 +160,16 @@ export function useSaveGitWorkflowConnection(projectId: string) {
     },
     [cache],
   );
-  const pending = useSyncExternalStore(subscribe, () => isSaving(cache, projectId));
+  const pending = useSyncExternalStore(subscribe, () => isSaving(cache, generation, projectId));
 
   const save = useCallback(
     async (request: GitWorkflowConnectionSave, token?: string): Promise<GitWorkflowConnectionResult> => {
-      const generation = getSessionGeneration(cache);
-      const key = slot(cache, request.projectId);
+      const current = () => getSessionGeneration(cache) === generation;
+      if (!current()) throw obsolete();
+      const key = slot(generation, request.projectId);
       track(cache, key, 1);
       try {
-        const status = await latestConfirmedStatus(client, request.projectId);
-        // Another account signed in meanwhile: this account's request is not sent.
-        if (getSessionGeneration(cache) !== generation) throw new Error(FAILED);
+        const status = await latestConfirmedStatus(client, request.projectId, current);
         let result: GitWorkflowConnectionResult;
         try {
           result = await mutateData<GitWorkflowConnectionResult>(
@@ -167,8 +188,8 @@ export function useSaveGitWorkflowConnection(projectId: string) {
         track(cache, key, -1);
       }
     },
-    [cache, client],
+    [cache, client, generation],
   );
 
-  return { save, pending, isPending: () => isSaving(cache, projectId) };
+  return { save, pending, isPending: () => isSaving(cache, generation, projectId) };
 }

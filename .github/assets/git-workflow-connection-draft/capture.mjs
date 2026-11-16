@@ -68,8 +68,20 @@ let harness;
 try {
   harness = await mkdtemp(resolve(app, '.git-workflow-connection-capture-'));
   await mkdir(resolve(harness, 'before'), { recursive: true });
-  // Main's component as it is on the base; it imports only modules this branch still has unchanged.
-  await writeFile(resolve(harness, 'before/git-workflow.tsx'), git('show', `${BASE}:apps/app/src/components/settings/git-workflow.tsx`));
+  // Main's component and its git-workflow hooks as they are on the base: useAuthorizeGitWorkflow is gone from the app
+  // (#796), so the before side takes it from the base's own hooks file; every other import is today's, unchanged.
+  await writeFile(
+    resolve(harness, 'before/git-workflow.tsx'),
+    git('show', `${BASE}:apps/app/src/components/settings/git-workflow.tsx`).replace("from '@/hooks/api'", "from './hooks'"),
+  );
+  await writeFile(
+    resolve(harness, 'before/git-workflow-hooks.ts'),
+    git('show', `${BASE}:apps/app/src/hooks/api/git-workflow.ts`).replace(/from '\.\/([\w-]+)'/g, "from '@/hooks/api/$1'"),
+  );
+  await writeFile(
+    resolve(harness, 'before/hooks.ts'),
+    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow } from './git-workflow-hooks';\n",
+  );
   await writeFile(
     resolve(harness, 'index.html'),
     '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body class="bg-background"><div id="root"></div><script type="module" src="/main.tsx"></script></body></html>',

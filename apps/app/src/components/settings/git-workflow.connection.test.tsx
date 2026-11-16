@@ -42,8 +42,10 @@ vi.mock('@/services/api', () => ({
   },
 }));
 
+import { useSaveGitWorkflowConnection } from '@/features/site-git/api/git-workflow-connection';
 import { sentGitWorkflowConnectionValues } from '@/features/site-git/model/git-workflow-connection';
 import { queryKeys } from '@/hooks/api/query-keys';
+import { gitWorkflowQueryOptions } from '@/hooks/api/query-options';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { resetDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { GitWorkflow } from './git-workflow';
@@ -217,7 +219,7 @@ const expectNoTokenKept = () => {
   const logged = vi
     .mocked(console.error)
     .mock.calls.flat()
-    .map((item) => (item instanceof Error ? `${item.message} ${String(item.cause ?? '')}` : String(item)));
+    .map((item) => (item instanceof Error ? JSON.stringify({ ...item, message: item.message, cause: String(item.cause ?? '') }) : String(item)));
   expect(logged.join(' ')).not.toContain(TOKEN);
   expect(JSON.stringify([successes(), errors()])).not.toContain(TOKEN);
 };
@@ -615,6 +617,121 @@ describe('the import targets come from a read the cache adopted', () => {
       ['site-a', 'language-fixture-3'],
     ]);
     expect(shown().repository).toBe('acme-fixture/site-b');
+  });
+});
+
+describe('round 2: the session, the adopted read and the cleaned error', () => {
+  /** The save hook alone, keeping the callback a render gave it. */
+  let probe: ReturnType<typeof useSaveGitWorkflowConnection> | undefined;
+  function Probe({ projectId }: { projectId: string }) {
+    probe = useSaveGitWorkflowConnection(projectId);
+    return null;
+  }
+  const statusKey = queryKeys.gitWorkflow.detail('site-a');
+  const values = { ...SETTINGS, repository: 'acme-fixture/site-a' };
+  const statusQuery = () => client.getQueryCache().find({ queryKey: statusKey, exact: true });
+
+  it('a callback kept from before a session reset reads and sends nothing', async () => {
+    await render(<Probe projectId="site-a" />);
+    client.setQueryData(statusKey, status('site-a'));
+    const kept = probe;
+    await act(async () => resetDashboardSession(client));
+    const before = reads('site-a');
+    mocks.put.mockImplementation(async (request: PutRequest) => serve(request));
+    await expect(kept?.save({ projectId: 'site-a', values }, TOKEN)).rejects.toThrow();
+    await settle();
+    expect(reads('site-a')).toBe(before);
+    expect(bodies()).toEqual([]);
+    expect(statusQuery()).toBeUndefined();
+  });
+
+  it('a session reset while the save waits on a read: no read after it, and the cleared cache stays empty', async () => {
+    await render(<Probe projectId="site-a" />);
+    client.setQueryData(statusKey, status('site-a'));
+    const read = held();
+    mocks.status.mockImplementationOnce(() => read.promise);
+    await act(async () => {
+      // The reset cancels this read; its rejection is expected here.
+      client.fetchQuery({ ...gitWorkflowQueryOptions('site-a'), staleTime: 0 }).catch(() => undefined);
+    });
+    mocks.put.mockImplementation(async (request: PutRequest) => serve(request));
+    let outcome: Promise<unknown> = Promise.resolve();
+    await act(async () => {
+      outcome = (probe?.save({ projectId: 'site-a', values }, TOKEN) ?? Promise.resolve()).catch((error: unknown) => error);
+    });
+    const before = reads('site-a');
+    await act(async () => resetDashboardSession(client));
+    await settle();
+    expect(await outcome).toBeInstanceOf(Error);
+    expect(reads('site-a')).toBe(before);
+    expect(bodies()).toEqual([]);
+    expect(statusQuery()).toBeUndefined();
+    await read.answer(json(200, { data: status('site-a') }));
+    expect(statusQuery()).toBeUndefined();
+  });
+
+  it('a setQueryData write while a Refresh is held is not the read: Save still waits for the GET', async () => {
+    await openConfiguration();
+    await type('git2-update-path', 'guides');
+    const read = held();
+    mocks.status.mockImplementationOnce(() => read.promise);
+    await press(refreshButton());
+    mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
+    await save();
+    await act(async () => {
+      client.setQueryData(statusKey, status('site-a'));
+    });
+    await settle();
+    expect(bodies()).toEqual([]);
+    expect(isBusy()).toBe(true);
+    change('site-a', { importBranchId: 'branch-fixture-2' });
+    await read.answer(json(200, { data: status('site-a') }));
+    expect(bodies().map(({ json: body }) => body.importBranchId)).toEqual(['branch-fixture-2']);
+  });
+
+  it('a refusal echoing the token in every field: message, code, reason, details and Retry-After all dropped', async () => {
+    await openConfiguration();
+    await type('git2-update-token', TOKEN);
+    const echo = `echo-${TOKEN}`;
+    mocks.put.mockImplementationOnce(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: {
+              message: echo,
+              code: echo,
+              details: { reason: echo, path: echo, sourceFile: echo, limit: echo, errors: [{ message: echo, path: echo }] },
+            },
+          }),
+          { status: 400, headers: { 'content-type': 'application/json', 'retry-after': echo } },
+        ),
+    );
+    await save();
+    expect(errors()).toEqual([t('settings.git.workflow.connectError')]);
+    const logged = vi.mocked(console.error).mock.calls.flat();
+    const error = logged.find((item) => item instanceof Error) as (Error & Record<string, unknown>) | undefined;
+    expect(error).toBeDefined();
+    expect(JSON.stringify({ ...error, message: error?.message, reason: error?.reason, cause: String(error?.cause ?? '') })).not.toContain(TOKEN);
+    expect(error).toMatchObject({ status: 400, code: undefined, retryAfter: undefined, details: undefined });
+    expectNoTokenKept();
+  });
+
+  it('a numeric Retry-After and the status are kept, so a 429 still reads as rate limited', async () => {
+    await openConfiguration();
+    mocks.put.mockImplementationOnce(
+      async () =>
+        new Response(JSON.stringify({ error: { message: 'slow down', code: 'rate:limited' } }), {
+          status: 429,
+          headers: { 'content-type': 'application/json', 'retry-after': '30' },
+        }),
+    );
+    await save();
+    expect(errors()).toEqual([t('error.rateLimited')]);
+    const error = vi
+      .mocked(console.error)
+      .mock.calls.flat()
+      .find((item) => item instanceof Error);
+    expect(error).toMatchObject({ status: 429, retryAfter: '30', code: undefined });
   });
 });
 
