@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { ActionDialog, type ActionDialogProps } from '@nibleaf/design-system/components/ui/action-dialog';
-import { Activity, act, type ReactElement, useState } from 'react';
+import { Activity, act, type ReactElement, Suspense, startTransition, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -428,5 +428,34 @@ describe('ActionDialog — isCurrentAction, asked right before the dialog acts (
     await show(false);
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(button('Remove').getAttribute('aria-busy')).toBeNull();
+  });
+});
+
+describe('ActionDialog — callbacks come from the last committed render (#767)', () => {
+  function Suspends(): null {
+    throw new Promise(() => undefined);
+  }
+
+  it('a render React abandons (it suspended) lends the action none of its callbacks', async () => {
+    const action = deferred();
+    const onOpenChange = vi.fn();
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const tree = (isCurrentAction: () => boolean, suspend: boolean) => (
+      <Suspense fallback={null}>
+        <ActionDialog {...baseProps} isCurrentAction={isCurrentAction} onConfirm={() => action.promise} onOpenChange={onOpenChange} open />
+        {suspend ? <Suspends /> : null}
+      </Suspense>
+    );
+    await act(async () => root.render(tree(() => true, false)));
+    await act(async () => button('Remove').click());
+    // Never committed: its "not current" must not reach the action's end.
+    await act(async () => {
+      startTransition(() => root.render(tree(() => false, true)));
+    });
+    await act(async () => action.resolve());
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
   });
 });

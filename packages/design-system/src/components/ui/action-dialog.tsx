@@ -132,10 +132,13 @@ function ActionDialog({
   const mountedRef = React.useRef(true)
   // How an action ended while the dialog was hidden, for the generation it ran in.
   const heldRef = React.useRef<{ generation: number; failure?: { error: unknown } } | null>(null)
+  // The callbacks of the last committed render (never of one React abandoned).
   const onOpenChangeRef = React.useRef(onOpenChange)
-  onOpenChangeRef.current = onOpenChange
   const isCurrentActionRef = React.useRef(isCurrentAction)
-  isCurrentActionRef.current = isCurrentAction
+  React.useLayoutEffect(() => {
+    onOpenChangeRef.current = onOpenChange
+    isCurrentActionRef.current = isCurrentAction
+  })
   /** Whether the dialog may act on this result; read at the moment it would. */
   const ownsResult = (ok: boolean) => isCurrentActionRef.current?.({ ok }) ?? true
   const [failure, setFailure] = React.useState<{ error: unknown } | null>(null)
@@ -149,8 +152,17 @@ function ActionDialog({
   const returnFocus = React.useRef<HTMLElement | null>(null)
   const inputRef = React.useRef<HTMLInputElement | null>(null)
 
-  React.useEffect(() => {
+  // A layout effect, so the flag is cleared within the commit that removes or
+  // hides the dialog, before any later continuation of the action reads it.
+  React.useLayoutEffect(() => {
     mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
+
+  // Settles an action that ended while the dialog was hidden, once it shows again.
+  React.useEffect(() => {
     const held = heldRef.current
     heldRef.current = null
     if (held && held.generation === generationRef.current) {
@@ -160,9 +172,6 @@ function ActionDialog({
         if (held.failure) setFailure(held.failure)
         else onOpenChangeRef.current(false)
       }
-    }
-    return () => {
-      mountedRef.current = false
     }
   }, [])
 
