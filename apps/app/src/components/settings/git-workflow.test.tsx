@@ -18,6 +18,10 @@ vi.mock('@/hooks/api', () => ({
   useDisconnectGitWorkflow: () => mutation,
   useRotateGitWorkflowWebhookSecret: () => mutation,
 }));
+// The Connection configuration save is covered with the real cache in git-workflow.connection.test.tsx.
+vi.mock('@/features/site-git/api/git-workflow-connection', () => ({
+  useSaveGitWorkflowConnection: () => ({ save: vi.fn(), pending: false, isPending: () => false }),
+}));
 // Authorize GitHub is covered with the real cache in features/site-git/components/git-authorization.test.tsx.
 vi.mock('@/features/site-git/components/use-git-authorization-command', () => ({
   useGitAuthorizationCommand: () => ({ busy: false, failed: false, verify: vi.fn(), retire: vi.fn() }),

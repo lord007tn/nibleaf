@@ -34,6 +34,9 @@ export interface GitWorkflowStatus {
   baseBranch: string;
   headBranch: string;
   contentPath: string;
+  /** The Nibleaf branch and language the connection syncs; null for the site's default. */
+  importBranchId: string | null;
+  importLanguageId: string | null;
   credentialConfigured: boolean;
   webhookConfigured: boolean;
   lastSyncStatus: string;
