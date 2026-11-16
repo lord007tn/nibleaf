@@ -176,8 +176,12 @@ export default function SiteSearchDialog({
   const slashShortcut = useSlashShortcut(projectId);
   // The phone sheet follows the visual viewport, so its footer and last results
   // stay above the software keyboard. The size is kept until the sheet has
-  // finished animating out, then dropped.
+  // finished animating out, then dropped. An opening clears `exited` as it
+  // starts, not when its animation completes: Base UI drops that completion
+  // when a close interrupts the opening, and the interrupted sheet must keep its
+  // size through its exit too.
   const [exited, setExited] = useState(!open);
+  if (open && exited) setExited(false);
   const viewport = useVisualViewport(open, open || !exited);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
