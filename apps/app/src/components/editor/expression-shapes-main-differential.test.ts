@@ -39,7 +39,9 @@ const EXPRESSIONS = [
   '<b title="</Card>">x</b>',
   '<Icon size={2} />',
   '<>a/b</>',
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: a template literal written into the page.
   '`a${"}"}b`',
+  // biome-ignore lint/suspicious/noTemplateCurlyInString: a template literal written into the page.
   '`${x}/${y}`',
   '1 /* } */',
   'a // }\n',
@@ -104,7 +106,9 @@ describe('expression shapes main saves byte for byte', () => {
       const [exact, editable] = main.results[index] ?? [0, ''];
       if (!exact) return [];
       const wanted = editable ? editable.split(',') : [];
-      return result.exact && subsequence(wanted, result.editable) ? [] : [{ page: pages[index], exact: result.exact, editable: result.editable, main: wanted }];
+      return result.exact && subsequence(wanted, result.editable)
+        ? []
+        : [{ page: pages[index], exact: result.exact, editable: result.editable, main: wanted }];
     });
     expect(regressions).toEqual([]);
     // Most of these pages main saves byte for byte: the guard has something to guard.
