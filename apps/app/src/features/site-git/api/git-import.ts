@@ -9,7 +9,7 @@ import { api } from '@/services/api';
 const GIT_IMPORT_KEY: MutationKey = ['site-git', 'import'];
 
 /** One manual import of the legacy Git connection: the site it pulls into. */
-export type GitImportRequest = { projectId: string };
+type GitImportRequest = { projectId: string };
 
 const isGitImportFor = (variables: unknown, projectId: string) => (variables as Partial<GitImportRequest> | undefined)?.projectId === projectId;
 
