@@ -29,7 +29,8 @@ const msg = (locale, id, values = {}) =>
   catalogs[locale][id.replaceAll('.', '_').toLowerCase()].replace(/\{(\w+)\}/g, (_, name) => String(values[name]));
 const origin = 'http://exports.fixture.test';
 const TIMEZONE = 'Africa/Lagos';
-const BASE = 'origin/main';
+/** Pinned to the main commit this branch was captured against (evidence.json `base`); later main no longer has the old form. */
+const BASE = '176033a4ac888cdc9673d86d147137e940856de2';
 
 let harness;
 try {
