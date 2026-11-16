@@ -7,27 +7,23 @@ import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { useForm } from '@tanstack/react-form';
-import { ArrowUpRight, Check, CircleAlert, Copy, DownloadCloud, Eye, EyeOff, GitBranch, Globe, Hammer, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, Check, Copy, Eye, EyeOff, GitBranch, RefreshCw } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
 import { DirtyStateReporter, SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import { SecretInput } from '@/components/secret-input';
-import type { Deployment } from '@/hooks/api';
+import { GitPipeline } from '@/features/site-git/components/git-pipeline';
 import {
   useBranches,
-  useDeployments,
   useGitWorkflow,
   useImportFromGit,
   useLanguages,
-  useLiveDeployments,
   useRotateGitWebhookSecret,
   useUpdateWorkspaceSettings,
   useWorkspaceSettings,
 } from '@/hooks/api';
-import { newestLiveDeployment } from '@/hooks/api/deployment-cache';
-import { useFormatters } from '@/lib/format';
 import { githubRepositoryPath } from '@/lib/git-repository';
 import { copyToClipboard } from '@/lib/invitations';
 import { GitWorkflow, type GitWorkflowPrefill } from './git-workflow';
@@ -89,138 +85,6 @@ const repoWebUrl = (git: GitConfig): string | null => {
   }
   return null;
 };
-
-type StepTone = 'done' | 'active' | 'failed' | 'idle';
-
-function PipelineStep({
-  icon,
-  tone,
-  label,
-  detail,
-  action,
-  last,
-}: {
-  icon: ReactNode;
-  tone: StepTone;
-  label: string;
-  detail: string;
-  action?: ReactNode;
-  last?: boolean;
-}) {
-  return (
-    <div className="relative flex gap-3 pb-6 last:pb-0">
-      {!last ? <span className="absolute start-[15px] top-8 bottom-0 w-px bg-border" aria-hidden /> : null}
-      <span
-        className={cn(
-          'z-10 grid size-8 shrink-0 place-items-center rounded-full border',
-          tone === 'done' && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-          tone === 'active' && 'border-primary/40 bg-primary/10 text-primary',
-          tone === 'failed' && 'border-destructive/40 bg-destructive/10 text-destructive',
-          tone === 'idle' && 'border-border bg-muted/40 text-muted-foreground',
-        )}
-      >
-        {icon}
-      </span>
-      {/* On a narrow screen the action drops below the text, and the detail wraps
-          instead of being cut off mid-word. */}
-      <div className="flex min-w-0 flex-1 flex-col items-start gap-2 pt-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-        <div className="min-w-0 leading-snug">
-          <div className="font-medium text-sm">{label}</div>
-          <div className="text-muted-foreground text-xs [overflow-wrap:anywhere] sm:truncate">{detail}</div>
-        </div>
-        {action}
-      </div>
-    </div>
-  );
-}
-
-/** Import → Build → Live, from real git metadata + deployment history. */
-function GitPipeline({ projectId, git, onImport, importing }: { projectId: string; git: GitConfig; onImport: () => void; importing: boolean }) {
-  const t = useT();
-  const { dateTime } = useFormatters();
-  const { data: deployments } = useDeployments(projectId);
-  // What's live comes from the live-only list too: the attempts list is the
-  // newest 50, which a run of failures can fill.
-  const { data: liveDeployments } = useLiveDeployments(projectId);
-  const latest: Deployment | undefined = deployments?.[0];
-  const latestReady = newestLiveDeployment(deployments, liveDeployments);
-
-  const buildTone: StepTone =
-    latest?.status === 'FAILED' ? 'failed' : latest?.status === 'PENDING' || latest?.status === 'BUILDING' ? 'active' : latest ? 'done' : 'idle';
-  const buildDetail =
-    latest?.status === 'PENDING' || latest?.status === 'BUILDING'
-      ? t('settings.git.pipeline.building', { version: latest.version })
-      : latest?.status === 'FAILED'
-        ? t('settings.git.pipeline.failed', { version: latest.version })
-        : latest
-          ? t('settings.git.pipeline.built', { version: latest.version, pages: latest.pagesCount })
-          : t('settings.git.pipeline.noBuilds');
-
-  // Prefer the push-webhook sync over the manual import when it is the more
-  // recent of the two (ISO timestamps compare lexicographically). A failed
-  // push sync never updates lastImportedAt, so it stays the latest and shows.
-  const pushSyncIsLatest = Boolean(git.lastSyncAt && (!git.lastImportedAt || git.lastSyncAt >= git.lastImportedAt));
-  const pushSyncFailed = pushSyncIsLatest && git.lastSyncStatus === 'failed';
-  const importTone: StepTone = pushSyncFailed ? 'failed' : git.lastImportedAt || git.lastSyncAt ? 'done' : 'idle';
-  const importDetail = pushSyncFailed
-    ? `${t('settings.git.pipeline.syncFailed', { when: dateTime(git.lastSyncAt ?? '') })}${git.lastSyncError ? ` — ${git.lastSyncError}` : ''}`
-    : pushSyncIsLatest
-      ? t('settings.git.pipeline.lastSync', { when: dateTime(git.lastSyncAt ?? '') })
-      : git.lastImportedAt
-        ? t('settings.git.import.lastImported', { when: dateTime(git.lastImportedAt) })
-        : t('settings.git.import.never');
-
-  return (
-    <SettingsSection title={t('settings.git.pipeline.title')}>
-      <div className="flex flex-col">
-        <PipelineStep
-          icon={pushSyncFailed ? <CircleAlert className="size-4" /> : <DownloadCloud className="size-4" />}
-          tone={importTone}
-          label={t('settings.git.pipeline.import')}
-          detail={importDetail}
-          action={
-            <Button size="sm" type="button" variant="outline" loading={importing} onClick={onImport} loadingText={t('settings.git.import.importing')}>
-              <DownloadCloud className="size-3.5" />
-              {t('settings.git.import.now')}
-            </Button>
-          }
-        />
-        <PipelineStep
-          icon={
-            latest?.status === 'FAILED' ? (
-              <CircleAlert className="size-4" />
-            ) : latest?.status === 'PENDING' || latest?.status === 'BUILDING' ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Hammer className="size-4" />
-            )
-          }
-          tone={buildTone}
-          label={t('settings.git.pipeline.build')}
-          detail={buildDetail}
-        />
-        <PipelineStep
-          icon={latestReady ? <Check className="size-4" /> : <Globe className="size-4" />}
-          tone={latestReady ? 'done' : 'idle'}
-          label={t('settings.git.pipeline.live')}
-          detail={
-            latestReady
-              ? t('settings.git.pipeline.built', { version: latestReady.version, pages: latestReady.pagesCount })
-              : t('settings.git.pipeline.notLive')
-          }
-          action={
-            latestReady ? (
-              <Button nativeButton={false} size="sm" variant="outline" render={<a href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />}>
-                {t('settings.git.pipeline.viewSite')} <ArrowUpRight className="size-3.5 rtl:-scale-x-100" />
-              </Button>
-            ) : undefined
-          }
-          last
-        />
-      </div>
-    </SettingsSection>
-  );
-}
 
 /** Numbered badge for the webhook setup steps ("done" renders a check). */
 function StepBadge({ done, children }: { done?: boolean; children?: ReactNode }) {
