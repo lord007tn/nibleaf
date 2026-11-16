@@ -5,13 +5,12 @@ import { act, createElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from './client-helpers';
-import { integrationErrorMessage, useActivateProjectIntegration, useUpdateProjectIntegration } from './integrations';
+import { integrationErrorMessage, safeIntegrationError, useActivateProjectIntegration } from './integrations';
 import { queryKeys } from './query-keys';
 import { integrationsQueryOptions } from './query-options';
 
 const mocks = vi.hoisted(() => ({
   activate: vi.fn(),
-  update: vi.fn(),
 }));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
@@ -22,7 +21,6 @@ vi.mock('@/services/api', () => ({
         ':projectId': {
           integrations: {
             ':providerId': {
-              $patch: mocks.update,
               activate: { $post: mocks.activate },
             },
           },
@@ -53,23 +51,16 @@ describe('integration mutation conflict recovery', () => {
     vi.clearAllMocks();
   });
 
-  it.each(['update', 'activate'] as const)('refreshes integration caches before surfacing an %s revision conflict', async (action) => {
-    mocks.update.mockResolvedValue(errorResponse('integration:revision_conflict'));
+  // Connect and Save (webhook URLs) are direct requests: integrations-tab.webhook.test.tsx covers their conflicts.
+  it('refreshes integration caches before surfacing an activate revision conflict', async () => {
     mocks.activate.mockResolvedValue(errorResponse('integration:revision_conflict'));
     const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } });
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
     let mutate: () => Promise<unknown> = () => Promise.reject(new Error('mutation hook was not ready'));
 
     function Probe() {
-      const update = useUpdateProjectIntegration(projectId);
       const activate = useActivateProjectIntegration(projectId);
-      mutate = () =>
-        action === 'update'
-          ? update.mutateAsync({
-              providerId: 'slack',
-              body: { providerId: 'slack', label: 'Alerts', expectedRevision: 1, idempotencyKey: 'update-key' },
-            })
-          : activate.mutateAsync({ providerId: 'slack', body: { expectedRevision: 1, idempotencyKey: 'activate-key' } });
+      mutate = () => activate.mutateAsync({ providerId: 'slack', body: { expectedRevision: 1, idempotencyKey: 'activate-key' } });
       return null;
     }
 
@@ -126,8 +117,24 @@ describe('integration error wording', () => {
 
   it('never shows the server text, falling back to the action message or the status', () => {
     expect(integrationErrorMessage(t, failure(500, 'integration:unknown'))).toBe('t:settings.integrations.actionError');
+    expect(integrationErrorMessage(t, failure(500, 'constructor'))).toBe('t:settings.integrations.actionError');
     expect(integrationErrorMessage(t, failure(403))).toBe('t:error.noPermission');
     expect(integrationErrorMessage(t, new TypeError('fetch failed'))).toBe('t:error.network');
+  });
+
+  it('a safe error keeps the status, a worded code and a numeric Retry-After, and words the same', () => {
+    const echo = 'https://hooks.example.test/services/fixture-echo';
+    const raw = new ApiResponseError(echo, 422, 'integration:credentials_invalid', echo, echo, echo, 1, { reason: echo });
+    const safe = safeIntegrationError(raw);
+    expect(safe).toBeInstanceOf(ApiResponseError);
+    expect(safe).toMatchObject({ status: 422, code: 'integration:credentials_invalid', retryAfter: undefined, details: undefined });
+    expect(JSON.stringify({ ...safe, message: safe.message })).not.toContain(echo);
+    expect(integrationErrorMessage(t, safe)).toBe(integrationErrorMessage(t, raw));
+    expect(safeIntegrationError(new ApiResponseError(echo, 429, `integration:${echo}`, '30'))).toMatchObject({ code: undefined, retryAfter: '30' });
+    expect(safeIntegrationError(new ApiResponseError(echo, 200))).toMatchObject({ status: 500 });
+    expect(safeIntegrationError(new TypeError(echo))).toBeInstanceOf(TypeError);
+    expect(safeIntegrationError(new TypeError(echo)).message).not.toContain(echo);
+    expect(safeIntegrationError(echo).message).not.toContain(echo);
   });
 });
 
@@ -140,7 +147,7 @@ describe('integration queries and mutation errors', () => {
 
   it('toasts a failed mutation in plain words through meta.errorMessage, not the server text', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    mocks.update.mockResolvedValue(
+    mocks.activate.mockResolvedValue(
       new Response(JSON.stringify({ error: { code: 'integration:credentials_invalid', message: 'Webhook host failed DNS check' } }), {
         status: 422,
         headers: { 'content-type': 'application/json' },
@@ -158,12 +165,8 @@ describe('integration queries and mutation errors', () => {
     });
     let mutate: () => Promise<unknown> = () => Promise.reject(new Error('mutation hook was not ready'));
     function Probe() {
-      const update = useUpdateProjectIntegration('project-a');
-      mutate = () =>
-        update.mutateAsync({
-          providerId: 'slack',
-          body: { providerId: 'slack', label: null, expectedRevision: 1, idempotencyKey: 'update-key' },
-        });
+      const activate = useActivateProjectIntegration('project-a');
+      mutate = () => activate.mutateAsync({ providerId: 'slack', body: { expectedRevision: 1, idempotencyKey: 'activate-key' } });
       return null;
     }
     Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
