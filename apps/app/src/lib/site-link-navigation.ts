@@ -81,10 +81,14 @@ const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'C
  * heading focus just landed on (focus then falls to the body). Until
  * FOLLOW_HEADING_MS after arrival, one deadline that a replacement doesn't
  * extend, focus follows the heading to its new element (`find`, then `focus`).
- * Anything the reader does ends it for good: focus moving anywhere else, a
- * pointer press, a key other than a lone modifier, or the next navigation
- * (the caller's returned stop). A plain function, outside the hook, for the
- * React Compiler's sake (see takeDestinationFocusRequest).
+ * It ends for good on the first of: focus moving to anything but the followed
+ * heading, a pointer press (touch included), a key other than a lone modifier,
+ * the window losing focus or the page being hidden (so coming back never takes
+ * focus), or the caller's returned stop (the next navigation, or unmount).
+ * Reader actions that raise none of these events, such as a screen reader's
+ * virtual cursor moving, aren't seen; the deadline bounds those. A plain
+ * function, outside the hook, for the React Compiler's sake (see
+ * takeDestinationFocusRequest).
  */
 function followLandedHeading(first: HTMLElement, find: () => HTMLElement | null, focus: (target: HTMLElement) => void): () => void {
   let followed = first;
@@ -106,6 +110,13 @@ function followLandedHeading(first: HTMLElement, find: () => HTMLElement | null,
   const onKeyDown = (event: KeyboardEvent) => {
     if (!MODIFIER_KEYS.has(event.key)) stop();
   };
+  // The window's own blur only (an element's blur doesn't bubble here anyway).
+  const onWindowBlur = (event: FocusEvent) => {
+    if (!(event.target instanceof Node)) stop();
+  };
+  const onVisibilityChange = () => {
+    if (document.visibilityState === 'hidden') stop();
+  };
   const deadline = window.setTimeout(stop, FOLLOW_HEADING_MS);
   function stop() {
     observer.disconnect();
@@ -113,11 +124,15 @@ function followLandedHeading(first: HTMLElement, find: () => HTMLElement | null,
     document.removeEventListener('focusin', onFocusIn, true);
     document.removeEventListener('pointerdown', stop, true);
     document.removeEventListener('keydown', onKeyDown, true);
+    window.removeEventListener('blur', onWindowBlur);
+    document.removeEventListener('visibilitychange', onVisibilityChange);
   }
   observer.observe(document.body, { childList: true, subtree: true });
   document.addEventListener('focusin', onFocusIn, true);
   document.addEventListener('pointerdown', stop, true);
   document.addEventListener('keydown', onKeyDown, true);
+  window.addEventListener('blur', onWindowBlur);
+  document.addEventListener('visibilitychange', onVisibilityChange);
   return stop;
 }
 
