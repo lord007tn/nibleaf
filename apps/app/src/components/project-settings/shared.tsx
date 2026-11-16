@@ -49,7 +49,8 @@ export function useDirtySources() {
   return { sources, report, isDirty };
 }
 
-function useConfirmSettingsDiscard() {
+/** Asks before unsaved changes are dropped, in the words of the settings leave guard. */
+export function useConfirmSettingsDiscard() {
   const t = useT();
   const confirm = useConfirm();
   return () =>
