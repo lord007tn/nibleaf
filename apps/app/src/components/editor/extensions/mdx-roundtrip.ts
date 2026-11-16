@@ -451,6 +451,9 @@ interface TagToken {
   rawHtml?: boolean;
   /** A raw-text element (`<script>`) with no closing tag: its text runs to the end of the page. */
   runsToEnd?: boolean;
+  /** A supported component's opening tag the scan couldn't read to its `>`; it
+   *  ends at the end of its line (see brokenRanges). */
+  broken?: boolean;
 }
 
 interface SourceRange {
@@ -631,64 +634,230 @@ function codeMask(source: string, readerCode = readerCodeMask(source)): Uint8Arr
   return mask;
 }
 
-function balancedEnd(source: string, start: number, open: string, close: string): number | null {
-  let depth = 0;
-  let quote = '';
-  let escaped = false;
-  for (let i = start; i < source.length; i++) {
-    const char = source[i] ?? '';
-    if (quote) {
-      if (escaped) escaped = false;
-      else if (char === '\\') escaped = true;
-      else if (char === quote) quote = '';
-      continue;
-    }
-    if (char === '"' || char === "'" || char === '`') {
-      quote = char;
-      continue;
-    }
-    if (char === open) depth++;
-    else if (char === close) {
-      depth--;
-      if (depth === 0) return i + 1;
+/** Words after which a `/` starts a regular expression rather than dividing (`return /x/`). */
+const REGEX_AFTER_WORDS: ReadonlySet<string> = new Set([
+  'return',
+  'typeof',
+  'instanceof',
+  'in',
+  'new',
+  'delete',
+  'void',
+  'throw',
+  'case',
+  'do',
+  'else',
+  'yield',
+  'await',
+]);
+/** Words whose `( … )` a statement follows, so a `/` after the `)` starts a regular expression (`if (a) /x/.test(b)`). */
+const STATEMENT_PAREN_WORDS: ReadonlySet<string> = new Set(['if', 'while', 'for', 'with']);
+/** Words after which a `{` opens a block. */
+const BLOCK_AFTER_WORDS: ReadonlySet<string> = new Set(['else', 'do', 'try', 'finally']);
+const IDENTIFIER_CHAR = /[\p{ID_Continue}$]/u;
+const LINE_BREAK = /[\r\n]/g;
+/** How many times one expression's scan may read a `/` both ways before it gives up. */
+const MAX_EXPRESSION_FORKS = 16;
+
+interface ExpressionScan {
+  /** Whether a `/` here starts a regular expression; `ambiguous` after a block's or function body's `}`. */
+  regex: boolean | 'ambiguous';
+  /** The previous token: an identifier (`word`) or punctuation. */
+  last: string;
+  /** The previous identifier, when it is the previous token and not a property name. */
+  word: string;
+  dot: boolean;
+  /** The open braces, each with whether it opened a block or function body. */
+  braces: Array<{ at: number; block: boolean }>;
+  /** The open parentheses, each with whether a statement follows it (`if (…)`). */
+  parens: boolean[];
+}
+
+/** The index of the quote closing the string that opens at `start`, or null. */
+function quotedEnd(source: string, start: number): number | null {
+  const quote = source[start];
+  for (let i = start + 1; i < source.length; i++) {
+    if (source[i] === '\\') i++;
+    else if (source[i] === quote) return i;
+  }
+  return null;
+}
+
+/** Where the regular expression literal that opens at `start` ends, its flags
+ *  included, or null when it doesn't close on its line. */
+function regexEnd(source: string, start: number): number | null {
+  let inClass = false;
+  for (let i = start + 1; i < source.length; i++) {
+    const char = source[i];
+    if (char === '\n' || char === '\r') return null;
+    if (char === '\\') {
+      i++;
+      if (source[i] === '\n' || source[i] === '\r') return null;
+    } else if (inClass) inClass = char !== ']';
+    else if (char === '[') inClass = true;
+    else if (char === '/') {
+      let end = i + 1;
+      while (end < source.length && IDENTIFIER_CHAR.test(source[end] ?? '')) end++;
+      return end;
     }
   }
   return null;
 }
 
 /**
- * `balancedEnd(source, start, '{', '}')` for many starts, without rescanning. A
- * scan passes other `{`s outside quotes in the same state a scan of their own
- * would start in, so the stack of open braces tells where each of those closes,
- * or that it never does. A later expression the scan already passed is answered
- * from that; before, every `{` after an unclosed one rescanned the rest of the page.
+ * Read the JavaScript in `{…}` from `from`, in the state `scan`, to the position
+ * after the `}` that closes it. Strings, template literals, `//` and `/* … *\/`
+ * comments and regular expression literals are read as JavaScript reads them, so
+ * a quote or brace inside them (`/"}/`, `/* } *\/`) ends nothing (#714). This is
+ * not a JavaScript parser: whether a `/` divides or starts a regular expression
+ * is told from the token before it. After a block's or function body's `}`, where
+ * that token can't tell, the rest is read both ways; a reading that breaks (a
+ * regular expression that doesn't close on its line, or no closing brace) is
+ * dropped. Null when the expression never closes, or when it can't be read
+ * reliably: both readings close it, at different places. `record` hears where
+ * each inner `{` closes (or -1, never), up to the first such fork.
+ */
+function readExpression(
+  source: string,
+  from: number,
+  scan: ExpressionScan,
+  forks: { count: number },
+  record?: (open: number, end: number) => void,
+): number | null {
+  const { braces, parens } = scan;
+  let { regex, last, word, dot } = scan;
+  for (let i = from; i < source.length; i++) {
+    const char = source[i] ?? '';
+    if (/\s/.test(char)) continue;
+    const next = source[i + 1];
+    if (char === '/' && next === '/') {
+      // A line comment: what follows on its line is not code.
+      LINE_BREAK.lastIndex = i;
+      const end = LINE_BREAK.exec(source)?.index;
+      if (end === undefined) break;
+      i = end;
+      continue;
+    }
+    if (char === '/' && next === '*') {
+      const end = source.indexOf('*/', i + 2);
+      if (end < 0) break;
+      i = end + 1;
+      continue;
+    }
+    if (char === '"' || char === "'" || char === '`') {
+      const end = quotedEnd(source, i);
+      if (end === null) break;
+      i = end;
+      regex = false;
+      last = 'literal';
+      word = '';
+      dot = false;
+      continue;
+    }
+    if (char === '/' && source[i - 1] !== '<') {
+      if (regex === 'ambiguous') {
+        if (++forks.count > MAX_EXPRESSION_FORKS) return null;
+        const state = (regex: boolean, last: string): ExpressionScan => ({
+          regex,
+          last,
+          word: '',
+          dot: false,
+          braces: [...braces],
+          parens: [...parens],
+        });
+        const literal = regexEnd(source, i);
+        const asRegex = literal === null ? null : readExpression(source, literal, state(false, 'literal'), forks);
+        const asDivision = readExpression(source, i + 1, state(true, '/'), forks);
+        if (asRegex === null) return asDivision;
+        return asDivision === null || asDivision === asRegex ? asRegex : null;
+      }
+      if (regex) {
+        const end = regexEnd(source, i);
+        if (end === null) return null;
+        i = end - 1;
+        regex = false;
+        last = 'literal';
+        word = '';
+        dot = false;
+        continue;
+      }
+    }
+    if (IDENTIFIER_CHAR.test(char)) {
+      let end = i + 1;
+      while (end < source.length && IDENTIFIER_CHAR.test(source[end] ?? '')) end++;
+      const name = source.slice(i, end);
+      // After a `.` a keyword is a property name (`obj.return / 2`).
+      regex = !dot && REGEX_AFTER_WORDS.has(name);
+      word = dot ? '' : name;
+      last = 'word';
+      dot = false;
+      i = end - 1;
+      continue;
+    }
+    if (char === '.') {
+      dot = true;
+      last = '.';
+      word = '';
+      continue;
+    }
+    const previous = last;
+    const previousWord = word;
+    word = '';
+    dot = false;
+    last = char;
+    regex = true;
+    if (char === '{') {
+      const enclosing = braces[braces.length - 1];
+      const block =
+        previous === ')' ||
+        previous === '=>' ||
+        previous === ';' ||
+        BLOCK_AFTER_WORDS.has(previousWord) ||
+        ((previous === '{' || previous === '}') && Boolean(enclosing?.block));
+      braces.push({ at: i, block });
+    } else if (char === '}') {
+      const open = braces.pop();
+      if (open) record?.(open.at, i + 1);
+      if (braces.length === 0) return i + 1;
+      regex = open?.block ? 'ambiguous' : false;
+    } else if (char === '(') parens.push(STATEMENT_PAREN_WORDS.has(previousWord));
+    else if (char === ')') regex = parens.pop() === true;
+    else if (char === ']') regex = false;
+    else if (char === '=' && next === '>') {
+      i++;
+      last = '=>';
+    } else if ((char === '+' || char === '-') && next === char) {
+      // `a++ / 2` divides.
+      i++;
+      regex = false;
+    }
+  }
+  for (const open of braces) record?.(open.at, -1);
+  return null;
+}
+
+const expressionStart = (): ExpressionScan => ({ regex: true, last: '', word: '', dot: false, braces: [], parens: [] });
+
+/** Where the `{…}` expression that opens at `start` ends: see readExpression. */
+const expressionEnd = (source: string, start: number): number | null => readExpression(source, start, expressionStart(), { count: 0 });
+
+/**
+ * `expressionEnd(source, start)` for many starts, without rescanning. A scan
+ * passes other `{`s outside strings, comments and regular expressions in the
+ * state a scan of their own would start in, so it tells where each of those
+ * closes, or that it never does. A later expression the scan already passed is
+ * answered from that; before, every `{` after an unclosed one rescanned the rest
+ * of the page.
  */
 function expressionEnds(source: string): (start: number) => number | null {
   const known = new Map<number, number>();
   return (start) => {
-    const found = known.get(start);
-    if (found !== undefined) return found < 0 ? null : found;
-    const open: number[] = [];
-    let quote = '';
-    let escaped = false;
-    for (let i = start; i < source.length; i++) {
-      const char = source[i] ?? '';
-      if (quote) {
-        if (escaped) escaped = false;
-        else if (char === '\\') escaped = true;
-        else if (char === quote) quote = '';
-        continue;
-      }
-      if (char === '"' || char === "'" || char === '`') quote = char;
-      else if (char === '{') open.push(i);
-      else if (char === '}') {
-        const opened = open.pop();
-        if (opened !== undefined) known.set(opened, i + 1);
-        if (open.length === 0) return i + 1;
-      }
+    let found = known.get(start);
+    if (found === undefined) {
+      found = readExpression(source, start, expressionStart(), { count: 0 }, (open, end) => known.set(open, end)) ?? -1;
+      known.set(start, found);
     }
-    for (const opened of open) known.set(opened, -1);
-    return null;
+    return found < 0 ? null : found;
   };
 }
 
@@ -723,12 +892,47 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
   // when it fails.
   const unclosable = { html: new Uint8Array(0), jsx: new Uint8Array(0), frame: new Uint8Array(0) };
   const passed: number[] = [];
-  // Inside `{…}` every scan reads the same way (HTML or JSX, at any depth), so where
-  // a `{` met outside quotes closes is fixed by its position: the position after
-  // its `}`, or -1 when it never closes. A later scan that meets that `{` skips to
-  // its end, or stops, rather than reading the region again.
-  const braceEnds = new Map<number, number>();
-  const opened: number[] = [];
+  // Inside `{…}` every scan reads the same way, as JavaScript (HTML or JSX), so
+  // where a `{` met outside quotes closes is fixed by its position; a later scan
+  // that meets that `{` skips to its end, or stops, rather than reading it again.
+  const expressionEnd = expressionEnds(source);
+  /**
+   * The index of the `>` that ends the tag whose attributes start at `from`, or -1
+   * when there is none. HTML attribute values have no backslash escapes
+   * (`title="Old\"` ends at that quote), and nor do a Frame's quoted values (#579):
+   * `caption="Old\"` is the caption `Old\`, as the reader reads it. Only other JSX
+   * and the JavaScript inside `{…}` do.
+   */
+  const readTag = (from: number, kind: keyof typeof unclosable): number => {
+    const isHtml = kind === 'html';
+    const escapes = kind === 'jsx';
+    if (unclosable[kind].length === 0) unclosable[kind] = new Uint8Array(source.length + 1);
+    const known = unclosable[kind];
+    passed.length = 0;
+    let quote = '';
+    let escaped = false;
+    let cursor = from;
+    for (; cursor < source.length; cursor++) {
+      const char = source[cursor] ?? '';
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (char === '\\' && (escapes || quote === '`')) escaped = true;
+        else if (char === quote) quote = '';
+        continue;
+      }
+      if (known[cursor]) break;
+      passed.push(cursor);
+      if (char === '"' || char === "'" || (char === '`' && !isHtml)) quote = char;
+      else if (char === '{') {
+        // An expression that never closes, or that can't be read reliably.
+        const end = expressionEnd(cursor);
+        if (end === null) break;
+        cursor = end - 1;
+      } else if (char === '>') return cursor;
+    }
+    for (const position of passed) known[position] = 1;
+    return -1;
+  };
   // The first `</name` at or after the last search for it, or -1 for none.
   const closers = new Map<string, number>();
   for (let i = 0; i < source.length; i++) {
@@ -751,57 +955,22 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
     const isHtml = !/^[A-Z]/.test(name);
     cursor += name.length;
     if (!/[\s/>]/.test(source[cursor] ?? '')) continue;
-    let quote = '';
-    let braces = 0;
-    let escaped = false;
-    // HTML attribute values have no backslash escapes (`title="Old\"` ends at that
-    // quote), and nor do a Frame's quoted values (#579): `caption="Old\"` is the
-    // caption `Old\`, as the reader reads it. Only other JSX and the JavaScript
-    // inside `{…}` do.
-    let escapes = true;
-    const frame = name === 'Frame' && !closing;
-    const kind = isHtml ? 'html' : frame ? 'frame' : 'jsx';
-    if (unclosable[kind].length === 0) unclosable[kind] = new Uint8Array(source.length + 1);
-    const known = unclosable[kind];
-    passed.length = 0;
-    opened.length = 0;
-    for (; cursor < source.length; cursor++) {
-      const char = source[cursor] ?? '';
-      if (quote) {
-        if (escaped) escaped = false;
-        else if (char === '\\' && escapes) escaped = true;
-        else if (char === quote) quote = '';
-        continue;
+    const kind = isHtml ? 'html' : name === 'Frame' && !closing ? 'frame' : 'jsx';
+    const attributesStart = cursor;
+    cursor = readTag(attributesStart, kind);
+    if (cursor < 0) {
+      // A supported component's opening tag that can't be read to its `>` (an
+      // unterminated quote or `{`, an expression the scan can't read) is still
+      // that component's tag: it pairs with its closing tag, and the editor keeps
+      // the two and what is between them byte for byte (brokenRanges, #714). One
+      // that reads with quoted values that have no backslash escapes, as a Frame's
+      // (`title="Old\">`), is left as before: Markdown reads it as HTML.
+      const supported = !isHtml && !closing && SUPPORTED_MDX_COMPONENTS[name.toLowerCase()] && !HTML_ELEMENT_ALIASES.has(name);
+      if (supported && (kind === 'frame' || readTag(attributesStart, 'frame') < 0)) {
+        LINE_BREAK.lastIndex = i;
+        const end = LINE_BREAK.exec(source)?.index ?? source.length;
+        tokens.push({ start: i, end, name, raw: source.slice(i, end), closing, selfClosing: false, html: false, broken: true });
       }
-      if (braces === 0) {
-        if (known[cursor]) {
-          cursor = source.length;
-          break;
-        }
-        passed.push(cursor);
-      }
-      if (char === '"' || char === "'" || (char === '`' && (!isHtml || braces > 0))) {
-        quote = char;
-        escapes = braces > 0 || (!isHtml && !(frame && char !== '`'));
-      } else if (char === '{') {
-        const end = braceEnds.get(cursor);
-        if (end === undefined) {
-          braces++;
-          opened.push(cursor);
-        } else if (end < 0) {
-          cursor = source.length;
-          break;
-        } else cursor = end - 1;
-      } else if (char === '}') {
-        const start = braces > 0 ? opened.pop() : undefined;
-        if (start !== undefined) braceEnds.set(start, cursor + 1);
-        braces = Math.max(0, braces - 1);
-      } else if (char === '>' && braces === 0) break;
-    }
-    if (source[cursor] !== '>') {
-      for (const position of passed) known[position] = 1;
-      // A `{` still open at the end of the page never closes.
-      for (const start of opened) braceEnds.set(start, -1);
       continue;
     }
     const raw = source.slice(i, cursor + 1);
@@ -864,6 +1033,55 @@ function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagTo
     if (!token.closing) coveredUntil = end;
   }
   return ranges;
+}
+
+/**
+ * A supported component whose opening tag can't be read (see scanTags) is kept
+ * byte for byte: from that tag through its closing tag. With no closing tag, to
+ * the end of its paragraph (the next blank line), or to the next tag on a later
+ * line before that.
+ * The editor can't tell its attributes, so it doesn't structure it; read as text,
+ * the tag was escaped and its closing tag dropped or moved (#714).
+ */
+const BLANK_LINES = new RegExp(BLANK_LINE.source, 'g');
+
+function brokenRanges(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>): SourceRange[] {
+  const ranges: SourceRange[] = [];
+  for (const [index, token] of tokens.entries()) {
+    if (!token.broken) continue;
+    let end = tokens[pairs.get(index) ?? -1]?.end;
+    if (end === undefined) {
+      BLANK_LINES.lastIndex = token.start;
+      const blankLine = BLANK_LINES.exec(source)?.index ?? source.length;
+      // The broken token ends at the end of its line (see scanTags).
+      let next = index + 1;
+      while ((tokens[next]?.start ?? source.length) < token.end) next++;
+      end = Math.min(blankLine, tokens[next]?.start ?? source.length);
+      end = token.start + source.slice(token.start, end).trimEnd().length;
+    }
+    ranges.push(sourceRange(source, layout, { start: token.start, end }, token.name));
+  }
+  return ranges;
+}
+
+/**
+ * A component tag whose partner is inside a range kept byte for byte is kept too.
+ * Rewritten, a closing tag would close nothing and be dropped, and an opening tag
+ * would hold everything to the end of the page (#714).
+ */
+function strayPartners(source: string, layout: MarkdownLayout, tokens: TagToken[], pairs: Map<number, number>, opaque: SourceRange[]): SourceRange[] {
+  const kept = spanIndex(opaque);
+  const strays: SourceRange[] = [];
+  for (const [openIndex, closeIndex] of pairs) {
+    const open = tokens[openIndex];
+    const close = tokens[closeIndex];
+    if (!open || !close || open.html || !isComponentTag(open)) continue;
+    const openKept = kept(open.start, open.end);
+    if (openKept === kept(close.start, close.end)) continue;
+    const stray = openKept ? close : open;
+    strays.push(sourceRange(source, layout, stray, stray.name));
+  }
+  return strays;
 }
 
 const sourceRange = (source: string, layout: MarkdownLayout, span: Span, name: string): SourceRange => ({
@@ -1028,7 +1246,7 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
       value = decodeAttributeValue(raw.slice(valueStart, cursor));
       cursor++;
     } else if (quote === '{') {
-      const end = balancedEnd(raw, cursor, '{', '}') ?? limit;
+      const end = expressionEnd(raw, cursor) ?? limit;
       value = raw.slice(cursor, end);
       cursor = end;
     } else {
@@ -1150,13 +1368,22 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
   // A component holding a fence only the reader reads as one is kept whole, byte
   // for byte: the editor can't hold its children's layout (#589).
   const readerFences = blockTokens ? unreadFences(layout, readerCode) : [];
-  let opaque = keepRawHtml(source, layout, tokens, pairs, unsupportedRanges(source, layout, tokens, pairs), [
-    ...readerFences,
-    ...comments.map((comment) => ({ ...comment, inCode: inIndentedCode(comment.start), name: 'HTML comment' })),
-    ...codeHtml
-      .filter((token) => !STRUCTURED_HTML.has(token.name) && !TABLE_HTML.has(token.name) && !COMPONENT_HTML.has(token.name) && !isEditorMarkup(token))
-      .map((token) => ({ start: token.start, end: token.end, inCode: true, name: token.name })),
-  ]);
+  let opaque = keepRawHtml(
+    source,
+    layout,
+    tokens,
+    pairs,
+    [...unsupportedRanges(source, layout, tokens, pairs), ...brokenRanges(source, layout, tokens, pairs)],
+    [
+      ...readerFences,
+      ...comments.map((comment) => ({ ...comment, inCode: inIndentedCode(comment.start), name: 'HTML comment' })),
+      ...codeHtml
+        .filter(
+          (token) => !STRUCTURED_HTML.has(token.name) && !TABLE_HTML.has(token.name) && !COMPONENT_HTML.has(token.name) && !isEditorMarkup(token),
+        )
+        .map((token) => ({ start: token.start, end: token.end, inCode: true, name: token.name })),
+    ],
+  );
   // Where text that runs to the end of the page starts: see openComponentsRange.
   const runsToEnd = [
     layout.unclosedFence,
@@ -1211,6 +1438,8 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
     i = end - 1;
   }
   opaque = outermostRanges([...opaque, ...modules, ...expressions]);
+  const strays = strayPartners(source, layout, tokens, pairs, opaque);
+  if (strays.length > 0) opaque = outermostRanges([...opaque, ...strays]);
 
   // A Frame that raw HTML widened to, found by its opening tag (for the Video block).
   const tokenAt = new Map(tokens.map((token, index) => [token.start, index]));
@@ -1218,7 +1447,7 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
     const index = range.name === 'Frame' ? tokenAt.get(range.start) : undefined;
     const open = index === undefined ? undefined : tokens[index];
     const close = index === undefined ? undefined : tokens[pairs.get(index) ?? -1];
-    return open && close && !open.closing && !open.selfClosing && close.end === range.end ? { open, close } : undefined;
+    return open && close && !open.closing && !open.selfClosing && !open.broken && close.end === range.end ? { open, close } : undefined;
   };
   const replacements: Array<{ start: number; end: number; value: string }> = opaque.map((range) => ({
     start: range.start,
