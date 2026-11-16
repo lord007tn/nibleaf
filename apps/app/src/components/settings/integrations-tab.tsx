@@ -43,14 +43,13 @@ import { toast } from 'sonner';
 import { GithubIcon, SlackIcon } from '@/components/icons/brand';
 import { AnalyticsSection } from '@/components/project-settings/analytics-section';
 import { NO_AUTOFILL_PROPS, SecretInput } from '@/components/secret-input';
+import { useWebhookIntegrationSaveCommand } from '@/features/site-integrations/components/use-webhook-integration-save-command';
 import {
   type Project,
   useActivateProjectIntegration,
-  useCreateProjectIntegration,
   useDeactivateProjectIntegration,
   useDeleteProjectIntegration,
   useProjectIntegrations,
-  useUpdateProjectIntegration,
   useVerifyProjectIntegration,
 } from '@/hooks/api';
 import { CLICKHOUSE_MODE_MESSAGE_KEYS, SEARCH_RUNTIME_MESSAGE_KEYS } from './integration-config-values';
@@ -226,6 +225,12 @@ const PLACEHOLDER_KEYS = {
 
 const isConfigurableProvider = (providerId: IntegrationProviderId): providerId is ConfigurableProviderId =>
   providerId === 'slack' || providerId === 'discord' || providerId === 'zapier';
+
+/** A webhook connection's stored label, or blank. */
+const storedLabelOf = (connection: IntegrationCatalogEntry['connection']) => {
+  const config = connection?.config;
+  return config?.providerId === 'slack' || config?.providerId === 'discord' || config?.providerId === 'zapier' ? (config.label ?? '') : '';
+};
 
 const isAnalyticsProvider = (providerId: IntegrationProviderId) => providerId === 'google-analytics' || providerId === 'plausible';
 const isComingSoon = (entry: IntegrationCatalogEntry) => entry.availability === 'coming_soon';
@@ -544,22 +549,25 @@ function IntegrationDetail({
   const meta = PROVIDER_META[entry.id];
   const Icon = meta.icon;
   const connection = entry.connection;
-  const create = useCreateProjectIntegration(projectId);
-  const update = useUpdateProjectIntegration(projectId);
+  const saveCommand = useWebhookIntegrationSaveCommand({ projectId, providerId: entry.id, providerName: meta.name });
   const activate = useActivateProjectIntegration(projectId);
   const deactivate = useDeactivateProjectIntegration(projectId);
   const verify = useVerifyProjectIntegration(projectId);
   const remove = useDeleteProjectIntegration(projectId);
-  const connectionConfig = connection?.config;
-  const [label, setLabel] = useState(
-    connectionConfig?.providerId === 'slack' || connectionConfig?.providerId === 'discord' || connectionConfig?.providerId === 'zapier'
-      ? (connectionConfig.label ?? '')
-      : '',
-  );
+  const storedLabel = storedLabelOf(connection);
+  const revision = connection?.revision ?? 0;
+  const [label, setLabel] = useState(storedLabel);
+  // The stored label the field last took. A new revision (a save, a reread after a conflict) replaces an
+  // untouched label and keeps an edit, as it keeps a typed URL.
+  const [adopted, setAdopted] = useState({ revision, label: storedLabel });
+  if (adopted.revision !== revision) {
+    setAdopted({ revision, label: storedLabel });
+    if (label === adopted.label) setLabel(storedLabel);
+  }
   const [webhookUrl, setWebhookUrl] = useState('');
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
-  const pending = create.isPending || update.isPending || activate.isPending || deactivate.isPending || verify.isPending || remove.isPending;
+  const pending = saveCommand.pending || activate.isPending || deactivate.isPending || verify.isPending || remove.isPending;
 
   async function deleteConnection() {
     if (pending) return;
@@ -602,7 +610,7 @@ function IntegrationDetail({
   const settingsSection = entry.navigation.settingsSection;
   const settingsLink = settingsSection && settingsSection !== 'integrations' ? SETTINGS_LINKS[settingsSection] : null;
 
-  const save = async (event: FormEvent) => {
+  const save = (event: FormEvent) => {
     event.preventDefault();
     if (pending) return;
     if (!isConfigurableProvider(entry.id)) return;
@@ -610,34 +618,7 @@ function IntegrationDetail({
       toast.error(t('settings.integrations.webhookRequired'));
       return;
     }
-    try {
-      if (connection) {
-        await update.mutateAsync({
-          providerId: entry.id,
-          body: {
-            providerId: entry.id,
-            label: label.trim() || null,
-            expectedRevision: connection.revision,
-            idempotencyKey: newIdempotencyKey(),
-            ...(webhookUrl ? { webhookUrl, replaceCredential: true as const } : {}),
-          },
-        });
-        toast.success(t('settings.integrations.updatedToast'));
-      } else {
-        const base = { webhookUrl, label: label.trim() || undefined, idempotencyKey: newIdempotencyKey() };
-        const body =
-          entry.id === 'slack'
-            ? { providerId: 'slack' as const, ...base }
-            : entry.id === 'discord'
-              ? { providerId: 'discord' as const, ...base }
-              : { providerId: 'zapier' as const, ...base };
-        await create.mutateAsync(body);
-        toast.success(t('settings.integrations.connectedToast', { name: t(meta.name) }));
-      }
-      setWebhookUrl('');
-    } catch {
-      // Toasted in plain words by the mutation (meta.errorMessage).
-    }
+    saveCommand.save({ projectId, providerId: entry.id, revision: connection?.revision ?? null, label }, webhookUrl, () => setWebhookUrl(''));
   };
 
   const changeStatus = async () => {
@@ -776,7 +757,10 @@ function IntegrationDetail({
                   id={`${entry.id}-url`}
                   inputMode="url"
                   name={`${entry.id}-webhook-url`}
-                  onChange={(event) => setWebhookUrl(event.target.value)}
+                  onChange={(event) => {
+                    setWebhookUrl(event.target.value);
+                    saveCommand.retire();
+                  }}
                   placeholder={connection ? t('settings.integrations.credentialKept') : t(PLACEHOLDER_KEYS[entry.id])}
                   required={!connection}
                   value={webhookUrl}
@@ -788,7 +772,7 @@ function IntegrationDetail({
               {t('settings.integrations.credentialPrivacy')}
             </p>
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button className="h-9" disabled={pending} loading={create.isPending || update.isPending} type="submit">
+              <Button className="h-9" disabled={pending} loading={saveCommand.pending} type="submit">
                 {connection ? t('common.save') : t('settings.integrations.connect')}
               </Button>
               {connection ? (
@@ -873,15 +857,7 @@ export function IntegrationsTab({ projectId, project }: { projectId?: string; pr
   const selected = integrations.data?.find((entry) => entry.id === selectedId) ?? null;
 
   if (projectId && project && selected) {
-    return (
-      <IntegrationDetail
-        entry={selected}
-        key={`${selected.id}:${selected.connection?.revision ?? 0}`}
-        onBack={() => setSelectedId(null)}
-        project={project}
-        projectId={projectId}
-      />
-    );
+    return <IntegrationDetail entry={selected} key={selected.id} onBack={() => setSelectedId(null)} project={project} projectId={projectId} />;
   }
 
   return (
