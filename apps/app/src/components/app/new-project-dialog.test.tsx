@@ -12,11 +12,16 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   availability: vi.fn(),
   sites: [] as Array<{ name: string }>,
+  /** Called with each key the dialog translates, so a test can act at that exact moment. */
+  onTranslate: undefined as ((key: string) => void) | undefined,
 }));
 vi.mock('@nibleaf/i18n/react', () => ({
   useLocale: () => ({
     locale: mocks.locale,
-    t: (key: string, variables?: Record<string, string>) => (variables?.slug ? `${key}: ${variables.slug}` : key),
+    t: (key: string, variables?: Record<string, string>) => {
+      mocks.onTranslate?.(key);
+      return variables?.slug ? `${key}: ${variables.slug}` : key;
+    },
   }),
 }));
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mocks.navigate }));
@@ -38,6 +43,7 @@ const clients: QueryClient[] = [];
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.onTranslate = undefined;
   mocks.locale = 'en';
   mocks.sites = [];
   mocks.create.mockResolvedValue({ id: 'site', firstPageId: 'welcome-page' });
@@ -608,6 +614,59 @@ describe('create site dialog: creation that ends while React hides the dialog (<
         expect(nameField().value).toBe(name);
       },
     );
+  });
+
+  describe('the last moments before the dialog acts (on screen, no hiding)', () => {
+    /** Runs `then` in a microtask queued at the step's last synchronous moment, once. */
+    const atMoment = (then: () => void) => () => queueMicrotask(then);
+
+    it('a success: organization B commits after the action navigated but before the dialog closes, and B is not closed or reset', async () => {
+      const { create, close } = await createHeld();
+      mocks.navigate.mockImplementationOnce(atMoment(() => commit.organization('org-b')));
+      await act(async () => succeed(create));
+      await settle();
+      // The navigation and the toast belonged to A, which still owned the create then.
+      expect(mocks.navigate).toHaveBeenCalledOnce();
+      expect(close).not.toHaveBeenCalled();
+      expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
+      expect(document.body.textContent).toContain('newSite.startingPoint');
+      expect(busy()).toBe(false);
+    });
+
+    it('a failure: organization B commits after the action failed but before the dialog shows it, and B shows no error', async () => {
+      const { create, close } = await createHeld();
+      let armed = true;
+      mocks.onTranslate = (key) => {
+        if (key !== 'newSite.error' || !armed) return;
+        armed = false;
+        queueMicrotask(() => commit.organization('org-b'));
+      };
+      await act(async () => fail(create));
+      await settle();
+      expect(close).not.toHaveBeenCalled();
+      expect(document.querySelector('[data-slot="action-dialog"] [role="alert"]')).toBeNull();
+      expect(busy()).toBe(false);
+    });
+
+    it('a newer starter picked after the request answered, before the action resumed: no navigation, no close, the newer starter kept', async () => {
+      const { create, close } = await createHeld();
+      await act(async () => {
+        succeed(create);
+        // After the submit handler's succeeded(), before the action reads the draft.
+        queueMicrotask(() => {
+          const blank = element<HTMLInputElement>('input[type="radio"][value="blank"]');
+          const fieldset = blank.closest('fieldset');
+          if (fieldset) fieldset.disabled = false;
+          blank.click();
+        });
+      });
+      await settle();
+      expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ starter: 'product-docs' }));
+      expect(mocks.navigate).not.toHaveBeenCalled();
+      expect(close).not.toHaveBeenCalled();
+      expect(busy()).toBe(false);
+      expect(element<HTMLInputElement>('input[type="radio"][value="blank"]').checked).toBe(true);
+    });
   });
 
   it('after a quiet failure, Create tries again, and a clean success navigates and closes', async () => {

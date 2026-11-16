@@ -365,3 +365,68 @@ describe('ActionDialog — an action that ends while React hides the dialog (<Ac
     expect(onOpenChange).not.toHaveBeenCalled();
   });
 });
+
+describe('ActionDialog — isCurrentAction, asked right before the dialog acts (#767)', () => {
+  it.each([
+    ['succeeds', true],
+    ['fails', false],
+  ])('when the action %s and its result no longer belongs to the dialog, it only stops being busy', async (_name, ok) => {
+    const action = deferred();
+    const onOpenChange = vi.fn();
+    const isCurrentAction = vi.fn(() => false);
+    await render(<Harness {...baseProps} isCurrentAction={isCurrentAction} onConfirm={() => action.promise} onOpenChange={onOpenChange} />);
+    await act(async () => button('Remove').click());
+    await act(async () => (ok ? action.resolve() : action.reject(new Error('500'))));
+    expect(isCurrentAction).toHaveBeenCalledExactlyOnceWith({ ok });
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(dialog()).not.toBeNull();
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(button('Remove').getAttribute('aria-busy')).toBeNull();
+  });
+
+  it('is read when the action ends, not when it starts', async () => {
+    const action = deferred();
+    const onOpenChange = vi.fn();
+    let current = true;
+    await render(<Harness {...baseProps} isCurrentAction={() => current} onConfirm={() => action.promise} onOpenChange={onOpenChange} />);
+    await act(async () => button('Remove').click());
+    current = false;
+    await act(async () => action.resolve());
+    expect(onOpenChange).not.toHaveBeenCalled();
+  });
+
+  it('when it says yes, the dialog closes on success and shows the error on failure, as without it', async () => {
+    const onOpenChange = vi.fn();
+    const onConfirm = vi.fn().mockRejectedValueOnce(new Error('500')).mockResolvedValueOnce(undefined);
+    await render(<Harness {...baseProps} isCurrentAction={() => true} onConfirm={onConfirm} onOpenChange={onOpenChange} />);
+    await act(async () => button('Remove').click());
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe("Couldn't finish that. Try again.");
+    await act(async () => button('Remove').click());
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('is asked too before settling a result that ended while the dialog was hidden', async () => {
+    const action = deferred();
+    const onOpenChange = vi.fn();
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const props = { ...baseProps, open: true, onOpenChange, onConfirm: () => action.promise, isCurrentAction: () => false } as ActionDialogProps;
+    const show = (hidden: boolean) =>
+      act(async () =>
+        root.render(
+          <Activity mode={hidden ? 'hidden' : 'visible'}>
+            <ActionDialog {...props} />
+          </Activity>,
+        ),
+      );
+    await show(false);
+    await act(async () => button('Remove').click());
+    await show(true);
+    await act(async () => action.resolve());
+    await show(false);
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(button('Remove').getAttribute('aria-busy')).toBeNull();
+  });
+});

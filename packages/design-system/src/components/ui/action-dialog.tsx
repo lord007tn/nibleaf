@@ -53,6 +53,14 @@ type ActionDialogProps = {
   /** The action. Resolve to close the dialog; reject to keep it open and show the error. */
   onConfirm: () => Promise<void>
   /**
+   * Asked synchronously right before the dialog acts on how the action ended
+   * (`ok`: it resolved): before closing on success or showing the error on
+   * failure, and before settling one that ended while the dialog was hidden.
+   * Return false when the result no longer belongs to what the dialog shows
+   * now: the dialog then only stops being busy. Default: every result does.
+   */
+  isCurrentAction?: (result: { ok: boolean }) => boolean
+  /**
    * Turns a rejection into friendly copy shown inside the dialog. Return
    * nothing to fall back to `fallbackErrorMessage`.
    */
@@ -106,6 +114,7 @@ function ActionDialog({
   pendingLabel,
   destructive = false,
   onConfirm,
+  isCurrentAction,
   errorMessage,
   fallbackErrorMessage,
   finalFocus,
@@ -125,6 +134,10 @@ function ActionDialog({
   const heldRef = React.useRef<{ generation: number; failure?: { error: unknown } } | null>(null)
   const onOpenChangeRef = React.useRef(onOpenChange)
   onOpenChangeRef.current = onOpenChange
+  const isCurrentActionRef = React.useRef(isCurrentAction)
+  isCurrentActionRef.current = isCurrentAction
+  /** Whether the dialog may act on this result; read at the moment it would. */
+  const ownsResult = (ok: boolean) => isCurrentActionRef.current?.({ ok }) ?? true
   const [failure, setFailure] = React.useState<{ error: unknown } | null>(null)
   const [typed, setTyped] = React.useState("")
   const [typedAttempted, setTypedAttempted] = React.useState(false)
@@ -143,8 +156,10 @@ function ActionDialog({
     if (held && held.generation === generationRef.current) {
       pendingRef.current = false
       setPending(false)
-      if (held.failure) setFailure(held.failure)
-      else onOpenChangeRef.current(false)
+      if (ownsResult(!held.failure)) {
+        if (held.failure) setFailure(held.failure)
+        else onOpenChangeRef.current(false)
+      }
     }
     return () => {
       mountedRef.current = false
@@ -200,12 +215,12 @@ function ActionDialog({
       if (!isCurrent()) return hold()
       pendingRef.current = false
       setPending(false)
-      onOpenChange(false)
+      if (ownsResult(true)) onOpenChange(false)
     } catch (error) {
       if (!isCurrent()) return hold({ error })
       pendingRef.current = false
       setPending(false)
-      setFailure({ error })
+      if (ownsResult(false)) setFailure({ error })
     }
   }
 
