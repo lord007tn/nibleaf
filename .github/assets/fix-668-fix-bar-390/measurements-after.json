@@ -1,0 +1,4359 @@
+{
+  "baseline": "7491b8fcc074041144d63b782982759db08bf8a8",
+  "head": "2fbd3eaf71063ecf021ff99f9d2eef193075f4ac",
+  "fixture": "production canvas; mocked router and page lookup hooks",
+  "results": [
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "opaque",
+      "phase": "after",
+      "shot": "opaque-after-en-390-light.png",
+      "barHeight": 95.4375,
+      "sourceTop": 217.5,
+      "labelBottom": 210.11880000000002,
+      "labelPosition": "static",
+      "landingGap": 15.9375,
+      "revealedGap": 1858.390625,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "mdxOpaqueBlock",
+            "attrs": {
+              "source": "<LegacyNotice>\n\nRead [the old guide](/configuration) before you upgrade.\n\n</LegacyNotice>",
+              "name": "LegacyNotice"
+            }
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "The rest of the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          }
+        ]
+      },
+      "markdown": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.\n\n<LegacyNotice>\n\nRead [the old guide](/configuration) before you upgrade.\n\n</LegacyNotice>\n\nThe rest of the page.\n\nParagraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.",
+      "overflowX": false
+    },
+    {
+      "width": 390,
+      "theme": "dark",
+      "locale": "en",
+      "scenario": "opaque",
+      "phase": "after",
+      "shot": "opaque-after-en-390-dark.png",
+      "barHeight": 95.4375,
+      "sourceTop": 217.5,
+      "labelBottom": 210.11880000000002,
+      "labelPosition": "static",
+      "landingGap": 15.9375,
+      "revealedGap": 1858.390625,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "mdxOpaqueBlock",
+            "attrs": {
+              "source": "<LegacyNotice>\n\nRead [the old guide](/configuration) before you upgrade.\n\n</LegacyNotice>",
+              "name": "LegacyNotice"
+            }
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "The rest of the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          }
+        ]
+      },
+      "markdown": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.\n\n<LegacyNotice>\n\nRead [the old guide](/configuration) before you upgrade.\n\n</LegacyNotice>\n\nThe rest of the page.\n\nParagraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.",
+      "overflowX": false
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "opaque",
+      "phase": "after",
+      "shot": "opaque-after-en-1440-light.png",
+      "barHeight": 49,
+      "sourceTop": 155.265625,
+      "labelBottom": 147.8844,
+      "labelPosition": "static",
+      "landingGap": 15.8125,
+      "revealedGap": 826.65625,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "mdxOpaqueBlock",
+            "attrs": {
+              "source": "<LegacyNotice>\n\nRead [the old guide](/configuration) before you upgrade.\n\n</LegacyNotice>",
+              "name": "LegacyNotice"
+            }
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "The rest of the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          }
+        ]
+      },
+      "markdown": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.\n\n<LegacyNotice>\n\nRead [the old guide](/configuration) before you upgrade.\n\n</LegacyNotice>\n\nThe rest of the page.\n\nParagraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.",
+      "overflowX": false
+    },
+    {
+      "width": 1440,
+      "theme": "dark",
+      "locale": "en",
+      "scenario": "opaque",
+      "phase": "after",
+      "shot": "opaque-after-en-1440-dark.png",
+      "barHeight": 49,
+      "sourceTop": 155.265625,
+      "labelBottom": 147.8844,
+      "labelPosition": "static",
+      "landingGap": 15.8125,
+      "revealedGap": 826.65625,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "mdxOpaqueBlock",
+            "attrs": {
+              "source": "<LegacyNotice>\n\nRead [the old guide](/configuration) before you upgrade.\n\n</LegacyNotice>",
+              "name": "LegacyNotice"
+            }
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "The rest of the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          }
+        ]
+      },
+      "markdown": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.\n\n<LegacyNotice>\n\nRead [the old guide](/configuration) before you upgrade.\n\n</LegacyNotice>\n\nThe rest of the page.\n\nParagraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.",
+      "overflowX": false
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "ar",
+      "scenario": "opaque",
+      "phase": "after",
+      "shot": "opaque-after-ar-390-light.png",
+      "barHeight": 95.4375,
+      "sourceTop": 217.375,
+      "labelBottom": 209.99380000000002,
+      "labelPosition": "static",
+      "landingGap": 15.8125,
+      "revealedGap": 2130.140625,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "mdxOpaqueBlock",
+            "attrs": {
+              "source": "<LegacyNotice>\n\nRead [the old guide](/configuration) before you upgrade.\n\n</LegacyNotice>",
+              "name": "LegacyNotice"
+            }
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "The rest of the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          }
+        ]
+      },
+      "markdown": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.\n\n<LegacyNotice>\n\nRead [the old guide](/configuration) before you upgrade.\n\n</LegacyNotice>\n\nThe rest of the page.\n\nParagraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.",
+      "overflowX": false
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "landing",
+      "phase": "after",
+      "shot": "landing-after-en-390-light.png",
+      "barHeight": 76.1875,
+      "sourceTop": null,
+      "labelBottom": null,
+      "labelPosition": null,
+      "landingGap": 19.125,
+      "revealedGap": 16.125,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Then read "
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "link",
+                    "attrs": {
+                      "href": "/configuration",
+                      "target": "_blank",
+                      "rel": "noopener noreferrer",
+                      "class": null,
+                      "title": null
+                    }
+                  }
+                ],
+                "text": "the settings"
+              },
+              {
+                "type": "text",
+                "text": " and continue."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          }
+        ]
+      },
+      "markdown": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.\n\nThen read [the settings](/configuration) and continue.\n\nParagraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.",
+      "overflowX": false
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "landing",
+      "phase": "after",
+      "shot": "landing-after-en-1440-light.png",
+      "barHeight": 49,
+      "sourceTop": null,
+      "labelBottom": null,
+      "labelPosition": null,
+      "landingGap": 19,
+      "revealedGap": 16,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Then read "
+              },
+              {
+                "type": "text",
+                "marks": [
+                  {
+                    "type": "link",
+                    "attrs": {
+                      "href": "/configuration",
+                      "target": "_blank",
+                      "rel": "noopener noreferrer",
+                      "class": null,
+                      "title": null
+                    }
+                  }
+                ],
+                "text": "the settings"
+              },
+              {
+                "type": "text",
+                "text": " and continue."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 2 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 3 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 4 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 5 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 6 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 7 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 8 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 9 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 10 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 11 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 12 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 13 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 14 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 15 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 16 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 17 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 18 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 19 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 20 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 21 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 22 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 23 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "Paragraph 24 of the upgrade guide, long enough to push what follows well down the page."
+              }
+            ]
+          }
+        ]
+      },
+      "markdown": "Paragraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.\n\nThen read [the settings](/configuration) and continue.\n\nParagraph 1 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 2 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 3 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 4 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 5 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 6 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 7 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 8 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 9 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 10 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 11 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 12 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 13 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 14 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 15 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 16 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 17 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 18 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 19 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 20 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 21 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 22 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 23 of the upgrade guide, long enough to push what follows well down the page.\n\nParagraph 24 of the upgrade guide, long enough to push what follows well down the page.",
+      "overflowX": false
+    }
+  ]
+}
