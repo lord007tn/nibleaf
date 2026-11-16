@@ -12,10 +12,10 @@ import { GithubIcon } from '@/components/icons/brand';
 import { SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import { SecretInput } from '@/components/secret-input';
-import { useSaveGitConnection } from '@/features/site-git/api/git-connection';
+import { useWriteGitSettings } from '@/features/site-git/api/git-connection';
 import { GitConnectionForm } from '@/features/site-git/components/git-connection-form';
 import { GitPipeline } from '@/features/site-git/components/git-pipeline';
-import { useGitWorkflow, useImportFromGit, useRotateGitWebhookSecret, useUpdateWorkspaceSettings, useWorkspaceSettings } from '@/hooks/api';
+import { useGitWorkflow, useImportFromGit, useRotateGitWebhookSecret, useWorkspaceSettings } from '@/hooks/api';
 import { githubRepositoryPath } from '@/lib/git-repository';
 import { copyToClipboard } from '@/lib/invitations';
 import { GitWorkflow, type GitWorkflowPrefill } from './git-workflow';
@@ -250,18 +250,21 @@ export function GitTab({ projectId }: { projectId?: string }) {
   const [prefill, setPrefill] = useState<GitWorkflowPrefill | null>(null);
   const settings = useWorkspaceSettings(projectId);
   const { data } = settings;
-  const update = useUpdateWorkspaceSettings(projectId);
   const importFromGit = useImportFromGit(projectId ?? '');
-  // The repository form's own save; the instant writes below wait for it, as it waits for them.
-  const connectionSave = useSaveGitConnection(projectId ?? '');
-  const writing = update.isPending || connectionSave.pending;
+  // Any write to this site's `git` in flight, from this mount or an earlier one: the instant writes
+  // below and the repository form's save wait for each other (the PATCH replaces `git` whole).
+  const { write, pending: writing, isPending: writePending } = useWriteGitSettings(projectId ?? '');
   const git = { ...DEFAULTS, ...((data?.git ?? {}) as GitConfig) };
   const connected = Boolean((data?.git as GitConfig | undefined)?.connected && (git.provider === 'git' ? git.cloneUrl : git.repo));
 
-  // The instant writes (auto publish, disconnect): the stored connection with one change.
-  const save = (patch: Partial<GitConfig>, message?: string) =>
-    update.mutate(
+  // The instant writes (auto publish, disconnect): the stored connection with one change. One that the
+  // person asked for waits out any other write to this site's `git`; the new connection taking over
+  // (`switchOff`) is sent regardless, as before.
+  const send = (patch: Partial<GitConfig>, message?: string) => {
+    if (!projectId) return;
+    write(
       {
+        projectId,
         git: {
           provider: git.provider,
           repo: git.repo,
@@ -283,6 +286,10 @@ export function GitTab({ projectId }: { projectId?: string }) {
         onError: (_error) => toast.error(t('settings.git.saveError')),
       },
     );
+  };
+  const save = (patch: Partial<GitConfig>, message?: string) => {
+    if (!writePending()) send(patch, message);
+  };
 
   const runImport = () =>
     importFromGit.mutate(undefined, {
@@ -298,7 +305,6 @@ export function GitTab({ projectId }: { projectId?: string }) {
 
   const connectForm = projectId ? (
     <GitConnectionForm
-      busy={update.isPending}
       connected={connected}
       disconnect={
         connected ? (
@@ -429,7 +435,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
           <GitWorkflow
             onConnected={() => {
               // The new connection takes over: switch the legacy import off.
-              if (connected) save({ connected: false }, t('settings.git.legacy.switched'));
+              if (connected) send({ connected: false }, t('settings.git.legacy.switched'));
             }}
             prefill={prefill}
             projectId={projectId}

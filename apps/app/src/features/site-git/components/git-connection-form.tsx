@@ -50,21 +50,19 @@ const FIELD_IDS: Record<GitConnectionField, string> = { repo: 'git-repo', cloneU
  * the tab owns. Enter in a field saves, as the button does, except while an
  * IME composition is open.
  *
- * `busy` is a write to this site's `git` made elsewhere on the tab (auto
- * publish, disconnect) and still in flight: the PATCH replaces `git` whole, so
- * a save waits for it rather than racing it.
+ * The PATCH replaces `git` whole, so a save waits out any other write to this
+ * site's `git` still in flight (auto publish, disconnect, or a save from an
+ * earlier mount), and shows it as busy.
  */
 export function GitConnectionForm({
   projectId,
   git,
   connected,
-  busy,
   disconnect,
 }: {
   projectId: string;
   git: StoredGit | null | undefined;
   connected: boolean;
-  busy: boolean;
   disconnect?: ReactNode;
 }) {
   const t = useT();
@@ -106,15 +104,14 @@ export function GitConnectionForm({
   });
 
   // The button and Enter both come here. One write to this site's `git` at a
-  // time: this form's own save holds the draft's lock, a save from an earlier
-  // mount of this form or another control's write is waited out.
+  // time, whichever control or mount started it.
   const { submit: submitDraft, discard: discardDraft, isSaving } = draft;
   const submit = useCallback(async () => {
-    if (busy || savePending()) return;
+    if (savePending()) return;
     // A try reveals the missing field before it takes focus.
     flushSync(() => setAttempted(() => true));
     if ((await submitDraft()) === 'invalid') formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
-  }, [busy, savePending, setAttempted, submitDraft]);
+  }, [savePending, setAttempted, submitDraft]);
   const discard = useCallback(() => {
     if (isSaving) return;
     discardDraft();
@@ -312,7 +309,7 @@ export function GitConnectionForm({
               {t('forms.discard')}
             </Button>
           ) : null}
-          <Button loading={pending || busy} loadingText={t('common.saving')} type="submit" variant={connected ? 'outline' : 'default'}>
+          <Button loading={pending} loadingText={t('common.saving')} type="submit" variant={connected ? 'outline' : 'default'}>
             {connected ? t('settings.git.save') : t('settings.git.connect')}
           </Button>
         </div>

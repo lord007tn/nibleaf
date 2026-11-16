@@ -17,7 +17,6 @@ import type {
   UpdatePageBody,
   UpdateProjectAddonBody,
   UpdateProjectBody,
-  UpdateWorkspaceSettingsBody,
   UpsertOpenApiBody,
 } from '@nibleaf/validators';
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
@@ -46,7 +45,6 @@ import type {
   PageNode,
   Project,
   ProjectAddon,
-  WorkspaceSettings,
 } from './types';
 
 export interface ProjectThemeImportResult {
@@ -903,22 +901,6 @@ const useSetProjectAddonEnabled = (projectId: string, action: 'activate' | 'deac
 
 export const useActivateProjectAddon = (projectId: string) => useSetProjectAddonEnabled(projectId, 'activate');
 export const useDeactivateProjectAddon = (projectId: string) => useSetProjectAddonEnabled(projectId, 'deactivate');
-
-/** Update workspace/site settings. Pass a projectId to write the SITE's own org
- *  settings (per-site workspace); omit it for the account view. */
-export const useUpdateWorkspaceSettings = (projectId?: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: UpdateWorkspaceSettingsBody) =>
-      projectId
-        ? mutateData<WorkspaceSettings>(
-            await api.app.projects[':projectId'].settings.$patch({ param: { projectId }, json: body }),
-            'Could not update settings.',
-          )
-        : mutateData<WorkspaceSettings>(await api.app.workspace.$patch({ json: body }), 'Could not update workspace settings.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: projectId ? queryKeys.workspace.projectSettings(projectId) : queryKeys.workspace.settings() }),
-  });
-};
 
 /** Pull Markdown pages from the configured public Git provider (one-way import). */
 export const useImportFromGit = (projectId: string) => {

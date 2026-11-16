@@ -517,7 +517,37 @@ describe('identity: the site, never the locale', () => {
     expect(dirty.size).toBe(0);
   });
 
-  it('A → B → A while A’s save is still running: the new A form waits for it, then shows its result', async () => {
+  it('A → B → A while A’s auto-publish write is still running: the new A waits for it, and never replays the old flag', async () => {
+    // A plain Git URL connection that kept a valid repository from before: the instant write's body
+    // (main's helper fills blanks with its display defaults, #780) passes the validator for it.
+    db.git['site-a'] = { ...STORED, provider: 'git', cloneUrl: 'https://git.example.com/team/docs.git' };
+    await open('site-a');
+    const hold = gate();
+    api.holdPatch = hold.promise;
+    await act(async () => toggleAutoPublish());
+    await vi.waitFor(() => expect(api.patches).toHaveLength(1));
+    await open('site-b');
+    await open('site-a');
+    // The remounted A shows the write as busy: Save and the toggle wait.
+    expect(submitButton().getAttribute('aria-busy')).toBe('true');
+    expect(host.querySelector('[role="switch"]')?.hasAttribute('data-disabled')).toBe(true);
+    await type('git-clone-url', 'https://git.example.com/team/handbook.git');
+    await pressEnter('git-clone-url');
+    expect(api.patches).toHaveLength(1);
+    await hold.open();
+    await settle();
+    api.holdPatch = undefined;
+    expect(db.git['site-a']).toMatchObject({ autoPublish: true });
+    // Once it settled, the repository save goes out with the flag it stored.
+    await pressEnter('git-clone-url');
+    await settle();
+    expect(api.patches).toHaveLength(2);
+    expect(sent()).toMatchObject({ provider: 'git', cloneUrl: 'https://git.example.com/team/handbook.git', autoPublish: true });
+    expect(db.git['site-a']).toMatchObject({ autoPublish: true, cloneUrl: 'https://git.example.com/team/handbook.git' });
+  });
+
+  it('A → B → A while A’s save is still running: the new A form and its instant writes wait for it, then it shows its result', async () => {
+    db.git['site-a'] = { ...STORED, ...SAVABLE_BY_TOGGLE };
     await open('site-a');
     await type('git-repo', 'team/handbook');
     const hold = gate();
@@ -526,6 +556,10 @@ describe('identity: the site, never the locale', () => {
     await open('site-b');
     await open('site-a');
     expect(submitButton().getAttribute('aria-busy')).toBe('true');
+    // The other way round: auto publish and Disconnect wait for the repository save too.
+    expect(host.querySelector('[role="switch"]')?.hasAttribute('data-disabled')).toBe(true);
+    expect(button('settings.git.disconnect')?.getAttribute('aria-busy')).toBe('true');
+    await act(async () => toggleAutoPublish());
     await type('git-path', 'guides');
     await save();
     expect(api.patches).toHaveLength(1);
