@@ -9,8 +9,11 @@
  * is pending, so one row's request never locks another row or a schedule.
  */
 import type { MessageKey } from '@nibleaf/i18n';
-import type { ExportFormat, ExportStatus } from '@/hooks/api/exports';
+import type { ExportFormatInput as ExportFormat } from '@nibleaf/validators';
 import { EXPORT_FORMAT_LABELS } from './schedule-create';
+
+/** A run's status as the server reports it. */
+type ExportStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
 /** A one-time export of a site. It names the site it was sent for, whatever the page shows by the time it settles. */
 export type ExportCreateRequest = { projectId: string; formats: ExportFormat[] };

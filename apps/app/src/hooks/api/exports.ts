@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { listExportRunsQueryOptions, listExportSchedulesQueryOptions } from './query-options';
 
 export type ExportFormat = ExportFormatInput;
-export type ExportStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
+type ExportStatus = 'PENDING' | 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'CANCELLED';
 
 interface ExportArtifact {
   id: string;
