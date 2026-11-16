@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { type GitIdentity, useGitAuthorization } from '../api/git-authorization';
 
 /** The connect wizard as committed for a site: a new object each time it shows. */
@@ -13,9 +13,13 @@ type Wizard = { projectId: string };
  * A press sends the token as typed for the site shown. Editing the token
  * (`retire`, even back to the same value), another site, or the wizard giving
  * way to the loading, error or connected screen retires the check: its answer
- * then neither reports a failure nor goes on with the account. A language
- * change keeps it. The request itself is never cancelled or retried, and a
- * success refreshes the site it was sent for.
+ * then neither reports a failure nor goes on with the account. The wizard's
+ * retirement happens in the commit that hides it, before any answer can run.
+ * A language change keeps the check. The request itself is never cancelled or
+ * retried, and a success refreshes the site it was sent for.
+ *
+ * Only `busy` and `failed` are kept: never the token, the answer's body or the
+ * error, so a refusal that echoes the token is reported without it.
  *
  * `shown`: whether the wizard shows.
  */
@@ -32,7 +36,7 @@ export function useGitAuthorizationCommand({ projectId, shown }: { projectId: st
   }, []);
 
   const wizard = useRef<Wizard | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!shown) return;
     const committed = { projectId };
     wizard.current = committed;
@@ -54,8 +58,8 @@ export function useGitAuthorizationCommand({ projectId, shown }: { projectId: st
       setBusy(false);
       outcome();
     };
-    send({ projectId, token }).then(
-      (identity) => settled(() => verified(identity)),
+    send(projectId, token).then(
+      (identity) => settled(() => (identity ? verified(identity) : undefined)),
       () => settled(() => setFailed(true)),
     );
   };

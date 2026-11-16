@@ -12,8 +12,8 @@
 import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
 import { translateFn } from '@nibleaf/i18n';
 import { gitAuthorizationBody } from '@nibleaf/validators';
-import { QueryClientProvider } from '@tanstack/react-query';
-import { act, type ReactNode } from 'react';
+import { dehydrate, onlineManager, QueryClientProvider } from '@tanstack/react-query';
+import { act, type ReactNode, useLayoutEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -50,6 +50,7 @@ import { GitWorkflow } from '@/components/settings/git-workflow';
 import { queryKeys } from '@/hooks/api/query-keys';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { resetDashboardSession } from '@/integrations/tanstack-query/session-cache';
+import { useGitAuthorizationCommand } from './use-git-authorization-command';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
@@ -564,5 +565,182 @@ describe('a verification reports only into the token and wizard it checked', () 
     expect(tab.step()).toBe(1);
     await tab.press();
     expect(posts().map((request) => request.param.projectId)).toEqual(['site-a', 'site-b']);
+  });
+});
+
+/** Errors as their fields (JSON.stringify drops them otherwise); functions and cycles left out. */
+const asText = (value: unknown) => {
+  const seen = new WeakSet<object>();
+  return JSON.stringify(value, (_key, item: unknown) => {
+    if (typeof item === 'function') return;
+    if (item instanceof Error) return { ...item, name: item.name, message: item.message, cause: item.cause };
+    if (item && typeof item === 'object') {
+      if (seen.has(item)) return;
+      seen.add(item);
+    }
+    return item;
+  });
+};
+/**
+ * Everything the QueryClient holds or would hand on: every mutation (options, variables, error), every query (key,
+ * data, error), an all-mutation and all-query dehydration, and the default dehydration.
+ */
+const clientText = () =>
+  asText({
+    mutations: client
+      .getMutationCache()
+      .getAll()
+      .map((mutation) => ({ key: mutation.options.mutationKey, meta: mutation.options.meta, state: mutation.state })),
+    queries: client
+      .getQueryCache()
+      .getAll()
+      .map((query) => ({ key: query.queryKey, meta: query.meta, state: query.state })),
+    everything: dehydrate(client, { shouldDehydrateMutation: () => true, shouldDehydrateQuery: () => true }),
+    byDefault: dehydrate(client),
+  });
+/** No placeholder token anywhere the QueryClient keeps or hands on, and no authorization mutation at all. */
+const expectNoTokenCached = () => {
+  const text = clientText();
+  for (const token of [TOKEN_A, TOKEN_B]) expect(text).not.toContain(token);
+  expect(text).not.toContain('test-token');
+  expect(client.getMutationCache().getAll()).toEqual([]);
+};
+/** A refusal whose message echoes the token it was sent. */
+const echoed = (request: AuthorizeRequest) =>
+  json(400, { error: { code: 'BAD_REQUEST', message: `Bad credentials: ${request.json.token}`, details: { token: request.json.token } } });
+
+describe('the token is never kept by the QueryClient', () => {
+  it('neither while a check runs nor after it succeeds', async () => {
+    const tab = page();
+    await tab.open('site-a');
+    await tab.type(TOKEN_A);
+    await tab.press();
+    expect(posts()).toHaveLength(1);
+    expectNoTokenCached();
+    await answer(0, verified);
+    expect(tab.step()).toBe(2);
+    expectNoTokenCached();
+  });
+
+  it('nor after a refusal that echoes it, which shows only the existing error, and after the token is corrected', async () => {
+    const tab = page();
+    await tab.open('site-a');
+    await tab.type(TOKEN_A);
+    await tab.press();
+    await answer(0, echoed);
+    expect(tab.error()).toBe(1);
+    expect(tab.host.textContent).not.toContain(TOKEN_A);
+    expectNoTokenCached();
+    await tab.type(TOKEN_B);
+    expect(tab.error()).toBe(0);
+    expectNoTokenCached();
+  });
+
+  it('nor after a retired check settles, an unmount, or a session reset', async () => {
+    const tab = page();
+    await tab.open('site-a');
+    await tab.type(TOKEN_A);
+    await tab.press();
+    await tab.type(TOKEN_B);
+    await answer(0, echoed);
+    expectNoTokenCached();
+    await tab.press();
+    await tab.open('site-b');
+    expectNoTokenCached();
+    await answer(1, verified);
+    expectNoTokenCached();
+    await tab.open('site-a');
+    await tab.type(TOKEN_A);
+    await tab.press();
+    await act(async () => resetDashboardSession(client));
+    await tab.open('site-a', 'git-site-a-next-session');
+    expectNoTokenCached();
+    await answer(2, verified);
+    expectNoTokenCached();
+  });
+
+  it('nor while offline: nothing is paused for later, and the default dehydration is clear', async () => {
+    const tab = page();
+    await tab.open('site-a');
+    await tab.type(TOKEN_A);
+    onlineManager.setOnline(false);
+    try {
+      await tab.press();
+      expectNoTokenCached();
+      // Sent now, not paused and replayed on reconnect; a dropped request is reported inline.
+      expect(posts()).toHaveLength(1);
+      const entry = held[0];
+      if (!entry) throw new Error('no request');
+      await act(async () => entry.reject(new TypeError('Failed to fetch')));
+      await settle();
+      expect(tab.error()).toBe(1);
+      expectNoTokenCached();
+    } finally {
+      onlineManager.setOnline(true);
+    }
+  });
+});
+
+describe('the commit that hides the wizard retires its check', () => {
+  // Outside act, as in the browser: a hiding render's passive effects run in a later task, so an answer that settles
+  // right after the commit (here, answered from a layout effect of that very commit) runs before them.
+  it('an answer settling right after the wizard hides neither moves it on nor reports', async () => {
+    vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', false);
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    const verifiedWith: unknown[] = [];
+    let command: ReturnType<typeof useGitAuthorizationCommand> | undefined;
+    let outcome: 'verified' | 'refused' = 'verified';
+    /** Answers the held request in the layout phase of the commit that hides the wizard. */
+    function AnswerOnHide({ shown }: { shown: boolean }) {
+      useLayoutEffect(() => {
+        if (shown) return;
+        const response = {
+          ok: outcome === 'verified',
+          status: outcome === 'verified' ? 200 : 400,
+          headers: new Headers(),
+          json: async () => (outcome === 'verified' ? { data: ACCOUNT_A } : { error: { code: 'BAD_REQUEST', message: 'Refused.' } }),
+          text: async () => JSON.stringify({ error: { code: 'BAD_REQUEST', message: 'Refused.' } }),
+          clone() {
+            return this;
+          },
+        };
+        held.at(-1)?.resolve(response as unknown as Response);
+      }, [shown]);
+      return null;
+    }
+    function Wizard({ shown }: { shown: boolean }) {
+      command = useGitAuthorizationCommand({ projectId: 'site-a', shown });
+      return <AnswerOnHide shown={shown} />;
+    }
+    const nextTasks = async () => {
+      for (let task = 0; task < 10; task += 1) await new Promise((done) => setTimeout(done, 5));
+    };
+    const show = (shown: boolean) =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <Wizard shown={shown} />
+        </QueryClientProvider>,
+      );
+    try {
+      for (const result of ['verified', 'refused'] as const) {
+        outcome = result;
+        show(true);
+        await nextTasks();
+        command?.verify(TOKEN_A, (identity) => verifiedWith.push(identity));
+        await nextTasks();
+        expect(command?.busy).toBe(true);
+        show(false);
+        await nextTasks();
+        expect(verifiedWith).toEqual([]);
+        expect([command?.busy, command?.failed]).toEqual([false, false]);
+      }
+      expect(posts()).toHaveLength(2);
+    } finally {
+      root.unmount();
+      host.remove();
+      vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+    }
   });
 });
