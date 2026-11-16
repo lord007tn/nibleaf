@@ -327,6 +327,19 @@ describe('unsaved drafts kept after the editor unmounted (#789)', () => {
     expect(drafts.peek('user-1', pageB.id)).toBeUndefined();
   });
 
+  it('keeps nothing for a text whose failure its editor already showed; a changed text is kept again', () => {
+    const drafts = createUnsavedDrafts();
+    const shown = drafts.issue('user-1', pageA.id);
+    const retried = drafts.issue('user-1', pageA.id);
+    const edited = drafts.issue('user-1', pageA.id);
+    if (!shown || !retried || !edited) throw new Error('No ticket');
+    drafts.settled(shown, kept);
+    drafts.failed(retried, kept);
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    drafts.failed(edited, { ...kept, content: 'Edited since.' });
+    expect(drafts.peek('user-1', pageA.id)?.content).toBe('Edited since.');
+  });
+
   it('drops everything when the session ends, and ignores writes queued before', () => {
     const drafts = createUnsavedDrafts();
     const kept1 = drafts.issue('user-1', pageA.id);
