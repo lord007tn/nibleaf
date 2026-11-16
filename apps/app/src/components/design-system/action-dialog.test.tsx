@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { ActionDialog, type ActionDialogProps } from '@nibleaf/design-system/components/ui/action-dialog';
-import { act, type ReactElement, useState } from 'react';
+import { Activity, act, type ReactElement, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -308,5 +308,60 @@ describe('ActionDialog — every failure is explained', () => {
     await render(<Harness {...baseProps} errorMessage={() => 'Only Admins can remove people.'} onConfirm={() => Promise.reject('denied')} />);
     await act(async () => button('Remove').click());
     expect(document.querySelector('[data-slot="action-dialog-error"]')?.textContent).toBe('Only Admins can remove people.');
+  });
+});
+
+describe('ActionDialog — an action that ends while React hides the dialog (<Activity>, #767)', () => {
+  async function hideable(props: ActionDialogProps) {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const show = (hidden: boolean) =>
+      act(async () =>
+        root.render(
+          <Activity mode={hidden ? 'hidden' : 'visible'}>
+            <ActionDialog {...props} />
+          </Activity>,
+        ),
+      );
+    await show(false);
+    return { show, root };
+  }
+
+  it('a success while hidden closes the dialog once it shows, and not before', async () => {
+    const action = deferred();
+    const onOpenChange = vi.fn();
+    const { show } = await hideable({ ...baseProps, open: true, onOpenChange, onConfirm: () => action.promise } as ActionDialogProps);
+    await act(async () => button('Remove').click());
+    await show(true);
+    await act(async () => action.resolve());
+    expect(onOpenChange).not.toHaveBeenCalled();
+    await show(false);
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it('a failure while hidden shows its error once the dialog shows, with the action free to retry', async () => {
+    const action = deferred();
+    const onOpenChange = vi.fn();
+    const { show } = await hideable({ ...baseProps, open: true, onOpenChange, onConfirm: () => action.promise } as ActionDialogProps);
+    await act(async () => button('Remove').click());
+    await show(true);
+    await act(async () => action.reject(new Error('500')));
+    await show(false);
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe("Couldn't finish that. Try again.");
+    expect(button('Remove').getAttribute('aria-busy')).toBeNull();
+    expect(document.querySelector('[data-slot="action-dialog"]')?.getAttribute('aria-busy')).toBeNull();
+  });
+
+  it('an action that ends after a real unmount does nothing', async () => {
+    const action = deferred();
+    const onOpenChange = vi.fn();
+    const { root } = await hideable({ ...baseProps, open: true, onOpenChange, onConfirm: () => action.promise } as ActionDialogProps);
+    await act(async () => button('Remove').click());
+    await act(async () => root.render(null));
+    await act(async () => action.resolve());
+    expect(onOpenChange).not.toHaveBeenCalled();
   });
 });

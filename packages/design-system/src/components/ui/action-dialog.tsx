@@ -84,6 +84,12 @@ type ActionDialogProps = {
  * person can retry or cancel. Callers mark the mutation with
  * `meta: { suppressGlobalError: true }` so the error isn't also toasted.
  *
+ * An action that ends while React hides the dialog (`<Activity>`, which runs
+ * effect cleanups as on unmount but keeps the dialog) is settled when it shows
+ * again: it closes on success or shows the error, and nothing else happens
+ * then. An action that ends after a real unmount, or after the dialog closed
+ * or reopened, is ignored.
+ *
  * With `confirmText` the person types it to confirm. Confirm stays disabled
  * (focusable, announced as unavailable with the field's label as its reason)
  * until the typed text matches; a non-empty mismatch shows the field error as
@@ -115,6 +121,10 @@ function ActionDialog({
   const [pending, setPending] = React.useState(false)
   const pendingRef = React.useRef(false)
   const mountedRef = React.useRef(true)
+  // How an action ended while the dialog was hidden, for the generation it ran in.
+  const heldRef = React.useRef<{ generation: number; failure?: { error: unknown } } | null>(null)
+  const onOpenChangeRef = React.useRef(onOpenChange)
+  onOpenChangeRef.current = onOpenChange
   const [failure, setFailure] = React.useState<{ error: unknown } | null>(null)
   const [typed, setTyped] = React.useState("")
   const [typedAttempted, setTypedAttempted] = React.useState(false)
@@ -128,6 +138,14 @@ function ActionDialog({
 
   React.useEffect(() => {
     mountedRef.current = true
+    const held = heldRef.current
+    heldRef.current = null
+    if (held && held.generation === generationRef.current) {
+      pendingRef.current = false
+      setPending(false)
+      if (held.failure) setFailure(held.failure)
+      else onOpenChangeRef.current(false)
+    }
     return () => {
       mountedRef.current = false
     }
@@ -170,17 +188,21 @@ function ActionDialog({
     }
     const generation = generationRef.current
     const isCurrent = () => mountedRef.current && generation === generationRef.current
+    // Off screen but still this dialog: settled when it shows again (a real unmount never does).
+    const hold = (failure?: { error: unknown }) => {
+      if (generation === generationRef.current) heldRef.current = { generation, failure }
+    }
     pendingRef.current = true
     setPending(true)
     setFailure(null)
     try {
       await onConfirm()
-      if (!isCurrent()) return
+      if (!isCurrent()) return hold()
       pendingRef.current = false
       setPending(false)
       onOpenChange(false)
     } catch (error) {
-      if (!isCurrent()) return
+      if (!isCurrent()) return hold({ error })
       pendingRef.current = false
       setPending(false)
       setFailure({ error })

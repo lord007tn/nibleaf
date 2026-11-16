@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { type AnchorHTMLAttributes, act, type ReactNode } from 'react';
+import { Activity, type AnchorHTMLAttributes, act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigDirtyProvider } from '@/components/project-settings/shared';
@@ -130,14 +130,22 @@ const readerData = (overrides: Partial<ReaderAccessData> = {}): ReaderAccessData
 let container: HTMLDivElement;
 let root: Root;
 let dirty: Set<string>;
+/** Keeps the screen in a hidden <Activity> while true: React keeps it, off screen. */
+let hidden = false;
 const render = () =>
   act(async () =>
     root.render(
       <ConfigDirtyProvider report={(id, changed) => (changed ? dirty.add(id) : dirty.delete(id))}>
-        <ReaderAccessSettings project={{ id: 'site-1' } as Project} />
+        <Activity mode={hidden ? 'hidden' : 'visible'}>
+          <ReaderAccessSettings project={{ id: 'site-1' } as Project} />
+        </Activity>
       </ConfigDirtyProvider>,
     ),
   );
+const hide = (next: boolean) => {
+  hidden = next;
+  return render();
+};
 /** A refetch: the query hands back a new object (here with whatever changed on the server). */
 const refetch = (data: ReaderAccessData) => {
   mocks.data = data;
@@ -145,6 +153,7 @@ const refetch = (data: ReaderAccessData) => {
 };
 
 beforeEach(() => {
+  hidden = false;
   mocks.data = readerData();
   mocks.pages = { data: [], isPending: false, isError: false, isFetching: false, refetch: vi.fn() };
   mocks.status = 'admin';
@@ -910,5 +919,56 @@ describe('access', () => {
     expect(container.querySelector('fieldset')?.disabled).toBe(true);
     expect(container.querySelector('fieldset')?.getAttribute('aria-describedby')).toBeNull();
     expect(field('settings.visibility.invite.label').disabled).toBe(true);
+  });
+});
+
+describe('a confirmed save that ends while React hides the screen (<Activity>, #767)', () => {
+  it('visibility: saved while hidden, the dialog closes once shown, with nothing else said', async () => {
+    const pending = deferred<undefined>();
+    mocks.m.setMode.mutateAsync.mockReturnValueOnce(pending.promise);
+    await render();
+    await act(async () => radios()[0]?.click());
+    await act(async () => button(container, 'settings.visibility.save')?.click());
+    await confirmDialog();
+    expect(mocks.m.setMode.mutateAsync).toHaveBeenCalledWith({ mode: 'PUBLIC' });
+    await hide(true);
+    await act(async () => pending.resolve(undefined));
+    await hide(false);
+    expect(dialog()).toBeNull();
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    expect(mocks.m.setMode.mutateAsync).toHaveBeenCalledOnce();
+  });
+
+  it('visibility: refused while hidden, the dialog shows why once shown, free to retry', async () => {
+    const pending = deferred<undefined>();
+    mocks.m.setMode.mutateAsync.mockReturnValueOnce(pending.promise);
+    await render();
+    await act(async () => radios()[0]?.click());
+    await act(async () => button(container, 'settings.visibility.save')?.click());
+    await confirmDialog();
+    await hide(true);
+    await act(async () => pending.reject(new Error('500')));
+    await hide(false);
+    expect(dialog()).not.toBeNull();
+    expect(dialog()?.getAttribute('aria-busy')).toBeNull();
+    expect(dialog()?.querySelector('[role="alert"]')).not.toBeNull();
+  });
+
+  it('JWT: saved while hidden, the confirmation closes once shown, with nothing else said', async () => {
+    const pending = deferred<undefined>();
+    mocks.m.saveJwt.mutateAsync.mockReturnValueOnce(pending.promise);
+    await render();
+    await openAdvanced();
+    await act(async () => enabledSwitch().click());
+    await saveBar();
+    await confirmDialog();
+    expect(mocks.m.saveJwt.mutateAsync).toHaveBeenCalledOnce();
+    await hide(true);
+    await act(async () => pending.resolve(undefined));
+    await hide(false);
+    expect(dialog()).toBeNull();
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    expect(mocks.toast.error).not.toHaveBeenCalled();
   });
 });

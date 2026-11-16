@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, useState } from 'react';
+import { Activity, act, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
@@ -26,6 +26,8 @@ vi.mock('@/hooks/api', () => ({
 }));
 vi.mock('@/services/api', () => ({ api: { app: { projects: { availability: { $get: mocks.availability } } } } }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
+
+import { toast } from 'sonner';
 
 import { NewProjectDialog } from './new-project-dialog';
 
@@ -432,5 +434,136 @@ describe('create site dialog', () => {
     expect(document.body.textContent).toContain('newSite.startingPoint');
     await click(button('common.back'));
     expect(nameField().value).toBe('Acme Docs');
+  });
+});
+
+describe('create site dialog: creation that ends while React hides the dialog (<Activity>, #767)', () => {
+  let hide: (hidden: boolean) => Promise<void>;
+  /** The dialog inside an <Activity>, opened and closed as a caller would. */
+  async function renderHideable() {
+    const node = document.createElement('div');
+    document.body.append(node);
+    const root = createRoot(node);
+    roots.push(root);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    clients.push(client);
+    const close = vi.fn();
+    let setHidden!: (hidden: boolean) => void;
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      const [hidden, setHiddenState] = useState(false);
+      setHidden = setHiddenState;
+      return (
+        <Activity mode={hidden ? 'hidden' : 'visible'}>
+          <button type="button" onClick={() => setOpen(true)}>
+            Reopen
+          </button>
+          <NewProjectDialog
+            open={open}
+            organizationId="org-a"
+            onOpenChange={(next) => {
+              close(next);
+              setOpen(next);
+            }}
+          />
+        </Activity>
+      );
+    }
+    await act(async () =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <Harness />
+        </QueryClientProvider>,
+      ),
+    );
+    hide = (hidden) => act(async () => setHidden(hidden));
+    return close;
+  }
+  const busy = () => document.querySelector('[aria-busy="true"]') !== null;
+  /** Names the site, continues, and starts creating it; the create answers when the test says. */
+  async function createHeld() {
+    const create = deferred<{ id: string; firstPageId: string }>();
+    mocks.create.mockReturnValueOnce(create.promise);
+    const close = await renderHideable();
+    await nameSite();
+    await click(button('newSite.continue'));
+    await click(button('newSite.create'));
+    expect(busy()).toBe(true);
+    return { create, close };
+  }
+
+  it('a success while hidden closes the dialog once shown, without navigating or toasting, and the next opening starts fresh', async () => {
+    const { create, close } = await createHeld();
+    await hide(true);
+    await act(async () => create.resolve({ id: 'site', firstPageId: 'welcome-page' }));
+    await hide(false);
+    expect(close).toHaveBeenCalledExactlyOnceWith(false);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+    await click(button('Reopen'));
+    expect(nameField().value).toBe('');
+    expect(busy()).toBe(false);
+  });
+
+  it('a failure while hidden leaves the dialog usable once shown: the error inside it, Create to retry, Cancel to leave', async () => {
+    const { create, close } = await createHeld();
+    await hide(true);
+    await act(async () => create.reject(new Error('injected create failure')));
+    await hide(false);
+    expect(busy()).toBe(false);
+    expect(close).not.toHaveBeenCalled();
+    expect(document.querySelector('[role="alert"]')?.textContent).toBe('newSite.error');
+    expect(isDisabled(button('newSite.create'))).toBe(false);
+    await click(button('newSite.create'));
+    await settle();
+    expect(mocks.create).toHaveBeenCalledTimes(2);
+    expect(mocks.navigate).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledWith(false);
+  });
+
+  it('a slug refusal while hidden shows on the address step once shown, as on screen', async () => {
+    const { create, close } = await createHeld();
+    await hide(true);
+    await act(async () =>
+      create.reject(
+        new ApiResponseError('taken', 409, 'database:conflict', undefined, undefined, undefined, undefined, {
+          reason: 'slug_taken',
+          suggestedSlug: 'acme-docs-2',
+        }),
+      ),
+    );
+    await hide(false);
+    expect(busy()).toBe(false);
+    expect(close).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('newSite.slugTaken: acme-docs-2');
+    expect(isDisabled(button('newSite.continue'))).toBe(true);
+    expect(mocks.navigate).not.toHaveBeenCalled();
+  });
+});
+
+describe('create site dialog: a value newer than the created site', () => {
+  // The controls are disabled while creating; this injects a change anyway, as
+  // a programmatic caller of the draft could, to hold the dialog to the contract.
+  it('keeps the dialog open with the draft: no navigation, no close', async () => {
+    const create = deferred<{ id: string; firstPageId: string }>();
+    mocks.create.mockReturnValueOnce(create.promise);
+    const close = await render();
+    await nameSite();
+    await click(button('newSite.continue'));
+    await click(button('newSite.create'));
+    const blank = element<HTMLInputElement>('input[type="radio"][value="blank"]');
+    await act(async () => {
+      const fieldset = blank.closest('fieldset');
+      if (fieldset) fieldset.disabled = false;
+      blank.click();
+    });
+    expect(blank.checked).toBe(true);
+    await act(async () => create.resolve({ id: 'site', firstPageId: 'welcome-page' }));
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ starter: 'product-docs' }));
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
+    expect(element<HTMLInputElement>('input[type="radio"][value="blank"]').checked).toBe(true);
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
   });
 });
