@@ -10,7 +10,7 @@ import { deriveSiteSlug } from '@nibleaf/shared/site-slug';
 import { type CreateProjectBody, createProjectBody, projectSlug } from '@nibleaf/validators';
 import { useStore } from '@tanstack/react-form';
 import { useNavigate } from '@tanstack/react-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { FormField } from '@/components/ui/form-field';
 import { env } from '@/env';
@@ -44,6 +44,18 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
   const created = useRef<'clean' | 'unsettled' | 'away' | undefined>(undefined);
   /** A slug refusal that came while the dialog was hidden, shown once it is on screen again. */
   const heldRefusal = useRef<(() => void) | undefined>(undefined);
+  /** The draft generation of a site created while the dialog was hidden, to settle once it shows. */
+  const createdAway = useRef<number | undefined>(undefined);
+  const onOpenChangeRef = useRef(onOpenChange);
+  onOpenChangeRef.current = onOpenChange;
+  /** After a site was created: the next opening starts over for a new one. */
+  const startOver = useCallback(() => {
+    setGeneration((value) => value + 1);
+    setStep(1);
+    setAddressEdited(false);
+    setEditingAddress(false);
+    setConflict(null);
+  }, []);
   const destination = useRef<'editor' | 'import'>('editor');
   const projects = useOrganizationProjects(organizationId);
   const draft = useServerDraftForm({
@@ -143,25 +155,42 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
   // Why Continue can't be pressed yet. An empty name is the one case with no message of its own on the form.
   const continueReason = !ready && !pending && !name ? t('newSite.reason.name') : undefined;
 
-  // Runs again when React shows a hidden dialog: a slug refusal held meanwhile shows now.
+  // Runs again when React shows a hidden dialog, after the draft reconciled what
+  // ended meanwhile: a slug refusal shows now, and a site created meanwhile closes
+  // the dialog only if the draft settled on it; a newer value keeps it open.
   useEffect(() => {
     const show = heldRefusal.current;
     heldRefusal.current = undefined;
     show?.();
-  }, []);
+    const away = createdAway.current;
+    createdAway.current = undefined;
+    if (away === undefined) return;
+    const { settled, generation: now } = draft.settlement();
+    if (!settled || now !== away) return;
+    onOpenChangeRef.current(false);
+    startOver();
+  }, [draft.settlement, startOver]);
 
   /**
-   * The step-2 action. Resolving closes the dialog: only once the site exists
-   * and the draft settled on it (or it ended while hidden, where the dialog
-   * closes when shown, without the navigation or the toast). A site created
-   * while the draft holds a newer value keeps the dialog open with it.
+   * The step-2 action. Resolving closes the dialog, but only once the site
+   * exists and the draft settled on it. A site created while the draft holds a
+   * newer value keeps the dialog open with it. One created while the dialog was
+   * hidden is settled when it shows (closing without the navigation or the
+   * toast, if the draft settled on it). One created for an earlier draft (the
+   * organization changed meanwhile) leaves the dialog as it is now.
    */
   const createSite = async () => {
+    const started = draft.settlement().generation;
     created.current = undefined;
     await draft.submit();
     const outcome = created.current;
+    if (draft.settlement().generation !== started) {
+      keepOpen.current = true;
+      return;
+    }
     if (!outcome) throw new Error('Site creation was not saved');
     if (outcome === 'unsettled') keepOpen.current = true;
+    else if (outcome === 'away') createdAway.current = started;
     else completed.current = true;
   };
   const description = organizationName ? t('newSite.descInOrganization', { org: organizationName }) : t('newSite.desc');
@@ -175,14 +204,12 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
             keepOpen.current = false;
             return;
           }
+          // Created while hidden: the effect above decides once the draft has reconciled it.
+          if (!next && createdAway.current !== undefined) return;
           onOpenChange(next);
           if (!next && completed.current) {
             completed.current = false;
-            setGeneration((value) => value + 1);
-            setStep(1);
-            setAddressEdited(false);
-            setEditingAddress(false);
-            setConflict(null);
+            startOver();
           }
         }}
         title={t('newSite.startingPoint')}

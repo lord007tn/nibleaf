@@ -521,6 +521,20 @@ describe('create site dialog: creation that ends while React hides the dialog (<
     expect(close).toHaveBeenCalledWith(false);
   });
 
+  it('a success while hidden, with a newer value made before the hide: the dialog stays open with it once shown', async () => {
+    const { create, close } = await createHeld();
+    await injectNewerStarter();
+    await hide(true);
+    await act(async () => create.resolve({ id: 'site', firstPageId: 'welcome-page' }));
+    await hide(false);
+    expect(close).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(busy()).toBe(false);
+    expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
+    expect(element<HTMLInputElement>('input[type="radio"][value="blank"]').checked).toBe(true);
+  });
+
   it('a slug refusal while hidden shows on the address step once shown, as on screen', async () => {
     const { create, close } = await createHeld();
     await hide(true);
@@ -541,6 +555,17 @@ describe('create site dialog: creation that ends while React hides the dialog (<
   });
 });
 
+/** Picks another starter while creating: the controls are disabled, so this stands in for a programmatic caller of the draft. */
+async function injectNewerStarter() {
+  const blank = element<HTMLInputElement>('input[type="radio"][value="blank"]');
+  await act(async () => {
+    const fieldset = blank.closest('fieldset');
+    if (fieldset) fieldset.disabled = false;
+    blank.click();
+  });
+  expect(blank.checked).toBe(true);
+}
+
 describe('create site dialog: a value newer than the created site', () => {
   // The controls are disabled while creating; this injects a change anyway, as
   // a programmatic caller of the draft could, to hold the dialog to the contract.
@@ -551,13 +576,7 @@ describe('create site dialog: a value newer than the created site', () => {
     await nameSite();
     await click(button('newSite.continue'));
     await click(button('newSite.create'));
-    const blank = element<HTMLInputElement>('input[type="radio"][value="blank"]');
-    await act(async () => {
-      const fieldset = blank.closest('fieldset');
-      if (fieldset) fieldset.disabled = false;
-      blank.click();
-    });
-    expect(blank.checked).toBe(true);
+    await injectNewerStarter();
     await act(async () => create.resolve({ id: 'site', firstPageId: 'welcome-page' }));
     expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ starter: 'product-docs' }));
     expect(mocks.navigate).not.toHaveBeenCalled();
@@ -565,5 +584,43 @@ describe('create site dialog: a value newer than the created site', () => {
     expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
     expect(element<HTMLInputElement>('input[type="radio"][value="blank"]').checked).toBe(true);
     expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+});
+
+describe('create site dialog: a site created for an organization the dialog has since left', () => {
+  it('leaves the dialog for the new organization as it is: no close, no reset, no navigation, no error', async () => {
+    const create = deferred<{ id: string; firstPageId: string }>();
+    mocks.create.mockReturnValueOnce(create.promise);
+    const node = document.createElement('div');
+    document.body.append(node);
+    const root = createRoot(node);
+    roots.push(root);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    clients.push(client);
+    const close = vi.fn();
+    const view = (organizationId: string) =>
+      act(async () =>
+        root.render(
+          <QueryClientProvider client={client}>
+            <NewProjectDialog open organizationId={organizationId} onOpenChange={close} />
+          </QueryClientProvider>,
+        ),
+      );
+    await view('org-a');
+    await nameSite();
+    await click(button('newSite.continue'));
+    await click(button('newSite.create'));
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org-a' }));
+    // The same dialog now creates for another organization.
+    await view('org-b');
+    await act(async () => create.resolve({ id: 'site', firstPageId: 'welcome-page' }));
+    await settle();
+    expect(close).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
+    expect(document.body.textContent).toContain('newSite.startingPoint');
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(document.querySelector('[role="alert"]')).toBeNull();
   });
 });
