@@ -14,10 +14,13 @@ vi.mock('@/features/site-git/components/git-conflict-card', () => ({ GitConflict
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useGitWorkflow: query.use,
-  useAuthorizeGitWorkflow: () => mutation,
   useConnectGitWorkflow: () => mutation,
   useDisconnectGitWorkflow: () => mutation,
   useRotateGitWorkflowWebhookSecret: () => mutation,
+}));
+// Authorize GitHub is covered with the real cache in features/site-git/components/git-authorization.test.tsx.
+vi.mock('@/features/site-git/components/use-git-authorization-command', () => ({
+  useGitAuthorizationCommand: () => ({ busy: false, failed: false, verify: vi.fn(), retire: vi.fn() }),
 }));
 // Sync and Update PR are covered with the real cache in git-workflow.operations.test.tsx.
 vi.mock('@/features/site-git/components/use-git-operation-command', () => ({

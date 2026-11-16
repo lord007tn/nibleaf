@@ -13,10 +13,10 @@ import { SecretInput } from '@/components/secret-input';
 import { env } from '@/env';
 import { GitConflictCard } from '@/features/site-git/components/git-conflict-card';
 import { GitPullRequestPreviews, GitRecentOperations, GitWorkflowStatusHeader } from '@/features/site-git/components/git-workflow-readouts';
+import { useGitAuthorizationCommand } from '@/features/site-git/components/use-git-authorization-command';
 import { useGitOperationCommand } from '@/features/site-git/components/use-git-operation-command';
 import {
   friendlyErrorMessage,
-  useAuthorizeGitWorkflow,
   useConnectGitWorkflow,
   useDisconnectGitWorkflow,
   useGitWorkflow,
@@ -99,7 +99,8 @@ export function GitWorkflow({
   const [intent, setIntent] = useState<'overview' | 'sync' | 'publish' | 'connection'>('overview');
   const query = useGitWorkflow(projectId);
   const connection = query.data;
-  const authorize = useAuthorizeGitWorkflow(projectId);
+  // The connect wizard shows only once the status says the site is not connected.
+  const authorize = useGitAuthorizationCommand({ projectId, shown: !query.isPending && !query.isError && !connection });
   const connect = useConnectGitWorkflow(projectId);
   const disconnect = useDisconnectGitWorkflow(projectId);
   // The operation panel shown: none while the status loads or failed to load (that screen replaces it).
@@ -231,12 +232,13 @@ export function GitWorkflow({
                     onChange={(e) => {
                       setToken(e.target.value);
                       setAuthorizedAccount(null);
+                      authorize.retire();
                     }}
                     placeholder="github_pat_…"
                     value={token}
                   />
                 </div>
-                {authorize.isError ? (
+                {authorize.failed ? (
                   <p aria-live="polite" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-sm">
                     {t('settings.git.workflow.authorizeError')}
                   </p>
@@ -318,14 +320,12 @@ export function GitWorkflow({
                 <Button
                   className="w-full sm:w-auto"
                   disabled={token.trim().length < 20}
-                  loading={authorize.isPending}
+                  loading={authorize.busy}
                   loadingText={t('settings.git.workflow.authorizing')}
                   onClick={() =>
-                    authorize.mutate(token, {
-                      onSuccess: (identity) => {
-                        setAuthorizedAccount(identity);
-                        setConnectStep(2);
-                      },
+                    authorize.verify(token, (identity) => {
+                      setAuthorizedAccount(identity);
+                      setConnectStep(2);
                     })
                   }
                 >
