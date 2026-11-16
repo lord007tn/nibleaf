@@ -190,8 +190,6 @@ export function createUnsavedDrafts() {
   let seq = 0;
   const drafts = new Map<string, UnsavedDraft & { seq: number }>();
   const storedUpTo = new Map<string, number>();
-  /** Per page, the text whose failure an editor showed: its author was told it was not saved. */
-  const reported = new Map<string, string>();
   /** Per page, the latest write whose failure an editor showed: an older failure is out of date. */
   const reportedUpTo = new Map<string, number>();
   const unsettled = new Map<string, number>();
@@ -223,7 +221,6 @@ export function createUnsavedDrafts() {
       if (!settle(ticket)) return;
       const key = keyOf(ticket.owner, ticket.id);
       storedUpTo.set(key, Math.max(storedUpTo.get(key) ?? 0, ticket.seq));
-      reported.delete(key);
       const kept = drafts.get(key);
       if (kept && kept.seq < ticket.seq) drafts.delete(key);
       changed();
@@ -235,19 +232,17 @@ export function createUnsavedDrafts() {
       const kept = drafts.get(key);
       const outdated =
         ticket.seq <= (storedUpTo.get(key) ?? 0) || ticket.seq <= (reportedUpTo.get(key) ?? 0) || (kept !== undefined && kept.seq > ticket.seq);
-      // Its editor already said this very text was not saved: not a silent loss.
-      const told = reported.get(key) === JSON.stringify([draft.title, draft.content]);
-      if (!outdated && !told && draft.id === ticket.id) drafts.set(key, { ...draft, seq: ticket.seq });
+      if (!outdated && draft.id === ticket.id) drafts.set(key, { ...draft, seq: ticket.seq });
       changed();
     },
-    /** The write settled, and its editor shows how (or it no longer counts): nothing to keep.
-     *  `shown` is the draft whose failure the editor showed its author. */
-    settled(ticket: DraftTicket, shown?: DraftSnapshot) {
+    /** The write settled, and its editor shows how (or it no longer counts): nothing to keep
+     *  for it. `shown`: the editor showed its author that this write failed. */
+    settled(ticket: DraftTicket, shown = false) {
       if (!settle(ticket)) return;
       if (shown) {
-        // The author saw this later write fail: an earlier write's draft is out of date.
+        // A later write of the page failed on screen: an earlier write's draft is out of date.
+        // (A later write that fails out of sight, even of the same text, is still kept.)
         const key = keyOf(ticket.owner, ticket.id);
-        reported.set(key, JSON.stringify([shown.title, shown.content]));
         reportedUpTo.set(key, Math.max(reportedUpTo.get(key) ?? 0, ticket.seq));
         const kept = drafts.get(key);
         if (kept && kept.seq < ticket.seq) drafts.delete(key);
@@ -283,7 +278,6 @@ export function createUnsavedDrafts() {
       generation += 1;
       drafts.clear();
       storedUpTo.clear();
-      reported.clear();
       reportedUpTo.clear();
       unsettled.clear();
       changed();

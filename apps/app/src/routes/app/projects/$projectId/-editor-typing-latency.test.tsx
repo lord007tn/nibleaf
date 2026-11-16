@@ -2160,6 +2160,29 @@ describe('#789: an unmount while the server normalizes the last write keeps the 
     expect(unsavedDrafts.peek('user-1', 'page-1')).toBeUndefined();
   });
 
+  // Cap review: a draft never stored is kept, whatever an editor showed before.
+  // A fails on screen; the editor unmounts and the final flush fails out of
+  // sight: A is kept, and comes back.
+  it('A fails on screen, the editor unmounts, the final flush fails too: reopened, A is back and saved', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    await typeAndHoldTheSave();
+    await settleWrite(false);
+    expect(errorShown()).toBe(true);
+    await unmount();
+    for (let round = 0; round < 8; round += 1) {
+      if (held.length > 0) await settleWrite(false);
+      else await advance(1000);
+    }
+    expect(server.content).toBe(ORIGINAL);
+    await reopen();
+    // 05b15d9: A was gone.
+    expect(getMarkdown(current())).toBe(withTyped('A').trimEnd());
+    await drain();
+    expect(server.content).toBe(withTyped('A'));
+    expect(conflictShown()).toBe(false);
+  });
+
   // Guards: what main already did right stays so.
   it('guard: the re-send stores the draft: opened again, it shows the stored draft, with no banner and no more writes', async () => {
     await open(ORIGINAL);

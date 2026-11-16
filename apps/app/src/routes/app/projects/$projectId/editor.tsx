@@ -720,7 +720,7 @@ function EditorPage() {
           const reviewed = isSupersededWrite(error) || resolution !== saveQueue.resolution(draft.id);
           if (unseen && !reviewed) {
             unsavedDrafts.failed(ticket, { id: draft.id, title: draft.title, content: draft.content, base: saveQueue.baseFor(draft), error });
-          } else unsavedDrafts.settled(ticket, reviewed ? undefined : draft);
+          } else unsavedDrafts.settled(ticket, !reviewed);
         },
       );
     }
