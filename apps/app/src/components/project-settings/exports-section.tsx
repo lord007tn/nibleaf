@@ -5,44 +5,30 @@ import { SkeletonCard } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
-import { Archive, Ban, Download, FileArchive, Play, Plus } from 'lucide-react';
+import { Archive, Ban, Download, FileArchive, Plus } from 'lucide-react';
 import { useCallback, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { FailureMessage } from '@/components/failure-message';
 import { ScheduleCreateForm } from '@/features/site-exports/components/schedule-create-form';
+import { formatExportDate, ScheduleRow } from '@/features/site-exports/components/schedule-row';
 import { EXPORT_FORMAT_LABELS as labelKeys } from '@/features/site-exports/model/schedule-create';
+import { exportStartErrorKeys } from '@/features/site-exports/model/schedule-row';
 import { useDeployments, useProject } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import {
   type ExportArtifact,
   type ExportFormat,
   type ExportRun,
-  type ExportSchedule,
   type ExportStatus,
   useCancelExport,
   useCreateExport,
   useGetExportDownload,
   useListExportRuns,
   useListExportSchedules,
-  useRunExportSchedule,
-  useUpdateExportSchedule,
 } from '@/hooks/api/exports';
 import { formatExportFileSize } from '@/lib/export-file-size';
-import { countVariables, localeTag } from '@/lib/format';
+import { countVariables } from '@/lib/format';
 import { SectionHeader, useConfirmSettingsDiscard } from './shared';
-
-const formatDate = (date: string | null, locale: string) => (date ? new Date(date).toLocaleString(localeTag(locale)) : '—');
-
-/**
- * What a failed export start means. 409: too many exports running, or today's
- * limit reached. 400 once a version is known to be live: that version is larger
- * than this instance exports (retrying won't help); otherwise the site was
- * never published.
- */
-const startStatusKeys = (hasLiveVersion: boolean | undefined): Partial<Record<number, MessageKey>> => ({
-  409: 'settings.exports.workflow.limitReached',
-  400: hasLiveVersion ? 'settings.exports.workflow.tooLarge' : 'settings.exports.workflow.publishFirst',
-});
 
 /**
  * Whether the site has a published version to export. The site's own flag
@@ -200,7 +186,7 @@ export function ExportsSection({
                   create.mutate(formats, {
                     onSuccess: () => toast.success(t('settings.exports.workflow.queued')),
                     onError: (error) =>
-                      toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', startStatusKeys(hasLiveVersion))),
+                      toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', exportStartErrorKeys(hasLiveVersion))),
                   });
                 }}
               >
@@ -294,7 +280,7 @@ export function ExportsSection({
                       {run.trigger === 'SCHEDULED'
                         ? (run.schedule?.name ?? t('settings.exports.workflow.scheduled'))
                         : t('settings.exports.workflow.manual')}{' '}
-                      · {formatDate(run.createdAt, locale)}
+                      · {formatExportDate(run.createdAt, locale)}
                     </div>
                   </div>
                   {(run.status === 'PENDING' || run.status === 'RUNNING') && canCreate ? (
@@ -365,68 +351,5 @@ function StatusBadge({ status }: { status: ExportStatus }) {
     <Badge variant={status === 'FAILED' ? 'destructive' : status === 'SUCCEEDED' ? 'default' : 'secondary'}>
       {t(`settings.exports.workflow.status.${status.toLowerCase()}` as MessageKey)}
     </Badge>
-  );
-}
-
-function ScheduleRow({
-  projectId,
-  schedule,
-  canManage,
-  hasLiveVersion,
-}: {
-  projectId: string;
-  schedule: ExportSchedule;
-  canManage: boolean;
-  hasLiveVersion: boolean | undefined;
-}) {
-  const { locale, t } = useLocale();
-  const update = useUpdateExportSchedule(projectId, schedule.id);
-  const run = useRunExportSchedule(projectId, schedule.id);
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 font-medium text-sm">
-          <span dir="auto">{schedule.name}</span>
-          <Badge variant="secondary">{schedule.enabled ? t('settings.exports.workflow.enabled') : t('settings.exports.workflow.disabled')}</Badge>
-        </div>
-        <div className="mt-1 text-muted-foreground text-xs">
-          {t(`settings.exports.workflow.${schedule.cadence.toLowerCase()}` as MessageKey)} {t('settings.exports.workflow.at')}{' '}
-          <span dir="ltr">
-            {String(schedule.hour).padStart(2, '0')}:{String(schedule.minute).padStart(2, '0')} {schedule.timezone}
-          </span>{' '}
-          · {t('settings.exports.workflow.next')} {formatDate(schedule.nextRunAt, locale)} ·{' '}
-          {t('settings.exports.workflow.runCount', { count: schedule._count.jobs })}
-        </div>
-        {schedule.lastError ? <FailureMessage context="export" error={schedule.lastError} /> : null}
-      </div>
-      {canManage ? (
-        <div className="flex gap-2">
-          <Button
-            loading={run.isPending}
-            onClick={() =>
-              run.mutate(undefined, {
-                onSuccess: () => toast.success(t('settings.exports.workflow.runQueued')),
-                onError: (error) =>
-                  toast.error(friendlyErrorMessage(t, error, 'settings.exports.workflow.startError', startStatusKeys(hasLiveVersion))),
-              })
-            }
-            size="sm"
-            variant="outline"
-          >
-            <Play className="size-3.5" /> {t('settings.exports.workflow.runNow')}
-          </Button>
-          <Button
-            loading={update.isPending}
-            onClick={() =>
-              update.mutate({ enabled: !schedule.enabled }, { onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.saveError')) })
-            }
-            size="sm"
-            variant="outline"
-          >
-            {schedule.enabled ? t('settings.exports.workflow.disable') : t('settings.exports.workflow.enable')}
-          </Button>
-        </div>
-      ) : null}
-    </div>
   );
 }

@@ -1,4 +1,4 @@
-import type { ExportFormatInput, UpdateExportScheduleBody } from '@nibleaf/validators';
+import type { ExportFormatInput } from '@nibleaf/validators';
 import { type QueryClient, useQuery } from '@tanstack/react-query';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
@@ -91,27 +91,3 @@ export const useGetExportDownload = (projectId: string) =>
         'download URL',
       ),
   });
-
-export const useUpdateExportSchedule = (projectId: string, scheduleId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: UpdateExportScheduleBody) =>
-      mutateData<ExportSchedule>(
-        await api.app.projects[':projectId'].exports.schedules[':scheduleId'].$patch({ param: { projectId, scheduleId }, json: body }),
-        'Could not update the export schedule.',
-      ),
-    onSuccess: () => invalidateExports(queryClient, projectId),
-  });
-};
-
-export const useRunExportSchedule = (projectId: string, scheduleId: string) => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async () =>
-      mutateData<ExportRun>(
-        await api.app.projects[':projectId'].exports.schedules[':scheduleId'].run.$post({ param: { projectId, scheduleId } }),
-        'Could not run the export schedule.',
-      ),
-    onSuccess: () => invalidateExports(queryClient, projectId),
-  });
-};

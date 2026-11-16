@@ -1,0 +1,1735 @@
+{
+  "environment": "Component fixture: main's ExportsSection (a4230029eb7c5f9cc25ebe5eed9aba62f703f0b7) and this branch's with the real design system, EN/AR catalogs, query hooks and schedule mutations; fictional site; every request answered by interception; not the signed-in dashboard or production",
+  "base": "a4230029eb7c5f9cc25ebe5eed9aba62f703f0b7",
+  "head": "d3786ecbdb82078f59332290a4c845b3948d226e",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "en": {
+        "before-list": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-pending": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable",
+                  "busy": true,
+                  "disabled": true,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "before-refused": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": ["Could not save"],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "after-list": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-pending": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable Handbook nightly",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "after-refused": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["Could not save"],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        }
+      },
+      "ar": {
+        "before-list": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-pending": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل",
+                  "busy": true,
+                  "disabled": true,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "before-refused": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": ["تعذر الحفظ"],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "after-list": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الليلي",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل أرشيف الدليل الليلي",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-pending": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الليلي",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل أرشيف الدليل الليلي",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "after-refused": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الليلي",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل أرشيف الدليل الليلي",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["تعذر الحفظ"],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "en": {
+        "before-list": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-pending": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable",
+                  "busy": true,
+                  "disabled": true,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "before-refused": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": ["Could not save"],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "after-list": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-pending": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable Handbook nightly",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "after-refused": {
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["Could not save"],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        }
+      },
+      "ar": {
+        "before-list": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-pending": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل",
+                  "busy": true,
+                  "disabled": true,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "before-refused": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": ["تعذر الحفظ"],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "after-list": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الليلي",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل أرشيف الدليل الليلي",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-pending": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الليلي",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل أرشيف الدليل الليلي",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        },
+        "after-refused": {
+          "dir": "rtl",
+          "rows": [
+            {
+              "name": "أرشيف الدليل الليلي",
+              "status": "مفعل",
+              "details": "يوميا عند 02:00 Africa/Lagos · التالي 17�/11�/2026، 2:00:00 ص · 12 عمليات",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الليلي",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تعطيل أرشيف الدليل الليلي",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "أرشيف الدليل الشهري",
+              "status": "معطل",
+              "details": "شهريا عند 23:30 UTC · التالي — · 1 عمليات",
+              "failure": "لا يوجد إصدار منشور لتصديره. انشر موقعك ثم حاول مجددا.",
+              "buttons": [
+                {
+                  "accessibleName": "تشغيل الآن أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "تفعيل أرشيف الدليل الشهري",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["تعذر الحفظ"],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+              "body": { "enabled": false }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1/exports/schedules" },
+        {
+          "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+          "body": { "enabled": false }
+        },
+        { "call": "GET /api/app/projects/site-1/exports/schedules" },
+        {
+          "call": "PATCH /api/app/projects/site-1/exports/schedules/schedule-1",
+          "body": { "enabled": false }
+        },
+        { "call": "GET /api/app/projects/site-1/exports/schedules" },
+        {
+          "call": "POST /api/app/projects/site-1/exports/schedules/schedule-1/run",
+          "body": null
+        },
+        { "call": "GET /api/app/projects/site-1/exports/schedules" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "listed",
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "writesSoFar": 0
+        },
+        {
+          "step": "disable pending: only that button is busy",
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable Handbook nightly",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "writesSoFar": 1
+        },
+        {
+          "step": "refused: toast, still enabled",
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "enabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Disable Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["Could not save"],
+          "overflow": false,
+          "writesSoFar": 1
+        },
+        {
+          "step": "retried: disabled, read back from the fixture store",
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "disabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["Could not save"],
+          "overflow": false,
+          "writesSoFar": 2
+        },
+        {
+          "step": "run pending after a double press",
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "disabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 12 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                },
+                {
+                  "accessibleName": "Enable Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["Could not save"],
+          "overflow": false,
+          "writesSoFar": 3
+        },
+        {
+          "step": "run queued once; run count read back",
+          "dir": "ltr",
+          "rows": [
+            {
+              "name": "Handbook nightly",
+              "status": "disabled",
+              "details": "Daily at 02:00 Africa/Lagos · next 11/17/2026, 2:00:00 AM · 13 runs",
+              "failure": null,
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                },
+                {
+                  "accessibleName": "Enable Handbook nightly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "name": "Handbook monthly",
+              "status": "disabled",
+              "details": "Monthly at 23:30 UTC · next — · 1 runs",
+              "failure": "There is no published version to export. Publish your site, then try again.",
+              "buttons": [
+                {
+                  "accessibleName": "Run now Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Enable Handbook monthly",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["Archive run queued."],
+          "overflow": false,
+          "writesSoFar": 3
+        }
+      ]
+    }
+  ]
+}
