@@ -290,6 +290,7 @@ describe('hybrid index recovery', () => {
   });
 
   it('uses keyword typo matches when relevance removes every vector hit', async () => {
+    vi.useFakeTimers({ toFake: ['Date', 'performance', 'setTimeout', 'clearTimeout'] });
     const keyword = { id: 'publish', title: 'Publish your changes', path: 'publish', description: '', snippet: 'Publish your changes.', score: 0.2 };
     doubles.queryHybrid.mockResolvedValue([
       {
@@ -319,6 +320,7 @@ describe('hybrid index recovery', () => {
     });
     expect(doubles.queryHybrid).toHaveBeenCalledOnce();
     expect(legacy).toHaveBeenCalledOnce();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   // The keyword response's "AI ready" hint is cached for a few seconds. Answers
