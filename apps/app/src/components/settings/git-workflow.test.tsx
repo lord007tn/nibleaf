@@ -14,13 +14,16 @@ vi.mock('@/features/site-git/components/git-conflict-card', () => ({ GitConflict
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useGitWorkflow: query.use,
-  useConnectGitWorkflow: () => mutation,
   useDisconnectGitWorkflow: () => mutation,
   useRotateGitWorkflowWebhookSecret: () => mutation,
 }));
 // The Connection configuration save is covered with the real cache in git-workflow.connection.test.tsx.
 vi.mock('@/features/site-git/api/git-workflow-connection', () => ({
   useSaveGitWorkflowConnection: () => ({ save: vi.fn(), pending: false, isPending: () => false }),
+}));
+// The first Connect is covered with the real cache in features/site-git/components/git-first-connect.test.tsx.
+vi.mock('@/features/site-git/components/use-git-first-connect-command', () => ({
+  useGitFirstConnectCommand: () => ({ busy: false, press: vi.fn() }),
 }));
 // Authorize GitHub is covered with the real cache in features/site-git/components/git-authorization.test.tsx.
 vi.mock('@/features/site-git/components/use-git-authorization-command', () => ({

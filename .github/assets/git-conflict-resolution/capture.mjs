@@ -81,7 +81,7 @@ try {
   );
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
-    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow, useQueueGitOperation, useResolveGitConflict } from './git-workflow-hooks';\n",
+    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow, useConnectGitWorkflow, useQueueGitOperation, useResolveGitConflict } from './git-workflow-hooks';\n",
   );
   await writeFile(
     resolve(harness, 'before/git-workflow.tsx'),
