@@ -12,7 +12,7 @@ import {
 } from '@nibleaf/shared/themes';
 import { parseThemeTemplate } from '@nibleaf/validators';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { act, type ComponentProps, type ReactNode, StrictMode, useCallback, useRef, useState } from 'react';
+import { Activity, act, type ComponentProps, type ReactNode, StrictMode, useCallback, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,6 +20,7 @@ import { ThemeSection } from '@/components/project-settings/theme-section';
 import type { Project } from '@/hooks/api';
 import { projectQueryOptions } from '@/hooks/api/query-options';
 import { useSaveRegionForm } from '@/lib/forms/save-region';
+import { writeFor } from './theme-writes';
 
 const { statuses } = vi.hoisted(() => ({ statuses: [] as string[] }));
 // Every status the page's save bar renders, frame by frame, so a "Saved" that
@@ -235,15 +236,23 @@ function SiblingForm() {
 
 /** Whether the section is keyed by site, as the editor's Configuration panel renders it (a site switch remounts it). */
 let keyedBySite = false;
+/** Hides the section in an <Activity>, as React can keep a tab's content while it is not shown. */
+let hideSection: (hidden: boolean) => void;
 function Canvas() {
   const [site, setSite] = useState<Site>('site-1');
+  const [hidden, setHidden] = useState(false);
   showSite = setSite;
-  return <Section site={site} />;
+  hideSection = setHidden;
+  return <Section hidden={hidden} site={site} />;
 }
-function Section({ site }: { site: Site }) {
+function Section({ site, hidden }: { site: Site; hidden: boolean }) {
   const { data } = useQuery(projectQueryOptions(site));
   if (!data) return null;
-  return keyedBySite ? <ThemeSection key={site} project={data as Project} /> : <ThemeSection project={data as Project} />;
+  return (
+    <Activity mode={hidden ? 'hidden' : 'visible'}>
+      {keyedBySite ? <ThemeSection key={site} project={data as Project} /> : <ThemeSection project={data as Project} />}
+    </Activity>
+  );
 }
 
 /** The site's own theme: Signal with an authored accent and metadata, beside Styling's colour and radius. */
@@ -1110,12 +1119,16 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
     expect(storedTheme()).toMatchObject({ preset: 'harbor' });
   });
 
-  /** A's save is held after its PATCH merged; the editor then remounts A (A → B → A). */
-  const remountDuringSave = async () => {
+  /**
+   * A's save is held after its PATCH merged (or, with `before: 'merge'`, before
+   * it merges, where a failure is decided); the editor then remounts A (A → B → A).
+   */
+  const remountDuringSave = async ({ before = 'answer' }: { before?: 'merge' | 'answer' } = {}) => {
     keyedBySite = true;
     await open();
     const patch = gate();
-    server.holdPatch = patch.promise;
+    if (before === 'merge') server.holdMerge = patch.promise;
+    else server.holdPatch = patch.promise;
     await preset('manuscript');
     await startSave();
     await act(async () => showSite('site-2'));
@@ -1157,6 +1170,68 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
       expect(status()).toBe('');
       expect(region()).toBeNull();
       expect(statuses).not.toContain('common.saved');
+    },
+  );
+
+  it.each(['fails', 'succeeds'] as const)(
+    'a save whose form unmounted mid-save (#767): when it %s, the site’s turn is given back, nothing is said or focused, and the new form keeps its edit',
+    async (outcome) => {
+      // A failure is decided before the merge, so that is where the failing request waits.
+      const patch = await remountDuringSave({ before: outcome === 'fails' ? 'merge' : 'answer' });
+      expect(writeFor(JSON.stringify(['site-1', 'theme']))).toBeDefined();
+      await appearance('light');
+      const focused = color('canvas');
+      await act(async () => focused.focus());
+      if (outcome === 'fails') server.failPatch = true;
+      await patch.open();
+      await finished();
+      server.failPatch = false;
+      server.holdMerge = undefined;
+      // The request really ended as named: the server stored Manuscript only when it succeeded.
+      expect(storedTheme()).toMatchObject({ preset: outcome === 'fails' ? 'signal' : 'manuscript' });
+      // The write owner is released by the request's own end, not by the form that started it.
+      expect(writeFor(JSON.stringify(['site-1', 'theme']))).toBeUndefined();
+      expect(saveBusy()).toBe(false);
+      expect(toast.error).not.toHaveBeenCalled();
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(focused);
+      expect(shownAppearance()).toBe('settings.styling.theme.light');
+      expect(region()).not.toBeNull();
+      expect(statuses).not.toContain('common.saved');
+      // The new form saves its own edit, alone.
+      await save();
+      expect(lastPatch()).toStrictEqual({ styling: { theme: 'light' } });
+      expect(status()).toBe('common.saved');
+    },
+  );
+
+  it.each([
+    ['on screen', false],
+    ['hidden meanwhile', true],
+  ])(
+    'a Manuscript save answered after another writer stored Harbor keeps Manuscript, unsaved, against Harbor with the conflict (%s, #767)',
+    async (_name, hide) => {
+      await open();
+      const patch = gate();
+      server.holdPatch = patch.promise;
+      await preset('manuscript');
+      await startSave();
+      if (hide) await act(async () => hideSection(true));
+      await elsewhere((config) => ({ ...config, theme: { ...(config.theme as Config), preset: 'harbor' } }));
+      await patch.open();
+      await finished();
+      if (hide) {
+        // Nothing reaches a hidden form's screen; it reconciles once shown.
+        expect(toast.success).not.toHaveBeenCalled();
+        await act(async () => hideSection(false));
+        await settle();
+      }
+      expect(storedTheme()).toMatchObject({ preset: 'harbor' });
+      expect(activePreset()).toBe('manuscript');
+      expect(conflict()).toBe(true);
+      expect(region()).not.toBeNull();
+      expect(statuses).not.toContain('common.saved');
+      expect(toast.error).not.toHaveBeenCalled();
     },
   );
 

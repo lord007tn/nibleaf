@@ -1,5 +1,5 @@
 import { useForm, useStore } from '@tanstack/react-form';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   agreesWith,
   type DraftValues,
@@ -30,10 +30,17 @@ export type DraftSave<T extends DraftValues> = {
   /** Call after a failed save: nothing is confirmed and the edits stay. */
   failed: () => void;
   /**
-   * False once this save no longer belongs to the form: it moved to another
-   * identity (or away and back) since the save started. `succeeded` and
-   * `failed` then do nothing; check it before touching the form yourself
-   * (e.g. mapping a field error).
+   * False while this save's form is off screen or no longer its own: the form
+   * unmounted, React hid it (`<Activity>`), or it moved to another identity
+   * (or away and back) since the save started. An unmounted form never comes
+   * back, so its save stays not current even once another form for the same
+   * identity mounts. A hidden form that shows again owns its save again, and
+   * a confirmation that came while it was hidden is reconciled then, quietly.
+   * While it is false, `succeeded` returns false and touches nothing on
+   * screen. Check it before any effect of your own on the form or the screen
+   * (a field error, a toast, focus, closing or navigating). The request itself
+   * is not cancelled: what it wrote stays written, and cache updates and
+   * refetches still follow it.
    */
   isCurrent: () => boolean;
 };
@@ -74,6 +81,9 @@ type ActiveSave<T extends DraftValues> = { id: number; generation: number; pendi
  * - one save at a time: `submit()` takes a synchronous lock, so Enter or
  *   Cmd+S during a save can't start a second one; only that save's own
  *   completion releases it;
+ * - a save belongs to the form that started it, and is current only while
+ *   that form is on screen (see `DraftSave.isCurrent`): a late answer for a
+ *   form that unmounted reaches neither a form mounted later nor the screen;
  * - a refetch during a save reconciles values but never drops the save's
  *   state or its pending flag. The save records what it sent and which keys
  *   it changed when its request goes out; until a refetch echoes a sent key,
@@ -119,11 +129,22 @@ export function useServerDraftForm<T extends DraftValues>({
   const baselineRef = useRef(baseline);
   const identityRef = useRef(identityKey);
   const lastSource = useRef(source);
+  // The source object the effect below last handled. React runs effects again
+  // when it shows a hidden form; the same source then is nothing new.
+  const handledSource = useRef(source);
   // Bumped on every identity change, so a save that started for an earlier
   // identity (even one we came back to) can recognise it no longer applies.
   const generationRef = useRef(0);
   const activeRef = useRef<ActiveSave<T> | null>(null);
   const nextSaveId = useRef(0);
+  // Whether the form is on screen: set when it mounts or React shows it again,
+  // cleared when it unmounts or React hides it. A layout effect, so it is
+  // already cleared when the commit that removes the form ends, before any
+  // later promise continuation can read it. React keeps a hidden form's refs,
+  // and drops an unmounted one's, so a save can only come back to the former.
+  const shownRef = useRef(false);
+  // How a save ended while React kept the form hidden, to reconcile once it shows.
+  const heldRef = useRef<{ save: ActiveSave<T>; failed: boolean; confirmed?: T } | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [conflicts, setConflicts] = useState<Array<keyof T & string>>([]);
   const onSubmitRef = useRef(onSubmit);
@@ -136,6 +157,8 @@ export function useServerDraftForm<T extends DraftValues>({
     setBaselineState(next);
   }, []);
 
+  // Runs when the save's own request ends, even with the form off screen: React
+  // can show a hidden form again with this state, and it must not stay saving.
   const release = useCallback((save: ActiveSave<T>) => {
     if (activeRef.current?.id !== save.id) return;
     activeRef.current = null;
@@ -147,19 +170,40 @@ export function useServerDraftForm<T extends DraftValues>({
     onSubmit: async ({ value }) => {
       const save = activeRef.current;
       if (!save) return;
+      const owned = () => save.generation === generationRef.current && activeRef.current?.id === save.id;
+      const isCurrent = () => shownRef.current && owned();
+      // Validation that outlasted the form on screen sends nothing.
+      if (!isCurrent()) return;
       save.pending = startSave(baselineRef.current, value, toSentRef.current);
-      const isCurrent = () => save.generation === generationRef.current && activeRef.current?.id === save.id;
-      save.outcome = await onSubmitRef.current(value, {
-        baseline: baselineRef.current,
-        succeeded: (confirmed) => isCurrent() && succeededRef.current(save, confirmed),
-        failed: () => {
-          // Nothing was confirmed: the edits stay and later refetches follow the normal rules.
-          if (isCurrent()) save.pending = undefined;
-        },
-        isCurrent,
-      });
+      try {
+        save.outcome = await onSubmitRef.current(value, {
+          baseline: baselineRef.current,
+          succeeded: (confirmed) => {
+            if (isCurrent()) return succeededRef.current(save, confirmed);
+            // Off screen: held for when the form shows again (an unmounted form never does).
+            if (owned()) heldRef.current = { save, failed: false, confirmed };
+            return false;
+          },
+          failed: () => {
+            // Nothing was confirmed: the edits stay and later refetches follow the normal rules.
+            if (isCurrent()) save.pending = undefined;
+            else if (owned()) heldRef.current = { save, failed: true };
+          },
+          isCurrent,
+        });
+      } catch (error) {
+        // A save the form no longer owns has no one left to tell.
+        if (isCurrent()) throw error;
+      }
     },
   });
+
+  useLayoutEffect(() => {
+    shownRef.current = true;
+    return () => {
+      shownRef.current = false;
+    };
+  }, []);
 
   /** Applies `next` to the form field by field; never resets meta or pending state. */
   const applyValues = useCallback(
@@ -187,6 +231,8 @@ export function useServerDraftForm<T extends DraftValues>({
 
   useEffect(() => {
     const identityChanged = identityRef.current !== identityKey;
+    if (!identityChanged && handledSource.current === source) return;
+    handledSource.current = source;
     if (!identityChanged && deepEqual(lastSource.current, source)) return;
     lastSource.current = source;
     identityRef.current = identityKey;
@@ -195,6 +241,7 @@ export function useServerDraftForm<T extends DraftValues>({
       // the old identity and will find itself no longer current.
       generationRef.current += 1;
       activeRef.current = null;
+      heldRef.current = null;
       setIsSaving(false);
       setConflicts([]);
       setBaseline(source);
@@ -203,7 +250,10 @@ export function useServerDraftForm<T extends DraftValues>({
     }
     const current = form.state.values as T;
     const prior = baselineRef.current;
-    if (!activeRef.current && !isDraftDirty(current, prior)) {
+    // A save that ended while the form was hidden is still in flight here: its
+    // end is reconciled after this, as when a refetch lands during a save.
+    const save = activeRef.current ?? heldRef.current?.save;
+    if (!save && !isDraftDirty(current, prior)) {
       // Nothing edited and nothing saving: take the server's values.
       setConflicts([]);
       setBaseline(source);
@@ -212,13 +262,23 @@ export function useServerDraftForm<T extends DraftValues>({
     }
     // Edits or a save in flight: merge without resetting anything. The save's
     // state tells its own echo apart from someone else's change.
-    const save = activeRef.current;
     const change = reconcileServerChange({ baseline: prior, current, next: source, save: save?.pending });
     if (save && change.save) save.pending = change.save;
     setBaseline(change.baseline);
     applyValues(change.current);
     mergeConflicts(change.conflicts, change.current, change.baseline, change.save);
   }, [applyValues, form, identityKey, mergeConflicts, setBaseline, source]);
+
+  // After the source effect, so when React shows a hidden form again, a source
+  // it missed is reconciled first, while the save's pending state still tells
+  // its echo from someone else's change; then how the save ended.
+  useEffect(() => {
+    const held = heldRef.current;
+    heldRef.current = null;
+    if (!held || held.save.generation !== generationRef.current) return;
+    if (held.failed) held.save.pending = undefined;
+    else succeededRef.current(held.save, held.confirmed);
+  }, []);
 
   const succeeded = (save: ActiveSave<T>, confirmed?: T) => {
     const pending = save.pending;
@@ -248,14 +308,15 @@ export function useServerDraftForm<T extends DraftValues>({
    */
   const submit = useCallback(async (): Promise<DraftSubmitResult> => {
     if (activeRef.current) return 'busy';
+    if (!shownRef.current) return 'failed';
     nextSaveId.current += 1;
     const save: ActiveSave<T> = { id: nextSaveId.current, generation: generationRef.current };
     activeRef.current = save;
     setIsSaving(true);
     try {
       await form.handleSubmit();
-      // A save for an identity the form has since left reports nothing useful to this form.
-      return save.generation === generationRef.current ? (save.outcome ?? 'invalid') : 'failed';
+      // A save that ends with the form off screen, or on an identity it has since left, reports nothing useful to it.
+      return shownRef.current && save.generation === generationRef.current ? (save.outcome ?? 'invalid') : 'failed';
     } finally {
       release(save);
     }

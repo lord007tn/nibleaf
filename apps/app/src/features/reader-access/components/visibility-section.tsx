@@ -35,6 +35,8 @@ export function VisibilitySection({ projectId, current, status }: { projectId: s
   const t = useT();
   const setMode = useSetAccessMode(projectId);
   const failure = useRef<unknown>(null);
+  // Saved while React kept the dialog hidden: its draft reports the submit as failed, but the change went through.
+  const savedAway = useRef(false);
   const [confirming, setConfirming] = useState(false);
   const name = useId();
   const reasonId = useId();
@@ -47,6 +49,7 @@ export function VisibilitySection({ projectId, current, status }: { projectId: s
       try {
         await setMode.mutateAsync({ mode: value.mode });
         outcome.succeeded(value);
+        if (!outcome.isCurrent()) savedAway.current = true;
         return 'saved';
       } catch (error) {
         outcome.failed();
@@ -150,11 +153,14 @@ export function VisibilitySection({ projectId, current, status }: { projectId: s
         fallbackErrorMessage={t('settings.saveError')}
         onConfirm={async () => {
           failure.current = null;
+          savedAway.current = false;
           const outcome = await draft.submit();
           if (outcome === 'saved') {
             toast.success(t('settings.visibility.saved'));
             return;
           }
+          // The dialog closes once shown again, with nothing else said.
+          if (savedAway.current) return;
           throw failure.current ?? new Error('The visibility change was not saved.');
         }}
         onOpenChange={setConfirming}

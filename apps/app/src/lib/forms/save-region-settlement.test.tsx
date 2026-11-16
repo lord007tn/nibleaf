@@ -410,6 +410,30 @@ describe('SaveRegion settlement: one form (#759)', () => {
     });
     expect(history()).toEqual(['']);
   });
+
+  it('a replaced form’s late "invalid" neither says so nor moves focus into the form that replaced it (#767)', async () => {
+    const a = controls();
+    await render([{ id: 'a', source: old, controls: a }]);
+    await edit(a, 'name', 'New');
+    await clickSave();
+    const first = a.saves[0];
+    await render([{ id: 'a', source: old, controls: a, instanceKey: 'a-again', invalid: true }]);
+    await edit(a, 'name', 'Newer');
+    const elsewhere = document.createElement('button');
+    container.append(elsewhere);
+    elsewhere.focus();
+    await finish(a, 0, 'invalid');
+    expect(first?.save.isCurrent()).toBe(false);
+    expect(document.activeElement).toBe(elsewhere);
+    expect(history()).toEqual(['']);
+    // The new form is untouched, still to save, and saves on its own.
+    expect(a.draft.isDirty).toBe(true);
+    expect(a.draft.isSaving).toBe(false);
+    await clickSave();
+    expect(a.saves).toHaveLength(2);
+    await succeed(a, 1);
+    expect(history()).toEqual(['', 'common.saved']);
+  });
 });
 
 describe('SaveRegion settlement: several forms', () => {

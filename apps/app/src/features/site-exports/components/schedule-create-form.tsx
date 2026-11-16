@@ -84,17 +84,6 @@ export function ScheduleCreateForm({
     onDraftChange?.(projectId);
     return () => onDraftChange?.(projectId);
   }, [onDraftChange, projectId]);
-  // The shared draft's isCurrent() doesn't cover unmounting yet (#767), and a
-  // closed form or a site switch unmounts this one: a request that settles
-  // afterwards must not toast, focus or close anything. Retire after #767.
-  const mounted = useRef(true);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-
   const problemMessage = (field: ScheduleField, problem: ScheduleProblem | undefined) => {
     if (!problem) return;
     if (problem === 'invalid') return t('settings.exports.workflow.scheduleCreateError');
@@ -117,18 +106,18 @@ export function ScheduleCreateForm({
         }
         return 'invalid';
       }
-      const live = () => mounted.current && save.isCurrent();
       setFailure(null);
       try {
         await createSchedule({ projectId, body: result.body });
       } catch (error) {
-        if (!live()) return 'failed';
         save.failed();
+        // A closed form or another site says nothing about it.
+        if (!save.isCurrent()) return 'failed';
         // 409: the site already has the most schedules allowed.
         setFailure(friendlyErrorMessage(t, error, 'settings.saveError', { 409: 'settings.exports.workflow.scheduleLimit' }));
         return 'failed';
       }
-      if (live()) save.succeeded(values);
+      save.succeeded(values);
       return 'saved';
     },
   });
@@ -148,8 +137,8 @@ export function ScheduleCreateForm({
     // TanStack's first submit stops at a field already in error (from a blur) without
     // checking the rest; check them all so Create reports every problem at once.
     await form.validateAllFields('submit');
+    // 'saved' and 'invalid' only come back while this form is on screen, on the site it started on.
     const result = await draft.submit();
-    if (!mounted.current) return;
     if (result === 'invalid') setFocusRequest((count) => count + 1);
     if (result === 'saved') {
       toast.success(t('settings.exports.workflow.scheduleCreated'));

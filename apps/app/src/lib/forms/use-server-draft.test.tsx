@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
 import { notifyManager, QueryClient, QueryClientProvider, useMutation, useQuery } from '@tanstack/react-query';
-import { act } from 'react';
+import { Activity, act, StrictMode, Suspense, startTransition } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { DraftValues } from './server-draft';
 import { type DraftSave, type DraftSubmitResult, useServerDraftForm } from './use-server-draft';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -1208,5 +1210,568 @@ describe('useServerDraftForm: a payload transformed before sending (toSent)', ()
         }
       });
     }
+  });
+});
+
+describe('useServerDraftForm: a save belongs to the mount that started it (#767)', () => {
+  /**
+   * A form that can unmount and mount again: `key` names the mount, `shown:
+   * false` leaves nothing in its place (another site's section loading, say),
+   * `hidden` keeps it inside a hidden <Activity>, `suspend` has a sibling
+   * suspend so React abandons the render, `validated` adds an async submit
+   * validator the test resolves. Each mount's hook is kept by key.
+   */
+  type Shape = {
+    key?: string;
+    shown?: boolean;
+    hidden?: boolean;
+    identity?: string;
+    source?: Values;
+    strict?: boolean;
+    suspend?: boolean;
+    validated?: boolean;
+  };
+  type Entry = { values: Values; save: DraftSave<Values>; finish: (outcome: Outcome) => void; fail: (error: unknown) => void };
+
+  function Suspends(): null {
+    throw new Promise(() => undefined);
+  }
+
+  async function lifetimes(initial: Shape = {}) {
+    const root = createRoot(document.createElement('div'));
+    roots.push(root);
+    const apis = new Map<string, Api>();
+    const saves: Entry[] = [];
+    const validations: Array<() => void> = [];
+    const onSubmit = (values: Values, save: DraftSave<Values>) =>
+      new Promise<Outcome>((resolve, reject) => {
+        saves.push({ values, save, finish: resolve, fail: reject });
+      });
+    function Form({ name, identity, source, validated }: { name: string; identity: string; source: Values; validated: boolean }) {
+      const api = useServerDraftForm<Values>({ identity: [identity], source, onSubmit });
+      apis.set(name, api);
+      if (!validated) return null;
+      return (
+        <api.form.Field
+          name="name"
+          validators={{ onSubmitAsync: () => new Promise<undefined>((resolve) => validations.push(() => resolve(undefined))) }}
+        >
+          {() => null}
+        </api.form.Field>
+      );
+    }
+    let shape: Required<Shape> = {
+      key: 'first',
+      shown: true,
+      hidden: false,
+      identity: 'site-a',
+      source: original,
+      strict: false,
+      suspend: false,
+      validated: false,
+    };
+    const tree = (next: Required<Shape>) => {
+      const body = (
+        <Suspense fallback={null}>
+          <Activity mode={next.hidden ? 'hidden' : 'visible'}>
+            {next.shown ? <Form identity={next.identity} key={next.key} name={next.key} source={next.source} validated={next.validated} /> : null}
+          </Activity>
+          {next.suspend ? <Suspends /> : null}
+        </Suspense>
+      );
+      return next.strict ? <StrictMode>{body}</StrictMode> : body;
+    };
+    const render = async (next: Shape = {}) => {
+      shape = { ...shape, ...next };
+      await act(async () => root.render(tree(shape)));
+    };
+    await render(initial);
+    const api = (name = shape.key) => apis.get(name) as Api;
+    /**
+     * Starts a submit and waits until its request is in flight, its validator
+     * is pending, or it ended. `result` settles when the submit ends.
+     */
+    const submit = async () => {
+      const before = { saves: saves.length, validations: validations.length };
+      let ended = false;
+      let result!: Promise<DraftSubmitResult>;
+      await act(async () => {
+        result = api().submit();
+        const end = () => {
+          ended = true;
+        };
+        void result.then(end, end);
+        await vi.waitFor(() => expect(ended || saves.length > before.saves || validations.length > before.validations).toBe(true));
+      });
+      return { result };
+    };
+    const set = (field: keyof Values, value: string) => act(async () => api().form.setFieldValue(field, value));
+    /** Renders `next` in a transition, which React abandons when it suspends. */
+    const transition = (next: Shape) =>
+      act(async () => {
+        startTransition(() => root.render(tree({ ...shape, ...next })));
+      });
+    return {
+      api,
+      render,
+      root,
+      saves,
+      set,
+      submit,
+      transition,
+      validations,
+    };
+  }
+
+  it('a save captured before the form unmounts is no longer current, and stays so once the form mounts again', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'Pill');
+    const { result } = await draft.submit();
+    const old = draft.saves[0] as Entry;
+    expect(old.save.isCurrent()).toBe(true);
+    await draft.render({ shown: false });
+    expect(old.save.isCurrent()).toBe(false);
+    // The same identity mounts again: a new form, a new mount.
+    await draft.render({ shown: true, key: 'second' });
+    expect(old.save.isCurrent()).toBe(false);
+    await draft.set('name', 'Rounded');
+    const before = draft.api().form.state.values;
+    await act(async () => {
+      expect(old.save.succeeded({ ...original, name: 'Pill' })).toBe(false);
+      old.save.failed();
+      old.finish('saved');
+    });
+    expect(await result).toBe('failed');
+    expect(draft.api().form.state.values).toStrictEqual(before);
+    expect(draft.api().baseline).toStrictEqual(original);
+    expect(draft.api().isDirty).toBe(true);
+    expect(draft.api().isSaving).toBe(false);
+  });
+
+  it('a save that ends after the unmount resolves failed, whatever its handler said', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'Pill');
+    const { result } = await draft.submit();
+    await draft.render({ shown: false });
+    await act(async () => draft.saves[0]?.finish('invalid'));
+    expect(await result).toBe('failed');
+  });
+
+  it('a form that unmounts without a save, mounts and unmounts again, leaves nothing behind', async () => {
+    const draft = await lifetimes();
+    await draft.render({ shown: false });
+    await draft.render({ shown: true, key: 'second' });
+    await draft.render({ shown: false });
+    await draft.render({ shown: true, key: 'third' });
+    expect(draft.saves).toHaveLength(0);
+    expect(draft.api().isSaving).toBe(false);
+    expect(draft.api().settlement()).toStrictEqual({ settled: true, generation: 0 });
+  });
+
+  it('over repeated mounts each save is current only in the mount that started it', async () => {
+    const draft = await lifetimes();
+    const results: Array<Promise<DraftSubmitResult>> = [];
+    for (const [index, key] of ['first', 'second', 'third'].entries()) {
+      if (index > 0) await draft.render({ shown: true, key });
+      await draft.set('name', key);
+      results.push((await draft.submit()).result);
+      expect(draft.saves.map((entry) => entry.save.isCurrent())).toStrictEqual(draft.saves.map((_, i) => i === index));
+      await draft.render({ shown: false });
+    }
+    expect(draft.saves.every((entry) => !entry.save.isCurrent())).toBe(true);
+    await draft.render({ shown: true, key: 'fourth' });
+    await act(async () => {
+      for (const entry of draft.saves) {
+        expect(entry.save.succeeded(entry.values)).toBe(false);
+        entry.finish('saved');
+      }
+    });
+    expect(await Promise.all(results)).toStrictEqual(['failed', 'failed', 'failed']);
+    expect(draft.api().form.state.values).toStrictEqual(original);
+  });
+
+  it('remounted under a new key in one commit: the old save is not current, and neither save unlocks the other', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'Pill');
+    const { result: old } = await draft.submit();
+    await draft.render({ key: 'second' });
+    await draft.set('name', 'Rounded');
+    const { result: fresh } = await draft.submit();
+    expect(draft.saves.map((entry) => entry.save.isCurrent())).toStrictEqual([false, true]);
+    await act(async () => {
+      draft.saves[0]?.save.succeeded(draft.saves[0].values);
+      draft.saves[0]?.finish('saved');
+    });
+    expect(await old).toBe('failed');
+    expect(draft.api().isSaving).toBe(true);
+    expect(await draft.api().submit()).toBe('busy');
+    await act(async () => {
+      expect(draft.saves[1]?.save.succeeded(draft.saves[1].values)).toBe(true);
+      draft.saves[1]?.finish('saved');
+    });
+    expect(await fresh).toBe('saved');
+    expect(draft.api().baseline.name).toBe('Rounded');
+    expect(draft.api().isSaving).toBe(false);
+  });
+
+  it('A → B → A within one mount: the old save ends without touching the form; a save started after coming back is current', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'A1');
+    const { result: first } = await draft.submit();
+    await draft.render({ identity: 'site-b', source: { name: 'B', description: '' } });
+    await draft.render({ identity: 'site-a', source: original });
+    await draft.set('name', 'A2');
+    await act(async () => {
+      expect(draft.saves[0]?.save.succeeded(draft.saves[0].values)).toBe(false);
+      draft.saves[0]?.finish('saved');
+    });
+    expect(await first).toBe('failed');
+    expect(draft.api().form.state.values.name).toBe('A2');
+    expect(draft.api().isSaving).toBe(false);
+    const { result: second } = await draft.submit();
+    expect(draft.saves.map((entry) => entry.save.isCurrent())).toStrictEqual([false, true]);
+    await act(async () => {
+      draft.saves[1]?.save.succeeded(draft.saves[1].values);
+      draft.saves[1]?.finish('saved');
+    });
+    expect(await second).toBe('saved');
+    expect(draft.api().settlement()).toStrictEqual({ settled: true, generation: 2 });
+  });
+
+  it('StrictMode: the mount’s setup, cleanup and setup leave the form current; a rerender while saving keeps the save current', async () => {
+    const draft = await lifetimes({ strict: true });
+    await draft.set('name', 'Pill');
+    const { result } = await draft.submit();
+    expect(draft.saves[0]?.save.isCurrent()).toBe(true);
+    // A refetch with the same values: a rerender, nothing else.
+    await draft.render({ source: { ...original } });
+    expect(draft.saves[0]?.save.isCurrent()).toBe(true);
+    await act(async () => {
+      expect(draft.saves[0]?.save.succeeded(draft.saves[0].values)).toBe(true);
+      draft.saves[0]?.finish('saved');
+    });
+    expect(await result).toBe('saved');
+    expect(draft.api().baseline).toStrictEqual({ ...original, name: 'Pill' });
+    expect(draft.api().settlement()).toStrictEqual({ settled: true, generation: 0 });
+  });
+
+  it('StrictMode: an unmount still ends the save', async () => {
+    const draft = await lifetimes({ strict: true });
+    await draft.set('name', 'Pill');
+    const { result } = await draft.submit();
+    await draft.render({ shown: false });
+    await draft.render({ shown: true, key: 'second' });
+    expect(draft.saves[0]?.save.isCurrent()).toBe(false);
+    await act(async () => draft.saves[0]?.finish('saved'));
+    expect(await result).toBe('failed');
+  });
+
+  it('a render React abandons (it suspended) ends no save of the form still on screen', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'Pill');
+    const { result } = await draft.submit();
+    // Would replace the form, but suspends inside a transition: React keeps what is committed.
+    await draft.transition({ key: 'second', suspend: true });
+    expect(draft.api('second')).toBeDefined();
+    expect(draft.saves[0]?.save.isCurrent()).toBe(true);
+    // The same form re-rendered in an abandoned transition stays current too.
+    await draft.transition({ source: { ...original, description: 'never shown' }, suspend: true });
+    expect(draft.saves[0]?.save.isCurrent()).toBe(true);
+    await act(async () => {
+      expect(draft.saves[0]?.save.succeeded(draft.saves[0].values)).toBe(true);
+      draft.saves[0]?.finish('saved');
+    });
+    expect(await result).toBe('saved');
+    expect(draft.api().isSaving).toBe(false);
+  });
+
+  // React runs effect cleanups when <Activity> hides a tree, as on unmount, but
+  // keeps the same form (state and refs) for when it shows again.
+  it('hidden by <Activity>: not current while hidden, the form’s own again once shown; the lock holds throughout', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'Pill');
+    const { result } = await draft.submit();
+    await draft.render({ hidden: true });
+    expect(draft.saves[0]?.save.isCurrent()).toBe(false);
+    await draft.render({ hidden: false });
+    expect(draft.saves[0]?.save.isCurrent()).toBe(true);
+    expect(draft.api().isSaving).toBe(true);
+    expect(await draft.api().submit()).toBe('busy');
+    await act(async () => {
+      expect(draft.saves[0]?.save.succeeded(draft.saves[0].values)).toBe(true);
+      draft.saves[0]?.finish('saved');
+    });
+    expect(await result).toBe('saved');
+    expect(draft.api().isSaving).toBe(false);
+    expect(draft.api().baseline.name).toBe('Pill');
+    expect(draft.api().isDirty).toBe(false);
+  });
+
+  it('validation that ends after the unmount sends nothing', async () => {
+    const draft = await lifetimes({ validated: true });
+    await draft.set('name', 'Pill');
+    const { result } = await draft.submit();
+    expect(draft.validations).toHaveLength(1);
+    await draft.render({ shown: false });
+    await act(async () => {
+      draft.validations[0]?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(draft.saves).toHaveLength(0);
+    expect(await result).toBe('failed');
+  });
+
+  it('a submit handler that rejects after the unmount ends failed, with no unhandled rejection', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'Pill');
+    const { result } = await draft.submit();
+    await draft.render({ shown: false });
+    await act(async () => draft.saves[0]?.fail(new Error('offline')));
+    expect(await result).toBe('failed');
+  });
+
+  it('a submit handler that rejects while its form is current still rejects the submit, as before', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'Pill');
+    const caught = (await draft.submit()).result.catch((error: unknown) => error);
+    await act(async () => draft.saves[0]?.fail(new Error('offline')));
+    expect(await caught).toStrictEqual(new Error('offline'));
+    expect(draft.api().isSaving).toBe(false);
+  });
+
+  it('the unmount ends the save within its own commit: an answer right after it is ignored', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'Pill');
+    const { result } = await draft.submit();
+    const old = draft.saves[0] as Entry;
+    let seen: boolean | undefined;
+    let confirmed: boolean | undefined;
+    await act(async () => {
+      flushSync(() => draft.root.render(null));
+      // The response's continuation, queued as the unmount commits.
+      await Promise.resolve().then(() => {
+        seen = old.save.isCurrent();
+        confirmed = old.save.succeeded(old.values);
+        old.finish('saved');
+      });
+    });
+    expect(seen).toBe(false);
+    expect(confirmed).toBe(false);
+    expect(await result).toBe('failed');
+  });
+
+  it('an answer that lands just before the unmount counts for the form it reached; its submit, ending after, says failed', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'Pill');
+    const { result } = await draft.submit();
+    const old = draft.saves[0] as Entry;
+    await act(async () => {
+      expect(old.save.succeeded(old.values)).toBe(true);
+      flushSync(() => draft.root.render(null));
+      old.finish('saved');
+    });
+    expect(await result).toBe('failed');
+  });
+
+  it('submit on a form that already unmounted starts nothing', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'Pill');
+    const stale = draft.api();
+    await draft.render({ shown: false });
+    expect(await stale.submit()).toBe('failed');
+    expect(draft.saves).toHaveLength(0);
+  });
+});
+
+describe('useServerDraftForm: a save that ends while <Activity> hides the form (#767)', () => {
+  /** One form inside an <Activity>, with what its submit handler sends shaped by `toSent`. */
+  async function hideable<V extends DraftValues>(source: V, toSent?: (values: V) => V) {
+    const root = createRoot(document.createElement('div'));
+    roots.push(root);
+    let api!: ReturnType<typeof useServerDraftForm<V>>;
+    const saves: Array<{ values: V; save: DraftSave<V>; finish: (outcome: Outcome) => void }> = [];
+    const onSubmit = (values: V, save: DraftSave<V>) =>
+      new Promise<Outcome>((resolve) => {
+        saves.push({ values, save, finish: resolve });
+      });
+    function Form({ current }: { current: V }) {
+      api = useServerDraftForm<V>({ identity: ['site'], source: current, onSubmit, toSent });
+      return null;
+    }
+    let shape = { hidden: false, source };
+    const render = async (next: Partial<typeof shape>) => {
+      shape = { ...shape, ...next };
+      await act(async () =>
+        root.render(
+          <Activity mode={shape.hidden ? 'hidden' : 'visible'}>
+            <Form current={shape.source} />
+          </Activity>,
+        ),
+      );
+    };
+    await render({});
+    const set = (field: keyof V & string, value: unknown) =>
+      act(async () => (api.form.setFieldValue as (field: string, value: unknown) => void)(field, value));
+    const submit = async () => {
+      const before = saves.length;
+      let result!: Promise<DraftSubmitResult>;
+      await act(async () => {
+        result = api.submit();
+        await vi.waitFor(() => expect(saves.length).toBeGreaterThan(before));
+      });
+      return { result };
+    };
+    return { api: () => api, saves, render, set, submit };
+  }
+
+  type Story<V extends DraftValues> = {
+    source: V;
+    toSent?: (values: V) => V;
+    edit: Partial<V>;
+    /** An edit made during the save, before the form is hidden. */
+    during?: Partial<V>;
+    /** What the server confirmed; `undefined` with `fails` for a failed save. */
+    confirmed?: V;
+    fails?: boolean;
+    /** A refetch that lands before the answer (while hidden, when hiding). */
+    racing?: V;
+    /** The refetch after the save; left out when the readback failed. */
+    readback?: V;
+  };
+
+  /** Plays the story with the form on screen throughout, or hidden from just after the edit during the save until the readback landed. */
+  async function play<V extends DraftValues>(story: Story<V>, hide: boolean) {
+    const draft = await hideable(story.source, story.toSent);
+    for (const [field, value] of Object.entries(story.edit)) await draft.set(field, value);
+    const { result } = await draft.submit();
+    for (const [field, value] of Object.entries(story.during ?? {})) await draft.set(field, value);
+    if (hide) await draft.render({ hidden: true });
+    if (story.racing) await draft.render({ source: story.racing });
+    const entry = draft.saves[0];
+    let current: boolean | undefined;
+    await act(async () => {
+      current = entry?.save.isCurrent();
+      if (story.fails) entry?.save.failed();
+      else entry?.save.succeeded(story.confirmed);
+      entry?.finish(story.fails ? 'failed' : 'saved');
+    });
+    if (story.readback) await draft.render({ source: story.readback });
+    if (hide) await draft.render({ hidden: false });
+    const api = draft.api();
+    return {
+      current,
+      result: await result,
+      state: { values: api.form.state.values, baseline: api.baseline, isDirty: api.isDirty, conflicts: api.conflicts, isSaving: api.isSaving },
+      draft,
+    };
+  }
+
+  const trim = (values: Values) => ({ ...values, name: values.name.trim() });
+  type Rows = { rows: string[] };
+  const dropBlank = (values: Rows) => ({ rows: values.rows.filter((row) => row.trim() !== '') });
+
+  it('trimmed text, its readback after: reconciled on show as on screen, clean, with no conflict against its own save', async () => {
+    const story: Story<Values> = {
+      source: { name: 'old', description: 'd1' },
+      toSent: trim,
+      edit: { name: ' saved ' },
+      confirmed: { name: 'saved', description: 'd1' },
+      readback: { name: 'saved', description: 'd1' },
+    };
+    const hidden = await play(story, true);
+    expect(hidden.current).toBe(false);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state.isDirty).toBe(false);
+    expect(hidden.state.conflicts).toStrictEqual([]);
+    expect(hidden.state.baseline).toStrictEqual({ name: 'saved', description: 'd1' });
+  });
+
+  it('blank rows dropped from what was sent, its readback after: reconciled on show as on screen, with no conflict', async () => {
+    const story: Story<Rows> = {
+      source: { rows: ['a'] },
+      toSent: dropBlank,
+      edit: { rows: ['a', 'b', ''] },
+      confirmed: { rows: ['a', 'b'] },
+      readback: { rows: ['a', 'b'] },
+    };
+    const hidden = await play(story, true);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state.conflicts).toStrictEqual([]);
+    expect(hidden.state.baseline).toStrictEqual({ rows: ['a', 'b'] });
+  });
+
+  it('a failed readback: the response alone settles the shown form, as on screen', async () => {
+    const story: Story<Values> = {
+      source: { name: 'old', description: 'd1' },
+      toSent: trim,
+      edit: { name: ' saved ' },
+      confirmed: { name: 'saved', description: 'd1' },
+    };
+    const hidden = await play(story, true);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state.isDirty).toBe(false);
+    expect(hidden.state.baseline).toStrictEqual({ name: 'saved', description: 'd1' });
+  });
+
+  it('an edit made before the hide survives, dirty and without a conflict, and the next save settles clean', async () => {
+    const story: Story<Values> = {
+      source: { name: 'old', description: 'd1' },
+      edit: { name: 'A' },
+      during: { name: 'AB' },
+      confirmed: { name: 'A', description: 'd1' },
+      readback: { name: 'A', description: 'd1' },
+    };
+    const hidden = await play(story, true);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state).toMatchObject({ values: { name: 'AB' }, baseline: { name: 'A' }, isDirty: true, conflicts: [], isSaving: false });
+    const { result } = await hidden.draft.submit();
+    await act(async () => {
+      hidden.draft.saves[1]?.save.succeeded({ name: 'AB', description: 'd1' });
+      hidden.draft.saves[1]?.finish('saved');
+    });
+    expect(await result).toBe('saved');
+    expect(hidden.draft.api().isDirty).toBe(false);
+  });
+
+  it('someone else’s value refetched before the answer: mine stays, unsaved, against theirs with the conflict, as on screen', async () => {
+    const story: Story<Values> = {
+      source: { name: 'old', description: 'd1' },
+      edit: { name: 'mine' },
+      racing: { name: 'theirs', description: 'd1' },
+      confirmed: { name: 'mine', description: 'd1' },
+      readback: { name: 'theirs', description: 'd1' },
+    };
+    const hidden = await play(story, true);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state).toMatchObject({ values: { name: 'mine' }, baseline: { name: 'theirs' }, isDirty: true, conflicts: ['name'] });
+  });
+
+  it('someone else’s value refetched before a failure: mine stays against theirs, as on screen', async () => {
+    const story: Story<Values> = {
+      source: { name: 'old', description: 'd1' },
+      edit: { name: 'mine' },
+      racing: { name: 'theirs', description: 'd1' },
+      fails: true,
+    };
+    const hidden = await play(story, true);
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state).toMatchObject({ values: { name: 'mine' }, baseline: { name: 'theirs' }, isDirty: true });
+  });
+
+  it('a failure while hidden keeps the edit, as on screen, and says nothing to the hidden form', async () => {
+    const story: Story<Values> = { source: { name: 'old', description: 'd1' }, edit: { name: 'A' }, fails: true };
+    const hidden = await play(story, true);
+    expect(hidden.current).toBe(false);
+    expect(hidden.result).toBe('failed');
+    expect(hidden.state).toStrictEqual((await play(story, false)).state);
+    expect(hidden.state).toMatchObject({ values: { name: 'A' }, isDirty: true, isSaving: false });
+  });
+
+  it('a save confirmed while hidden ends its submit as failed (nothing to tell an off-screen form), and its form unlocks', async () => {
+    const story: Story<Values> = { source: original, edit: { name: 'A' }, confirmed: { ...original, name: 'A' } };
+    const hidden = await play(story, true);
+    expect(hidden.result).toBe('failed');
+    expect(hidden.state.isSaving).toBe(false);
+    expect((await play(story, false)).result).toBe('saved');
   });
 });
