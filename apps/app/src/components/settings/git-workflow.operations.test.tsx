@@ -427,4 +427,45 @@ describe('Sync and Update PR own their request', () => {
     await press(updatePrButton());
     expect(posts().map((request) => request.json.kind)).toEqual(['PUSH']);
   });
+  it('a refused operation that lands while a failed status refresh replaces the panel is not reported, and not resent', async () => {
+    await workflow('site-a');
+    await panel('settings.git.workflow.nav.sync');
+    const post = held();
+    mocks.operations.mockImplementationOnce(() => post.promise);
+    await press(syncButton());
+    // A manual refresh fails (a 4xx is not retried); the cached connection stays, but the load error replaces the panel.
+    mocks.status.mockImplementationOnce(async () => json(403, { error: { message: 'Refused by the test.' } }));
+    await press(button(t('common.refresh')));
+    expect(container.textContent).toContain(t('settings.git.workflow.loadError'));
+    expect(syncButton()).toBeUndefined();
+    expect(client.getQueryData(queryKeys.gitWorkflow.detail('site-a'))).toMatchObject({ repository: 'acme-fixture/site-a' });
+    await post.answer(failure());
+    expect(errors()).toEqual([]);
+    expect(posts()).toHaveLength(1);
+    expect(refreshed()).toEqual([]);
+  });
+
+  it('a panel that comes back after a failed status refresh is a new one: the earlier press is not reported there', async () => {
+    await workflow('site-a');
+    await panel('settings.git.workflow.nav.sync');
+    const post = held();
+    mocks.operations.mockImplementationOnce(() => post.promise);
+    await press(syncButton());
+    mocks.status.mockImplementationOnce(async () => json(403, { error: { message: 'Refused by the test.' } }));
+    await press(button(t('common.refresh')));
+    expect(syncButton()).toBeUndefined();
+    // The status recovers while the operation still runs: the Sync panel shows again, still busy for the site.
+    await press(button(t('common.retry')));
+    expect(isBusy(syncButton())).toBe(true);
+    await post.answer(failure());
+    expect(errors()).toEqual([]);
+    expect(isBusy(syncButton())).toBe(false);
+    expect(posts()).toHaveLength(1);
+    // The panel's own press, under a new key, is reported there.
+    mocks.operations.mockImplementationOnce(async () => failure());
+    await press(syncButton());
+    expect(posts()).toHaveLength(2);
+    expect(posts()[1].json.idempotencyKey).not.toBe(posts()[0].json.idempotencyKey);
+    expect(errors()).toEqual([FAILED()]);
+  });
 });

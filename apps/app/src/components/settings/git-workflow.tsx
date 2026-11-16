@@ -177,7 +177,9 @@ export function GitWorkflow({
   const authorize = useAuthorizeGitWorkflow(projectId);
   const connect = useConnectGitWorkflow(projectId);
   const disconnect = useDisconnectGitWorkflow(projectId);
-  const operation = useGitOperationCommand({ projectId, panel: connection && (intent === 'sync' || intent === 'publish') ? intent : null });
+  // The operation panel shown: none while the status loads or failed to load (that screen replaces it).
+  const shownPanel = !query.isPending && !query.isError && connection && (intent === 'sync' || intent === 'publish') ? intent : null;
+  const operation = useGitOperationCommand({ projectId, panel: shownPanel });
   const rotate = useRotateGitWorkflowWebhookSecret(projectId);
   const confirm = useConfirm();
   const connectRepository = () =>
