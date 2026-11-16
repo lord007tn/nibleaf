@@ -35,6 +35,11 @@ const forbiddenPublicModules = [
   // The signed-in shell's intent preload, which reads the dashboard's chunk lists.
   /\/apps\/app\/src\/lib\/dashboard-intent-preload\.ts$/,
   /\/packages\/shared\/src\/(?:mcp|rbac)\.ts$/,
+  // Zod (~23 KiB gzip, PUB-017). Eager route options read their search params
+  // with lib/search-params.ts, the reader's renderers use plain checks, and the
+  // reader imports its language and nav helpers apart from @nibleaf/shared/site
+  // (whose add-on schemas build zod objects as the module loads).
+  /\/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?zod\//,
 ];
 
 /** Module ids (forward slashes) that a public profile must not contain. */

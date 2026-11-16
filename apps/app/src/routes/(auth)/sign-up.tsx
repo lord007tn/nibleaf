@@ -3,7 +3,6 @@ import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { createFileRoute, Link, useNavigate, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
-import { z } from 'zod';
 import { EmailCodeStep, ResendStatus, useEmailCode } from '@/components/auth-email-code';
 import { AUTH_INLINE_LINK_CLASS, AuthFormStatus, AuthTextField, useAuthFieldErrors } from '@/components/auth-form';
 import { GoogleIcon } from '@/components/icons/brand';
@@ -17,19 +16,18 @@ import { friendlyAuthError } from '@/lib/auth-errors';
 import { useAuthT } from '@/lib/auth-messages';
 import { email as validateEmail } from '@/lib/form';
 import { afterAuthDestination } from '@/lib/invitations';
+import { oneOf, readSearch, text } from '@/lib/search-params';
 import { authClient, signIn } from '@/services/auth-client';
 
 export const Route = createFileRoute('/(auth)/sign-up')({
   validateSearch: (search) =>
-    z
-      .object({
-        invite: z.string().optional().catch(undefined),
-        // The dashboard page that sent a signed-out visitor here (checked by afterAuthDestination).
-        next: z.string().optional().catch(undefined),
-        email: z.string().optional().catch(undefined),
-        intent: z.literal('first-publish').optional().catch(undefined),
-      })
-      .parse(search),
+    readSearch(search, {
+      invite: text,
+      // The dashboard page that sent a signed-out visitor here (checked by afterAuthDestination).
+      next: text,
+      email: text,
+      intent: oneOf(['first-publish']),
+    }),
   // The form depends on the instance metadata (sign-up open? Google?). It is
   // known before the first render, on the server too, so the first HTML is the
   // final form, not a placeholder that the Google button later pushes down.

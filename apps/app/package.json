@@ -47,6 +47,7 @@
     "@tiptap/core": "3.33.0",
     "@tiptap/extension-blockquote": "3.33.0",
     "@tiptap/extension-character-count": "3.33.0",
+    "@tiptap/extension-code": "3.33.0",
     "@tiptap/extension-code-block-lowlight": "3.33.0",
     "@tiptap/extension-drag-handle-react": "3.33.0",
     "@tiptap/extension-highlight": "3.33.0",

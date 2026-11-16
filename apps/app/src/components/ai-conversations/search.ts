@@ -1,11 +1,14 @@
-import { z } from 'zod';
-export const aiDashboardSearch = z.object({
-  tab: z.enum(['overview', 'conversations', 'gaps']).catch('overview'),
-  range: z.enum(['7d', '30d', '90d']).catch('30d'),
-  language: z.string().trim().min(2).max(35).optional().catch(undefined),
-  rating: z.enum(['up', 'down', 'unrated']).optional().catch(undefined),
-  status: z.enum(['answered', 'no_answer', 'failed']).optional().catch(undefined),
-  q: z.string().trim().min(1).max(120).optional().catch(undefined),
-  conversation: z.string().min(1).max(256).optional().catch(undefined),
-});
-export type AiDashboardSearch = z.infer<typeof aiDashboardSearch>;
+import { boundedText, oneOf, readSearch, type SearchOf, trimmedText, withFallback } from '@/lib/search-params';
+
+// The AI dashboard's validateSearch, which ships in the router's eager chunk.
+const fields = {
+  tab: withFallback(oneOf(['overview', 'conversations', 'gaps']), 'overview'),
+  range: withFallback(oneOf(['7d', '30d', '90d']), '30d'),
+  language: trimmedText(2, 35),
+  rating: oneOf(['up', 'down', 'unrated']),
+  status: oneOf(['answered', 'no_answer', 'failed']),
+  q: trimmedText(1, 120),
+  conversation: boundedText(1, 256),
+};
+export type AiDashboardSearch = SearchOf<typeof fields>;
+export const aiDashboardSearch = { parse: (search: Record<string, unknown>): AiDashboardSearch => readSearch(search, fields) };

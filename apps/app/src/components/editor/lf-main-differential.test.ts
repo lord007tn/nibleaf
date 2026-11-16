@@ -6,7 +6,15 @@ import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
-import { applyCorpusEdits, type CorpusEdit, type DifferentialEditor, serializerCorpus } from './__fixtures__/serializer-corpus';
+import {
+  applyCorpusEdits,
+  CODE_TOGGLE_KEEPS_LINK_PAGES,
+  type CorpusEdit,
+  type DifferentialEditor,
+  type MarkEditor,
+  serializerCorpus,
+  withMainCodeToggle,
+} from './__fixtures__/serializer-corpus';
 import { markdownToEmit } from './editor-change-origin';
 import { SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
@@ -26,6 +34,12 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * was made by running this file against main's editor (main's
  * `markdown-output.ts` and `editor-change-origin.ts`, from `git show origin/main:`)
  * with `WRITE_LF_MAIN=1`. Regenerate it only when LF saving changes on purpose.
+ *
+ * One change is meant (#660): a link can now hold inline code, so toggling code
+ * over part of a link keeps the link where main dropped it. The serializer
+ * corpus's pages that do so (CODE_TOGGLE_KEEPS_LINK_PAGES, exactly 14) are
+ * counted, and each one, replayed with main's code toggle, must still give
+ * main's digest.
  */
 
 const SEED = 0x70_2c_4f_1e;
@@ -85,6 +99,8 @@ function seededPages(): string[] {
 }
 
 const corpus = serializerCorpus();
+/** Where the serializer corpus's pages start in `pages`. */
+const CORPUS_START = SEEDED_PAGES;
 const pages: Array<{ page: string; edits: readonly CorpusEdit[] }> = [
   ...seededPages().map((page) => ({ page, edits: [{ kind: 'insert', at: 3, text: 'x' }] as CorpusEdit[] })),
   ...corpus.map(({ source, edits }) => ({ page: source, edits })),
@@ -97,12 +113,17 @@ describe('pages with LF only save as on main (#702)', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => editor.destroy());
 
-  /** The page's nodes, its save, its save after `edits`, and the Markdown the editor emits for that. */
-  const digest = (page: string, edits: readonly CorpusEdit[]): string => {
+  /** The page's nodes, its save, its save after `edits` (run through `edit`, the
+   *  editor itself by default), and the Markdown the editor emits for that. */
+  const digest = (
+    page: string,
+    edits: readonly CorpusEdit[],
+    edit: (target: Editor) => DifferentialEditor = (target) => target as unknown as DifferentialEditor,
+  ): string => {
     editor.commands.setContent(page, { emitUpdate: false });
     const nodes = JSON.stringify(editor.state.doc.toJSON());
     const saved = getMarkdown(editor);
-    applyCorpusEdits(editor as unknown as DifferentialEditor, edits);
+    applyCorpusEdits(edit(editor), edits);
     const edited = getMarkdown(editor);
     const emitted = markdownToEmit({ source: page, serialized: saved }, edited);
     return createHash('sha256').update(JSON.stringify({ nodes, saved, edited, emitted })).digest('hex').slice(0, 16);
@@ -112,13 +133,25 @@ describe('pages with LF only save as on main (#702)', () => {
     expect(pages.filter(({ page }) => page.includes('\r'))).toEqual([]);
   });
 
-  it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages`, () => {
+  it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages, but #660’s`, () => {
     const digests = pages.map(({ page, edits }) => digest(page, edits));
     if (process.env.WRITE_LF_MAIN) writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
     const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[] };
     expect(main.pages).toBe(pages.length);
-    const differences = digests.flatMap((value, index) => (value === main.digests[index] ? [] : [pages[index]?.page]));
-    console.info(`[lf-main-differential] ${pages.length} pages, ${differences.length} differences`);
+    const changed = digests.flatMap((value, index) => (value === main.digests[index] ? [] : [index]));
+    // #660: the corpus pages whose code toggle now keeps a link; with main's toggle each gives main's digest.
+    const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.map((index) => CORPUS_START + index);
+    const differences = changed.filter((index) => !keptLink.includes(index)).map((index) => pages[index]?.page);
+    console.info(
+      `[lf-main-differential] ${pages.length} pages, ${differences.length} differences, ${changed.length - differences.length} kept links by #660`,
+    );
     expect(differences.slice(0, 3)).toEqual([]);
+    expect(changed).toEqual(keptLink);
+    expect(changed).toHaveLength(14);
+    const withMainToggle = keptLink.map((index) => {
+      const { page, edits } = pages[index] as (typeof pages)[number];
+      return digest(page, edits, (target) => withMainCodeToggle(target as unknown as MarkEditor));
+    });
+    expect(withMainToggle).toEqual(keptLink.map((index) => main.digests[index]));
   }, 600_000);
 });
