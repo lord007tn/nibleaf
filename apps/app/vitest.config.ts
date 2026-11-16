@@ -12,7 +12,8 @@ export default defineConfig({
     fsModuleCache: false,
     include: ['src/**/*.test.{ts,tsx}', 'scripts/**/*.test.{ts,mjs}'],
     // Session memory (the editor's unsaved drafts) is per test, as it is per account.
-    setupFiles: ['./src/test-setup/reset-session-memory.ts'],
+    // Resolved from this file, so a run with another --root (scripts/vitest-env.test.mjs) finds it.
+    setupFiles: [fileURLToPath(new URL('./src/test-setup/reset-session-memory.ts', import.meta.url))],
   },
   resolve: {
     alias: {
