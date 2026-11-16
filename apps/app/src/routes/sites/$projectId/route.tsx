@@ -9,8 +9,7 @@ import { parseSiteLanguagePath } from '@nibleaf/shared/site-language-prefix';
 import { createFileRoute, Outlet, redirect, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { lazy, type MouseEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { z } from 'zod';
-import { askSearchSchema } from '@/components/site/ai-chat/ask-search';
+import { readAskSearch } from '@/components/site/ai-chat/ask-search';
 import { ChatSearchBridge, SiteChatHeaderAction, SiteChatReaderLayout } from '@/components/site/ai-chat/provider';
 import { DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
@@ -31,6 +30,7 @@ import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
+import { boundedText, readSearch } from '@/lib/search-params';
 import { useSearchShortcutLabel } from '@/lib/shortcut';
 import { publishedSiteLogo } from '@/lib/site-branding';
 import { siteEmoji } from '@/lib/site-emoji';
@@ -48,7 +48,7 @@ const SitePrivateGate = lazy(() => import('@/components/site/site-private-gate')
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteRoute,
   // The active language lives in the URL so it survives reloads and is shareable.
-  validateSearch: (search) => z.object({ lang: z.string().min(1).optional().catch(undefined), ask: askSearchSchema }).parse(search),
+  validateSearch: (search) => readSearch(search, { lang: boundedText(1), ask: readAskSearch }),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
   // The language now lives in the pathname. Refresh the shell on path changes
   // so client navigation resolves the same language/version as SSR.

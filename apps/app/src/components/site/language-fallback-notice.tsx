@@ -1,5 +1,5 @@
 import { siteT } from '@nibleaf/i18n/site';
-import { languageNameIn } from '@nibleaf/shared/site';
+import { languageNameIn } from '@nibleaf/shared/site-language';
 import { type ContentLanguageAttributes, languageEndonymOr } from '@/components/site/content-language';
 import type { ReaderText } from '@/lib/reader-text';
 

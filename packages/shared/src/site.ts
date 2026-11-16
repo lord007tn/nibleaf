@@ -2,7 +2,13 @@ import GithubSlugger from 'github-slugger';
 import { isAddonId, parseAddonConfigRecord, projectConfigWithAddons } from './addons';
 import { markdownLineKinds } from './markdown-code';
 import { displayTitle } from './page-title';
+import { languageEndonym, languageNameIn } from './site-language';
+import { navGroupHasPage, startsUngroupedBlock } from './site-nav';
 import { stripMarkdownLinks } from './utils';
+
+// Small helpers the reader imports from their own modules (keeping this one,
+// and the add-on schemas it builds snapshots with, out of published pages).
+export { languageEndonym, languageNameIn, navGroupHasPage, startsUngroupedBlock };
 
 /** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
  *  `pageConfigSchema` in @nibleaf/validators (kept inline to avoid a dep). */
@@ -134,34 +140,6 @@ export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage => {
     throw new Error(`Snapshot project ${project.id} must have exactly one default language.`);
   }
   return defaults[0];
-};
-
-/**
- * `code`'s name in `locale`, or null when the platform has no data for that
- * locale. `new Intl.DisplayNames([locale])` never fails for a valid but
- * unsupported locale: it silently falls back to the default (`la` resolves to
- * en-US and names itself "Latin"), so support is checked first.
- */
-export const languageNameIn = (locale: string, code: string): string | null => {
-  try {
-    if (Intl.DisplayNames.supportedLocalesOf([locale]).length === 0) return null;
-    const name = new Intl.DisplayNames([locale], { type: 'language', fallback: 'none' }).of(code);
-    return name && name !== code ? name : null;
-  } catch {
-    // An invalid tag (`x-klingon`).
-    return null;
-  }
-};
-
-/**
- * A language's own name in its own script ("العربية", "Français", "Deutsch"),
- * capitalized as a menu label. Null when the platform can't name it in its own
- * locale (a private-use tag, or a locale without data such as `la`), so the
- * caller keeps the stored label ("Latina").
- */
-export const languageEndonym = (code: string): string | null => {
-  const name = languageNameIn(code, code);
-  return name ? name.charAt(0).toLocaleUpperCase(code) + name.slice(1) : null;
 };
 
 /** The languages a published site serves: enabled ones. The default language
@@ -463,23 +441,6 @@ export const buildNavTree = <T extends NavSourcePage>(pages: readonly T[], langu
     return ordered.flatMap((entry) => (entry === 'categories' ? grouped : [entry]));
   };
   return build(null);
-};
-
-/** Whether a navigation group leads to at least one page (an empty group is not shown). */
-export const navGroupHasPage = (node: Pick<NavNode, 'kind' | 'children'>): boolean =>
-  node.children.some((child) => child.kind === 'PAGE' || navGroupHasPage(child));
-
-/** Whether a top-level page starts its own unlabelled block: it follows a shown
- *  group, so without a gap it would read as that group's last page. */
-export const startsUngroupedBlock = (nodes: readonly NavNode[], index: number): boolean => {
-  if (nodes[index]?.kind !== 'PAGE') return false;
-  for (let previous = index - 1; previous >= 0; previous--) {
-    const node = nodes[previous];
-    if (!node) return false;
-    if (node.kind === 'PAGE') return false;
-    if (navGroupHasPage(node)) return true;
-  }
-  return false;
 };
 
 export interface Heading {
