@@ -14,13 +14,18 @@ vi.mock('@/features/site-git/components/git-conflict-card', () => ({ GitConflict
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useGitWorkflow: query.use,
-  useConnectGitWorkflow: () => mutation,
   useDisconnectGitWorkflow: () => mutation,
-  useRotateGitWorkflowWebhookSecret: () => mutation,
 }));
+// Rotate webhook secret is covered with the real cache in features/site-git/components/git-webhook-rotate.test.tsx.
+const rotate = vi.hoisted(() => vi.fn());
+vi.mock('@/features/site-git/api/git-webhook-rotate', () => ({ useGitWebhookRotate: () => ({ rotate, pending: false }) }));
 // The Connection configuration save is covered with the real cache in git-workflow.connection.test.tsx.
 vi.mock('@/features/site-git/api/git-workflow-connection', () => ({
   useSaveGitWorkflowConnection: () => ({ save: vi.fn(), pending: false, isPending: () => false }),
+}));
+// The first Connect is covered with the real cache in features/site-git/components/git-first-connect.test.tsx.
+vi.mock('@/features/site-git/components/use-git-first-connect-command', () => ({
+  useGitFirstConnectCommand: () => ({ busy: false, press: vi.fn() }),
 }));
 // Authorize GitHub is covered with the real cache in features/site-git/components/git-authorization.test.tsx.
 vi.mock('@/features/site-git/components/use-git-authorization-command', () => ({
@@ -107,7 +112,7 @@ it('localizes both connection and operation failures and keeps details collapsed
 });
 
 it.each([false, true])('confirms webhook secret replacement before sending the request (%s)', async (approved) => {
-  mutation.mutate.mockClear();
+  rotate.mockReset().mockResolvedValue(null);
   state.confirm.mockResolvedValue(approved);
   query.use.mockReturnValue({
     isPending: false,
@@ -138,7 +143,7 @@ it.each([false, true])('confirms webhook secret replacement before sending the r
         destructive: true,
       }),
     );
-    expect(mutation.mutate).toHaveBeenCalledTimes(approved ? 1 : 0);
+    expect(rotate.mock.calls).toEqual(approved ? [['site-1']] : []);
   } finally {
     await act(async () => root.unmount());
     host.remove();

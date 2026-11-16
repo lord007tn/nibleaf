@@ -168,13 +168,67 @@ const LEGACY_CODE = '#0d1117';
 const MIX_MARGIN = 0.01;
 const mixReads = (ratio: number): boolean => ratio >= ACCENT_TEXT_CONTRAST + MIX_MARGIN;
 
+/** The active row's `bg-primary/10`. */
+const ACTIVE_ROW_TINT = 0.1;
+const hexRgb = (hex: string): RgbChannels => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16)) as unknown as RgbChannels;
+
+/** A hex replacement is drawn exactly, but the tint under it is composited and
+ * stored at 8 bits a channel, which can land under the line: #2d25e3's #5874f1
+ * read 4.5003:1 on its ideal tint and 4.4879:1 on the rounded one (#758). So a
+ * replacement takes the mix's margin on the background, on its tint as composited
+ * and on that tint rounded. */
+const replacementReads = (hex: string, background: string): boolean => {
+  const color = hexRgb(hex);
+  const { canvas, tint } = accentTextContrast(color, background);
+  const rounded = hexRgb(background).map((value, index) =>
+    Math.round(value * (1 - ACTIVE_ROW_TINT) + (color[index] ?? 0) * ACTIVE_ROW_TINT),
+  ) as unknown as RgbChannels;
+  return mixReads(canvas) && mixReads(tint) && mixReads(channelsContrast(color, rounded));
+};
+
+/** The first of `color`'s 40 steps towards white that `reads` (white always does on these dark backgrounds). */
+const lighterUntil = (color: string, reads: (hex: string) => boolean): string => {
+  const channels = hexRgb(color);
+  for (let step = 1; step <= 40; step++) {
+    const shade = channelsHex(channels.map((value) => value * (1 - step / 40) + 255 * (step / 40)) as unknown as RgbChannels);
+    if (reads(shade)) return shade;
+  }
+  return '#ffffff';
+};
+
+/** The nearest shade of `color` that reads as accent text on `background` with
+ * the margin: the shade #744 picked whenever it already has it, so those sites
+ * keep their CSS. */
+const legacyAccentText = (color: string, background: string): string => {
+  const shaded = readableAccentText(color, background);
+  return replacementReads(shaded, background) ? shaded : lighterUntil(color, (shade) => replacementReads(shade, background));
+};
+
+/** Text on a replacement `accent`: `preferred` while it reads with the margin, then
+ * the text #744 would pick, then black or white (one of which reaches about 4.58:1). */
+const legacyOnAccent = (accent: string, preferred: string): string =>
+  [preferred, readableOnAccent(accent), '#000000', '#ffffff'].find((text) => mixReads(contrastRatio(text, accent))) ?? readableOnAccent(accent);
+
+/** The drawer's shade of a replacement `accent` on the #171717 popover; null when `accent` already reads there. */
+const legacyDrawer = (accent: string, foreground: string): DrawerShade => {
+  const primary = legacyAccentText(accent, LEGACY_DARK_SURFACE);
+  return primary === accent ? null : { primary, foreground: legacyOnAccent(primary, foreground) };
+};
+
+/** The code accent on the #0d1117 code surface, with the margin. */
+const legacyCodeAccent = (color: string): string => {
+  const shaded = readableOnBackground(color, LEGACY_CODE);
+  const reads = (shade: string) => mixReads(contrastRatio(shade, LEGACY_CODE));
+  return reads(shaded) ? shaded : lighterUntil(color, reads);
+};
+
 /** Pre-v1 dark mode mixes the brand towards white, as it always has. That reads
  * for most brands, so their CSS keeps the `color-mix()` exactly as it shipped;
  * a dark brand (OKLab lightness below about 0.41: black, navy, forest green)
  * mixes to a colour that doesn't read on the #0a0a0a canvas (#000000 gave
  * #292929, 1.36:1). Each mix is judged by its unrounded colour as the browser
  * renders it (mixOklabChannels); one that falls short is replaced by the nearest
- * shade that reads, emitted as a hex, whose contrast is then exact (#744). */
+ * shade that reads with the same margin, emitted as a hex (#744, #758). */
 const legacyDarkPalette = (brand: string) => {
   const mixed = mixOklabChannels(brand, '#ffffff', 0.72) as RgbChannels;
   const onCanvas = accentTextContrast(mixed, LEGACY_DARK_CANVAS);
@@ -186,19 +240,20 @@ const legacyDarkPalette = (brand: string) => {
     accent = `color-mix(in oklab,${brand} 72%,white)`;
     foreground = LEGACY_DARK_ON_ACCENT;
     const onSurface = accentTextContrast(mixed, LEGACY_DARK_SURFACE);
-    drawer =
-      mixReads(onSurface.canvas) && mixReads(onSurface.tint)
-        ? null
-        : drawerShade(readableAccentText(channelsHex(mixed), LEGACY_DARK_SURFACE), LEGACY_DARK_ON_ACCENT);
+    if (mixReads(onSurface.canvas) && mixReads(onSurface.tint)) drawer = null;
+    else {
+      const primary = legacyAccentText(channelsHex(mixed), LEGACY_DARK_SURFACE);
+      drawer = { primary, foreground: legacyOnAccent(primary, LEGACY_DARK_ON_ACCENT) };
+    }
   } else {
-    accent = readableAccentText(channelsHex(mixed), LEGACY_DARK_CANVAS);
-    foreground = contrastRatio(LEGACY_DARK_ON_ACCENT, accent) >= ACCENT_TEXT_CONTRAST ? LEGACY_DARK_ON_ACCENT : readableOnAccent(accent);
-    drawer = drawerAccent({ accent, accentForeground: foreground, surfaceRaised: LEGACY_DARK_SURFACE });
+    accent = legacyAccentText(channelsHex(mixed), LEGACY_DARK_CANVAS);
+    foreground = legacyOnAccent(accent, LEGACY_DARK_ON_ACCENT);
+    drawer = legacyDrawer(accent, foreground);
   }
   const codeMix = mixOklabChannels(brand, '#ffffff', 0.55) as RgbChannels;
   const codeAccent = mixReads(channelsContrast(codeMix, LEGACY_CODE))
     ? `color-mix(in oklab,${brand} 55%,white)`
-    : readableOnBackground(channelsHex(codeMix), LEGACY_CODE);
+    : legacyCodeAccent(channelsHex(codeMix));
   return { accent, foreground, codeAccent, drawer };
 };
 

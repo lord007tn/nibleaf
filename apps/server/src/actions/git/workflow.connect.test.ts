@@ -304,3 +304,38 @@ describe("the dashboard's Connection configuration save", () => {
     });
   });
 });
+
+/**
+ * The connect wizard's first Connect, on the server side: the body it sends (the settings as typed, its defaults for
+ * the branches and path, the token as typed, no import targets), through the real validator and `connectGitHub`.
+ */
+describe("the connect wizard's first Connect", () => {
+  it('stores the normalized settings, the token as sent and a generated webhook secret, with no import targets', async () => {
+    installConnection(null);
+    const token = '  test-token-0003-placeholder  ';
+
+    const body = gitConnectionBody.parse({
+      repository: '  acme/docs  ',
+      baseBranch: 'main',
+      headBranch: 'nibleaf/docs',
+      contentPath: 'docs',
+      token,
+    });
+    const result = await connectGitHub('project-1', 'user-1', body);
+
+    expect(mocks.providerTokens).toEqual([token]);
+    const { create } = firstInput<{ create: Record<string, unknown> }>(mocks.prisma.gitConnection.upsert);
+    expect(create).toMatchObject({
+      repository: 'acme/docs',
+      baseBranch: 'main',
+      headBranch: 'nibleaf/docs',
+      contentPath: 'docs',
+      importBranchId: null,
+      importLanguageId: null,
+    });
+    expect(decryptGitSecret(create.credentialEncrypted as string)).toBe(token);
+    expect(result.webhookSecret).toMatch(/^[a-f0-9]{64}$/);
+    expect(decryptGitSecret(create.webhookSecretEncrypted as string)).toBe(result.webhookSecret);
+    expect(JSON.stringify(result.connection)).not.toContain(token.trim());
+  });
+});

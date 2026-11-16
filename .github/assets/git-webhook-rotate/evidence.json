@@ -1,0 +1,1270 @@
+{
+  "environment": "Component fixture: main's GitWorkflow, its features/site-git slice and useRotateGitWorkflowWebhookSecret (5e3fd880217bce138ec997c8c00195f33ab0d627) and this branch's, with the real design system and confirmation dialog, EN/AR catalogs, the app's QueryClient (invalidations recorded) and the Git workflow status query; rotation requests answered by interception (a fictional one-time secret, or a 429), optionally held; offline by the browser's own emulation; fictional sites; the placeholder secrets written as <SECRET_n> labels and masked on screen; not the signed-in dashboard, production, the server or GitHub; no real key or secret rotated",
+  "base": "5e3fd880217bce138ec997c8c00195f33ab0d627",
+  "head": "ec2b96a888351949842e59e987913f3e980b8a52",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "states": {
+        "en-confirm-before": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": true,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-confirm-after": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": true,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-held-before": {
+          "dir": "ltr",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-held-after": {
+          "dir": "ltr",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-rotated-before": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-rotated-after": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-refused-before": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Too many attempts. Wait a moment and try again."],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-refused-after": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Too many attempts. Wait a moment and try again."],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-returned-before": {
+          "dir": "ltr",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "rotateOnReturn": { "busy": false, "disabled": false },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-returned-after": {
+          "dir": "ltr",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "rotateOnReturn": { "busy": true, "disabled": true },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-leftWhileAsking-before": {
+          "dir": "ltr",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-leftWhileAsking-after": {
+          "dir": "ltr",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-offline-before": {
+          "dir": "ltr",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-offline-after": {
+          "dir": "ltr",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [
+            "Couldn't reach Nibleaf. Check your internet connection and try again."
+          ],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null,
+              "offline": true
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-confirm-before": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": true,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-confirm-after": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": true,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-held-before": {
+          "dir": "rtl",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-held-after": {
+          "dir": "rtl",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-rotated-before": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-rotated-after": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-refused-before": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["محاولات كثيرة جدا. انتظر قليلا ثم حاول مجددا."],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-refused-after": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["محاولات كثيرة جدا. انتظر قليلا ثم حاول مجددا."],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-returned-before": {
+          "dir": "rtl",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "rotateOnReturn": { "busy": false, "disabled": false },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-returned-after": {
+          "dir": "rtl",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "rotateOnReturn": { "busy": true, "disabled": true },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-leftWhileAsking-before": {
+          "dir": "rtl",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-leftWhileAsking-after": {
+          "dir": "rtl",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-offline-before": {
+          "dir": "rtl",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-offline-after": {
+          "dir": "rtl",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [
+            "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+          ],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null,
+              "offline": true
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "states": {
+        "en-confirm-before": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": true,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-confirm-after": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": true,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "en-held-before": {
+          "dir": "ltr",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-held-after": {
+          "dir": "ltr",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-rotated-before": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-rotated-after": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "en-refused-before": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Too many attempts. Wait a moment and try again."],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-refused-after": {
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Too many attempts. Wait a moment and try again."],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-returned-before": {
+          "dir": "ltr",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "rotateOnReturn": { "busy": false, "disabled": false },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-returned-after": {
+          "dir": "ltr",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "rotateOnReturn": { "busy": true, "disabled": true },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-leftWhileAsking-before": {
+          "dir": "ltr",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-leftWhileAsking-after": {
+          "dir": "ltr",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-offline-before": {
+          "dir": "ltr",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "en-offline-after": {
+          "dir": "ltr",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [
+            "Couldn't reach Nibleaf. Check your internet connection and try again."
+          ],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null,
+              "offline": true
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-confirm-before": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": true,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-confirm-after": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": true,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        "ar-held-before": {
+          "dir": "rtl",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-held-after": {
+          "dir": "rtl",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-rotated-before": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-rotated-after": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        },
+        "ar-refused-before": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["محاولات كثيرة جدا. انتظر قليلا ثم حاول مجددا."],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-refused-after": {
+          "dir": "rtl",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["محاولات كثيرة جدا. انتظر قليلا ثم حاول مجددا."],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-returned-before": {
+          "dir": "rtl",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "rotateOnReturn": { "busy": false, "disabled": false },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-returned-after": {
+          "dir": "rtl",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "rotateOnReturn": { "busy": true, "disabled": true },
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-leftWhileAsking-before": {
+          "dir": "rtl",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-b/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-leftWhileAsking-after": {
+          "dir": "rtl",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-offline-before": {
+          "dir": "rtl",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": {
+            "cache": { "<SECRET_1>": ["mutations", "dehydrateAll"] },
+            "console": []
+          },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        },
+        "ar-offline-after": {
+          "dir": "rtl",
+          "rotate": null,
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [
+            "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+          ],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null,
+              "offline": true
+            },
+            { "call": "GET /api/app/projects/site-b/git" }
+          ]
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-after-en-1440.webm",
+      "version": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "pageErrors": [],
+      "steps": [
+        {
+          "moment": "Connection panel, Rotate ready",
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        {
+          "moment": "Rotate pressed: the confirmation",
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": true,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        {
+          "moment": "cancelled: nothing sent",
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [{ "call": "GET /api/app/projects/site-a/git" }]
+        },
+        {
+          "moment": "confirmed, held: Rotate busy",
+          "dir": "ltr",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": [],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        {
+          "moment": "refused (429): one toast, Rotate ready",
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Too many attempts. Wait a moment and try again."],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        {
+          "moment": "confirmed again, held",
+          "dir": "ltr",
+          "rotate": { "busy": true, "disabled": true },
+          "dialog": false,
+          "secret": null,
+          "secretMasked": null,
+          "toasts": ["Too many attempts. Wait a moment and try again."],
+          "invalidated": [],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        {
+          "moment": "stored and read back: the one-time secret (masked)",
+          "dir": "ltr",
+          "rotate": { "busy": false, "disabled": false },
+          "dialog": false,
+          "secret": "<SECRET_1>",
+          "secretMasked": true,
+          "toasts": [],
+          "invalidated": [["git-workflow", "site-a"]],
+          "pausedInDefaultDehydrate": 0,
+          "overflow": false,
+          "retained": { "cache": {}, "console": [] },
+          "requests": [
+            { "call": "GET /api/app/projects/site-a/git" },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/site-a/git/webhook-secret",
+              "body": null
+            },
+            { "call": "GET /api/app/projects/site-a/git" }
+          ]
+        }
+      ]
+    }
+  ]
+}

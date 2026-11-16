@@ -9,8 +9,7 @@ const hooks = vi.hoisted(() => {
   const mutation = () => ({ isPending: false, mutateAsync: vi.fn() });
   return {
     integrations: vi.fn(),
-    create: mutation(),
-    update: mutation(),
+    save: { pending: false, save: vi.fn(), retire: vi.fn() },
     activate: mutation(),
     deactivate: mutation(),
     verify: mutation(),
@@ -21,10 +20,11 @@ const hooks = vi.hoisted(() => {
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }));
 vi.mock('@/components/project-settings/analytics-section', () => ({ AnalyticsSection: () => null }));
+vi.mock('@/features/site-integrations/components/use-webhook-integration-save-command', () => ({
+  useWebhookIntegrationSaveCommand: () => hooks.save,
+}));
 vi.mock('@/hooks/api', () => ({
   useProjectIntegrations: hooks.integrations,
-  useCreateProjectIntegration: () => hooks.create,
-  useUpdateProjectIntegration: () => hooks.update,
   useActivateProjectIntegration: () => hooks.activate,
   useDeactivateProjectIntegration: () => hooks.deactivate,
   useVerifyProjectIntegration: () => hooks.verify,
@@ -53,7 +53,8 @@ const button = (container: ParentNode, label: string) =>
   Array.from(container.querySelectorAll('button')).find((element) => element.textContent?.includes(label));
 
 beforeEach(() => {
-  for (const mutation of [hooks.create, hooks.update, hooks.activate, hooks.deactivate, hooks.verify, hooks.remove]) {
+  hooks.save.pending = false;
+  for (const mutation of [hooks.activate, hooks.deactivate, hooks.verify, hooks.remove]) {
     mutation.isPending = false;
     mutation.mutateAsync.mockReset();
   }
@@ -94,7 +95,7 @@ describe('integration actions', () => {
   };
 
   it('marks Connect as loading while the connection is being created', async () => {
-    hooks.create.isPending = true;
+    hooks.save.pending = true;
     const container = await openSlack(null);
     const connect = button(container, 'settings.integrations.connect');
     expect(connect?.getAttribute('aria-busy')).toBe('true');
