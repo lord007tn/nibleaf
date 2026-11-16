@@ -40,7 +40,7 @@ import {
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
-import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { ActiveBranchContext } from '@/components/editor/active-branch-context';
@@ -54,14 +54,17 @@ import { EditorConflictDialog } from '@/components/editor/editor-conflict-dialog
 import {
   aiAssistState,
   draftUnsavable,
+  isDirty,
   isEditorRevisionConflict,
   isPageTooLarge,
   nextHydration,
   normalizedSaveConflict,
+  restoreUnsavedDraft,
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
   shouldSaveDraft,
+  unsavedDrafts,
 } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
@@ -594,6 +597,20 @@ function EditorPage() {
     () =>
       createEditorSaveQueue(
         async (draft: PageDraft) => {
+          const sameText = (other: { title: string; content: string }) => other.title === draft.title && other.content === draft.content;
+          // This draft is the page's final one: the editor still shows it (with
+          // any edit not serialized yet), or the author left the page and no
+          // later draft of it is queued.
+          const final = () => {
+            if (draftRef.current.synced?.id === draft.id) {
+              editorDraftRef.current?.flush();
+              return draftRef.current.synced?.id === draft.id && sameText(draftRef.current.draft);
+            }
+            const queued = saveQueue.pendingDraft();
+            return queued?.id !== draft.id || sameText(queued);
+          };
+          // The revision the server holds once this write's sends are stored.
+          let held = draft.expectedUpdatedAt;
           try {
             // An unpublished page's address keeps following its title.
             const server = freshestServerCopy(draft.id, draftRef.current.page, lastSavedRef.current);
@@ -610,18 +627,6 @@ function EditorPage() {
                 pageId: draft.id,
                 body: { expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
               });
-            const sameText = (other: { title: string; content: string }) => other.title === draft.title && other.content === draft.content;
-            // This draft is the page's final one: the editor still shows it (with
-            // any edit not serialized yet), or the author left the page and no
-            // later draft of it is queued.
-            const final = () => {
-              if (draftRef.current.synced?.id === draft.id) {
-                editorDraftRef.current?.flush();
-                return draftRef.current.synced?.id === draft.id && sameText(draftRef.current.draft);
-              }
-              const queued = saveQueue.pendingDraft();
-              return queued?.id !== draft.id || sameText(queued);
-            };
             /**
              * Take `page`, sent from `from`, as what the server holds: it stored
              * exactly that text, and replaces the editor's server copy unless the
@@ -632,6 +637,8 @@ function EditorPage() {
             const record = (page: Awaited<ReturnType<typeof send>>, from: string | undefined) => {
               lastSavedRef.current = page;
               tooLargeDraftRef.current = null;
+              held = page.updatedAt;
+              unsavedDrafts.stored(page);
               const stored: ServerSnapshot = { id: draft.id, title: page.title, content: page.content, updatedAt: page.updatedAt };
               const supersedes = (synced: ServerSnapshot | null) =>
                 synced?.id === draft.id && (from === undefined || synced.updatedAt === undefined || synced.updatedAt === from);
@@ -669,6 +676,10 @@ function EditorPage() {
               setSaveError(error);
               setStatus(navigator.onLine === false ? 'offline' : 'error');
               if (isEditorRevisionConflict(error)) setConflictedPageId(draft.id);
+            } else if (!mounted.current && final()) {
+              // The editor is gone, so no banner can say this final draft was not
+              // saved: keep it for the next editor of this page (#789).
+              unsavedDrafts.keep({ id: draft.id, title: draft.title, content: draft.content, base: held, error });
             }
             throw error;
           }
@@ -680,6 +691,26 @@ function EditorPage() {
     [],
   );
   supersededRef.current = saveQueue.superseded;
+  // A final draft of this page that an editor could not save after it unmounted
+  // (#789) comes back here once the page is loaded with no edit of this editor's
+  // own: as a conflict to review, or as the draft it was, which autosave sends.
+  const unsavedPageId = page?.id;
+  const readUnsaved = () => (unsavedPageId ? unsavedDrafts.peek(unsavedPageId) : undefined);
+  const unsaved = useSyncExternalStore(unsavedDrafts.subscribe, readUnsaved, readUnsaved);
+  useEffect(() => {
+    if (!unsaved || !canEditContent || synced?.id !== unsaved.id) return;
+    if (isDirty({ synced, draft: { title, content } }) || editorDraftRef.current?.pending() || saveQueue.hasPending()) return;
+    unsavedDrafts.take(unsaved.id);
+    const restore = restoreUnsavedDraft(unsaved, synced);
+    if (!restore) return;
+    setTitle(unsaved.title);
+    setContent(unsaved.content);
+    if (restore === 'conflict') {
+      setSaveError(unsaved.error);
+      setStatus('error');
+      setConflictedPageId(unsaved.id);
+    }
+  }, [unsaved, synced, title, content, canEditContent, saveQueue]);
   // A refusal with its own fix (the page is too large) says so; other failures
   // keep the general "could not be saved" wording.
   const saveFailedMessage = (error: unknown) => (isPageTooLarge(error) ? friendlyErrorMessage(t, error, 'editor.saveError') : t('editor.saveError'));

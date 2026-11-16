@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
   aiAssistState,
+  createUnsavedDrafts,
   type DraftState,
   draftUnsavable,
   isDirty,
   isEditorRevisionConflict,
   nextHydration,
   normalizedSaveConflict,
+  restoreUnsavedDraft,
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
@@ -244,5 +246,48 @@ describe('aiAssistState', () => {
     expect(aiAssistState(false, { isPending: false, isError: true, error: { status: 403 } })).toBe('hidden');
     expect(aiAssistState(false, { isPending: false, isError: true, error: { status: 503 } })).toBe('shown');
     expect(aiAssistState(false, { isPending: false, isError: true, error: new TypeError('Failed to fetch') })).toBe('shown');
+  });
+});
+
+describe('unsaved drafts kept after the editor unmounted (#789)', () => {
+  const kept = { id: pageA.id, title: pageA.title, content: 'My final draft.', base: pageA.updatedAt, error: new Error('Network error') };
+
+  it('keeps one draft per page until it is taken, and tells subscribers', () => {
+    const drafts = createUnsavedDrafts();
+    let calls = 0;
+    const stop = drafts.subscribe(() => {
+      calls += 1;
+    });
+    drafts.keep(kept);
+    expect(drafts.peek(pageA.id)).toBe(kept);
+    expect(drafts.peek(pageB.id)).toBeUndefined();
+    expect(drafts.take(pageA.id)).toBe(kept);
+    expect(drafts.take(pageA.id)).toBeUndefined();
+    stop();
+    drafts.keep(kept);
+    expect(calls).toBe(2);
+  });
+
+  it('drops a kept draft once the server is seen to store that very text, and only then', () => {
+    const drafts = createUnsavedDrafts();
+    drafts.keep(kept);
+    drafts.stored({ id: pageA.id, title: pageA.title, content: 'Other text.' });
+    expect(drafts.peek(pageA.id)).toBe(kept);
+    drafts.stored({ id: pageA.id, title: kept.title, content: kept.content });
+    expect(drafts.peek(pageA.id)).toBeUndefined();
+  });
+
+  it('comes back as the draft over the revision it was meant for', () => {
+    expect(restoreUnsavedDraft(kept, snapshotOf(pageA))).toBe('draft');
+  });
+
+  it('comes back as a conflict when its save raised one, or the server moved on since', () => {
+    expect(restoreUnsavedDraft({ ...kept, error: normalizedSaveConflict(pageA.id) }, snapshotOf(pageA))).toBe('conflict');
+    expect(restoreUnsavedDraft(kept, { ...snapshotOf(pageA), content: 'Another client.', updatedAt: '2026-09-01T10:05:00.000Z' })).toBe('conflict');
+  });
+
+  it('does not come back when the server holds it already, or on another page', () => {
+    expect(restoreUnsavedDraft(kept, { ...snapshotOf(pageA), content: kept.content, updatedAt: '2026-09-01T10:05:00.000Z' })).toBeNull();
+    expect(restoreUnsavedDraft(kept, snapshotOf(pageB))).toBeNull();
   });
 });

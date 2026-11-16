@@ -145,6 +145,79 @@ export const normalizedSaveConflict = (id: string): Error & { code: 'page:revisi
     details: { id, reason: 'normalized' as const },
   });
 
+/**
+ * A page's final draft that an unmounted editor could not save (#789): its save
+ * failed or raised a conflict after the editor was gone, so no banner could say
+ * so. `base` is the revision the server held as far as that editor knew.
+ */
+export interface UnsavedDraft extends DraftSnapshot {
+  id: string;
+  base: string | undefined;
+  error: unknown;
+}
+
+/**
+ * Unsaved final drafts, kept outside the editor's lifetime, one per page, for
+ * the next editor that shows the page to take back. A draft the server is later
+ * seen to store is dropped: it is saved, not unsaved.
+ */
+export function createUnsavedDrafts() {
+  const drafts = new Map<string, UnsavedDraft>();
+  const listeners = new Set<() => void>();
+  const changed = () => {
+    for (const listener of listeners) listener();
+  };
+  return {
+    keep(draft: UnsavedDraft) {
+      drafts.set(draft.id, draft);
+      changed();
+    },
+    /** The server stored `page`: a kept draft of the same text is no longer unsaved. */
+    stored(page: { id: string } & DraftSnapshot) {
+      const kept = drafts.get(page.id);
+      if (kept && kept.title === page.title && kept.content === page.content) {
+        drafts.delete(page.id);
+        changed();
+      }
+    },
+    peek: (id: string): UnsavedDraft | undefined => drafts.get(id),
+    take(id: string): UnsavedDraft | undefined {
+      const kept = drafts.get(id);
+      if (kept) {
+        drafts.delete(id);
+        changed();
+      }
+      return kept;
+    },
+    clear() {
+      if (drafts.size === 0) return;
+      drafts.clear();
+      changed();
+    },
+    subscribe(listener: () => void) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+  };
+}
+
+/** This session's unsaved drafts (the editor route mounts and unmounts; they stay). */
+export const unsavedDrafts = createUnsavedDrafts();
+
+/**
+ * How a kept draft returns to an editor that shows its page as `synced`, with no
+ * edit of its own yet: `null` when the server holds it already; `'conflict'` when
+ * its save raised one, or the server has moved on from the revision it was meant
+ * for (another client's copy is never overwritten without a review); otherwise
+ * `'draft'`, a draft like any other, saved over the same revision as before.
+ */
+export function restoreUnsavedDraft(kept: UnsavedDraft, synced: ServerSnapshot): 'draft' | 'conflict' | null {
+  if (kept.id !== synced.id || (kept.title === synced.title && kept.content === synced.content)) return null;
+  return isEditorRevisionConflict(kept.error) || kept.base !== synced.updatedAt ? 'conflict' : 'draft';
+}
+
 /** The server refused the draft for its size: saving the same text again fails the same way. */
 export const isPageTooLarge = (error: unknown): boolean =>
   typeof error === 'object' && error !== null && 'code' in error && error.code === 'page:too_large';

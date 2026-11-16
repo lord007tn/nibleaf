@@ -32,6 +32,7 @@ import { act, type ComponentType, Profiler, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from '@/components/editor/__fixtures__/hard-wrapped-pages';
+import { unsavedDrafts } from '@/components/editor/editor-draft';
 import { getMarkdown } from '@/components/editor/tiptap-editor';
 
 const mocks = vi.hoisted(() => ({
@@ -293,6 +294,8 @@ const withTyped = (typed: string) => HARD_WRAPPED_EN.replace(FIRST_PARAGRAPH, `$
 const saves = (start: number) => server.patches.map((patch) => [patch.at - start, (patch.content.match(/a byte\.(x*)/)?.[1] ?? '').length] as const);
 
 beforeEach(() => {
+  // A draft an earlier test's editor could not save after it unmounted (#789) is that test's.
+  unsavedDrafts.clear();
   session += 1;
   ended = false;
   inFlight = Promise.resolve();
@@ -1827,6 +1830,190 @@ describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_
     await drain();
     expect(attempts.map((write) => `${write.pageId}:${label(write.content)}`)).toEqual(['page-1:original+A', 'page-1:original+A']);
     expect(server.content).toBe(withTyped('A'));
+  });
+});
+
+/*
+ * #789: the editor unmounted without the guarded navigation's wait while the
+ * server normalized its last write. The save's failure (a revision conflict, or
+ * the re-send failing) reached no one: the editor was gone. Opened again, it
+ * loaded the server's copy, and the author's final draft was gone without a word.
+ *
+ * Now a final draft an unmounted editor could not save is kept for its page, and
+ * the next editor to show that page takes it back: as a revision conflict (the
+ * banner and review) when the save raised one or the server has moved on since,
+ * otherwise as the draft it was, which autosave then sends. A draft the server
+ * holds by then is not taken back.
+ */
+/** Open the editor again, with the page query holding what the server stores now. */
+async function reopen() {
+  live();
+  const page = { ...(mocks.page as Record<string, unknown>), content: server.content, updatedAt: server.updatedAt };
+  mocks.page = page;
+  mocks.pages = [page];
+  container = document.createElement('div');
+  document.body.append(container);
+  root = createRoot(container);
+  mounted = true;
+  await act(async () => root.render(tree()));
+  await advance(50);
+  if (!editor()) throw new Error('The editor did not mount');
+}
+/** The page query now holds what the server stores (a save's response, a refetch). */
+async function queryFollowsServer() {
+  mocks.page = { ...(mocks.page as Record<string, unknown>), content: server.content, updatedAt: server.updatedAt };
+  mocks.pages = [mocks.page as Record<string, unknown>];
+  await rerender();
+  await advance(0);
+}
+const errorShown = () => mounted && (container.textContent ?? '').includes('editor.saveError');
+const NORMALIZED_A = `${withTyped('A')}${NORMALIZED}`;
+
+describe('#789: an unmount while the server normalizes the last write keeps the final draft', { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  it('repro: every write is normalized, the editor unmounts, the writes settle, it opens again: the draft and the conflict banner are back', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (_index, content) => `${content}${NORMALIZED}`;
+    await typeAndHoldTheSave();
+    await unmount();
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A']);
+    await reopen();
+    // Main: the normalized copy, no banner, and the draft is gone.
+    expect(getMarkdown(current())).toBe(withTyped('A').trimEnd());
+    expect(conflictShown()).toBe(true);
+    // Saving stays paused for the review: no more writes.
+    await act(async () => window.dispatchEvent(new Event('blur')));
+    await advance(30_000);
+    expect(attempts).toHaveLength(2);
+    expect(refused).toBe(0);
+  });
+
+  it('repro, then the author reviews and keeps the draft: it is stored', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index < 2 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await unmount();
+    await drain();
+    await reopen();
+    expect(conflictShown()).toBe(true);
+    const review = [...container.querySelectorAll('button')].find((button) => button.textContent === 'editor.conflict.review');
+    if (!review) throw new Error('No review button');
+    await act(async () => review.click());
+    await advance(0);
+    await act(async () => mocks.conflictDialog?.onResolve({ title: 'Page', content: withTyped('A') }));
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+    expect(conflictShown()).toBe(false);
+    expect(refused).toBe(0);
+  });
+
+  it('the re-send fails on the network: opened again, the draft is back and saved from the stored revision', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await unmount();
+    await settleWrite();
+    await settleWrite(false);
+    await drain();
+    expect(server.content).toBe(NORMALIZED_A);
+    await reopen();
+    // Main: the normalized copy, "saved", and the draft is gone.
+    expect(getMarkdown(current())).toBe(withTyped('A').trimEnd());
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+    expect(refused).toBe(0);
+    expect(conflictShown()).toBe(false);
+    expect(savedShown()).toBe(true);
+  });
+
+  it('the re-send fails, and so does the save after opening again: the draft stays on screen with the save error', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await unmount();
+    await settleWrite();
+    await settleWrite(false);
+    await drain();
+    await reopen();
+    await advance(700);
+    // Main: nothing to save, the normalized copy is "saved".
+    expect(held.map((write) => write.content)).toEqual([withTyped('A')]);
+    await settleWrite(false);
+    expect(getMarkdown(current())).toBe(withTyped('A').trimEnd());
+    expect(errorShown()).toBe(true);
+    expect(server.content).toBe(NORMALIZED_A);
+  });
+
+  it('the re-send fails, then another client saves the page: opened again, the draft comes back as a conflict, never over their copy', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await unmount();
+    await settleWrite();
+    await settleWrite(false);
+    await drain();
+    server = { ...server, content: withTyped('F'), updatedAt: nextStamp() };
+    await reopen();
+    expect(getMarkdown(current())).toBe(withTyped('A').trimEnd());
+    expect(conflictShown()).toBe(true);
+    await drain();
+    expect(attempts).toHaveLength(2);
+    expect(server.content).toBe(withTyped('F'));
+  });
+
+  it('opened again before the writes settle: the draft comes back once the re-send fails, and is saved', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await unmount();
+    await reopen();
+    expect(getMarkdown(current())).toBe(ORIGINAL.trimEnd());
+    await settleWrite();
+    await queryFollowsServer();
+    expect(getMarkdown(current())).toContain('Normalized by the server.');
+    await settleWrite(false);
+    await drain();
+    expect(getMarkdown(current())).toBe(withTyped('A').trimEnd());
+    expect(sent()).toEqual(['original+A', 'original+A', 'original+A']);
+    expect(server.content).toBe(withTyped('A'));
+    expect(refused).toBe(0);
+  });
+
+  // Guards: what main already did right stays so.
+  it('guard: the re-send stores the draft: opened again, it shows the stored draft, with no banner and no more writes', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
+    await typeAndHoldTheSave();
+    await unmount();
+    await drain();
+    await reopen();
+    await drain();
+    expect(sent()).toEqual(['original+A', 'original+A']);
+    expect(getMarkdown(current())).toBe(withTyped('A').trimEnd());
+    expect(conflictShown()).toBe(false);
+    expect(errorShown()).toBe(false);
+  });
+
+  it('guard: navigating away while every write is normalized is refused with the banner, and the review stays on that editor', async () => {
+    await open(ORIGINAL);
+    serveLikeTheServer('response');
+    storeAs = (_index, content) => `${content}${NORMALIZED}`;
+    await typeAndHoldTheSave();
+    const proceeded = await navigate();
+    await drain();
+    await expect(proceeded()).rejects.toThrow();
+    expect(conflictShown()).toBe(true);
+    expect(getMarkdown(current())).toBe(withTyped('A').trimEnd());
+    expect(attempts).toHaveLength(2);
   });
 });
 
