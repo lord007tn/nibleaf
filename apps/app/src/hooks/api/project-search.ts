@@ -50,9 +50,13 @@ export const projectSearchIndexDiagnosticsQueryOptions = (projectId: string, cur
 
 export const useProjectSearchConfiguration = (projectId: string) => useQuery(projectSearchConfigurationQueryOptions(projectId));
 
+/**
+ * Saves the Search form's configuration. Sets no `meta.errorMessage`: the form
+ * reports a failure itself, and only while that save is still its own, so a
+ * save whose form has gone says nothing.
+ */
 export const useUpdateProjectSearchConfiguration = (projectId: string) => {
   const queryClient = useQueryClient();
-  const t = useT();
   return useMutation({
     mutationFn: async (body: UpdateProjectSearchConfigurationBody) =>
       mutateData(
@@ -70,7 +74,6 @@ export const useUpdateProjectSearchConfiguration = (projectId: string) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.site.shell(projectId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.site.allSearch(projectId) });
     },
-    meta: { errorMessage: (error) => friendlyErrorMessage(t, error, 'settings.saveError') },
   });
 };
 

@@ -74,7 +74,8 @@ export function AdvancedAccess(props: Props) {
       <p className="mt-1 max-w-prose text-muted-foreground text-sm">{t('settings.visibility.advanced.body')}</p>
       <CollapsibleContent className="mt-6 flex flex-col gap-10" keepMounted>
         <AudiencesSection {...props} />
-        <JwtSection {...props} onInvalid={reveal} />
+        {/* Per site: another site's section starts without this one's confirmation or its pending answer. */}
+        <JwtSection {...props} key={props.projectId} onInvalid={reveal} />
         <AuditSection {...props} />
       </CollapsibleContent>
     </Collapsible>
@@ -309,7 +310,7 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
   const manage = decisionProps(manageDecision(status));
   const source = useMemo(() => jwtValues(data.jwt), [data.jwt]);
   // Set while the confirmation runs the save, so a failure shows in the dialog rather than a toast.
-  const confirming = useRef<{ failure: unknown } | null>(null);
+  const confirming = useRef<{ failure: unknown; savedAway?: boolean } | null>(null);
   const [confirmation, setConfirmation] = useState<{ impacts: JwtImpact[] }>();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const problemText = (field: JwtField, problem: JwtProblem | undefined) => {
@@ -335,6 +336,8 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
       try {
         await saveJwt.mutateAsync(request.body);
         outcome.succeeded(jwtSavedValues(request.body));
+        // Saved while React kept the dialog hidden: the draft reports the submit as failed, but it went through.
+        if (!outcome.isCurrent() && confirming.current) confirming.current.savedAway = true;
         return 'saved';
       } catch (error) {
         outcome.failed();
@@ -455,7 +458,9 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
           confirming.current = { failure: null };
           try {
             const outcome = await save();
-            if (outcome === 'failed') throw confirming.current.failure ?? new Error('The JWT settings were not saved.');
+            // Saved while hidden: the dialog closes once shown again, with nothing else said.
+            if (outcome === 'failed' && !confirming.current.savedAway)
+              throw confirming.current.failure ?? new Error('The JWT settings were not saved.');
             if (outcome === 'saved') toast.success(t('settings.authentication.reader.jwtSaved'));
           } finally {
             confirming.current = null;

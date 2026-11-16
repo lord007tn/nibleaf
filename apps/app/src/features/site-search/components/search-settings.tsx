@@ -27,7 +27,7 @@ import { validateOnBlurThenChange } from '@/lib/forms/field-errors';
 import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import type { SiteAdminState } from '@/lib/project-settings-access';
-import { useSaveSearch, useSearchConfiguration, useSearchLanguages, wasReported } from '../api/hooks';
+import { useSaveSearch, useSearchConfiguration, useSearchLanguages } from '../api/hooks';
 import {
   decisionProps,
   fieldsDecision,
@@ -125,8 +125,8 @@ function SearchForm({
         return 'saved';
       } catch (error) {
         outcome.failed();
-        // A configuration failure was already toasted by its mutation; a save for a site this form no longer shows says nothing.
-        if (outcome.isCurrent() && !wasReported(error)) toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
+        // A save for a form since gone (another site, or the section left) says nothing.
+        if (outcome.isCurrent()) toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
         return 'failed';
       }
     },

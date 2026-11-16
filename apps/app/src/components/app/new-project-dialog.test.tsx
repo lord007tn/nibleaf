@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, useState } from 'react';
+import { Activity, act, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
@@ -11,11 +12,16 @@ const mocks = vi.hoisted(() => ({
   create: vi.fn(),
   availability: vi.fn(),
   sites: [] as Array<{ name: string }>,
+  /** Called with each key the dialog translates, so a test can act at that exact moment. */
+  onTranslate: undefined as ((key: string) => void) | undefined,
 }));
 vi.mock('@nibleaf/i18n/react', () => ({
   useLocale: () => ({
     locale: mocks.locale,
-    t: (key: string, variables?: Record<string, string>) => (variables?.slug ? `${key}: ${variables.slug}` : key),
+    t: (key: string, variables?: Record<string, string>) => {
+      mocks.onTranslate?.(key);
+      return variables?.slug ? `${key}: ${variables.slug}` : key;
+    },
   }),
 }));
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => mocks.navigate }));
@@ -27,6 +33,8 @@ vi.mock('@/hooks/api', () => ({
 vi.mock('@/services/api', () => ({ api: { app: { projects: { availability: { $get: mocks.availability } } } } }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn() } }));
 
+import { toast } from 'sonner';
+
 import { NewProjectDialog } from './new-project-dialog';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -35,6 +43,7 @@ const clients: QueryClient[] = [];
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.onTranslate = undefined;
   mocks.locale = 'en';
   mocks.sites = [];
   mocks.create.mockResolvedValue({ id: 'site', firstPageId: 'welcome-page' });
@@ -432,5 +441,417 @@ describe('create site dialog', () => {
     expect(document.body.textContent).toContain('newSite.startingPoint');
     await click(button('common.back'));
     expect(nameField().value).toBe('Acme Docs');
+  });
+});
+
+describe('create site dialog: creation that ends while React hides the dialog (<Activity>, #767)', () => {
+  let hide: (hidden: boolean) => Promise<void>;
+  /** Closes and opens the dialog from outside (its caller), as the person could while it is hidden. */
+  let reopenFromOutside: () => Promise<void>;
+  /** Moves the same dialog to another organization. */
+  let switchOrganization: (organizationId: string) => Promise<void>;
+  /** The same changes, committed synchronously from wherever the test calls them (a microtask, say). */
+  let commit: { organization: (organizationId: string) => void; open: (open: boolean) => void };
+  /** The dialog inside an <Activity>, opened and closed as a caller would. */
+  async function renderHideable() {
+    const node = document.createElement('div');
+    document.body.append(node);
+    const root = createRoot(node);
+    roots.push(root);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    clients.push(client);
+    const close = vi.fn();
+    let setHidden!: (hidden: boolean) => void;
+    let setOpenFromOutside!: (open: boolean) => void;
+    let setOrganization!: (organizationId: string) => void;
+    function Harness() {
+      const [open, setOpen] = useState(true);
+      const [hidden, setHiddenState] = useState(false);
+      const [organizationId, setOrganizationId] = useState('org-a');
+      setHidden = setHiddenState;
+      setOpenFromOutside = setOpen;
+      setOrganization = setOrganizationId;
+      return (
+        <Activity mode={hidden ? 'hidden' : 'visible'}>
+          <button type="button" onClick={() => setOpen(true)}>
+            Reopen
+          </button>
+          <NewProjectDialog
+            open={open}
+            organizationId={organizationId}
+            onOpenChange={(next) => {
+              close(next);
+              setOpen(next);
+            }}
+          />
+        </Activity>
+      );
+    }
+    await act(async () =>
+      root.render(
+        <QueryClientProvider client={client}>
+          <Harness />
+        </QueryClientProvider>,
+      ),
+    );
+    hide = (hidden) => act(async () => setHidden(hidden));
+    reopenFromOutside = async () => {
+      await act(async () => setOpenFromOutside(false));
+      await act(async () => setOpenFromOutside(true));
+    };
+    switchOrganization = (organizationId) => act(async () => setOrganization(organizationId));
+    commit = {
+      organization: (organizationId) => flushSync(() => setOrganization(organizationId)),
+      open: (value) => flushSync(() => setOpenFromOutside(value)),
+    };
+    return close;
+  }
+  const slugRefusal = () =>
+    new ApiResponseError('taken', 409, 'database:conflict', undefined, undefined, undefined, undefined, {
+      reason: 'slug_taken',
+      suggestedSlug: 'acme-docs-2',
+    });
+  type Create = ReturnType<typeof deferred<{ id: string; firstPageId: string }>>;
+  const succeed = (create: Create) => create.resolve({ id: 'site', firstPageId: 'welcome-page' });
+  const fail = (create: Create) => create.reject(new Error('injected create failure'));
+  const refuse = (create: Create) => create.reject(slugRefusal());
+  /** Nothing the create could do to the dialog happened: still on step 2, idle, nothing said, nothing moved. */
+  const expectNothingApplied = (close: ReturnType<typeof vi.fn>) => {
+    expect(close).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
+    expect(document.body.textContent).toContain('newSite.startingPoint');
+    expect(busy()).toBe(false);
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(document.body.textContent).not.toContain('newSite.slugTaken');
+  };
+  const busy = () => document.querySelector('[aria-busy="true"]') !== null;
+  /** Names the site, continues, and starts creating it; the create answers when the test says. */
+  async function createHeld({ press = true } = {}) {
+    const create = deferred<{ id: string; firstPageId: string }>();
+    mocks.create.mockReturnValueOnce(create.promise);
+    const close = await renderHideable();
+    await nameSite();
+    await click(button('newSite.continue'));
+    if (!press) return { create, close };
+    await click(button('newSite.create'));
+    expect(busy()).toBe(true);
+    return { create, close };
+  }
+
+  // A create that ends while the dialog is hidden is quiet: the draft reconciles
+  // and the dialog stops being busy; nothing is replayed once it shows.
+  it.each([
+    // A created site settles the draft on it, which then follows its empty source; the site shows in the list.
+    ['success', succeed, ''],
+    ['failure', fail, 'Acme Docs'],
+    ['slug refusal', refuse, 'Acme Docs'],
+  ])(
+    'a %s while hidden is quiet once shown: no close, navigation, toast, error or refusal, and Create is free',
+    async (_name, settleCreate, name) => {
+      const { create, close } = await createHeld();
+      await hide(true);
+      await act(async () => settleCreate(create));
+      await hide(false);
+      await settle();
+      expectNothingApplied(close);
+      expect(isDisabled(button('newSite.create'))).toBe(false);
+      await click(button('common.back'));
+      expect(nameField().value).toBe(name);
+    },
+  );
+
+  it.each([
+    ['success', succeed],
+    ['failure', fail],
+    ['slug refusal', refuse],
+  ])('a %s answered after the dialog was closed and opened again on screen: the reopened dialog is left as it is', async (_name, settleCreate) => {
+    const { create, close } = await createHeld();
+    await reopenFromOutside();
+    await act(async () => settleCreate(create));
+    await settle();
+    expectNothingApplied(close);
+  });
+
+  describe('at the submission boundary (on screen, no hiding)', () => {
+    it.each([
+      ['success', succeed],
+      ['failure', fail],
+      ['slug refusal', refuse],
+    ])('a %s whose dialog moves to organization B right after the request answers applies nothing to B', async (_name, settleCreate) => {
+      const { create, close } = await createHeld();
+      await act(async () => {
+        // The submit handler resumes first (the request answered); then B commits, before the action resumes.
+        settleCreate(create);
+        queueMicrotask(() => commit.organization('org-b'));
+      });
+      await settle();
+      expectNothingApplied(close);
+    });
+
+    it.each([
+      ['success', succeed, ''],
+      ['failure', fail, 'Acme Docs'],
+      ['slug refusal', refuse, 'Acme Docs'],
+    ])(
+      'a %s for a dialog closed and opened again while Create was validating applies nothing to the new opening',
+      async (_name, settleCreate, name) => {
+        const { create, close } = await createHeld({ press: false });
+        await act(async () => {
+          button('newSite.create').click();
+          queueMicrotask(() => {
+            commit.open(false);
+            commit.open(true);
+          });
+        });
+        expect(mocks.create).toHaveBeenCalledOnce();
+        await act(async () => settleCreate(create));
+        await settle();
+        expectNothingApplied(close);
+        await click(button('common.back'));
+        expect(document.body.textContent).not.toContain('newSite.error');
+        expect(nameField().value).toBe(name);
+      },
+    );
+  });
+
+  describe('the last moments before the dialog acts (on screen, no hiding)', () => {
+    /** Runs `then` in a microtask queued at the step's last synchronous moment, once. */
+    const atMoment = (then: () => void) => () => queueMicrotask(then);
+
+    it('a success: organization B commits after the action navigated but before the dialog closes, and B is not closed or reset', async () => {
+      const { create, close } = await createHeld();
+      mocks.navigate.mockImplementationOnce(atMoment(() => commit.organization('org-b')));
+      await act(async () => succeed(create));
+      await settle();
+      // The navigation and the toast belonged to A, which still owned the create then.
+      expect(mocks.navigate).toHaveBeenCalledOnce();
+      expect(close).not.toHaveBeenCalled();
+      expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
+      expect(document.body.textContent).toContain('newSite.startingPoint');
+      expect(busy()).toBe(false);
+    });
+
+    it('a failure: organization B commits after the action failed but before the dialog shows it, and B shows no error', async () => {
+      const { create, close } = await createHeld();
+      let armed = true;
+      mocks.onTranslate = (key) => {
+        if (key !== 'newSite.error' || !armed) return;
+        armed = false;
+        queueMicrotask(() => commit.organization('org-b'));
+      };
+      await act(async () => fail(create));
+      await settle();
+      expect(close).not.toHaveBeenCalled();
+      expect(document.querySelector('[data-slot="action-dialog"] [role="alert"]')).toBeNull();
+      expect(busy()).toBe(false);
+    });
+
+    it('a newer starter picked after the request answered, before the action resumed: no navigation, no close, the newer starter kept', async () => {
+      const { create, close } = await createHeld();
+      await act(async () => {
+        succeed(create);
+        // After the submit handler's succeeded(), before the action reads the draft.
+        queueMicrotask(() => {
+          const blank = element<HTMLInputElement>('input[type="radio"][value="blank"]');
+          const fieldset = blank.closest('fieldset');
+          if (fieldset) fieldset.disabled = false;
+          blank.click();
+        });
+      });
+      await settle();
+      expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ starter: 'product-docs' }));
+      expect(mocks.navigate).not.toHaveBeenCalled();
+      expect(close).not.toHaveBeenCalled();
+      expect(busy()).toBe(false);
+      expect(element<HTMLInputElement>('input[type="radio"][value="blank"]').checked).toBe(true);
+    });
+  });
+
+  it('after a quiet failure, Create tries again, and a clean success navigates and closes', async () => {
+    const { create, close } = await createHeld();
+    await hide(true);
+    await act(async () => fail(create));
+    await hide(false);
+    await click(button('newSite.create'));
+    await settle();
+    expect(mocks.create).toHaveBeenCalledTimes(2);
+    expect(mocks.navigate).toHaveBeenCalledOnce();
+    expect(close).toHaveBeenCalledWith(false);
+  });
+
+  it('after a quiet slug refusal, a retry refused again shows it on the address step', async () => {
+    const { create, close } = await createHeld();
+    await hide(true);
+    await act(async () => refuse(create));
+    await hide(false);
+    mocks.create.mockRejectedValueOnce(slugRefusal());
+    await click(button('newSite.create'));
+    await settle();
+    expect(close).not.toHaveBeenCalled();
+    expect(document.body.textContent).toContain('newSite.slugTaken: acme-docs-2');
+  });
+
+  it('a success while hidden, with a newer value made before the hide: the dialog stays open with it once shown', async () => {
+    const { create, close } = await createHeld();
+    await injectNewerStarter();
+    await hide(true);
+    await act(async () => create.resolve({ id: 'site', firstPageId: 'welcome-page' }));
+    await hide(false);
+    expect(close).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(busy()).toBe(false);
+    expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
+    expect(element<HTMLInputElement>('input[type="radio"][value="blank"]').checked).toBe(true);
+  });
+
+  it.each([
+    // A created site settles the draft on it, which then follows its empty source: the name goes, as after any create.
+    ['success', succeed, ''],
+    ['failure', fail, 'Acme Docs'],
+    ['slug refusal', refuse, 'Acme Docs'],
+  ])('a %s while hidden, then closed and opened again while hidden: the later opening is left as it is', async (_name, settleCreate, name) => {
+    const { create, close } = await createHeld();
+    await hide(true);
+    await act(async () => settleCreate(create));
+    await reopenFromOutside();
+    await hide(false);
+    await settle();
+    expectNothingApplied(close);
+    await click(button('common.back'));
+    expect(nameField().value).toBe(name);
+  });
+
+  it.each([
+    ['success', succeed],
+    ['failure', fail],
+    ['slug refusal', refuse],
+  ])('a %s for organization A, which the hidden dialog left for B: B is left as it is once shown', async (_name, settleCreate) => {
+    const { create, close } = await createHeld();
+    await hide(true);
+    await switchOrganization('org-b');
+    await act(async () => settleCreate(create));
+    await hide(false);
+    await settle();
+    expectNothingApplied(close);
+  });
+
+  it.each([
+    ['success', succeed, ''],
+    ['failure', fail, 'Acme Docs'],
+    ['slug refusal', refuse, 'Acme Docs'],
+  ])(
+    'a %s answered after the dialog was closed and opened again while hidden, then shown: the reopened dialog is left as it is',
+    async (_name, settleCreate, name) => {
+      const { create, close } = await createHeld();
+      await hide(true);
+      await reopenFromOutside();
+      await hide(false);
+      await settle();
+      await act(async () => settleCreate(create));
+      await settle();
+      expectNothingApplied(close);
+      await click(button('common.back'));
+      expect(nameField().value).toBe(name);
+    },
+  );
+
+  describe.each([
+    ['answered while hidden', true],
+    ['answered once shown', false],
+  ])('organization A → B → A while hidden, %s', (_when, answerHidden) => {
+    it.each([
+      ['success', succeed],
+      ['failure', fail],
+      ['slug refusal', refuse],
+    ])('a %s for the first A applies nothing to the A it came back to', async (_name, settleCreate) => {
+      const { create, close } = await createHeld();
+      await hide(true);
+      await switchOrganization('org-b');
+      await switchOrganization('org-a');
+      if (answerHidden) await act(async () => settleCreate(create));
+      await hide(false);
+      await settle();
+      if (!answerHidden) {
+        await act(async () => settleCreate(create));
+        await settle();
+      }
+      expectNothingApplied(close);
+    });
+  });
+});
+
+/** Picks another starter while creating: the controls are disabled, so this stands in for a programmatic caller of the draft. */
+async function injectNewerStarter() {
+  const blank = element<HTMLInputElement>('input[type="radio"][value="blank"]');
+  await act(async () => {
+    const fieldset = blank.closest('fieldset');
+    if (fieldset) fieldset.disabled = false;
+    blank.click();
+  });
+  expect(blank.checked).toBe(true);
+}
+
+describe('create site dialog: a value newer than the created site', () => {
+  // The controls are disabled while creating; this injects a change anyway, as
+  // a programmatic caller of the draft could, to hold the dialog to the contract.
+  it('keeps the dialog open with the draft: no navigation, no close', async () => {
+    const create = deferred<{ id: string; firstPageId: string }>();
+    mocks.create.mockReturnValueOnce(create.promise);
+    const close = await render();
+    await nameSite();
+    await click(button('newSite.continue'));
+    await click(button('newSite.create'));
+    await injectNewerStarter();
+    await act(async () => create.resolve({ id: 'site', firstPageId: 'welcome-page' }));
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ starter: 'product-docs' }));
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(close).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
+    expect(element<HTMLInputElement>('input[type="radio"][value="blank"]').checked).toBe(true);
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  });
+});
+
+describe('create site dialog: a site created for an organization the dialog has since left', () => {
+  it.each([
+    ['B', ['org-b']],
+    ['B, then A again', ['org-b', 'org-a']],
+  ])('leaves the dialog as it is after moving to %s: no close, no reset, no navigation, no error', async (_name, organizations) => {
+    const create = deferred<{ id: string; firstPageId: string }>();
+    mocks.create.mockReturnValueOnce(create.promise);
+    const node = document.createElement('div');
+    document.body.append(node);
+    const root = createRoot(node);
+    roots.push(root);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+    clients.push(client);
+    const close = vi.fn();
+    const view = (organizationId: string) =>
+      act(async () =>
+        root.render(
+          <QueryClientProvider client={client}>
+            <NewProjectDialog open organizationId={organizationId} onOpenChange={close} />
+          </QueryClientProvider>,
+        ),
+      );
+    await view('org-a');
+    await nameSite();
+    await click(button('newSite.continue'));
+    await click(button('newSite.create'));
+    expect(mocks.create).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org-a' }));
+    // The same dialog now creates for another organization (and maybe A again: a new draft all the same).
+    for (const organizationId of organizations) await view(organizationId);
+    await act(async () => create.resolve({ id: 'site', firstPageId: 'welcome-page' }));
+    await settle();
+    expect(close).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(document.querySelector('[data-slot="action-dialog"]')).not.toBeNull();
+    expect(document.body.textContent).toContain('newSite.startingPoint');
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(document.querySelector('[role="alert"]')).toBeNull();
   });
 });

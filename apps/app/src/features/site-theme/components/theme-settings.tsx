@@ -39,7 +39,6 @@ import {
 import { ThemeExchange } from './theme-exchange';
 import { ThemeOptionSelect, ThemePresetThumbnail, ThemePreview } from './theme-preview';
 import { acquireWrite, type Operation, releaseWrite, useWriteFor, writeFor } from './theme-writes';
-import { useMounted } from './use-mounted';
 
 const NOTHING_LEFT: ReadonlySet<string> = new Set();
 
@@ -60,7 +59,6 @@ export function ThemeSettings({ project }: { project: Project }) {
 function ThemeForm({ project }: { project: Project }) {
   const t = useT();
   const saveTheme = useSaveTheme(project.id);
-  const mounted = useMounted();
   const config = project.config;
   const storedTheme = config?.theme;
   const storedAppearance = config?.styling?.theme;
@@ -100,12 +98,12 @@ function ThemeForm({ project }: { project: Project }) {
         // Before the answer becomes the baseline, so edits made during this save move onto it.
         if (save.isCurrent()) setMark((current) => (current?.id === id ? { ...current, reached: [sent, confirmed] } : current));
         settled.current = save.succeeded(confirmed);
-        if (save.isCurrent() && mounted.current) toast.success(t('settings.theme.savedDraft'));
+        if (save.isCurrent()) toast.success(t('settings.theme.savedDraft'));
         return 'saved';
       } catch (error) {
         save.failed();
-        // A save for a site this form has since left says nothing here.
-        if (save.isCurrent() && mounted.current) toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
+        // A save for a site this form has since left, or a form since unmounted, says nothing here.
+        if (save.isCurrent()) toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
         return 'failed';
       } finally {
         if (activeSave.current === id) activeSave.current = undefined;
