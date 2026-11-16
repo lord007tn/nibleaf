@@ -95,6 +95,23 @@ const setField = (value: string, inputType: string) =>
     field?.dispatchEvent(new InputEvent('input', { bubbles: true, inputType }));
   });
 
+/** An edit as the browser makes it: the new value, the caret after the edit (in
+ *  UTF-16 units), then `input`. */
+const editField = (value: string, caret: number, inputType: string) =>
+  act(async () => {
+    const field = input();
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, value);
+    field?.setSelectionRange(caret, caret);
+    field?.dispatchEvent(new InputEvent('input', { bubbles: true, inputType, isComposing: inputType === 'insertCompositionText' }));
+  });
+
+const compose = (type: 'compositionstart' | 'compositionend', data = '') =>
+  act(async () => {
+    input()?.dispatchEvent(new CompositionEvent(type, { bubbles: true, data }));
+  });
+
+const caret = () => [input()?.selectionStart, input()?.selectionEnd];
+
 /** Types `text` one code point at a time at the end of the field. */
 const typeText = async (text: string) => {
   for (const codePoint of text) await setField(`${input()?.value ?? ''}${codePoint}`, 'insertText');
@@ -163,5 +180,66 @@ describe('reader search query length', () => {
     await act(async () => recent?.click());
     await expectSearchWithinLimit();
     expect(input()?.value).toBe('y'.repeat(200));
+  });
+
+  describe('editing inside a full field (#851 review)', () => {
+    const full = `${'a'.repeat(199)}z`;
+
+    it('drops a character typed mid-string at the limit and keeps the caret where it was typed', async () => {
+      await render();
+      await setField(full, 'insertText');
+      // The caret is at the start; typing `b` makes 201 characters.
+      await editField(`b${full}`, 1, 'insertText');
+      expect(input()?.value).toBe(full);
+      expect(caret()).toEqual([0, 0]);
+      // Typing on, mid-string, still lands where the caret is.
+      await editField(`${full.slice(0, 50)}c${full.slice(50)}`, 51, 'insertText');
+      expect(input()?.value).toBe(full);
+      expect(caret()).toEqual([50, 50]);
+      await expectSearchWithinLimit();
+    });
+
+    it('keeps the part of a mid-string paste that fits, with the caret after it', async () => {
+      await render();
+      const before = `${'a'.repeat(100)}${'z'.repeat(95)}`; // 195 characters, caret after the a's
+      await setField(before, 'insertText');
+      await editField(`${'a'.repeat(100)}${'b'.repeat(20)}${'z'.repeat(95)}`, 120, 'insertFromPaste');
+      expect(input()?.value).toBe(`${'a'.repeat(100)}${'b'.repeat(5)}${'z'.repeat(95)}`);
+      expect(caret()).toEqual([105, 105]);
+      await expectSearchWithinLimit();
+    });
+
+    it('keeps whole emoji of a mid-string paste and never puts the caret inside one', async () => {
+      await render();
+      const before = `${'a'.repeat(100)}${'z'.repeat(95)}`;
+      await setField(before, 'insertText');
+      await editField(`${'a'.repeat(100)}${EMOJI.repeat(20)}${'z'.repeat(95)}`, 140, 'insertFromPaste');
+      expect(input()?.value).toBe(`${'a'.repeat(100)}${EMOJI.repeat(5)}${'z'.repeat(95)}`);
+      expect(caret()).toEqual([110, 110]); // 5 emoji are 10 UTF-16 units
+      await expectSearchWithinLimit();
+    });
+
+    it('leaves an IME composition uncut and applies the limit when it ends', async () => {
+      await render();
+      await setField('a'.repeat(199), 'insertText');
+      await compose('compositionstart');
+      await editField(`${'a'.repeat(199)}にほ`, 201, 'insertCompositionText');
+      await editField(`${'a'.repeat(199)}日本語`, 202, 'insertCompositionText');
+      // Mid-composition the field keeps what the IME shows.
+      expect(input()?.value).toBe(`${'a'.repeat(199)}日本語`);
+      await compose('compositionend', '日本語');
+      expect(input()?.value).toBe(`${'a'.repeat(199)}日`);
+      expect(caret()).toEqual([200, 200]);
+      // The transport cut what went out while the composition ran.
+      await expectSearchWithinLimit();
+    });
+
+    it('changes nothing under the limit: the raw value, as on main', async () => {
+      await render();
+      await setField('a'.repeat(198), 'insertText');
+      await editField(`b${'a'.repeat(198)}`, 1, 'insertText');
+      expect(input()?.value).toBe(`b${'a'.repeat(198)}`);
+      expect(caret()).toEqual([1, 1]);
+    });
   });
 });

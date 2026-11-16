@@ -14,7 +14,7 @@ import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { Highlight } from '@/components/site/site-search-highlight';
 import { takeSearchKeystrokes } from '@/components/site/site-search-keystrokes';
 import { useSlashShortcut, writeSlashShortcut } from '@/components/site/site-search-shortcut';
-import { truncateSearchQuery } from '@/functions/site-search-input';
+import { capSearchQueryEdit, exceedsSearchQueryLimit, truncateSearchQuery } from '@/functions/site-search-input';
 import { useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
@@ -195,13 +195,31 @@ export default function SiteSearchDialog({
   const [keepPrevious, setKeepPrevious] = useState(true);
   // Enter pressed while a keyword search loads opens the best match once it arrives.
   const [pendingEnter, setPendingEnter] = useState(false);
-  const changeQuery = (raw: string) => {
-    // The field holds at most the API's limit in code points (typed or pasted);
-    // `maxLength` would count UTF-16 units and cut emoji queries short.
-    const value = truncateSearchQuery(raw);
+  const applyQuery = (value: string) => {
     setQuery(value);
     setPendingEnter(false);
     if (!value.trim()) setKeepPrevious(false);
+  };
+  // The field holds at most the API's limit in code points, typed or pasted, like
+  // `maxLength` (which would count UTF-16 units and cut emoji queries short): of
+  // an edit that overflows, only what fits is kept, with the caret after it. An
+  // IME composition is left alone until it ends (the transport still cuts what
+  // it sends); `compositionBaseRef` is the value it started from.
+  const composingRef = useRef(false);
+  const compositionBaseRef = useRef('');
+  const capEdit = (input: HTMLInputElement, previous: string) => {
+    const { value, caret } = capSearchQueryEdit(previous, input.value, input.selectionEnd);
+    // Set the field now with the caret in place; the controlled value then
+    // renders the same string and leaves the caret where it is.
+    input.value = value;
+    input.setSelectionRange(caret, caret);
+    applyQuery(value);
+  };
+  const changeQuery = (raw: string) => {
+    const input = inputRef.current;
+    if (composingRef.current || !exceedsSearchQueryLimit(raw)) applyQuery(raw);
+    else if (input?.value === raw) capEdit(input, query);
+    else applyQuery(truncateSearchQuery(raw));
   };
   // Every key typed since search was asked for (while the code loaded and the
   // field mounted) becomes the query, caret at the end. With nothing typed, a
@@ -571,6 +589,14 @@ export default function SiteSearchDialog({
               placeholder={placeholder?.trim() || t('searchPlaceholder')}
               value={query}
               onValueChange={changeQuery}
+              onCompositionStart={() => {
+                composingRef.current = true;
+                compositionBaseRef.current = query;
+              }}
+              onCompositionEnd={(event) => {
+                composingRef.current = false;
+                if (exceedsSearchQueryLimit(event.currentTarget.value)) capEdit(event.currentTarget, compositionBaseRef.current);
+              }}
               enterKeyHint="search"
               className="h-14 px-2 text-base placeholder:text-muted-foreground/80 sm:text-[15px]"
               onKeyDown={(event) => {

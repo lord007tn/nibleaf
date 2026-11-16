@@ -1,7 +1,14 @@
 import { searchQuery } from '@nibleaf/validators';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { parseSearchSiteInput, SEARCH_QUERY_MAX_LENGTH, SearchSiteInputError, truncateSearchQuery } from './site-search-input';
+import {
+  capSearchQueryEdit,
+  exceedsSearchQueryLimit,
+  parseSearchSiteInput,
+  SEARCH_QUERY_MAX_LENGTH,
+  SearchSiteInputError,
+  truncateSearchQuery,
+} from './site-search-input';
 
 // The zod schema `searchSiteFn` used before #836. The plain check replaced it so
 // opening search doesn't load zod; it must accept, reject and return exactly
@@ -308,5 +315,53 @@ describe('reader search query limit, against the public API', () => {
     const cut = truncateSearchQuery(EMOJI.repeat(250));
     expect(cut).toBe(EMOJI.repeat(200));
     expect(cut.length).toBe(400);
+  });
+});
+
+describe('fitting an edit of the search field into the limit', () => {
+  const a = (n: number) => 'a'.repeat(n);
+
+  it('tells an over-long value apart in code points', () => {
+    expect(exceedsSearchQueryLimit(a(200))).toBe(false);
+    expect(exceedsSearchQueryLimit(a(201))).toBe(true);
+    expect(exceedsSearchQueryLimit(EMOJI.repeat(200))).toBe(false); // 400 UTF-16 units
+    expect(exceedsSearchQueryLimit(EMOJI.repeat(201))).toBe(true);
+  });
+
+  it('drops a character typed into a full field and leaves the caret where it was typed', () => {
+    const full = `${a(199)}z`;
+    expect(capSearchQueryEdit(full, `b${full}`, 1)).toEqual({ value: full, caret: 0 });
+    expect(capSearchQueryEdit(full, `${full}b`, 201)).toEqual({ value: full, caret: 200 });
+  });
+
+  it('keeps what fits of a paste, at the paste, with the caret after it', () => {
+    const before = `${a(100)}${'z'.repeat(95)}`;
+    expect(capSearchQueryEdit(before, `${a(100)}${'b'.repeat(20)}${'z'.repeat(95)}`, 120)).toEqual({
+      value: `${a(100)}${'b'.repeat(5)}${'z'.repeat(95)}`,
+      caret: 105,
+    });
+    // Pasted over a selection: the selected text goes, as in any edit.
+    expect(capSearchQueryEdit(`${a(150)}${'z'.repeat(50)}`, `${a(150)}${'b'.repeat(60)}${'z'.repeat(40)}`, 210)).toEqual({
+      value: `${a(150)}${'b'.repeat(10)}${'z'.repeat(40)}`,
+      caret: 160,
+    });
+  });
+
+  it('keeps whole emoji, never half of one', () => {
+    const before = `${a(100)}${'z'.repeat(95)}`;
+    const { value, caret } = capSearchQueryEdit(before, `${a(100)}${EMOJI.repeat(20)}${'z'.repeat(95)}`, 140);
+    expect(value).toBe(`${a(100)}${EMOJI.repeat(5)}${'z'.repeat(95)}`);
+    expect(caret).toBe(110);
+    // An emoji typed just before the last one, in a full field, is dropped whole.
+    const emojiTail = `${a(199)}${EMOJI}`;
+    expect(capSearchQueryEdit(emojiTail, `${a(199)}${EMOJI}${EMOJI}`, 201)).toEqual({ value: emojiTail, caret: 199 });
+  });
+
+  it('cuts the end when the old value was already over the limit, and handles a missing caret', () => {
+    expect(capSearchQueryEdit('', a(250), 250)).toEqual({ value: a(200), caret: 200 });
+    // The old value was over the limit (a composition ran past it): the end goes.
+    expect(capSearchQueryEdit(a(210), `b${a(210)}`, 1)).toEqual({ value: `b${a(199)}`, caret: 1 });
+    expect(capSearchQueryEdit('x', `${a(199)}${EMOJI}${EMOJI}`, 203)).toEqual({ value: `${a(199)}${EMOJI}`, caret: 201 });
+    expect(capSearchQueryEdit(a(5), `${a(199)}${EMOJI}${a(5)}`, null)).toEqual({ value: `${a(199)}${EMOJI}`, caret: 201 });
   });
 });

@@ -74,21 +74,63 @@ const codePointLength = (value: string) => {
   return count;
 };
 
-/** The first `SEARCH_QUERY_MAX_LENGTH` code points of `value`. A longer query is
- * cut, never rejected, so search shows results for what fits; the cut falls
- * between code points, so it never splits a surrogate pair. */
-export const truncateSearchQuery = (value: string): string => {
+/** The first `max` code points of `value`. */
+const firstCodePoints = (value: string, max: number): string => {
   // Each code point takes at least one UTF-16 unit, so a short string fits as is.
-  if (value.length <= SEARCH_QUERY_MAX_LENGTH) return value;
+  if (value.length <= max) return value;
   let out = '';
   let count = 0;
   for (const codePoint of value) {
-    if (count === SEARCH_QUERY_MAX_LENGTH) break;
+    if (count === max) break;
     out += codePoint;
     count++;
   }
   return out;
 };
+
+/** The first `SEARCH_QUERY_MAX_LENGTH` code points of `value`. A longer query is
+ * cut, never rejected, so search shows results for what fits; the cut falls
+ * between code points, so it never splits a surrogate pair. */
+export const truncateSearchQuery = (value: string): string => firstCodePoints(value, SEARCH_QUERY_MAX_LENGTH);
+
+/** Whether `value` is longer than the API accepts, in code points. */
+export const exceedsSearchQueryLimit = (value: string): boolean =>
+  value.length > SEARCH_QUERY_MAX_LENGTH && codePointLength(value) > SEARCH_QUERY_MAX_LENGTH;
+
+const isHighSurrogate = (unit: number) => unit >= 0xd8_00 && unit <= 0xdb_ff;
+const isLowSurrogate = (unit: number) => unit >= 0xdc_00 && unit <= 0xdf_ff;
+/** `at`, moved back one unit if it falls between the halves of a surrogate pair. */
+const codePointBoundary = (value: string, at: number) =>
+  at > 0 && at < value.length && isHighSurrogate(value.charCodeAt(at - 1)) && isLowSurrogate(value.charCodeAt(at)) ? at - 1 : at;
+
+/**
+ * Fits an edit of the search field into the API's limit the way `maxLength`
+ * does, but counting code points: of the text just typed or pasted, only what
+ * fits is kept, the text around it stays, and the caret lands at the end of the
+ * kept text. `previous` is the field's value before the edit, `next` the
+ * over-long value after it, and `caret` the caret after it (`selectionEnd`), in
+ * UTF-16 units. When the edit can't be told apart from the text around it, the
+ * value loses its end instead and the caret stays put, clamped to the new value.
+ */
+export function capSearchQueryEdit(previous: string, next: string, caret: number | null): { value: string; caret: number } {
+  const end = Math.min(Math.max(caret ?? next.length, 0), next.length);
+  const tail = next.slice(end);
+  if (tail.length <= previous.length && previous.endsWith(tail)) {
+    // The edit replaced previous[start, previous.length - tail.length) with next[start, end).
+    const limit = Math.min(end, previous.length - tail.length);
+    let start = 0;
+    while (start < limit && next.charCodeAt(start) === previous.charCodeAt(start)) start++;
+    start = codePointBoundary(next, start);
+    const prefix = next.slice(0, start);
+    const room = SEARCH_QUERY_MAX_LENGTH - codePointLength(prefix) - codePointLength(tail);
+    if (room >= 0) {
+      const kept = firstCodePoints(next.slice(start, end), room);
+      return { value: prefix + kept + tail, caret: start + kept.length };
+    }
+  }
+  const value = truncateSearchQuery(next);
+  return { value, caret: codePointBoundary(value, Math.min(end, value.length)) };
+}
 
 const lengthIn = (value: unknown, min: number, max: number): value is string => {
   if (typeof value !== 'string') return false;
