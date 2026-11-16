@@ -1,0 +1,766 @@
+{
+  "environment": "Isolated component fixture: the real banner section with the real design system, EN/AR catalogs, Query cache and mutations; before uses use-server-draft.ts from main, after this branch’s. API answered by interception with fictional data. Not the dashboard and not production.",
+  "baseline": "5e3fd880217bce138ec997c8c00195f33ab0d627",
+  "head": "90cf7a6a0b000b19a000af3d7b78e49262ca93fb",
+  "attempted": 0,
+  "sheets": [
+    "sheet-en-1440-light.png",
+    "sheet-en-1440-dark.png",
+    "sheet-en-390-light.png",
+    "sheet-en-390-dark.png",
+    "sheet-ar-1440-light.png",
+    "sheet-ar-1440-dark.png",
+    "sheet-ar-390-light.png",
+    "sheet-ar-390-dark.png"
+  ],
+  "captures": [
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save disabled", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "Saving…", "enabled": false },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "Save changes", "enabled": true },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save disabled", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "Saving…", "enabled": false },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "Save changes", "enabled": true },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save disabled", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "Saving…", "enabled": false },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "Save changes", "enabled": true },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save disabled", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "Saving…", "enabled": false },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "Save changes", "enabled": true },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save disabled", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "جار الحفظ…", "enabled": false },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "حفظ التغييرات", "enabled": true },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save disabled", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "جار الحفظ…", "enabled": false },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "حفظ التغييرات", "enabled": true },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save disabled", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "جار الحفظ…", "enabled": false },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "حفظ التغييرات", "enabled": true },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save disabled", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "جار الحفظ…", "enabled": false },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": true,
+        "barSave": { "text": "حفظ التغييرات", "enabled": true },
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "overflow": false,
+      "errors": [],
+      "tried": ["bar Save", "Enter", "Ctrl+S"],
+      "asked": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "afterDefault": {
+        "message": "Soldes d'été",
+        "bar": false,
+        "barSave": null,
+        "toast": null,
+        "focus": "INPUT",
+        "patches": [
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+          "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+        ]
+      },
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ]
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-before-en-1440.webm",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages"
+      ],
+      "steps": [
+        {
+          "step": "Default edited and saved: its request is held by the API",
+          "message": "Summer sale",
+          "bar": true,
+          "barSave": { "text": "Saving…", "enabled": false },
+          "toast": null,
+          "focus": "BODY",
+          "patches": [
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+          ]
+        },
+        {
+          "step": "Switched to French and typed, the Default save still pending",
+          "message": "Soldes d'été",
+          "bar": true,
+          "barSave": { "text": "Saving…", "enabled": false },
+          "toast": null,
+          "focus": "INPUT",
+          "patches": [
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+          ]
+        },
+        {
+          "step": "Asked to save French (bar Save disabled, Enter, Ctrl+S)",
+          "message": "Soldes d'été",
+          "bar": true,
+          "barSave": { "text": "Saving…", "enabled": false },
+          "toast": null,
+          "focus": "INPUT",
+          "patches": [
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+          ]
+        },
+        {
+          "step": "The Default save ended",
+          "message": "Soldes d'été",
+          "bar": true,
+          "barSave": { "text": "Save changes", "enabled": true },
+          "toast": null,
+          "focus": "INPUT",
+          "patches": [
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+          ]
+        },
+        {
+          "step": "Save pressed again: only now is French sent",
+          "message": "Soldes d'été",
+          "bar": false,
+          "barSave": null,
+          "toast": null,
+          "focus": "BODY",
+          "patches": [
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "flow-after-en-1440.webm",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001/languages",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001",
+        "GET /api/app/projects/00000000-0000-4000-8000-000000000001"
+      ],
+      "steps": [
+        {
+          "step": "Default edited and saved: its request is held by the API",
+          "message": "Summer sale",
+          "bar": true,
+          "barSave": { "text": "Saving…", "enabled": false },
+          "toast": null,
+          "focus": "BODY",
+          "patches": [
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+          ]
+        },
+        {
+          "step": "Switched to French and typed, the Default save still pending",
+          "message": "Soldes d'été",
+          "bar": true,
+          "barSave": { "text": "Save changes", "enabled": true },
+          "toast": null,
+          "focus": "INPUT",
+          "patches": [
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001"
+          ]
+        },
+        {
+          "step": "Asked to save French (bar Save, Enter, Ctrl+S)",
+          "message": "Soldes d'été",
+          "bar": false,
+          "barSave": null,
+          "toast": null,
+          "focus": "INPUT",
+          "patches": [
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+          ]
+        },
+        {
+          "step": "The Default save ended",
+          "message": "Soldes d'été",
+          "bar": false,
+          "barSave": null,
+          "toast": null,
+          "focus": "INPUT",
+          "patches": [
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001",
+            "PATCH /api/app/projects/00000000-0000-4000-8000-000000000001/languages/00000000-0000-4000-8000-000000000003"
+          ]
+        }
+      ]
+    }
+  ]
+}

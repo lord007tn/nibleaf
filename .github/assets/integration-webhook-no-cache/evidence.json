@@ -1,0 +1,1070 @@
+{
+  "environment": "Component fixture: main's IntegrationsTab (dd302202092fbb2775df3f0c7605086c7225bc16) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient and API module; a fictional site; Slack served as available (production: coming_soon); every request answered by interception; URLs fictional and shown here by label, idempotency keys labelled; not the signed-in dashboard, production, the server or a real provider",
+  "base": "dd302202092fbb2775df3f0c7605086c7225bc16",
+  "head": "991f5e9d3b454ad777c1ea330f3ee94879f748de",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "en": {
+        "before-ready": {
+          "dir": "ltr",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [],
+          "catalogReads": 1
+        },
+        "before-heldCorrected": {
+          "dir": "ltr",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": ["mutation 1 variables (pending)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#1>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "before-answered": {
+          "dir": "ltr",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": ["Slack connected"],
+          "holders": ["mutation 1 variables (success)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#1>"
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "before-echoedRefusal": {
+          "dir": "ltr",
+          "label": "",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": false,
+          "toasts": [
+            "That webhook URL wasn't accepted. Copy the whole URL from the service and try again."
+          ],
+          "holders": [
+            "mutation 1 variables (error)",
+            "mutation 1 error",
+            "dehydrate (all)"
+          ],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#2>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "before-conflict": {
+          "dir": "ltr",
+          "label": "Theirs",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "holders": ["mutation 1 variables (error)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "PATCH /api/app/projects/site-1/integrations/slack",
+              "body": {
+                "providerId": "slack",
+                "label": "Mine",
+                "expectedRevision": 3,
+                "idempotencyKey": "<synthetic-idempotency-key#3>",
+                "webhookUrl": "<fixture-url:A>",
+                "replaceCredential": true
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "after-ready": {
+          "dir": "ltr",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [],
+          "catalogReads": 1
+        },
+        "after-heldCorrected": {
+          "dir": "ltr",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#4>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "after-answered": {
+          "dir": "ltr",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#4>"
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "after-echoedRefusal": {
+          "dir": "ltr",
+          "label": "",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": false,
+          "toasts": [
+            "That webhook URL wasn't accepted. Copy the whole URL from the service and try again."
+          ],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#5>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "after-conflict": {
+          "dir": "ltr",
+          "label": "Mine",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "PATCH /api/app/projects/site-1/integrations/slack",
+              "body": {
+                "providerId": "slack",
+                "label": "Mine",
+                "expectedRevision": 3,
+                "idempotencyKey": "<synthetic-idempotency-key#6>",
+                "webhookUrl": "<fixture-url:A>",
+                "replaceCredential": true
+              }
+            }
+          ],
+          "catalogReads": 2
+        }
+      },
+      "ar": {
+        "before-ready": {
+          "dir": "rtl",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [],
+          "catalogReads": 1
+        },
+        "before-heldCorrected": {
+          "dir": "rtl",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": ["mutation 1 variables (pending)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#7>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "before-answered": {
+          "dir": "rtl",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "حفظ التغييرات",
+          "submitBusy": false,
+          "toasts": ["تم ربط Slack"],
+          "holders": ["mutation 1 variables (success)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#7>"
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "before-echoedRefusal": {
+          "dir": "rtl",
+          "label": "",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": false,
+          "toasts": [
+            "لم يقبل رابط خطاف الويب هذا. انسخ الرابط كاملا من الخدمة وحاول مجددا."
+          ],
+          "holders": [
+            "mutation 1 variables (error)",
+            "mutation 1 error",
+            "dehydrate (all)"
+          ],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#8>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "before-conflict": {
+          "dir": "rtl",
+          "label": "Theirs",
+          "url": "",
+          "urlMasked": true,
+          "submit": "حفظ التغييرات",
+          "submitBusy": false,
+          "toasts": ["غير شخص آخر هذا في الوقت نفسه. حدث الصفحة وحاول مجددا."],
+          "holders": ["mutation 1 variables (error)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "PATCH /api/app/projects/site-1/integrations/slack",
+              "body": {
+                "providerId": "slack",
+                "label": "Mine",
+                "expectedRevision": 3,
+                "idempotencyKey": "<synthetic-idempotency-key#9>",
+                "webhookUrl": "<fixture-url:A>",
+                "replaceCredential": true
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "after-ready": {
+          "dir": "rtl",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [],
+          "catalogReads": 1
+        },
+        "after-heldCorrected": {
+          "dir": "rtl",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#10>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "after-answered": {
+          "dir": "rtl",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "حفظ التغييرات",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#10>"
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "after-echoedRefusal": {
+          "dir": "rtl",
+          "label": "",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": false,
+          "toasts": [
+            "لم يقبل رابط خطاف الويب هذا. انسخ الرابط كاملا من الخدمة وحاول مجددا."
+          ],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#11>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "after-conflict": {
+          "dir": "rtl",
+          "label": "Mine",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "حفظ التغييرات",
+          "submitBusy": false,
+          "toasts": ["غير شخص آخر هذا في الوقت نفسه. حدث الصفحة وحاول مجددا."],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "PATCH /api/app/projects/site-1/integrations/slack",
+              "body": {
+                "providerId": "slack",
+                "label": "Mine",
+                "expectedRevision": 3,
+                "idempotencyKey": "<synthetic-idempotency-key#12>",
+                "webhookUrl": "<fixture-url:A>",
+                "replaceCredential": true
+              }
+            }
+          ],
+          "catalogReads": 2
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "en": {
+        "before-ready": {
+          "dir": "ltr",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [],
+          "catalogReads": 1
+        },
+        "before-heldCorrected": {
+          "dir": "ltr",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": ["mutation 1 variables (pending)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#13>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "before-answered": {
+          "dir": "ltr",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": ["Slack connected"],
+          "holders": ["mutation 1 variables (success)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#13>"
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "before-echoedRefusal": {
+          "dir": "ltr",
+          "label": "",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": false,
+          "toasts": [
+            "That webhook URL wasn't accepted. Copy the whole URL from the service and try again."
+          ],
+          "holders": [
+            "mutation 1 variables (error)",
+            "mutation 1 error",
+            "dehydrate (all)"
+          ],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#14>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "before-conflict": {
+          "dir": "ltr",
+          "label": "Theirs",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "holders": ["mutation 1 variables (error)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "PATCH /api/app/projects/site-1/integrations/slack",
+              "body": {
+                "providerId": "slack",
+                "label": "Mine",
+                "expectedRevision": 3,
+                "idempotencyKey": "<synthetic-idempotency-key#15>",
+                "webhookUrl": "<fixture-url:A>",
+                "replaceCredential": true
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "after-ready": {
+          "dir": "ltr",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [],
+          "catalogReads": 1
+        },
+        "after-heldCorrected": {
+          "dir": "ltr",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#16>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "after-answered": {
+          "dir": "ltr",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#16>"
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "after-echoedRefusal": {
+          "dir": "ltr",
+          "label": "",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": false,
+          "toasts": [
+            "That webhook URL wasn't accepted. Copy the whole URL from the service and try again."
+          ],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#17>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "after-conflict": {
+          "dir": "ltr",
+          "label": "Mine",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again."
+          ],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "PATCH /api/app/projects/site-1/integrations/slack",
+              "body": {
+                "providerId": "slack",
+                "label": "Mine",
+                "expectedRevision": 3,
+                "idempotencyKey": "<synthetic-idempotency-key#18>",
+                "webhookUrl": "<fixture-url:A>",
+                "replaceCredential": true
+              }
+            }
+          ],
+          "catalogReads": 2
+        }
+      },
+      "ar": {
+        "before-ready": {
+          "dir": "rtl",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [],
+          "catalogReads": 1
+        },
+        "before-heldCorrected": {
+          "dir": "rtl",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": ["mutation 1 variables (pending)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#19>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "before-answered": {
+          "dir": "rtl",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "حفظ التغييرات",
+          "submitBusy": false,
+          "toasts": ["تم ربط Slack"],
+          "holders": ["mutation 1 variables (success)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#19>"
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "before-echoedRefusal": {
+          "dir": "rtl",
+          "label": "",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": false,
+          "toasts": [
+            "لم يقبل رابط خطاف الويب هذا. انسخ الرابط كاملا من الخدمة وحاول مجددا."
+          ],
+          "holders": [
+            "mutation 1 variables (error)",
+            "mutation 1 error",
+            "dehydrate (all)"
+          ],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#20>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "before-conflict": {
+          "dir": "rtl",
+          "label": "Theirs",
+          "url": "",
+          "urlMasked": true,
+          "submit": "حفظ التغييرات",
+          "submitBusy": false,
+          "toasts": ["غير شخص آخر هذا في الوقت نفسه. حدث الصفحة وحاول مجددا."],
+          "holders": ["mutation 1 variables (error)", "dehydrate (all)"],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "PATCH /api/app/projects/site-1/integrations/slack",
+              "body": {
+                "providerId": "slack",
+                "label": "Mine",
+                "expectedRevision": 3,
+                "idempotencyKey": "<synthetic-idempotency-key#21>",
+                "webhookUrl": "<fixture-url:A>",
+                "replaceCredential": true
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "after-ready": {
+          "dir": "rtl",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [],
+          "catalogReads": 1
+        },
+        "after-heldCorrected": {
+          "dir": "rtl",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#22>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "after-answered": {
+          "dir": "rtl",
+          "label": "",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "حفظ التغييرات",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#22>"
+              }
+            }
+          ],
+          "catalogReads": 2
+        },
+        "after-echoedRefusal": {
+          "dir": "rtl",
+          "label": "",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "ربط",
+          "submitBusy": false,
+          "toasts": [
+            "لم يقبل رابط خطاف الويب هذا. انسخ الرابط كاملا من الخدمة وحاول مجددا."
+          ],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "POST /api/app/projects/site-1/integrations",
+              "body": {
+                "providerId": "slack",
+                "webhookUrl": "<fixture-url:A>",
+                "idempotencyKey": "<synthetic-idempotency-key#23>"
+              }
+            }
+          ],
+          "catalogReads": 1
+        },
+        "after-conflict": {
+          "dir": "rtl",
+          "label": "Mine",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "حفظ التغييرات",
+          "submitBusy": false,
+          "toasts": ["غير شخص آخر هذا في الوقت نفسه. حدث الصفحة وحاول مجددا."],
+          "holders": [],
+          "overflow": false,
+          "writes": [
+            {
+              "call": "PATCH /api/app/projects/site-1/integrations/slack",
+              "body": {
+                "providerId": "slack",
+                "label": "Mine",
+                "expectedRevision": 3,
+                "idempotencyKey": "<synthetic-idempotency-key#24>",
+                "webhookUrl": "<fixture-url:A>",
+                "replaceCredential": true
+              }
+            }
+          ],
+          "catalogReads": 2
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "writes": [
+        {
+          "call": "POST /api/app/projects/site-1/integrations",
+          "body": {
+            "providerId": "slack",
+            "webhookUrl": "<fixture-url:A>",
+            "label": "Releases",
+            "idempotencyKey": "<synthetic-idempotency-key#25>"
+          }
+        },
+        {
+          "call": "PATCH /api/app/projects/site-1/integrations/slack",
+          "body": {
+            "providerId": "slack",
+            "label": "Releases",
+            "expectedRevision": 1,
+            "idempotencyKey": "<synthetic-idempotency-key#26>",
+            "webhookUrl": "<fixture-url:B>",
+            "replaceCredential": true
+          }
+        },
+        {
+          "call": "PATCH /api/app/projects/site-1/integrations/slack",
+          "body": {
+            "providerId": "slack",
+            "label": "Mine",
+            "expectedRevision": 2,
+            "idempotencyKey": "<synthetic-idempotency-key#27>"
+          }
+        },
+        {
+          "call": "PATCH /api/app/projects/site-1/integrations/slack",
+          "body": {
+            "providerId": "slack",
+            "label": "Mine",
+            "expectedRevision": 3,
+            "idempotencyKey": "<synthetic-idempotency-key#28>"
+          }
+        }
+      ],
+      "catalogReads": 5,
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "ready",
+          "dir": "ltr",
+          "label": "",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writesSoFar": 0,
+          "catalogReads": 1
+        },
+        {
+          "step": "Connect sent: busy",
+          "dir": "ltr",
+          "label": "Releases",
+          "url": "<fixture-url:A>",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writesSoFar": 1,
+          "catalogReads": 1
+        },
+        {
+          "step": "URL corrected during the send: still busy",
+          "dir": "ltr",
+          "label": "Releases",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "Connect",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writesSoFar": 1,
+          "catalogReads": 1
+        },
+        {
+          "step": "answered: connected, the corrected URL kept, nothing said",
+          "dir": "ltr",
+          "label": "Releases",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writesSoFar": 1,
+          "catalogReads": 2
+        },
+        {
+          "step": "Save (the corrected URL): busy",
+          "dir": "ltr",
+          "label": "Releases",
+          "url": "<fixture-url:B>",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": true,
+          "toasts": [],
+          "holders": [],
+          "overflow": false,
+          "writesSoFar": 2,
+          "catalogReads": 2
+        },
+        {
+          "step": "saved once, URL cleared",
+          "dir": "ltr",
+          "label": "Releases",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": ["Integration updated"],
+          "holders": [],
+          "overflow": false,
+          "writesSoFar": 2,
+          "catalogReads": 3
+        },
+        {
+          "step": "someone else saved first: one conflict message, the label edit kept",
+          "dir": "ltr",
+          "label": "Mine",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": [
+            "Someone else changed this at the same time. Refresh the page and try again.",
+            "Integration updated"
+          ],
+          "holders": [],
+          "overflow": false,
+          "writesSoFar": 3,
+          "catalogReads": 4
+        },
+        {
+          "step": "saved again on the new revision",
+          "dir": "ltr",
+          "label": "Mine",
+          "url": "",
+          "urlMasked": true,
+          "submit": "Save changes",
+          "submitBusy": false,
+          "toasts": [
+            "Integration updated",
+            "Someone else changed this at the same time. Refresh the page and try again.",
+            "Integration updated"
+          ],
+          "holders": [],
+          "overflow": false,
+          "writesSoFar": 4,
+          "catalogReads": 5
+        }
+      ]
+    }
+  ]
+}

@@ -68,8 +68,9 @@ let harness;
 try {
   harness = await mkdtemp(resolve(app, '.git-workflow-connection-capture-'));
   await mkdir(resolve(harness, 'before'), { recursive: true });
-  // Main's component and its git-workflow hooks as they are on the base: useAuthorizeGitWorkflow is gone from the app
-  // (#796), so the before side takes it from the base's own hooks file; every other import is today's, unchanged.
+  // Main's component and its git-workflow hooks as they are on the base: useAuthorizeGitWorkflow (#796) and
+  // useConnectGitWorkflow (the first-connect command) are gone from the app, so the before side takes them from the
+  // base's own hooks file; every other import is today's, unchanged.
   await writeFile(
     resolve(harness, 'before/git-workflow.tsx'),
     git('show', `${BASE}:apps/app/src/components/settings/git-workflow.tsx`).replace("from '@/hooks/api'", "from './hooks'"),
@@ -80,7 +81,7 @@ try {
   );
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
-    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow } from './git-workflow-hooks';\n",
+    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow, useConnectGitWorkflow, useRotateGitWorkflowWebhookSecret } from './git-workflow-hooks';\n",
   );
   await writeFile(
     resolve(harness, 'index.html'),
