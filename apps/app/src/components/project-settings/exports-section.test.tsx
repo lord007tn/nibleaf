@@ -50,11 +50,14 @@ vi.mock('@/hooks/api/exports', () => ({
   useCreateExport: () => ({ mutate: mocks.create }),
   useCancelExport: () => mocks.cancel,
   useGetExportDownload: () => ({ mutateAsync: mocks.download }),
-  useUpdateExportSchedule: () => ({ mutate: mocks.scheduleMutation }),
-  useRunExportSchedule: () => ({ mutate: mocks.scheduleMutation }),
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn() }));
-vi.mock('@/features/site-exports/api/schedules', () => ({ useCreateSchedule: () => mocks.scheduleMutation }));
+vi.mock('@/features/site-exports/api/schedules', () => ({
+  useCreateSchedule: () => mocks.scheduleMutation,
+  useSetScheduleEnabled: () => mocks.scheduleMutation,
+  useRunSchedule: () => mocks.scheduleMutation,
+  usePendingScheduleRequests: () => ({ run: [], enabled: [] }),
+}));
 
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { ExportsSection } from './exports-section';
