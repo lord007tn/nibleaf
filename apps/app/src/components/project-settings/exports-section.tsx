@@ -75,22 +75,28 @@ export function ExportsSection({
     scheduleUnsettled.current = unsettled;
   }, []);
   const confirmDiscard = useConfirmSettingsDiscard();
-  // Which draft a leave confirmation is about: it changes whenever the form opens, closes (a creation
-  // closes it too) or the surface changes, so an answer that arrives later can't drop another draft.
+  // Which draft a leave confirmation is about. It moves on whenever the form opens or closes (a
+  // creation closes it too), the surface changes, or the form starts or ends a draft itself (it
+  // mounts, unmounts or moves to another site), so an answer that arrives later can't drop another draft.
   const scheduleDraft = useRef(0);
-  const showScheduleDraft = (open: boolean) => {
+  const nextScheduleDraft = useCallback(() => {
     scheduleDraft.current += 1;
+  }, []);
+  const showScheduleDraft = (open: boolean) => {
+    nextScheduleDraft();
     setShowSchedule(open);
   };
-  const showSurface = (next: typeof surface) => {
-    scheduleDraft.current += 1;
-    setSurface(next);
-  };
-  /** True when the draft may be dropped now: nothing unsettled, or a confirmed discard of this same draft. */
-  const mayCloseSchedule = async () => {
-    if (!scheduleUnsettled.current) return true;
+  /**
+   * Runs `action` once the draft may be dropped: nothing unsettled, or a confirmed discard of
+   * the draft that was open when asked. Accepting moves to a new draft in the same step, so a
+   * second answer about the same draft does nothing.
+   */
+  const leaveScheduleDraft = async (action: () => void) => {
     const draft = scheduleDraft.current;
-    return (await confirmDiscard()) && draft === scheduleDraft.current;
+    if (scheduleUnsettled.current && !(await confirmDiscard())) return;
+    if (draft !== scheduleDraft.current) return;
+    nextScheduleDraft();
+    action();
   };
   const runs = useListExportRuns(projectId);
   const schedules = useListExportSchedules(projectId);
@@ -146,9 +152,8 @@ export function ExportsSection({
             aria-pressed={surface === value}
             className="h-auto flex-col items-start whitespace-normal p-3 text-start aria-pressed:border-primary aria-pressed:bg-primary/5"
             key={value}
-            onClick={async () => {
-              if (value !== surface && !(await mayCloseSchedule())) return;
-              showSurface(value);
+            onClick={() => {
+              if (value !== surface) void leaveScheduleDraft(() => setSurface(value));
             }}
             type="button"
             variant="outline"
@@ -213,9 +218,9 @@ export function ExportsSection({
             {canManageSchedules ? (
               <Button
                 aria-expanded={showSchedule}
-                onClick={async () => {
-                  if (showSchedule && !(await mayCloseSchedule())) return;
-                  showScheduleDraft(!showSchedule);
+                onClick={() => {
+                  if (showSchedule) void leaveScheduleDraft(() => setShowSchedule(false));
+                  else showScheduleDraft(true);
                 }}
                 size="sm"
                 variant="outline"
@@ -225,7 +230,12 @@ export function ExportsSection({
             ) : null}
           </div>
           {showSchedule && canManageSchedules ? (
-            <ScheduleCreateForm onCreated={() => showScheduleDraft(false)} onUnsettledChange={setScheduleUnsettled} projectId={projectId} />
+            <ScheduleCreateForm
+              onCreated={() => showScheduleDraft(false)}
+              onDraftChange={nextScheduleDraft}
+              onUnsettledChange={setScheduleUnsettled}
+              projectId={projectId}
+            />
           ) : null}
           <div className="space-y-2">
             {schedules.isPending ? (

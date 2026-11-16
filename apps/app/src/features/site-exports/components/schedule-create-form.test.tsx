@@ -71,7 +71,23 @@ const renderForm = (projectId = 'site-a', options: { key?: string } = {}) =>
   act(async () =>
     root.render(wrap(<ScheduleCreateForm key={options.key} onCreated={onCreated} onUnsettledChange={onUnsettled} projectId={projectId} />)),
   );
-const renderSection = () => act(async () => root.render(wrap(<ExportsSection canManageSchedules projectId="site-a" />)));
+const renderSection = ({ canManageSchedules = true, projectId = 'site-a' }: { canManageSchedules?: boolean; projectId?: string } = {}) =>
+  act(async () => root.render(wrap(<ExportsSection canManageSchedules={canManageSchedules} projectId={projectId} />)));
+/** Holds the next leave confirmation open; call the result to answer it. */
+function holdConfirm() {
+  let answer: (confirmed: boolean) => void = () => undefined;
+  mocks.confirm.mockReturnValueOnce(
+    new Promise<boolean>((done) => {
+      answer = done;
+    }),
+  );
+  return (confirmed: boolean) => answer(confirmed);
+}
+/** The pressed surface: create, schedules or history. */
+const surfaceNow = () =>
+  (['create', 'schedules', 'history'] as const)[
+    [...container.querySelectorAll('nav button')].findIndex((item) => item.getAttribute('aria-pressed') === 'true')
+  ];
 
 const button = (text: string) => [...container.querySelectorAll('button')].find((item) => item.textContent?.includes(text));
 const field = <T extends HTMLElement = HTMLInputElement>(label: string) => {
@@ -515,6 +531,78 @@ describe('inside the exports section', () => {
     expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('true');
     expect(button('Schedules')?.getAttribute('aria-pressed')).toBe('true');
     expect(dirtyNow()).toBe(true);
+  });
+
+  it.each([
+    [
+      'its form is replaced after a permission flip',
+      async () => {
+        await renderSection({ canManageSchedules: false });
+        await renderSection({ canManageSchedules: true });
+      },
+    ],
+    [
+      'the same section moves to another site and back',
+      async () => {
+        await renderSection({ projectId: 'site-b' });
+        await renderSection({ projectId: 'site-a' });
+      },
+    ],
+  ])('ignores a late answer once %s', async (_case, replace) => {
+    const answer = holdConfirm();
+    await openForm();
+    await type(field('Schedule name'), 'Edited');
+    await click(button('Run history'));
+
+    await replace();
+    expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('true');
+    await type(field('Schedule name'), 'replacement permission draft 709');
+    await act(async () => answer(true));
+
+    expect(surfaceNow()).toBe('schedules');
+    expect(field('Schedule name').value).toBe('replacement permission draft 709');
+  });
+
+  it('acts on only the first of two answers about the same draft', async () => {
+    const leaveForHistory = holdConfirm();
+    const closeForm = holdConfirm();
+    await openForm();
+    await type(field('Schedule name'), 'Edited');
+    await click(button('Run history'));
+    await click(button('New schedule'));
+    expect(mocks.confirm).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      leaveForHistory(true);
+      closeForm(true);
+    });
+
+    expect(surfaceNow()).toBe('history');
+    // The form was not also closed: back on Schedules it is open, as a fresh draft.
+    await click(button('Schedules'));
+    expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('true');
+    expect(field('Schedule name').value).toBe('Nightly archive');
+  });
+
+  it('does nothing when the person keeps editing', async () => {
+    const answer = holdConfirm();
+    await openForm();
+    await type(field('Schedule name'), 'Edited');
+    await click(button('New schedule'));
+    await act(async () => answer(false));
+    expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('true');
+    expect(field('Schedule name').value).toBe('Edited');
+  });
+
+  it('still acts on an answer given across a language change', async () => {
+    const answer = holdConfirm();
+    await openForm();
+    await type(field('Schedule name'), 'Edited');
+    await click(button('Run history'));
+    mocks.locale = 'ar';
+    await renderSection();
+    await act(async () => answer(true));
+    expect(surfaceNow()).toBe('history');
   });
 
   it('still acts on an answer about the draft that is open', async () => {

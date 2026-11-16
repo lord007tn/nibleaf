@@ -52,16 +52,21 @@ const WEEKDAY_KEYS: MessageKey[] = [
  * Create is a plain submit: one request at a time, the fields frozen while it
  * runs, and the form closes only once the server confirms. A failure keeps
  * everything as typed for a retry. An unsaved or pending draft counts as
- * unsettled (`onUnsettledChange`, and the settings leave guard).
+ * unsettled (`onUnsettledChange`, and the settings leave guard). `onDraftChange` is called
+ * whenever this form starts or ends a draft: on mount, unmount and a site change, never on
+ * a language change.
  */
 export function ScheduleCreateForm({
   projectId,
   onCreated,
   onUnsettledChange,
+  onDraftChange,
 }: {
   projectId: string;
   onCreated: () => void;
   onUnsettledChange?: (unsettled: boolean) => void;
+  /** Called with the site whose draft starts or ends. */
+  onDraftChange?: (projectId: string) => void;
 }) {
   const { t } = useLocale();
   const [source] = useState(() => scheduleDraftDefaults({ name: t('settings.exports.workflow.defaultScheduleName'), timezone: detectedTimezone() }));
@@ -74,6 +79,11 @@ export function ScheduleCreateForm({
   const [focusRequest, setFocusRequest] = useState(0);
   const formRef = useRef<HTMLFormElement>(null);
   const formatsReasonId = useId();
+  // A draft starts with this form and with each site it edits; a language change is not a new draft.
+  useEffect(() => {
+    onDraftChange?.(projectId);
+    return () => onDraftChange?.(projectId);
+  }, [onDraftChange, projectId]);
   // The shared draft's isCurrent() doesn't cover unmounting yet (#767), and a
   // closed form or a site switch unmounts this one: a request that settles
   // afterwards must not toast, focus or close anything. Retire after #767.
