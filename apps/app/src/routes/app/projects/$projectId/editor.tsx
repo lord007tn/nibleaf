@@ -40,7 +40,7 @@ import {
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
-import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { ActiveBranchContext } from '@/components/editor/active-branch-context';
@@ -54,18 +54,26 @@ import { EditorConflictDialog } from '@/components/editor/editor-conflict-dialog
 import {
   aiAssistState,
   draftUnsavable,
+  foreignCopyConflict,
+  foreignCopyWhileDirty,
+  isDirty,
   isEditorRevisionConflict,
   isPageTooLarge,
   nextHydration,
   normalizedSaveConflict,
+  type OwnWrites,
+  restoredDraftConflict,
+  restoreUnsavedDraft,
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
   shouldSaveDraft,
+  type UnsavedDraft,
+  unsavedDrafts,
 } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
-import { createEditorSaveQueue, type PageDraft, samePageDraft } from '@/components/editor/editor-save-queue';
+import { createEditorSaveQueue, isSupersededWrite, type PageDraft, type QueuedWrite, samePageDraft } from '@/components/editor/editor-save-queue';
 import { useSaveThrottle } from '@/components/editor/editor-save-throttle';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
@@ -530,13 +538,49 @@ function EditorPage() {
   // A copy older than this editor's own stored writes is never loaded back (#757).
   const supersededRef = useRef<(id: string, revision: string) => boolean>(() => false);
   const superseded = (revision: string) => (page ? supersededRef.current(page.id, revision) : false);
-  let hydration = nextHydration({ synced, draft: { title, content }, conflicted: conflictedPageId === page?.id }, page, superseded);
+  // What the save queue knows of this editor's own writes, to tell its copies from another client's (#790).
+  const ownWritesRef = useRef<(id: string) => OwnWrites>(() => ({}));
+  const inFlightRef = useRef<(id: string) => boolean>(() => false);
+  /**
+   * A conflict raised for a copy that arrived while a write of the page was at
+   * the server (#790): that copy may be the write's own, stored as other text
+   * (normalized), which only its response tells. Saving pauses with the banner
+   * at once, never silently; once the writes settle, the conflict is withdrawn
+   * if the copy is one of their stored revisions after all.
+   */
+  const provisionalRef = useRef<{ id: string; revision: string | undefined; error: unknown } | null>(null);
+  // The draft as of now, with an edit the editor has not serialized yet, once a fresher copy needs it.
+  let currentDraft = { title, content };
+  let hydration = nextHydration({ synced, draft: currentDraft, conflicted: conflictedPageId === page?.id }, page, superseded);
   if (hydration && synced?.id === hydration.id && editorDraftRef.current?.pending()) {
     // A fresher server copy arrived while the editor holds an edit `content`
     // doesn't have yet. Serialize it first: it makes the draft dirty, and a dirty
     // draft is never re-seeded over.
     flushEditorDraft();
-    hydration = nextHydration({ synced, draft: draftRef.current.draft, conflicted: conflictedPageId === page?.id }, page, superseded);
+    currentDraft = draftRef.current.draft;
+    hydration = nextHydration({ synced, draft: currentDraft, conflicted: conflictedPageId === page?.id }, page, superseded);
+  }
+  // Another client's newer copy while the draft holds unsent changes: neither
+  // loaded over them nor saved over it, but reviewed at once (#790).
+  const foreignOver = (draft: { title: string; content: string }) =>
+    !hydration &&
+    Boolean(page) &&
+    foreignCopyWhileDirty({ synced, draft, conflicted: conflictedPageId === page?.id }, page, superseded, page ? ownWritesRef.current(page.id) : {});
+  let foreign = foreignOver(currentDraft);
+  if (foreign && editorDraftRef.current?.pending()) {
+    // `content` may lag the editor (an undo back to the loaded text not
+    // serialized yet): decide on the draft as it is.
+    flushEditorDraft();
+    currentDraft = draftRef.current.draft;
+    hydration = nextHydration({ synced, draft: currentDraft, conflicted: conflictedPageId === page?.id }, page, superseded);
+    foreign = foreignOver(currentDraft);
+  }
+  if (foreign && page) {
+    const conflict = foreignCopyConflict(page.id);
+    provisionalRef.current = inFlightRef.current(page.id) ? { id: page.id, revision: page.updatedAt, error: conflict } : null;
+    setSaveError(conflict);
+    setStatus('error');
+    setConflictedPageId(page.id);
   }
   if (hydration) {
     setSynced(hydration);
@@ -544,6 +588,11 @@ function EditorPage() {
     setContent(hydration.content);
     setStatus('idle');
   }
+  // A conflict under review keeps its banner and Review until it is resolved: no
+  // other save outcome replaces that status (an older write landing after it, a
+  // failure, going offline). A status that read "saved" would hide the review
+  // while every save stays held back for it.
+  if (page && conflictedPageId === page.id && status !== 'error' && status !== 'offline') setStatus('error');
 
   const navigate = Route.useNavigate();
   // A deep link, so the "Open page" action on a finished draft also works after the editor was closed.
@@ -593,7 +642,19 @@ function EditorPage() {
   const saveQueue = useMemo(
     () =>
       createEditorSaveQueue(
-        async (draft: PageDraft) => {
+        async (draft: PageDraft, write: QueuedWrite) => {
+          const sameText = (other: { title: string; content: string }) => other.title === draft.title && other.content === draft.content;
+          // This draft is the page's final one: the editor still shows it (with
+          // any edit not serialized yet), or the author left the page and no
+          // later draft of it is queued.
+          const final = () => {
+            if (draftRef.current.synced?.id === draft.id) {
+              editorDraftRef.current?.flush();
+              return draftRef.current.synced?.id === draft.id && sameText(draftRef.current.draft);
+            }
+            const queued = saveQueue.pendingDraft();
+            return queued?.id !== draft.id || sameText(queued);
+          };
           try {
             // An unpublished page's address keeps following its title.
             const server = freshestServerCopy(draft.id, draftRef.current.page, lastSavedRef.current);
@@ -610,18 +671,6 @@ function EditorPage() {
                 pageId: draft.id,
                 body: { expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
               });
-            const sameText = (other: { title: string; content: string }) => other.title === draft.title && other.content === draft.content;
-            // This draft is the page's final one: the editor still shows it (with
-            // any edit not serialized yet), or the author left the page and no
-            // later draft of it is queued.
-            const final = () => {
-              if (draftRef.current.synced?.id === draft.id) {
-                editorDraftRef.current?.flush();
-                return draftRef.current.synced?.id === draft.id && sameText(draftRef.current.draft);
-              }
-              const queued = saveQueue.pendingDraft();
-              return queued?.id !== draft.id || sameText(queued);
-            };
             /**
              * Take `page`, sent from `from`, as what the server holds: it stored
              * exactly that text, and replaces the editor's server copy unless the
@@ -645,7 +694,8 @@ function EditorPage() {
             // the draft is still the page's final one, send it once more from the
             // revision just stored; if that is changed too, re-sending cannot
             // converge, so saving pauses for the author to review (#757).
-            if (!sameText(first) && final()) {
+            // A write from before a conflict review is not the final draft any more.
+            if (!sameText(first) && !write.stale() && final()) {
               // The server holds `first` now, whatever happens to the retry: the
               // editor and the queue take it first, so the retry (or a draft
               // queued meanwhile) moves on from its revision.
@@ -657,7 +707,8 @@ function EditorPage() {
             const holds = record(saved, base);
             if (!sameText(saved) && saved !== first) throw normalizedSaveConflict(draft.id);
             const latest = draftRef.current.draft;
-            if (mounted.current && holds?.id === draft.id) {
+            // A conflict under review keeps its status; so does one reviewed since this write was queued.
+            if (mounted.current && holds?.id === draft.id && !write.stale() && autosaveGateRef.current.conflictedPageId !== draft.id) {
               setStatus(latest.title === holds.title && latest.content === holds.content ? 'saved' : 'saving');
             }
             return saved;
@@ -665,8 +716,12 @@ function EditorPage() {
             if (isPageTooLarge(error)) {
               tooLargeDraftRef.current = { id: draft.id, revision: draft.expectedUpdatedAt, title: draft.title, content: draft.content, error };
             }
-            if (mounted.current && draftRef.current.synced?.id === draft.id) {
-              setSaveError(error);
+            // A write queued before the author reviewed the page's conflict says
+            // nothing about it now: its failure (a late 409 included) neither
+            // re-raises the conflict nor shows an error.
+            if (mounted.current && draftRef.current.synced?.id === draft.id && !write.stale()) {
+              // An older write failing never replaces the conflict under review.
+              if (autosaveGateRef.current.conflictedPageId !== draft.id) setSaveError(error);
               setStatus(navigator.onLine === false ? 'offline' : 'error');
               if (isEditorRevisionConflict(error)) setConflictedPageId(draft.id);
             }
@@ -680,6 +735,115 @@ function EditorPage() {
     [],
   );
   supersededRef.current = saveQueue.superseded;
+  ownWritesRef.current = (id) => ({
+    carries: (text) => saveQueue.carries(id, text),
+    mayBeOwn: (copy) => saveQueue.ownRevision(id, copy.updatedAt),
+  });
+  inFlightRef.current = saveQueue.inFlight;
+  // The signed-in account: unsaved drafts are kept and taken back as its own (#789).
+  const owner = session?.user.id;
+  const ownerRef = useRef(owner);
+  const [, setWritesSettled] = useState(0);
+  ownerRef.current = owner;
+  /**
+   * Queue a write, keeping track of it outside this editor (#789). If it fails
+   * or is refused, at the server or in the queue, while no editor shows its page
+   * (this one unmounted or moved to another page), its draft is kept for the
+   * next editor of the page, unless a later write of the page was kept or
+   * stored since, the page's conflict was reviewed since it was queued, or the
+   * session changed.
+   */
+  const saveTracked = (draft: PageDraft) => {
+    const ticket = unsavedDrafts.issue(ownerRef.current, draft.id);
+    const resolution = saveQueue.resolution(draft.id);
+    const result = saveQueue.save(draft);
+    // A newer copy that arrived while a write was at the server is told apart
+    // once it settles (#790): render again to look at it.
+    const settledNow = () => {
+      if (mounted.current) setWritesSettled((count) => count + 1);
+      const provisional = provisionalRef.current;
+      if (!provisional || provisional.id !== draft.id || saveQueue.inFlight(draft.id)) return;
+      provisionalRef.current = null;
+      // The copy was this editor's own write after all: nothing to review. The
+      // queue lets the page's writes go on (a draft queued meanwhile is sent)
+      // whatever the editor shows: unmounted, or with the review open, it is
+      // retired all the same (unless the server raised a conflict of its own).
+      if (!saveQueue.ownRevision(draft.id, provisional.revision) || !saveQueue.dropConflict(draft.id, provisional.error)) return;
+      if (!mounted.current) return;
+      setConflictServer((open) => (open?.id === draft.id ? null : open));
+      setConflictedPageId((current) => (current === draft.id ? null : current));
+      setSaveError(null);
+      setStatus('saving');
+    };
+    result.then(settledNow, settledNow);
+    if (ticket) {
+      result.then(
+        () => unsavedDrafts.stored(ticket),
+        (error: unknown) => {
+          const unseen = !mounted.current || draftRef.current.synced?.id !== draft.id;
+          const reviewed = isSupersededWrite(error) || resolution !== saveQueue.resolution(draft.id);
+          if (unseen && !reviewed) {
+            unsavedDrafts.failed(ticket, { id: draft.id, title: draft.title, content: draft.content, base: saveQueue.baseFor(draft), error });
+          } else unsavedDrafts.settled(ticket, !reviewed);
+        },
+      );
+    }
+    return result;
+  };
+  // A draft of this page kept after an editor could not save it (#789) comes
+  // back here once the page is loaded with no edit of this editor's own and no
+  // write of the page is unsettled: as a conflict to review, or as the draft it
+  // was, which autosave sends.
+  const unsavedPageId = page?.id;
+  const readUnsaved = () => (unsavedPageId && !unsavedDrafts.pending(owner, unsavedPageId) ? unsavedDrafts.peek(owner, unsavedPageId) : undefined);
+  const unsaved = useSyncExternalStore(unsavedDrafts.subscribe, readUnsaved, readUnsaved);
+  // The kept draft this editor took back. It stays kept until it is saved (a
+  // later stored write of the page drops it) or its conflict is resolved, so
+  // closing the editor before the review loses nothing (#799 review).
+  const restoredRef = useRef<UnsavedDraft | null>(null);
+  useEffect(() => {
+    if (!unsaved || unsaved === restoredRef.current || !canEditContent || synced?.id !== unsaved.id) return;
+    if (isDirty({ synced, draft: { title, content } }) || editorDraftRef.current?.pending() || saveQueue.hasPending()) return;
+    const restore = restoreUnsavedDraft(unsaved, synced);
+    if (!restore) {
+      // The server holds it already.
+      unsavedDrafts.take(owner, unsaved.id);
+      return;
+    }
+    restoredRef.current = unsaved;
+    setTitle(unsaved.title);
+    setContent(unsaved.content);
+    if (restore === 'conflict') {
+      // Held like any conflict: nothing is written until the review resolves it.
+      const conflict = isEditorRevisionConflict(unsaved.error) ? unsaved.error : restoredDraftConflict(unsaved.id);
+      saveQueue.raiseConflict(unsaved.id, conflict);
+      setSaveError(conflict);
+      setStatus('error');
+      setConflictedPageId(unsaved.id);
+    }
+  }, [unsaved, synced, title, content, canEditContent, saveQueue, owner]);
+  // Closing the editor while a restored draft's conflict is unresolved: the
+  // draft stays kept, with the author's edits since.
+  useEffect(
+    () => () => {
+      const restored = restoredRef.current;
+      if (!restored || autosaveGateRef.current.conflictedPageId !== restored.id) return;
+      editorDraftRef.current?.flush();
+      const { synced: currentSynced, draft } = draftRef.current;
+      if (currentSynced?.id === restored.id) unsavedDrafts.revise(ownerRef.current, restored.id, draft);
+    },
+    [],
+  );
+  /** The page's conflict was resolved: a draft kept for it is settled by that review. */
+  const forgetRestored = (id: string) => {
+    unsavedDrafts.take(ownerRef.current, id);
+    if (restoredRef.current?.id === id) restoredRef.current = null;
+  };
+  // A conflict, whoever found it, holds back the page's writes in the queue too,
+  // as the server's does, until the review resolves it.
+  useEffect(() => {
+    if (conflictedPageId && isEditorRevisionConflict(saveError)) saveQueue.raiseConflict(conflictedPageId, saveError);
+  }, [conflictedPageId, saveError, saveQueue]);
   // A refusal with its own fix (the page is too large) says so; other failures
   // keep the general "could not be saved" wording.
   const saveFailedMessage = (error: unknown) => (isPageTooLarge(error) ? friendlyErrorMessage(t, error, 'editor.saveError') : t('editor.saveError'));
@@ -691,7 +855,7 @@ function EditorPage() {
   // once when the window loses focus, the tab is hidden or the editor unmounts.
   // The queue settles status for every write, including flushes on unmount; the
   // throttle handles a failed write's rejection.
-  const saveDraft = useSaveThrottle((draft: PageDraft) => saveQueue.save(draft), samePageDraft);
+  const saveDraft = useSaveThrottle((draft: PageDraft) => saveTracked(draft), samePageDraft);
   // The draft a save or flush just sent after serializing the editor's edit: the
   // autosave effect then sees that very draft arrive, and must not queue it again.
   const sentRef = useRef<PageDraft | null>(null);
@@ -807,6 +971,12 @@ function EditorPage() {
       await saveQueue.settled();
       return;
     }
+    // A conflict under review: nothing is written until the author resolves it,
+    // and navigating, publishing or previewing waits for that review, even with
+    // a draft that compares clean (the server may hold another copy).
+    if (conflictedPageId === current.page.id) {
+      throw isEditorRevisionConflict(saveError) ? saveError : restoredDraftConflict(current.page.id);
+    }
     // The author can undo to the original value while an older save is still
     // in flight. Persist that final value after the request, even though it
     // currently compares clean with the old hydration snapshot.
@@ -822,7 +992,7 @@ function EditorPage() {
       const snapshot: PageDraft = { id: pageId, ...current.draft, expectedUpdatedAt: current.synced?.updatedAt };
       if (fresh) sentRef.current = snapshot;
       setStatus('saving');
-      await saveQueue.save(snapshot);
+      await saveTracked(snapshot);
       // Typing during the request: serialize it, so the loop saves it too.
       const latest = draftRef.current.draft.content;
       flushEditorDraft();
@@ -1930,6 +2100,7 @@ function EditorPage() {
                 onRestored={(saved) => {
                   saveDraft.cancel();
                   saveQueue.resolveConflict(saved.id, saved.updatedAt);
+                  forgetRestored(saved.id);
                   lastSavedRef.current = saved;
                   setTitle(saved.title);
                   setContent(saved.content);
@@ -2097,6 +2268,7 @@ function EditorPage() {
                       onResolve={(merged) => {
                         saveDraft.cancel();
                         saveQueue.resolveConflict(page.id, conflictServer.updatedAt);
+                        forgetRestored(page.id);
                         lastSavedRef.current = conflictServer;
                         setSynced({ id: page.id, title: conflictServer.title, content: conflictServer.content, updatedAt: conflictServer.updatedAt });
                         setTitle(merged.title);

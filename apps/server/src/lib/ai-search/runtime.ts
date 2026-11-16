@@ -293,7 +293,8 @@ export const runPublishedSearch = async (
       limit,
       query,
     );
-    return expired() ? null : hits;
+    // A vector result trimmed to nothing must not hide keyword typo matches.
+    return expired() || hits.length === 0 ? null : hits;
   })().catch(() => {
     if (!hybridSignal.aborted) log.error({ projectId: scope.projectId }, 'hybrid search failed; using rollback runtime');
     return null;

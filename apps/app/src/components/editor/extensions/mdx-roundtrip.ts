@@ -1549,9 +1549,11 @@ function parseAttributes(raw: string, componentName: string): AttributeToken[] {
     while (cursor < limit && !/[\s=/>]/.test(raw[cursor] ?? '')) cursor++;
     const name = raw.slice(start, cursor);
     if (!name) break;
+    const nameEnd = cursor;
     while (/\s/.test(raw[cursor] ?? '')) cursor++;
     if (raw[cursor] !== '=') {
-      attrs.push({ name, start, end: cursor, value: true });
+      // A boolean attribute is its name: the space after it belongs to what follows (#714).
+      attrs.push({ name, start, end: nameEnd, value: true });
       continue;
     }
     cursor++;
@@ -1862,6 +1864,17 @@ export function sourceMetadataAttributes() {
 
 const equalSourceValue = (left: unknown, right: unknown): boolean => String(left ?? '') === String(right ?? '');
 
+/** Where an opening tag's end starts: its `>`, its `/>`, or a spaced `/ >` (#714), read
+ *  back from the end; -1 when it doesn't end in `>`. */
+function tagEndAt(raw: string): number {
+  let at = raw.length - 1;
+  while (at >= 0 && /\s/.test(raw[at] ?? '')) at--;
+  if (raw[at] !== '>') return -1;
+  let slash = at - 1;
+  while (slash >= 0 && /\s/.test(raw[slash] ?? '')) slash--;
+  return raw[slash] === '/' ? slash : at;
+}
+
 export function replaceOpeningAttribute(raw: string, componentName: string, name: string, value: unknown): string {
   const attrs = parseAttributes(raw, componentName);
   const existing = attrs.find((attr) => attr.name.toLowerCase() === name.toLowerCase());
@@ -1871,8 +1884,11 @@ export function replaceOpeningAttribute(raw: string, componentName: string, name
     // What follows may touch the attribute (`hidden title="Old"href="/docs"`): where
     // it starts another attribute, a space keeps the two apart.
     const separator = after === '' || /^[\s/>]/.test(after) ? '' : ' ';
-    // A removed attribute takes the space before it along, so no double space is left.
-    if (remove) return `${raw.slice(0, existing.start).trimEnd()}${separator}${after}`;
+    // A removed attribute takes the space before it along, so no double space is left;
+    // unless what follows touches it, where that authored space (a line break, say) now
+    // keeps the next attribute apart (#714).
+    const before = raw.slice(0, existing.start);
+    if (remove) return separator && /\s$/.test(before) ? `${before}${after}` : `${before.trimEnd()}${separator}${after}`;
     const rendered =
       value === true
         ? `${existing.name}${separator}`
@@ -1880,7 +1896,7 @@ export function replaceOpeningAttribute(raw: string, componentName: string, name
     return `${raw.slice(0, existing.start)}${rendered}${after}`;
   }
   if (remove) return raw;
-  const insertAt = raw.search(/\/?>\s*$/);
+  const insertAt = tagEndAt(raw);
   const rendered =
     value === true ? name : `${name}="${String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}"`;
   return insertAt < 0 ? raw : `${raw.slice(0, insertAt)} ${rendered}${raw.slice(insertAt)}`;
