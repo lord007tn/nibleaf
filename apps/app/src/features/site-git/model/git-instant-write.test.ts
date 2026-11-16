@@ -67,7 +67,7 @@ describe('gitInstantPayload: the stored connection with one change', () => {
     });
   });
 
-  it('sends only the provider’s own address: no blank one, and none left from another provider', () => {
+  it('sends only the provider’s own address, none left from another provider', () => {
     const leftovers = { cloneUrl: 'https://git.example.com/old.git', instanceUrl: 'https://git.example.com', repo: 'old/repo' };
     expect(throughValidator(gitInstantPayload({ ...GITHUB, ...leftovers, repo: 'team/docs', cloneUrl: '' }, { autoPublish: true }))).toEqual({
       ...GITHUB,
@@ -77,11 +77,19 @@ describe('gitInstantPayload: the stored connection with one change', () => {
       ...GIT,
       connected: false,
     });
-    // A blank active address is left out rather than refused: the change still saves.
-    expect(throughValidator(gitInstantPayload({ provider: 'gitlab', repo: '  ', instanceUrl: '', connected: true }, { connected: false }))).toEqual({
-      provider: 'gitlab',
-      connected: false,
-    });
+  });
+
+  it('sends a blank or whitespace active address as stored, so the server refuses it instead of the toggle deleting it', () => {
+    const blankInstance = gitInstantPayload({ provider: 'gitlab', repo: 'group/docs', instanceUrl: '', connected: true }, { autoPublish: true });
+    expect(blankInstance).toEqual({ provider: 'gitlab', repo: 'group/docs', instanceUrl: '', connected: true, autoPublish: true });
+    const blankRepo = gitInstantPayload({ provider: 'github', repo: '  ', connected: true }, { connected: false });
+    expect(blankRepo).toEqual({ provider: 'github', repo: '  ', connected: false });
+    const blankCloneUrl = gitInstantPayload({ provider: 'git', cloneUrl: ' ', connected: true }, { autoPublish: false });
+    expect(blankCloneUrl).toEqual({ provider: 'git', cloneUrl: ' ', connected: true, autoPublish: false });
+    // The validator refuses (or, for a blank URL, throws on) each one: never a silent repair.
+    expect(() => updateWorkspaceSettingsBody.parse({ git: blankInstance })).toThrow();
+    expect(() => updateWorkspaceSettingsBody.parse({ git: blankRepo })).toThrow();
+    expect(() => updateWorkspaceSettingsBody.parse({ git: blankCloneUrl })).toThrow();
   });
 
   it('reads an unknown provider as GitHub and leaves it out, since the schema would refuse it', () => {

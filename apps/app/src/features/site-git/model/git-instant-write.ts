@@ -30,7 +30,6 @@ export type GitInstantPayload = {
 
 const PROVIDERS: readonly GitProvider[] = ['github', 'gitlab', 'git'];
 const asText = (value: unknown) => (typeof value === 'string' ? value : undefined);
-const filled = (value: unknown) => (typeof value === 'string' && value.trim() ? value : undefined);
 const asFlag = (value: unknown) => (typeof value === 'boolean' ? value : undefined);
 /** Only the fields that hold a value: an unset one stays unset. */
 const present = <T extends Record<string, unknown>>(object: T) =>
@@ -45,11 +44,11 @@ const present = <T extends Record<string, unknown>>(object: T) =>
  *   shows it.
  * - The provider's own address, exactly as stored, as the repository save
  *   sends it: the repository for GitHub and GitLab, the clone URL for a Git
- *   URL, and the instance for GitLab. A blank address is left out (the server
- *   refuses a blank one), and so is another provider's address left from an
- *   earlier save (the repository save clears it too). A stored address the
- *   server would refuse is still sent: the write fails and says so, rather
- *   than deleting it.
+ *   URL, and the instance for GitLab. Another provider's address left from an
+ *   earlier save is left out (the repository save clears it too). The
+ *   provider's own address is never repaired or dropped: one the server would
+ *   refuse, a blank or whitespace one included, is still sent, so the write
+ *   fails and says so and the stored settings stay as they were.
  * - The branch, content path, import branch and language, `connected` and
  *   `autoPublish` exactly as stored, a blank or `false` one included. An unset
  *   one stays unset: no display default (`main`, `docs`, `gitlab.com`) is
@@ -64,9 +63,9 @@ export function gitInstantPayload(stored: (StoredGit & { connected?: unknown }) 
   const active = provider ?? 'github';
   return present({
     provider,
-    repo: active === 'git' ? undefined : filled(stored?.repo),
-    cloneUrl: active === 'git' ? filled(stored?.cloneUrl) : undefined,
-    instanceUrl: active === 'gitlab' ? filled(stored?.instanceUrl) : undefined,
+    repo: active === 'git' ? undefined : asText(stored?.repo),
+    cloneUrl: active === 'git' ? asText(stored?.cloneUrl) : undefined,
+    instanceUrl: active === 'gitlab' ? asText(stored?.instanceUrl) : undefined,
     branch: asText(stored?.branch),
     path: asText(stored?.path),
     importBranchId: asText(stored?.importBranchId),

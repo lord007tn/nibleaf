@@ -342,6 +342,49 @@ describe('what an instant write never sends', () => {
   });
 });
 
+describe('a stored active address the server refuses: sent as stored, so the write fails and nothing changes', () => {
+  /** The write went out with the address as stored, failed, said so, and left the site's settings as they were. */
+  const expectRefused = async (stored: Record<string, unknown>, change: Record<string, unknown>, status: number, readsBefore: number | undefined) => {
+    expect(api.patches).toHaveLength(1);
+    expect(sent()?.body).toEqual({ git: { ...stored, ...change } });
+    expect(sent()?.status).toBe(status);
+    expect(ui.toast.error).toHaveBeenCalledWith('en:settings.git.saveError');
+    expect(ui.toast.success).not.toHaveBeenCalled();
+    expect(db.git['site-a']).toEqual({ ...stored, ...BOOKKEEPING });
+    expect(api.reads['site-a']).toBe(readsBefore);
+  };
+
+  it('GitLab with a blank instance: auto publish is not switched on, and the instance is not deleted', async () => {
+    const stored = { connected: true, provider: 'gitlab', repo: 'group/docs', instanceUrl: '' };
+    db.git['site-a'] = { ...stored, ...BOOKKEEPING };
+    await open();
+    const reads = api.reads['site-a'];
+    await ACTIONS['auto publish'].run();
+    await settle();
+    // The blank URL reaches the validator's `new URL()` refinement, which throws: the route answers 500.
+    await expectRefused(stored, { autoPublish: true }, 500, reads);
+    expect(db.git['site-a']).not.toHaveProperty('autoPublish');
+    expect(autoPublishSwitch()?.getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('GitHub with a whitespace repository: auto publish and Disconnect both fail, and the legacy import stays as it was', async () => {
+    const stored = { connected: true, provider: 'github', repo: '  ', branch: 'main', path: 'docs', autoPublish: false };
+    db.git['site-a'] = { ...stored, ...BOOKKEEPING };
+    await open();
+    const reads = api.reads['site-a'];
+    await ACTIONS['auto publish'].run();
+    await settle();
+    await expectRefused(stored, { autoPublish: true }, 422, reads);
+    expect(autoPublishSwitch()?.getAttribute('aria-checked')).toBe('false');
+    api.patches = [];
+    ui.toast.error.mockReset();
+    await ACTIONS.Disconnect.run();
+    await settle();
+    await expectRefused(stored, { connected: false }, 422, reads);
+    expect(legacy()).not.toBeNull();
+  });
+});
+
 describe('the instant write lifecycle', () => {
   it('a refused write changes nothing and refreshes nothing; a retry sends the same body and saves', async () => {
     await open();
