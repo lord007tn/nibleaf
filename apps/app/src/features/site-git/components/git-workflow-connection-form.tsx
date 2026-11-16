@@ -58,13 +58,13 @@ export function GitWorkflowConnectionForm({
   connection: StoredGitWorkflowConnection & { id: string };
   hidden: boolean;
   disconnect: ReactNode;
-  /** After a save the form still shows succeeded, whatever is left to finish. */
+  /** Called after each successful save while this form is on screen, even when an edit or conflict is left to finish. */
   onSaved: (result: GitWorkflowConnectionResult) => void;
 }) {
   const { t } = useLocale();
   const { save, pending, isPending: savePending } = useSaveGitWorkflowConnection(projectId);
   const { repository, baseBranch, headBranch, contentPath } = connection;
-  // Only the edited settings: the status's operations and sync state are no edit and never reconcile the draft.
+  // Only the four settings: the status's operations and sync state aren't edited here, so they never touch the draft.
   const source = useMemo(() => ({ repository, baseBranch, headBranch, contentPath }), [repository, baseBranch, headBranch, contentPath]);
   const identity = [projectId, connection.id, 'git-workflow-connection'];
   const identityKey = JSON.stringify(identity);

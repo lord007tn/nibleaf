@@ -86,6 +86,8 @@ const connection = (fields: Partial<GitWorkflowStatus>): GitWorkflowStatus => ({
   baseBranch: 'main',
   headBranch: 'nibleaf/docs',
   contentPath: 'docs',
+  importBranchId: null,
+  importLanguageId: null,
   credentialConfigured: true,
   webhookConfigured: true,
   lastSyncStatus: 'SUCCEEDED',

@@ -98,6 +98,10 @@ const seed = (projectId: string, over: Partial<Stored> = {}) => {
     ...over,
   };
 };
+/** Someone else changes a site's stored connection. */
+const change = (projectId: string, over: Partial<Stored>) => {
+  stored[projectId] = { ...(stored[projectId] as Stored), ...over };
+};
 type PutRequest = { param: { projectId: string }; json: Settings & { importBranchId?: string; importLanguageId?: string; token?: string } };
 /**
  * The server's answer to a PUT, built from the request's own body as `connectGitHub` stores it: the settings
@@ -226,7 +230,7 @@ describe('refetches keep edits', () => {
     await refetch();
     expect(shown().contentPath).toBe('guides');
 
-    stored['site-a'] = { ...stored['site-a'], lastSyncStatus: 'RUNNING', operations: [running] } as Stored;
+    change('site-a', { lastSyncStatus: 'RUNNING', operations: [running] });
     await refetch();
     await refetch();
     expect(shown()).toEqual({ ...SETTINGS, repository: 'acme-fixture/site-a', contentPath: 'guides' });
@@ -238,7 +242,7 @@ describe('refetches keep edits', () => {
     await openConfiguration();
     await type('git2-update-path', 'guides');
     await type('git2-update-base', 'develop');
-    stored['site-a'] = { ...stored['site-a'], headBranch: 'nibleaf/other', baseBranch: 'trunk' };
+    change('site-a', { headBranch: 'nibleaf/other', baseBranch: 'trunk' });
     await refetch();
     expect(shown()).toMatchObject({ headBranch: 'nibleaf/other', contentPath: 'guides', baseBranch: 'develop' });
     expect(conflictShown()).toBe(true);
@@ -251,7 +255,7 @@ describe('refetches keep edits', () => {
   it('Keep mine keeps the edit and saves it', async () => {
     await openConfiguration();
     await type('git2-update-base', 'develop');
-    stored['site-a'] = { ...stored['site-a'], baseBranch: 'trunk' };
+    change('site-a', { baseBranch: 'trunk' });
     await refetch();
     await press(buttons().find((item) => item.textContent?.trim() === t('forms.keepMine')));
     expect(conflictShown()).toBe(false);
@@ -266,7 +270,7 @@ describe('refetches keep edits', () => {
     await openConfiguration();
     await type('git2-update-repo', 'acme-fixture/elsewhere');
     await type('git2-update-token', TOKEN);
-    stored['site-a'] = { ...stored['site-a'], contentPath: 'content' };
+    change('site-a', { contentPath: 'content' });
     await refetch();
     await press(discardButton());
     expect(shown()).toEqual({ ...SETTINGS, repository: 'acme-fixture/site-a', contentPath: 'content' });
@@ -338,7 +342,7 @@ describe('the save', () => {
     mocks.put.mockImplementationOnce(async (request: PutRequest) => serve(request));
     await save();
     expect(bodies()).toHaveLength(0);
-    stored['site-a'] = { ...stored['site-a'], importBranchId: 'branch-fixture-2', importLanguageId: null };
+    change('site-a', { importBranchId: 'branch-fixture-2', importLanguageId: null });
     await read.answer(json(200, { data: status('site-a') }));
     expect(bodies().map(({ json: body }) => body)).toEqual([
       { ...SETTINGS, repository: 'acme-fixture/site-a', contentPath: 'guides', importBranchId: 'branch-fixture-2' },
@@ -485,11 +489,11 @@ describe('sites, locale and polling', () => {
   });
 
   it('same-site status polling while an operation runs keeps the draft', async () => {
-    stored['site-a'] = { ...stored['site-a'], lastSyncStatus: 'RUNNING', operations: [running] } as Stored;
+    change('site-a', { lastSyncStatus: 'RUNNING', operations: [running] });
     await openConfiguration();
     await type('git2-update-repo', 'acme-fixture/renamed');
     for (let tick = 0; tick < 3; tick += 1) {
-      stored['site-a'] = { ...stored['site-a'], operations: [{ ...running, id: `op-fixture-${tick + 2}` }] } as Stored;
+      change('site-a', { operations: [{ ...running, id: `op-fixture-${tick + 2}` }] });
       await act(async () => client.refetchQueries({ queryKey: queryKeys.gitWorkflow.detail('site-a') }));
       await settle();
     }
