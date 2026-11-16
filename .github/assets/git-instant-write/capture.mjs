@@ -71,10 +71,26 @@ try {
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, git('show', `${BASE}:${file}`));
   }
+  // Main's Git import as it is on the base (removed since); every other hook is today's.
+  const mainImport =
+    /\/\*\* Pull Markdown pages from the configured public Git provider[\s\S]*?\nexport const useImportFromGit = [\s\S]*?\n};\n/.exec(
+      git('show', `${BASE}:apps/app/src/hooks/api/mutations.ts`),
+    )?.[0];
+  assert.ok(mainImport, "main's useImportFromGit");
+  await writeFile(
+    resolve(harness, 'before/hooks.ts'),
+    `export * from '@/hooks/api';
+import { mutateData } from '@/hooks/api/client-helpers';
+import { queryKeys } from '@/hooks/api/query-keys';
+import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
+import { api } from '@/services/api';
+${mainImport}`,
+  );
   await writeFile(
     resolve(harness, 'before/git-tab.tsx'),
     git('show', `${BASE}:apps/app/src/components/settings/git-tab.tsx`)
       .replaceAll("from '@/features/site-git/", "from './site-git/")
+      .replace("from '@/hooks/api'", "from './hooks'")
       .replace("from './git-workflow'", "from '@/components/settings/git-workflow'")
       .replace("from './section'", "from '@/components/settings/section'"),
   );
