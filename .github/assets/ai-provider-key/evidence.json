@@ -1,0 +1,886 @@
+{
+  "environment": "Component fixture: main's ProviderKeyForm with features/site-ai/api/hooks.ts and hooks/api/workspace-ai.ts (dd302202092fbb2775df3f0c7605086c7225bc16) and this branch's, with the real design system, EN/AR catalogs and the app's QueryClient; each Check POST answered by interception (fictional models, or a 400 that echoes the key), optionally held; a fictional site; placeholder keys written as <KEY_A>/<KEY_B> labels and masked on screen; not the signed-in dashboard, production, the server or a provider",
+  "base": "dd302202092fbb2775df3f0c7605086c7225bc16",
+  "head": "dd302202092fbb2775df3f0c7605086c7225bc16",
+  "uncommitted": [
+    "M apps/app/src/features/site-ai/api/hooks.ts",
+    " M apps/app/src/features/site-ai/components/provider-key-form.test.tsx",
+    " M apps/app/src/features/site-ai/components/provider-key-form.tsx",
+    " M apps/app/src/hooks/api/workspace-ai.test.tsx",
+    " M apps/app/src/hooks/api/workspace-ai.ts",
+    "?? apps/app/src/features/site-ai/api/provider-key.ts",
+    "?? apps/app/src/features/site-ai/components/provider-key-form.credentials.test.tsx",
+    "?? apps/app/src/features/site-ai/components/use-provider-key-commands.ts"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "states": {
+        "en-verified-before": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": "Key checked and models loaded. Choose a model and save the connection.",
+          "toasts": [],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-verified-after": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": "Key checked and models loaded. Choose a model and save the connection.",
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-refused-before": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "The provider refused these credentials. Check the API key and its permissions."
+          ],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-refused-after": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "The provider refused these credentials. Check the API key and its permissions."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-closedRefusal-before": {
+          "dir": "ltr",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "The provider refused these credentials. Check the API key and its permissions."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-closedRefusal-after": {
+          "dir": "ltr",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-sameTick-before": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 3,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-sameTick-after": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-offline-before": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 1,
+          "overflow": false,
+          "requests": []
+        },
+        "en-offline-after": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "Couldn't reach Nibleaf. Check your internet connection and try again."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-verified-before": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": "تم التحقق من المفتاح وتحميل النماذج. اختر نموذجا واحفظ الاتصال.",
+          "toasts": [],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-verified-after": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": "تم التحقق من المفتاح وتحميل النماذج. اختر نموذجا واحفظ الاتصال.",
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-refused-before": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "رفض المزود بيانات الاعتماد. تحقق من مفتاح API وصلاحياته."
+          ],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-refused-after": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "رفض المزود بيانات الاعتماد. تحقق من مفتاح API وصلاحياته."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-closedRefusal-before": {
+          "dir": "rtl",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "رفض المزود بيانات الاعتماد. تحقق من مفتاح API وصلاحياته."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-closedRefusal-after": {
+          "dir": "rtl",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-sameTick-before": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 3,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-sameTick-after": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-offline-before": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 1,
+          "overflow": false,
+          "requests": []
+        },
+        "ar-offline-after": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "states": {
+        "en-verified-before": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": "Key checked and models loaded. Choose a model and save the connection.",
+          "toasts": [],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-verified-after": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": "Key checked and models loaded. Choose a model and save the connection.",
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-refused-before": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "The provider refused these credentials. Check the API key and its permissions."
+          ],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-refused-after": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "The provider refused these credentials. Check the API key and its permissions."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-closedRefusal-before": {
+          "dir": "ltr",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "The provider refused these credentials. Check the API key and its permissions."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-closedRefusal-after": {
+          "dir": "ltr",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-sameTick-before": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 3,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-sameTick-after": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "en-offline-before": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 1,
+          "overflow": false,
+          "requests": []
+        },
+        "en-offline-after": {
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "Couldn't reach Nibleaf. Check your internet connection and try again."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-verified-before": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": "تم التحقق من المفتاح وتحميل النماذج. اختر نموذجا واحفظ الاتصال.",
+          "toasts": [],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-verified-after": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": "تم التحقق من المفتاح وتحميل النماذج. اختر نموذجا واحفظ الاتصال.",
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-refused-before": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "رفض المزود بيانات الاعتماد. تحقق من مفتاح API وصلاحياته."
+          ],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-refused-after": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "رفض المزود بيانات الاعتماد. تحقق من مفتاح API وصلاحياته."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-closedRefusal-before": {
+          "dir": "rtl",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "رفض المزود بيانات الاعتماد. تحقق من مفتاح API وصلاحياته."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-closedRefusal-after": {
+          "dir": "rtl",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-sameTick-before": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 3,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-sameTick-after": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        "ar-offline-before": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 1,
+          "overflow": false,
+          "requests": []
+        },
+        "ar-offline-after": {
+          "dir": "rtl",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "تعذر الاتصال بـ Nibleaf. تحقق من اتصالك بالإنترنت وحاول مجددا."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-before-en-1440.webm",
+      "version": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "pageErrors": [],
+      "steps": [
+        {
+          "moment": "key A, Check held",
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        {
+          "moment": "panel closed and opened again while A is checked",
+          "dir": "ltr",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        {
+          "moment": "A answered: refused",
+          "dir": "ltr",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [
+            "The provider refused these credentials. Check the API key and its permissions."
+          ],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        {
+          "moment": "key B, Check: models",
+          "dir": "ltr",
+          "key": "<KEY_B>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": "Key checked and models loaded. Choose a model and save the connection.",
+          "toasts": [
+            "The provider refused these credentials. Check the API key and its permissions."
+          ],
+          "mutations": 1,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_B>" }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "flow-after-en-1440.webm",
+      "version": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "pageErrors": [],
+      "steps": [
+        {
+          "moment": "key A, Check held",
+          "dir": "ltr",
+          "key": "<KEY_A>",
+          "keyMasked": true,
+          "check": { "busy": true, "disabled": true },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        {
+          "moment": "panel closed and opened again while A is checked",
+          "dir": "ltr",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        {
+          "moment": "A answered: refused",
+          "dir": "ltr",
+          "key": "",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": null,
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            }
+          ]
+        },
+        {
+          "moment": "key B, Check: models",
+          "dir": "ltr",
+          "key": "<KEY_B>",
+          "keyMasked": true,
+          "check": { "busy": false, "disabled": false },
+          "models": "Key checked and models loaded. Choose a model and save the connection.",
+          "toasts": [],
+          "mutations": 0,
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_A>" }
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/ai/models",
+              "body": { "providerId": "openai", "apiKey": "<KEY_B>" }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
