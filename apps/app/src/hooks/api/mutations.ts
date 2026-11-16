@@ -949,7 +949,7 @@ export const useRotateGitWebhookSecret = (projectId: string) => {
   });
 };
 
-// ─── Content importers (Mintlify / Ghost) ────────────────────────────────────
+// ─── Content importers (Mintlify / GitBook) ──────────────────────────────────
 
 /** Summary returned by the content importers (Mintlify, Ghost, …). */
 export interface ContentImportSummary {
@@ -995,19 +995,6 @@ export const useImportFromGitbook = (projectId: string) => {
       qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
       qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
     },
-  });
-};
-
-/** One-way import of a Ghost JSON export (published posts + pages → Markdown). */
-export const useImportFromGhost = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: Record<string, unknown>) =>
-      mutateData(
-        await api.app.projects[':projectId'].settings.import.ghost.$post({ param: { projectId }, json: body }),
-        'Could not import from Ghost.',
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
   });
 };
 
