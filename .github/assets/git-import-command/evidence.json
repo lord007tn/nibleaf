@@ -1,0 +1,1452 @@
+{
+  "environment": "Component fixture: main's GitTab (1ba227f87c2a4e44aa4df08c0560aad0866df851) and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient (invalidations recorded), the settings and deployments queries and the import mutation; the import POST held and answered by interception (a fixed summary, or a 500); fictional sites; not the signed-in dashboard, production, the server, a repository, an import or a deployment",
+  "base": "1ba227f87c2a4e44aa4df08c0560aad0866df851",
+  "head": "618759d6e9498b92a2a71c67399e3522c67bf11e",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "states": {
+        "en-ready-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": []
+        },
+        "en-ready-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": []
+        },
+        "en-double-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-double-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-enter-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-enter-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-remount-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopened": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-remount-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopened": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-staleSuccess-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-staleSuccess-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-staleFailure-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-staleFailure-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-ready-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": []
+        },
+        "ar-ready-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": []
+        },
+        "ar-double-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-double-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-enter-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-enter-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-remount-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopened": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-remount-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopened": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-staleSuccess-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-staleSuccess-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-staleFailure-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-staleFailure-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "states": {
+        "en-ready-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": []
+        },
+        "en-ready-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": []
+        },
+        "en-double-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-double-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-enter-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-enter-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-remount-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopened": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-remount-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopened": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-staleSuccess-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-staleSuccess-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-staleFailure-before": {
+          "dir": "ltr",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "en-staleFailure-after": {
+          "dir": "ltr",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-ready-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": []
+        },
+        "ar-ready-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": []
+        },
+        "ar-double-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-double-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-enter-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-enter-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-remount-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopened": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-remount-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "reopened": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-staleSuccess-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-staleSuccess-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-staleFailure-before": {
+          "dir": "rtl",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        },
+        "ar-staleFailure-after": {
+          "dir": "rtl",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "استيراد الآنجار الاستيراد…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-a/settings/git/import",
+              "body": null
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-before-en-1440.webm",
+      "version": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        {
+          "call": "POST /api/app/projects/site-a/settings/git/import",
+          "body": null
+        },
+        {
+          "call": "POST /api/app/projects/site-a/settings/git/import",
+          "body": null
+        },
+        {
+          "call": "POST /api/app/projects/site-a/settings/git/import",
+          "body": null
+        },
+        {
+          "call": "POST /api/app/projects/site-a/settings/git/import",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "import held: busy",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 1
+        },
+        {
+          "step": "import refused (500)",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": ["Could not import from Git"],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 1
+        },
+        {
+          "step": "retry held: busy",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": ["Could not import from Git"],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "left for site B while A imports",
+          "dir": "ltr",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": ["Could not import from Git"],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "back on site A while it imports",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": ["Could not import from Git"],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "Import pressed again on site A",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 3
+        },
+        {
+          "step": "answered: succeeded",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": ["Imported 3 new, updated 1."],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"],
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requestsSoFar": 3
+        },
+        {
+          "step": "imported again from the same panel",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": [
+            "Imported 3 new, updated 1.",
+            "Imported 3 new, updated 1."
+          ],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"],
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"],
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requestsSoFar": 4
+        }
+      ]
+    },
+    {
+      "file": "flow-after-en-1440.webm",
+      "version": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        {
+          "call": "POST /api/app/projects/site-a/settings/git/import",
+          "body": null
+        },
+        {
+          "call": "POST /api/app/projects/site-a/settings/git/import",
+          "body": null
+        },
+        {
+          "call": "POST /api/app/projects/site-a/settings/git/import",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "import held: busy",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 1
+        },
+        {
+          "step": "import refused (500)",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": ["Could not import from Git"],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 1
+        },
+        {
+          "step": "retry held: busy",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": ["Could not import from Git"],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "left for site B while A imports",
+          "dir": "ltr",
+          "repository": "acme-fixture/guides",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": ["Could not import from Git"],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "back on site A while it imports",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": ["Could not import from Git"],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "Import pressed again on site A",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "answered: succeeded",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "focused": "body",
+          "toasts": [],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "imported again from the same panel",
+          "dir": "ltr",
+          "repository": "acme-fixture/handbook",
+          "importButton": {
+            "text": "Import nowImporting…",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "focused": "button",
+          "toasts": ["Imported 3 new, updated 1."],
+          "invalidated": [
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"],
+            ["workspace", "settings", "site-a"],
+            ["pages", "site-a"]
+          ],
+          "overflow": false,
+          "requestsSoFar": 3
+        }
+      ]
+    }
+  ]
+}
