@@ -537,6 +537,20 @@
   color: var(--color-muted-foreground);
   font-weight: 500;
 }
+/* A File's name (#670): text in the page, styled like the other blocks' titles, with its placeholder while empty. */
+.pl-editor .pl-file-name {
+  font-weight: 600;
+  color: var(--color-foreground);
+  overflow-wrap: anywhere;
+}
+.pl-editor .pl-file-name.is-empty::before {
+  content: attr(data-placeholder);
+  float: inline-start;
+  height: 0;
+  color: var(--color-muted-foreground);
+  font-weight: 500;
+  pointer-events: none;
+}
 .pl-editor [class$="-body"] > :first-child {
   margin-top: 0;
 }

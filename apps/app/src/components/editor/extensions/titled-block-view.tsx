@@ -29,19 +29,16 @@ export function TitledBlockView({ node, updateAttributes, extension, editor }: N
   const { t } = useLocale();
   const tag = extension.name.replace(/^mdx/, '');
   const base = `pl-${tag.toLowerCase()}`;
-  const attr: EditableAttribute =
-    extension.name === 'mdxFrame' ? 'caption' : extension.name === 'mdxFolder' || extension.name === 'mdxFile' ? 'name' : 'title';
+  const attr: EditableAttribute = extension.name === 'mdxFrame' ? 'caption' : extension.name === 'mdxFolder' ? 'name' : 'title';
   const value = editorAttribute.parse(node.attrs[attr]);
   const extraAttributes: EditableAttribute[] =
     extension.name === 'mdxCard'
       ? ['icon', 'href']
-      : extension.name === 'mdxFile'
-        ? ['icon']
-        : extension.name === 'mdxResponseExample'
-          ? ['status']
-          : extension.name === 'mdxRelatedCard'
-            ? ['description', 'icon', 'href']
-            : [];
+      : extension.name === 'mdxResponseExample'
+        ? ['status']
+        : extension.name === 'mdxRelatedCard'
+          ? ['description', 'icon', 'href']
+          : [];
   // A read-only editor (Viewers) shows the block's title but offers nothing to change.
   const readOnly = !editor.isEditable;
   const stop = {
