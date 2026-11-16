@@ -98,6 +98,48 @@ export function nextHydration(
   return null;
 }
 
+/** What the editor knows of its own writes of a page, to tell its own copies from another client's (#790). */
+export interface OwnWrites {
+  /** A write sent to the server (its response not back) carries this text. A draft only queued carries nothing. */
+  carries?: (text: DraftSnapshot) => boolean;
+  /** `copy` may be the editor's own: a revision its writes stored, or the
+   *  stored form of a write still at the server, which it may have stored as
+   *  other text (normalized) and whose response, telling which, is not back. */
+  mayBeOwn?: (copy: ServerSnapshot) => boolean;
+}
+
+/**
+ * Whether `page` is another client's newer copy that arrived while the draft
+ * holds a change of the author's not sent yet (#790). It cannot be loaded
+ * without discarding that change, and saving over it without asking would
+ * discard theirs; leaving it unloaded let an undo back to the loaded text look
+ * clean while the server held their copy. So it is a revision conflict at once:
+ * saving pauses for the author to review. "Clean" then means what the server
+ * holds now, not what was loaded.
+ *
+ * Not a conflict: a copy holding the draft's own text or the text it mirrors; a
+ * copy that is, or may be, one of the editor's own writes (`own`), including a
+ * normalized one: while a write is at the server, a newer copy is told apart
+ * once its response says what it stored; a draft whose text a sent write
+ * carries (nothing unsent); a copy without comparable stamps, or one the
+ * editor's own writes have moved on from (`superseded`).
+ */
+export function foreignCopyWhileDirty(
+  state: DraftState,
+  page: ServerSnapshot | null | undefined,
+  superseded?: (revision: string) => boolean,
+  own: OwnWrites = {},
+): boolean {
+  const { synced, draft } = state;
+  if (!page || state.conflicted || !synced || synced.id !== page.id || !isDirty(state)) return false;
+  const holds = (text: DraftSnapshot) => page.title === text.title && page.content === text.content;
+  if (holds(synced) || holds(draft) || own.carries?.(page) || own.carries?.(draft) || own.mayBeOwn?.(page)) return false;
+  if (page.updatedAt === undefined || synced.updatedAt === undefined) return false;
+  const next = Date.parse(page.updatedAt);
+  const current = Date.parse(synced.updatedAt);
+  return !Number.isNaN(next) && !Number.isNaN(current) && next > current && !superseded?.(page.updatedAt);
+}
+
 /**
  * Decide whether the draft should be automatically saved to `page`.
  * The draft is only ever saved to the page it was hydrated from.
@@ -153,6 +195,9 @@ export const normalizedSaveConflict = (id: string) => draftConflict(id, 'normali
 
 /** A draft kept after its editor unmounted comes back over a server copy that moved on since (#789). */
 export const restoredDraftConflict = (id: string) => draftConflict(id, 'restored', 'The page changed since this draft was last saved.');
+
+/** Another client's copy arrived while the draft held unsent changes (#790): reviewed like a revision conflict. */
+export const foreignCopyConflict = (id: string) => draftConflict(id, 'foreign', 'Another client saved this page while it had unsaved changes.');
 
 /**
  * A page's latest draft that no editor could show was not saved (#789): its

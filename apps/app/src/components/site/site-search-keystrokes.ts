@@ -49,6 +49,23 @@ const isEditable = (element: Element | null): boolean =>
   element instanceof HTMLSelectElement ||
   (element instanceof HTMLElement && element.isContentEditable);
 
+/**
+ * Whether a key press lands where the reader is typing: a form field, or an
+ * editable region (`contenteditable` is inherited, and `false` ends it). The
+ * composed path reaches into open shadow roots, where `event.target` is only
+ * the host element.
+ */
+export const isTypingEvent = (event: Event): boolean => {
+  const path = event.composedPath?.() ?? [];
+  for (const node of path.length > 0 ? path : [event.target]) {
+    if (!(node instanceof HTMLElement)) continue;
+    if (isEditable(node)) return true;
+    const editable = node.getAttribute('contenteditable');
+    if (editable !== null) return editable !== 'false';
+  }
+  return false;
+};
+
 const focusField = (field: HTMLInputElement) => {
   field.focus({ preventScroll: true });
   const end = field.value.length;

@@ -4,6 +4,7 @@ import {
   createUnsavedDrafts,
   type DraftState,
   draftUnsavable,
+  foreignCopyWhileDirty,
   isDirty,
   isEditorRevisionConflict,
   nextHydration,
@@ -220,6 +221,37 @@ more`,
     expect(draftUnsavable(true, dirty, pageA)).toBe(true);
     expect(draftUnsavable(false, dirty, pageA)).toBe(false);
     expect(draftUnsavable(true, cleanState(pageA), pageA)).toBe(false);
+  });
+});
+
+describe('foreignCopyWhileDirty (#790)', () => {
+  const theirs: ServerSnapshot = { ...pageA, content: 'Their newer copy.', updatedAt: '2026-09-01T10:05:00.000Z' };
+  const edited: DraftState = { ...cleanState(pageA), draft: { title: pageA.title, content: 'My unsent change.' } };
+
+  it("is a conflict: another client's newer copy over unsent changes", () => {
+    expect(foreignCopyWhileDirty(edited, theirs)).toBe(true);
+  });
+
+  it('is not one over a clean draft (it is loaded), or once already in conflict', () => {
+    expect(foreignCopyWhileDirty(cleanState(pageA), theirs)).toBe(false);
+    expect(foreignCopyWhileDirty({ ...edited, conflicted: true }, theirs)).toBe(false);
+  });
+
+  it("is not one for the editor's own text: the draft's, the mirrored copy's, or a pending write's", () => {
+    expect(foreignCopyWhileDirty(edited, { ...theirs, content: 'My unsent change.' })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, { ...theirs, content: pageA.content })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, theirs, undefined, { carries: (text) => text.content === 'Their newer copy.' })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, theirs, undefined, { carries: (text) => text.content === 'My unsent change.' })).toBe(false);
+    // A write still at the server may have stored the copy (normalized): told apart once it settles.
+    expect(foreignCopyWhileDirty(edited, theirs, undefined, { mayBeOwn: () => true })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, theirs, undefined, { carries: () => false, mayBeOwn: () => false })).toBe(true);
+  });
+
+  it('is not one for an older, superseded, unstamped or other page copy', () => {
+    expect(foreignCopyWhileDirty(edited, { ...theirs, updatedAt: '2026-09-01T09:00:00.000Z' })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, theirs, (revision) => revision === theirs.updatedAt)).toBe(false);
+    expect(foreignCopyWhileDirty(edited, { ...theirs, updatedAt: undefined })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, { ...pageB })).toBe(false);
   });
 });
 

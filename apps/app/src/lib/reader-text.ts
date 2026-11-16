@@ -1,4 +1,4 @@
-import { languageEndonym, languageNameIn } from '@nibleaf/shared/site';
+import { languageEndonym, languageNameIn } from '@nibleaf/shared/site-language';
 import { localeTag } from '@/lib/format';
 
 /**

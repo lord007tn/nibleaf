@@ -40,14 +40,18 @@ export function OrganizationSwitcher({
     <Button
       aria-haspopup="dialog"
       aria-label={organization ? t('switcher.organizationTrigger', { org: organization.name }) : t('switcher.dialogLabel')}
-      className={cn('h-8 min-w-0 max-w-56 gap-2 px-1.5 font-medium data-[popup-open]:bg-muted', className)}
+      // `shrink` overrides the Button's `shrink-0`: in a narrow header the name truncates
+      // inside the trigger instead of the trigger spilling over the section title (#642).
+      className={cn('h-8 min-w-0 max-w-56 shrink gap-2 px-1.5 font-medium data-[popup-open]:bg-muted', className)}
       variant="ghost"
     >
       {organization ? (
         <>
           <OrgAvatar logo={organization.logo} name={organization.name} className="size-5" />
-          <span className={cn('min-w-0 truncate', collapseName && 'hidden sm:inline')}>
-            <bdi>{organization.name}</bdi>
+          {/* `dir="auto"` isolates the name and sets the side it truncates on: its end
+              ("Layla's…"), not its start, when its direction differs from the page's. */}
+          <span className={cn('min-w-0 truncate', collapseName && 'hidden sm:inline')} dir="auto">
+            {organization.name}
           </span>
         </>
       ) : (
