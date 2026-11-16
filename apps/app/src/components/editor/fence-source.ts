@@ -336,6 +336,9 @@ const FENCE_MARKER = /^[ \t]*(`{3,}|~{3,})/;
 /** The nodes CommonMark ends a fence with: the page, a quote, a list item. */
 const FENCE_ENDING_CONTAINERS: ReadonlySet<string> = new Set(['doc', 'blockquote', 'listItem', 'taskItem']);
 
+/** Where an unclosed fence ends, written without a closing line (`unclosedFenceEnd`). */
+type FenceEnd = 'page' | 'container' | null;
+
 /** The lists a list item sits in, which end with their last item. */
 const LISTS: ReadonlySet<string> = new Set(['bulletList', 'orderedList', 'taskList']);
 
@@ -357,14 +360,15 @@ function writtenAfter(parent: PMNode, index: number): PMNode | null {
  * and what follows must be the ones already written, which happens in two ways:
  * - The next item of a tight list follows on the next line. The fence's last line
  *   is ended there, so it mustn't be empty, or the next item would take its place.
- * - Anything else follows one blank line (`flushClose(2)`; a nested list's own
- *   spacing isn't predicted here). The fence's last line must be that blank line:
- *   empty, as markdown-it read the blank line before what followed in the source.
+ * - Anything else follows one blank line (`flushClose(2)`, or a component's closing
+ *   tag, `next` null; a nested list's own spacing isn't predicted here). The fence's
+ *   last line must be that blank line: empty, as markdown-it read the blank line
+ *   before what followed in the source.
  */
-function endsBeforeNext(lines: string, container: PMNode, next: PMNode): boolean {
+function endsBeforeNext(lines: string, container: PMNode, next: PMNode | null): boolean {
   const lastEmpty = lines.slice(lines.lastIndexOf('\n') + 1) === '';
-  if (LISTS.has(container.type.name) && container.attrs.tight === true) return !lastEmpty;
-  return lastEmpty && !LISTS.has(next.type.name);
+  if (next && LISTS.has(container.type.name) && container.attrs.tight === true) return !lastEmpty;
+  return lastEmpty && !(next && LISTS.has(next.type.name));
 }
 
 /**
@@ -379,7 +383,7 @@ function endsBeforeNext(lines: string, container: PMNode, next: PMNode): boolean
  *   and any whitespace lines kept after the fence, into the code (#649).
  * Null for a closed fence, and on the clipboard, whose slice may be pasted anywhere.
  */
-function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNode | Fragment | undefined, index: number): 'page' | 'container' | null {
+function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNode | Fragment | undefined, index: number): FenceEnd {
   if (String(node.attrs.sourceFenceClose ?? '') !== '') return null;
   if (!parent || !('type' in parent) || !FENCE_ENDING_CONTAINERS.has(parent.type.name) || writtenAfter(parent, index)) return null;
   const path = state.path ?? [];
@@ -391,10 +395,12 @@ function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNo
     if (!('type' in container)) return null;
     const name = container.type.name;
     const next = writtenAfter(container, at);
-    if (next) return quoted || endsBeforeNext(String(node.attrs.sourceFenceLines ?? ''), container, next) ? 'container' : null;
+    const lines = String(node.attrs.sourceFenceLines ?? '');
+    if (next) return quoted || endsBeforeNext(lines, container, next) ? 'container' : null;
     if (name === 'doc') return 'page';
     if (name === 'blockquote') quoted = true;
-    else if (!FENCE_ENDING_CONTAINERS.has(name) && !LISTS.has(name)) return quoted ? 'container' : null;
+    // A component's closing tag follows its last block after a blank line.
+    else if (!FENCE_ENDING_CONTAINERS.has(name) && !LISTS.has(name)) return quoted || endsBeforeNext(lines, container, null) ? 'container' : null;
   }
   return null;
 }
