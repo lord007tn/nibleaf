@@ -526,7 +526,7 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
       ['text on --primary: 4.5069:1', 'drawer --primary on its tint, rounded: 4.4933:1', '--theme-code-accent on the code surface: 4.5056:1'],
     ],
     ['#3a1408', ['--theme-code-accent on the code surface: 4.5041:1']],
-  ] as const)('gives the hex replacements for %s a margin over 4.5:1 on every target (before: %j)', (brand) => {
+  ] as const)('gives the hex replacements for %s a margin over 4.5:1 on every target (before: %j)', (brand, _before) => {
     expect(replacementShortfalls(brand)).toEqual([]);
     expect(shortfalls(brand)).toEqual([]);
   });
