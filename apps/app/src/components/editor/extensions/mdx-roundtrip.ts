@@ -1090,10 +1090,15 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
   const closers = new Map<string, number>();
   // Where the indented code block holding the last position asked about ends.
   let codeEnd = -1;
+  // The first `-->` at or after the last search for it, or -1 for none (-2: not searched).
+  // A `<!--` in indented code ends with its block, so later ones search again: one
+  // search per block over the rest of the page grew with the square of the page.
+  let commentClose = -2;
   for (let i = 0; i < source.length; i++) {
     if (source[i] !== '<' || mask[i]) continue;
     if (comments && source.startsWith('<!--', i)) {
-      const close = source.indexOf('-->', i + 4);
+      if (commentClose === -2 || (commentClose >= 0 && commentClose < i + 4)) commentClose = source.indexOf('-->', i + 4);
+      const close = commentClose;
       let end = close < 0 ? source.length : close + 3;
       // In indented code a `<!--` is code, not a comment opener: it ends with the code
       // block, and the tags after that block are read (#624). Unclosed, it hid every
