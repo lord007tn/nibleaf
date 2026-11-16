@@ -34,13 +34,13 @@
     "@nibleaf/database": "workspace:*",
     "@nibleaf/i18n": "workspace:*",
     "@nibleaf/shared": "workspace:*",
-    "@openrouter/sdk": "1.5.61",
+    "@openrouter/sdk": "1.5.102",
     "@orama/orama": "^3.1.18",
     "@t3-oss/env-core": "^0.13.11",
-    "@tanstack/ai": "1.0.0",
-    "@tanstack/ai-openai": "1.0.0",
-    "eld": "2.1.0",
-    "openai": "7.53.0",
+    "@tanstack/ai": "1.4.0",
+    "@tanstack/ai-openai": "1.1.1",
+    "eld": "2.1.1",
+    "openai": "7.56.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
