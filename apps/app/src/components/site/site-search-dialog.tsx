@@ -15,6 +15,7 @@ import { takeSearchKeystrokes } from '@/components/site/site-search-keystrokes';
 import { useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
+import { focusDestinationOfNextNavigation } from '@/lib/site-link-navigation';
 import { siteHref, siteLanguageParam } from '@/lib/site-paths';
 import { readerLanguageFirst } from '@/lib/site-search-rank';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
@@ -180,6 +181,9 @@ export default function SiteSearchDialog({
       readerMovedRef.current = false;
     });
   };
+  // Set when search closes to open a page: focus then lands on that page's
+  // heading (lib/site-link-navigation.ts) instead of going back to the trigger.
+  const openingPageRef = useRef(false);
   const [query, setQuery] = useState('');
   // Results from before the field was emptied don't stand in for a new search:
   // until fresh results arrive, a new search after clearing shows skeletons.
@@ -340,6 +344,8 @@ export default function SiteSearchDialog({
       });
       remember(debouncedQuery);
     }
+    openingPageRef.current = true;
+    focusDestinationOfNextNavigation(() => document.querySelector('[data-theme-surface="search"]') !== null);
     onOpenChange(false);
     void router.navigate({
       href: siteHref(projectId, path, {
@@ -352,6 +358,7 @@ export default function SiteSearchDialog({
 
   useEffect(() => {
     if (!open) return;
+    openingPageRef.current = false;
     setSelectedVersion(version);
     setRecent(readRecent(projectId));
   }, [open, version, projectId]);
@@ -512,7 +519,9 @@ export default function SiteSearchDialog({
         // far). While an IME composition is still open in the held field, nothing
         // may move focus, or the half-composed text would be cut.
         initialFocus={() => cancelPlacementRef.current === null}
-        finalFocus={returnFocus ?? true}
+        // Esc, Cancel or a tap outside return focus to where the reader was; opening
+        // a page leaves it to the destination's heading.
+        finalFocus={() => (openingPageRef.current ? false : (returnFocus?.current ?? true))}
       >
         <DialogTitle className="sr-only">{t('searchDocumentation')}</DialogTitle>
         <DialogDescription className="sr-only">{t('searchDescription')}</DialogDescription>
