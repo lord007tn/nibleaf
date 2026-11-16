@@ -1296,10 +1296,10 @@ describe('useServerDraftForm: a save belongs to the mount that started it (#767)
       let result!: Promise<DraftSubmitResult>;
       await act(async () => {
         result = api().submit();
-        void result.then(
-          () => (ended = true),
-          () => (ended = true),
-        );
+        const end = () => {
+          ended = true;
+        };
+        void result.then(end, end);
         await vi.waitFor(() => expect(ended || saves.length > before.saves || validations.length > before.validations).toBe(true));
       });
       return { result };

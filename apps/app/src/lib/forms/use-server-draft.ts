@@ -167,8 +167,7 @@ export function useServerDraftForm<T extends DraftValues>({
     onSubmit: async ({ value }) => {
       const save = activeRef.current;
       if (!save) return;
-      const isCurrent = () =>
-        save.lifetime === lifetimeRef.current && save.generation === generationRef.current && activeRef.current?.id === save.id;
+      const isCurrent = () => save.lifetime === lifetimeRef.current && save.generation === generationRef.current && activeRef.current?.id === save.id;
       // Validation that outlasted the form sends nothing.
       if (!isCurrent()) return;
       save.pending = startSave(baselineRef.current, value, toSentRef.current);

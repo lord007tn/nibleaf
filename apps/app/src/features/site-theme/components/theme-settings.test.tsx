@@ -20,6 +20,7 @@ import { ThemeSection } from '@/components/project-settings/theme-section';
 import type { Project } from '@/hooks/api';
 import { projectQueryOptions } from '@/hooks/api/query-options';
 import { useSaveRegionForm } from '@/lib/forms/save-region';
+import { writeFor } from './theme-writes';
 
 const { statuses } = vi.hoisted(() => ({ statuses: [] as string[] }));
 // Every status the page's save bar renders, frame by frame, so a "Saved" that
@@ -1157,6 +1158,34 @@ describe('review round: ownership, readback, Undo and legacy presets', () => {
       expect(status()).toBe('');
       expect(region()).toBeNull();
       expect(statuses).not.toContain('common.saved');
+    },
+  );
+
+  it.each(['fails', 'succeeds'] as const)(
+    'a save whose form unmounted mid-save (#767): when it %s, the site’s turn is given back, nothing is said or focused, and the new form keeps its edit',
+    async (outcome) => {
+      const patch = await remountDuringSave();
+      expect(writeFor(JSON.stringify(['site-1', 'theme']))).toBeDefined();
+      await appearance('light');
+      const focused = color('canvas');
+      await act(async () => focused.focus());
+      if (outcome === 'fails') server.failPatch = true;
+      await patch.open();
+      await finished();
+      server.failPatch = false;
+      // The write owner is released by the request's own end, not by the form that started it.
+      expect(writeFor(JSON.stringify(['site-1', 'theme']))).toBeUndefined();
+      expect(saveBusy()).toBe(false);
+      expect(toast.error).not.toHaveBeenCalled();
+      expect(toast.success).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(focused);
+      expect(shownAppearance()).toBe('settings.styling.theme.light');
+      expect(region()).not.toBeNull();
+      expect(statuses).not.toContain('common.saved');
+      // The new form saves its own edit, alone.
+      await save();
+      expect(lastPatch()).toStrictEqual({ styling: { theme: 'light' } });
+      expect(status()).toBe('common.saved');
     },
   );
 
