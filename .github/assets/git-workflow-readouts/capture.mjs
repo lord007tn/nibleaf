@@ -6,7 +6,7 @@
 //
 // The before side is immutable: main's git-workflow.tsx and its whole features/site-git slice at BASE (read with
 // `git show`). Everything else it imports is checked to be unchanged since BASE, so neither side mixes in a module
-// this branch changed.
+// this branch changed; main's hooks/api/git-workflow.ts, which lost useAuthorizeGitWorkflow later, is read at BASE too.
 //
 // Run it while holding the repository's heavy-step lock; it takes no lock itself.
 import assert from 'node:assert/strict';
@@ -152,7 +152,29 @@ const SHARED = [
   'packages/validators/src',
   'packages/shared/src',
 ];
-assert.equal(git('diff', '--name-only', BASE, '--', ...SHARED), '', 'a module both sides share changed since BASE');
+// One later change to them: useAuthorizeGitWorkflow left hooks/api/git-workflow.ts. The before side takes that file
+// from BASE, and it is checked to have changed by nothing else.
+const HOOKS = 'apps/app/src/hooks/api/git-workflow.ts';
+const AUTHORIZE_HOOK = [
+  '// Authorizing stores the credential, which the status shows (`credentialConfigured`).',
+  'export const useAuthorizeGitWorkflow = (projectId: string) =>',
+  '  useGitWorkflowMutation(projectId, async (token: string) =>',
+  '    mutateData(',
+  "      await api.app.projects[':projectId'].git.authorize.$post({ param: { projectId }, json: { token } }),",
+  "      'Could not authorize the GitHub account.',",
+  '    ),',
+  '  );',
+  '',
+  '',
+].join('\n');
+const baseHooks = git('show', `${BASE}:${HOOKS}`);
+assert.equal(git('diff', '--name-only', BASE, '--', ...SHARED, `:(exclude)${HOOKS}`), '', 'a module both sides share changed since BASE');
+assert.ok(baseHooks.includes(AUTHORIZE_HOOK), 'BASE has useAuthorizeGitWorkflow');
+assert.equal(
+  (await readFile(resolve(root, HOOKS), 'utf8')).replaceAll('\r\n', '\n').trim(),
+  baseHooks.replace(AUTHORIZE_HOOK, ''),
+  'hooks/api/git-workflow.ts changed since BASE by more than the removal of useAuthorizeGitWorkflow',
+);
 
 let harness;
 try {
@@ -166,9 +188,17 @@ try {
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, git('show', `${BASE}:${file}`));
   }
+  // Main's git-workflow hooks, for useAuthorizeGitWorkflow (gone from the app); every other hook is today's, unchanged.
+  await writeFile(resolve(harness, 'before/git-workflow-hooks.ts'), baseHooks.replace(/from '\.\/([\w-]+)'/g, "from '@/hooks/api/$1'"));
+  await writeFile(
+    resolve(harness, 'before/hooks.ts'),
+    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow } from './git-workflow-hooks';\n",
+  );
   await writeFile(
     resolve(harness, 'before/git-workflow.tsx'),
-    git('show', `${BASE}:apps/app/src/components/settings/git-workflow.tsx`).replaceAll("from '@/features/site-git/", "from './site-git/"),
+    git('show', `${BASE}:apps/app/src/components/settings/git-workflow.tsx`)
+      .replaceAll("from '@/features/site-git/", "from './site-git/")
+      .replace("from '@/hooks/api'", "from './hooks'"),
   );
   await writeFile(
     resolve(harness, 'index.html'),

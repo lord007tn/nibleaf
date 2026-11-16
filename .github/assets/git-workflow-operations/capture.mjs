@@ -81,7 +81,7 @@ const unkeyed = ({ idempotencyKey: _key, ...body }) => body;
 let harness;
 try {
   harness = await mkdtemp(resolve(app, '.git-workflow-capture-'));
-  // Main's component and its operation and conflict hooks as they are on the base (both are gone from the app).
+  // Main's component and its operation, conflict and authorization hooks as they are on the base (all three are gone from the app).
   await mkdir(resolve(harness, 'before'), { recursive: true });
   await writeFile(
     resolve(harness, 'before/git-workflow.tsx'),
@@ -93,7 +93,7 @@ try {
   );
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
-    "export * from '@/hooks/api';\nexport { useQueueGitOperation, useResolveGitConflict } from './git-workflow-hooks';\n",
+    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow, useQueueGitOperation, useResolveGitConflict } from './git-workflow-hooks';\n",
   );
   await writeFile(
     resolve(harness, 'index.html'),

@@ -74,14 +74,14 @@ let harness;
 try {
   harness = await mkdtemp(resolve(app, '.git-conflict-capture-'));
   await mkdir(resolve(harness, 'before'), { recursive: true });
-  // Main's resolution and operation hooks as they are on the base (both are gone from the app); every other hook is today's.
+  // Main's resolution, operation and authorization hooks as they are on the base (all three are gone from the app); every other hook is today's.
   await writeFile(
     resolve(harness, 'before/git-workflow-hooks.ts'),
     git('show', `${BASE}:apps/app/src/hooks/api/git-workflow.ts`).replace(/from '\.\/([\w-]+)'/g, "from '@/hooks/api/$1'"),
   );
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
-    "export * from '@/hooks/api';\nexport { useQueueGitOperation, useResolveGitConflict } from './git-workflow-hooks';\n",
+    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow, useQueueGitOperation, useResolveGitConflict } from './git-workflow-hooks';\n",
   );
   await writeFile(
     resolve(harness, 'before/git-workflow.tsx'),
