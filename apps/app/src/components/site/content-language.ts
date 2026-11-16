@@ -1,5 +1,5 @@
 import { isRtlLanguage, type TextDirection } from '@nibleaf/shared/script-direction';
-import { languageEndonym } from '@nibleaf/shared/site';
+import { languageEndonym } from '@nibleaf/shared/site-language';
 import type { SiteReaderContextValue } from '@/components/site/site-reader-context';
 
 export interface ContentLanguageAttributes {

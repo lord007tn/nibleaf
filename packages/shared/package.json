@@ -42,6 +42,7 @@
     "./site-language-redirect": "./src/site-language-redirect.ts",
     "./site-route": "./src/site-route.ts",
     "./site-links": "./src/site-links.ts",
+    "./site-nav": "./src/site-nav.ts",
     "./documentation-component-contract": "./src/documentation-component-contract.ts",
     "./documentation-components": "./src/documentation-components.ts",
     "./themes": "./src/themes.ts",
