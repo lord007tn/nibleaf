@@ -1438,6 +1438,72 @@ describe('useServerDraftForm: a save belongs to the mount that started it (#767)
     expect(draft.api().settlement()).toStrictEqual({ settled: true, generation: 2 });
   });
 
+  it('A → B within one mount, A still saving: A’s submit ends at the switch and B’s first save sends at once (#770)', async () => {
+    const draft = await lifetimes();
+    await draft.set('name', 'A1');
+    const { result: first } = await draft.submit();
+    let firstEnded: DraftSubmitResult | undefined;
+    void first.then((outcome) => {
+      firstEnded = outcome;
+    });
+    await draft.render({ identity: 'site-b', source: { name: 'B', description: '' } });
+    // Whatever waits on A's submit (the save bar) is free again, with A's request still pending.
+    expect(firstEnded).toBe('failed');
+    expect(draft.api().isSaving).toBe(false);
+    await draft.set('name', 'B1');
+    const { result: second } = await draft.submit();
+    expect(draft.saves.map((entry) => entry.values.name)).toStrictEqual(['A1', 'B1']);
+    expect(draft.saves.map((entry) => entry.save.isCurrent())).toStrictEqual([false, true]);
+    // B's own lock still refuses a second B save.
+    expect(await (await draft.submit()).result).toBe('busy');
+    expect(draft.saves).toHaveLength(2);
+    // A's late end touches nothing of B's, and does not unlock it.
+    await act(async () => {
+      expect(draft.saves[0]?.save.succeeded(draft.saves[0].values)).toBe(false);
+      draft.saves[0]?.finish('saved');
+    });
+    expect(draft.api().isSaving).toBe(true);
+    expect(draft.api().form.state.values.name).toBe('B1');
+    expect(draft.api().baseline.name).toBe('B');
+    expect(await (await draft.submit()).result).toBe('busy');
+    await act(async () => {
+      expect(draft.saves[1]?.save.succeeded(draft.saves[1].values)).toBe(true);
+      draft.saves[1]?.finish('saved');
+    });
+    expect(await second).toBe('saved');
+    expect(draft.api().baseline.name).toBe('B1');
+    expect(draft.api().settlement()).toStrictEqual({ settled: true, generation: 1 });
+    expect(draft.saves).toHaveLength(2);
+  });
+
+  it('A → B within one mount, A still validating: A’s late validation sends nothing, B’s save sends once (#770)', async () => {
+    const draft = await lifetimes({ validated: true });
+    await draft.set('name', 'A1');
+    const { result: first } = await draft.submit();
+    await draft.render({ identity: 'site-b', source: { name: 'B', description: '' } });
+    expect(await first).toBe('failed');
+    await draft.set('name', 'B1');
+    const { result: second } = await draft.submit();
+    expect(draft.validations).toHaveLength(2);
+    await act(async () => {
+      draft.validations[0]?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(draft.saves).toHaveLength(0);
+    expect(draft.api().isSaving).toBe(true);
+    await act(async () => {
+      draft.validations[1]?.();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(draft.saves.map((entry) => entry.values.name)).toStrictEqual(['B1']);
+    await act(async () => {
+      draft.saves[0]?.save.succeeded(draft.saves[0].values);
+      draft.saves[0]?.finish('saved');
+    });
+    expect(await second).toBe('saved');
+    expect(draft.saves).toHaveLength(1);
+  });
+
   it('StrictMode: the mount’s setup, cleanup and setup leave the form current; a rerender while saving keeps the save current', async () => {
     const draft = await lifetimes({ strict: true });
     await draft.set('name', 'Pill');

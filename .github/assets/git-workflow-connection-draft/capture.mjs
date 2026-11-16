@@ -81,7 +81,7 @@ try {
   );
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
-    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow, useConnectGitWorkflow } from './git-workflow-hooks';\n",
+    "export * from '@/hooks/api';\nexport { useAuthorizeGitWorkflow, useConnectGitWorkflow, useRotateGitWorkflowWebhookSecret } from './git-workflow-hooks';\n",
   );
   await writeFile(
     resolve(harness, 'index.html'),
