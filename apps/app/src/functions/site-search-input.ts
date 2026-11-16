@@ -26,7 +26,7 @@
  */
 
 const CONSENT_STATES = ['denied', 'granted', 'not_required', 'unknown'] as const;
-export type SearchConsentState = (typeof CONSENT_STATES)[number];
+type SearchConsentState = (typeof CONSENT_STATES)[number];
 
 export interface SearchSiteInput {
   projectId: string;
@@ -40,7 +40,7 @@ export interface SearchSiteInput {
   limit?: number | undefined;
 }
 
-export interface SearchSiteData {
+interface SearchSiteData {
   projectId: string;
   sessionId?: string | undefined;
   consentState: SearchConsentState;
