@@ -237,6 +237,8 @@ export function createUnsavedDrafts() {
   const storedUpTo = new Map<string, number>();
   /** Per page, the text whose failure an editor showed: its author was told it was not saved. */
   const reported = new Map<string, string>();
+  /** Per page, the latest write whose failure an editor showed: an older failure is out of date. */
+  const reportedUpTo = new Map<string, number>();
   const unsettled = new Map<string, number>();
   const listeners = new Set<() => void>();
   const keyOf = (owner: string, id: string) => JSON.stringify([owner, id]);
@@ -276,7 +278,8 @@ export function createUnsavedDrafts() {
       if (!settle(ticket)) return;
       const key = keyOf(ticket.owner, ticket.id);
       const kept = drafts.get(key);
-      const outdated = ticket.seq <= (storedUpTo.get(key) ?? 0) || (kept !== undefined && kept.seq > ticket.seq);
+      const outdated =
+        ticket.seq <= (storedUpTo.get(key) ?? 0) || ticket.seq <= (reportedUpTo.get(key) ?? 0) || (kept !== undefined && kept.seq > ticket.seq);
       // Its editor already said this very text was not saved: not a silent loss.
       const told = reported.get(key) === JSON.stringify([draft.title, draft.content]);
       if (!outdated && !told && draft.id === ticket.id) drafts.set(key, { ...draft, seq: ticket.seq });
@@ -286,13 +289,29 @@ export function createUnsavedDrafts() {
      *  `shown` is the draft whose failure the editor showed its author. */
     settled(ticket: DraftTicket, shown?: DraftSnapshot) {
       if (!settle(ticket)) return;
-      if (shown) reported.set(keyOf(ticket.owner, ticket.id), JSON.stringify([shown.title, shown.content]));
+      if (shown) {
+        // The author saw this later write fail: an earlier write's draft is out of date.
+        const key = keyOf(ticket.owner, ticket.id);
+        reported.set(key, JSON.stringify([shown.title, shown.content]));
+        reportedUpTo.set(key, Math.max(reportedUpTo.get(key) ?? 0, ticket.seq));
+        const kept = drafts.get(key);
+        if (kept && kept.seq < ticket.seq) drafts.delete(key);
+      }
       changed();
     },
     /** Whether a write of page `id` by `owner` has not settled yet. */
     pending: (owner: string | null | undefined, id: string): boolean => Boolean(owner) && unsettled.has(keyOf(owner as string, id)),
     peek(owner: string | null | undefined, id: string): UnsavedDraft | undefined {
       return owner ? drafts.get(keyOf(owner, id)) : undefined;
+    },
+    /** An editor holds the kept draft under its unresolved conflict, edited since: keep that text instead. */
+    revise(owner: string | null | undefined, id: string, text: DraftSnapshot) {
+      if (!owner) return;
+      const key = keyOf(owner, id);
+      const kept = drafts.get(key);
+      if (!kept || (kept.title === text.title && kept.content === text.content)) return;
+      drafts.set(key, { ...kept, title: text.title, content: text.content });
+      changed();
     },
     take(owner: string | null | undefined, id: string): UnsavedDraft | undefined {
       if (!owner) return undefined;
@@ -310,6 +329,7 @@ export function createUnsavedDrafts() {
       drafts.clear();
       storedUpTo.clear();
       reported.clear();
+      reportedUpTo.clear();
       unsettled.clear();
       changed();
     },

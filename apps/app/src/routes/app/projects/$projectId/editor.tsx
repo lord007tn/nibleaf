@@ -68,6 +68,7 @@ import {
   shouldAutosave,
   shouldFlushDraft,
   shouldSaveDraft,
+  type UnsavedDraft,
   unsavedDrafts,
 } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
@@ -797,12 +798,20 @@ function EditorPage() {
   const unsavedPageId = page?.id;
   const readUnsaved = () => (unsavedPageId && !unsavedDrafts.pending(owner, unsavedPageId) ? unsavedDrafts.peek(owner, unsavedPageId) : undefined);
   const unsaved = useSyncExternalStore(unsavedDrafts.subscribe, readUnsaved, readUnsaved);
+  // The kept draft this editor took back. It stays kept until it is saved (a
+  // later stored write of the page drops it) or its conflict is resolved, so
+  // closing the editor before the review loses nothing (#799 review).
+  const restoredRef = useRef<UnsavedDraft | null>(null);
   useEffect(() => {
-    if (!unsaved || !canEditContent || synced?.id !== unsaved.id) return;
+    if (!unsaved || unsaved === restoredRef.current || !canEditContent || synced?.id !== unsaved.id) return;
     if (isDirty({ synced, draft: { title, content } }) || editorDraftRef.current?.pending() || saveQueue.hasPending()) return;
-    unsavedDrafts.take(owner, unsaved.id);
     const restore = restoreUnsavedDraft(unsaved, synced);
-    if (!restore) return;
+    if (!restore) {
+      // The server holds it already.
+      unsavedDrafts.take(owner, unsaved.id);
+      return;
+    }
+    restoredRef.current = unsaved;
     setTitle(unsaved.title);
     setContent(unsaved.content);
     if (restore === 'conflict') {
@@ -814,6 +823,23 @@ function EditorPage() {
       setConflictedPageId(unsaved.id);
     }
   }, [unsaved, synced, title, content, canEditContent, saveQueue, owner]);
+  // Closing the editor while a restored draft's conflict is unresolved: the
+  // draft stays kept, with the author's edits since.
+  useEffect(
+    () => () => {
+      const restored = restoredRef.current;
+      if (!restored || autosaveGateRef.current.conflictedPageId !== restored.id) return;
+      editorDraftRef.current?.flush();
+      const { synced: currentSynced, draft } = draftRef.current;
+      if (currentSynced?.id === restored.id) unsavedDrafts.revise(ownerRef.current, restored.id, draft);
+    },
+    [],
+  );
+  /** The page's conflict was resolved: a draft kept for it is settled by that review. */
+  const forgetRestored = (id: string) => {
+    unsavedDrafts.take(ownerRef.current, id);
+    if (restoredRef.current?.id === id) restoredRef.current = null;
+  };
   // A conflict, whoever found it, holds back the page's writes in the queue too,
   // as the server's does, until the review resolves it.
   useEffect(() => {
@@ -2075,6 +2101,7 @@ function EditorPage() {
                 onRestored={(saved) => {
                   saveDraft.cancel();
                   saveQueue.resolveConflict(saved.id, saved.updatedAt);
+                  forgetRestored(saved.id);
                   lastSavedRef.current = saved;
                   setTitle(saved.title);
                   setContent(saved.content);
@@ -2242,6 +2269,7 @@ function EditorPage() {
                       onResolve={(merged) => {
                         saveDraft.cancel();
                         saveQueue.resolveConflict(page.id, conflictServer.updatedAt);
+                        forgetRestored(page.id);
                         lastSavedRef.current = conflictServer;
                         setSynced({ id: page.id, title: conflictServer.title, content: conflictServer.content, updatedAt: conflictServer.updatedAt });
                         setTitle(merged.title);
