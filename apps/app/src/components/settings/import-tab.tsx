@@ -10,16 +10,15 @@ import { ArrowUpRight, BookOpen, ChevronDown, DownloadCloud, Ghost, GitBranch, L
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useGhostImportCommand } from '@/features/site-import/components/use-ghost-import';
-import { isValidImportUrl } from '@/features/site-import/model/ghost-import';
-import { type ContentImportSummary, useImportFromGitbook, useImportFromMintlify } from '@/hooks/api';
+import { useRepositoryImportCommand } from '@/features/site-import/components/use-repository-import';
+import { isRepositoryImportProvider, type RepositoryImportProvider } from '@/features/site-import/model/repository-import';
+import type { ContentImportSummary } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { importMayStillRun } from './import-errors';
 import { SettingsSection } from './section';
 
-type ImportSource = 'mintlify' | 'gitbook' | 'ghost';
-/** Sources imported from a public GitHub repository (owner/repo + branch). */
-type RepoImportSource = Extract<ImportSource, 'mintlify' | 'gitbook'>;
-const isRepoSource = (source: ImportSource | null): source is RepoImportSource => source === 'mintlify' || source === 'gitbook';
+type ImportSource = RepositoryImportProvider | 'ghost';
+const isRepoSource = (source: ImportSource | null): source is RepositoryImportProvider => isRepositoryImportProvider(source);
 
 const IMPORT_SOURCE_TABS = [
   { id: 'mintlify', icon: Leaf, label: 'settings.import.mintlify.title' },
@@ -27,13 +26,6 @@ const IMPORT_SOURCE_TABS = [
   { id: 'ghost', icon: Ghost, label: 'settings.import.ghost.title' },
   { id: 'git', icon: GitBranch, label: 'settings.import.git.title' },
 ] as const;
-
-const normalizeGithubRepo = (value: string): string =>
-  value
-    .trim()
-    .replace(/^https?:\/\/(?:www\.)?github\.com\//i, '')
-    .replace(/\.git$/i, '')
-    .replace(/^\/+|\/+$/g, '');
 
 function ImportResult({ summary, projectId }: { summary: ContentImportSummary; projectId?: string }) {
   const t = useT();
@@ -125,8 +117,6 @@ function SourceChip({ active, icon, label, onClick }: { active?: boolean; icon: 
 export function ImportTab({ projectId }: { projectId?: string }) {
   const t = useT();
   const navigate = useNavigate();
-  const mintlify = useImportFromMintlify(projectId ?? '');
-  const gitbook = useImportFromGitbook(projectId ?? '');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [source, setSource] = useState<ImportSource | null>(null);
   const [repo, setRepo] = useState('');
@@ -137,9 +127,10 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   const [ghostUrl, setGhostUrl] = useState('');
   const [ghostFile, setGhostFile] = useState<File | null>(null);
   const [result, setResult] = useState<ContentImportSummary | null>(null);
+  const repository = useRepositoryImportCommand({ projectId: projectId ?? '', provider: isRepoSource(source) ? source : null });
   const ghost = useGhostImportCommand({ projectId: projectId ?? '', open: source === 'ghost', file: ghostFile, ghostUrl });
 
-  const pending = mintlify.isPending || gitbook.isPending || ghost.busy;
+  const pending = repository.busy || ghost.busy;
   const chooseSource = (next: ImportSource) => {
     setSource(next);
     setResult(null);
@@ -186,29 +177,11 @@ export function ImportTab({ projectId }: { projectId?: string }) {
 
   const runImport = () => {
     if (isRepoSource(source)) {
-      const normalizedRepo = normalizeGithubRepo(repo);
-      if (!/^[\w.-]+\/[\w.-]+$/.test(normalizedRepo)) {
-        toast.error(t('settings.import.mintlify.invalidRepo'));
-        return;
-      }
-      if (sourceUrl.trim() && !isValidImportUrl(sourceUrl.trim())) {
-        toast.error(t('settings.import.sourceUrl'));
-        return;
-      }
-      const trimmedBranch = branch.trim();
-      const body = {
-        ...(sourceUrl.trim() ? { sourceUrl: sourceUrl.trim() } : {}),
-        repo: normalizedRepo,
-        ...(trimmedBranch ? { branch: trimmedBranch } : {}),
-        replaceExisting,
-      };
-      const callbacks = { onSuccess: handleSuccess, onError: handleError };
-      if (source === 'mintlify') {
-        mintlify.mutate(body, callbacks);
-        return;
-      }
-      const trimmedPath = spacePath.trim().replace(/^\/+|\/+$/g, '');
-      gitbook.mutate({ ...body, ...(trimmedPath ? { path: trimmedPath } : {}) }, callbacks);
+      // One owner sends what the form holds now (replaceExisting included), and reports only into the panel it started in.
+      repository.start(
+        { repo, branch, sourceUrl, path: spacePath, replaceExisting },
+        { refused: (message) => toast.error(t(message)), succeeded: handleSuccess, failed: handleError },
+      );
       return;
     }
     if (source !== 'ghost') return;

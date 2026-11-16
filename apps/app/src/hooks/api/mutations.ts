@@ -9,9 +9,7 @@ import type {
   CreateLanguageBody,
   CreatePageBody,
   CreateProjectBody,
-  GitbookImportBody,
   MarkNotificationsReadBody,
-  MintlifyImportBody,
   ProjectConfigUpdate,
   ReorderPagesBody,
   RotateApiKeyBody,
@@ -949,7 +947,7 @@ export const useRotateGitWebhookSecret = (projectId: string) => {
   });
 };
 
-// ─── Content importers (Mintlify / GitBook) ──────────────────────────────────
+// ─── Content importers ───────────────────────────────────────────────────────
 
 /** Summary returned by the content importers (Mintlify, Ghost, …). */
 export interface ContentImportSummary {
@@ -961,42 +959,6 @@ export interface ContentImportSummary {
   warnings: string[];
   fidelityIssues?: Array<{ kind: 'embed' | 'link'; page: string; reference: string }>;
 }
-
-/** One-way import of a public Mintlify GitHub docs repo (docs.json / mint.json). */
-export const useImportFromMintlify = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: MintlifyImportBody) =>
-      mutateData(
-        await api.app.projects[':projectId'].settings.import.mintlify.$post({ param: { projectId }, json: body }),
-        'Could not import from Mintlify.',
-      ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
-      // The importer may also fill empty project-config keys (branding, navbar, …).
-      qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
-    },
-  });
-};
-
-/** One-way import of a public GitBook Git Sync GitHub repo (.gitbook.yaml / SUMMARY.md). */
-export const useImportFromGitbook = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: GitbookImportBody) =>
-      mutateData(
-        await api.app.projects[':projectId'].settings.import.gitbook.$post({ param: { projectId }, json: body }),
-        'Could not import from GitBook.',
-      ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
-      // Redirects from .gitbook.yaml may be written to the project config.
-      qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
-    },
-  });
-};
 
 // ─── Notifications (bell inbox) ──────────────────────────────────────────────
 
