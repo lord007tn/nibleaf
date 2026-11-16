@@ -35,6 +35,25 @@ export function createEditorSaveQueue<T>(
   /** The revisions this queue's own writes produced, per page. */
   const produced = new Map<string, Set<string>>();
   const ownRevision = (id: string, revision: string | undefined) => revision !== undefined && produced.get(id)?.has(revision) === true;
+  /** The server stored a write of page `id` sent from `base` at `revision`. */
+  const acknowledge = (id: string, base: string | undefined, revision: string) => {
+    // Read now, not when the write was sent: the save callback may have
+    // acknowledged a revision of its own in between (#757).
+    const known = revisions.get(id);
+    const bases = known && (!base || known.bases.has(base)) ? known.bases : new Set<string>();
+    if (base) bases.add(base);
+    bases.add(revision);
+    // Evicted old bases fail closed with their original precondition.
+    if (bases.size > 128) {
+      const oldest = bases.values().next().value;
+      if (oldest) bases.delete(oldest);
+    }
+    revisions.set(id, { revision, bases });
+    const mine = produced.get(id) ?? new Set<string>();
+    mine.add(revision);
+    if (mine.size > 128) mine.delete(mine.values().next().value as string);
+    produced.set(id, mine);
+  };
 
   return {
     save(draft: PageDraft): Promise<T> {
@@ -47,21 +66,7 @@ export function createEditorSaveQueue<T>(
         try {
           const saved = await save({ ...draft, ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}) });
           const revision = revisionOf?.(saved);
-          if (revision) {
-            const bases = ownBase ? acknowledged.bases : new Set<string>();
-            if (expectedUpdatedAt) bases.add(expectedUpdatedAt);
-            bases.add(revision);
-            // Evicted old bases fail closed with their original precondition.
-            if (bases.size > 128) {
-              const oldest = bases.values().next().value;
-              if (oldest) bases.delete(oldest);
-            }
-            revisions.set(draft.id, { revision, bases });
-            const mine = produced.get(draft.id) ?? new Set<string>();
-            mine.add(revision);
-            if (mine.size > 128) mine.delete(mine.values().next().value as string);
-            produced.set(draft.id, mine);
-          }
+          if (revision) acknowledge(draft.id, expectedUpdatedAt, revision);
           return saved;
         } catch (error) {
           if (isEditorRevisionConflict(error)) conflicts.set(draft.id, error);
@@ -105,6 +110,17 @@ export function createEditorSaveQueue<T>(
      *  every pending write lands. Undefined when nothing is pending. */
     pendingDraft: (): PageDraft | undefined => latest?.draft,
     settled: () => tail,
+    /** The save callback sent page `id` from `base` and the server stored it at
+     *  `revision`, before the callback returns: it is about to send that page
+     *  again (a normalized write, #757). Drafts queued meanwhile, from either
+     *  revision, are then sent from the latest one, whatever the callback does. */
+    acknowledge,
+    /** Whether `revision` of page `id` is one this queue's stored writes were
+     *  sent from or replaced: the server has moved on from it (#757). */
+    superseded: (id: string, revision: string): boolean => {
+      const known = revisions.get(id);
+      return known !== undefined && known.revision !== revision && known.bases.has(revision);
+    },
     resolveConflict: (id: string, revision: string) => {
       revisions.set(id, { revision, bases: new Set([revision]) });
       conflicts.delete(id);

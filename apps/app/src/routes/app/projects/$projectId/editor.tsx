@@ -57,6 +57,7 @@ import {
   isEditorRevisionConflict,
   isPageTooLarge,
   nextHydration,
+  normalizedSaveConflict,
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
@@ -526,13 +527,16 @@ function EditorPage() {
   };
   /** Bring an unserialized edit into the draft now. */
   const flushEditorDraft = () => editorDraftRef.current?.flush();
-  let hydration = nextHydration({ synced, draft: { title, content }, conflicted: conflictedPageId === page?.id }, page);
+  // A copy older than this editor's own stored writes is never loaded back (#757).
+  const supersededRef = useRef<(id: string, revision: string) => boolean>(() => false);
+  const superseded = (revision: string) => (page ? supersededRef.current(page.id, revision) : false);
+  let hydration = nextHydration({ synced, draft: { title, content }, conflicted: conflictedPageId === page?.id }, page, superseded);
   if (hydration && synced?.id === hydration.id && editorDraftRef.current?.pending()) {
     // A fresher server copy arrived while the editor holds an edit `content`
     // doesn't have yet. Serialize it first: it makes the draft dirty, and a dirty
     // draft is never re-seeded over.
     flushEditorDraft();
-    hydration = nextHydration({ synced, draft: draftRef.current.draft, conflicted: conflictedPageId === page?.id }, page);
+    hydration = nextHydration({ synced, draft: draftRef.current.draft, conflicted: conflictedPageId === page?.id }, page, superseded);
   }
   if (hydration) {
     setSynced(hydration);
@@ -601,16 +605,60 @@ function EditorPage() {
                   unpublished: addressFollowsTitleRef.current(draft.id),
                 })
               : undefined;
-            const saved = await updatePageRef.current.mutateAsync({
-              pageId: draft.id,
-              body: { expectedUpdatedAt: draft.expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
-            });
-            lastSavedRef.current = saved;
-            tooLargeDraftRef.current = null;
-            if (mounted.current) setSynced((current) => (current?.id === draft.id ? { ...draft, updatedAt: saved.updatedAt } : current));
-            const latest = draftRef.current;
-            if (mounted.current && latest.synced?.id === draft.id) {
-              setStatus(latest.draft.title === draft.title && latest.draft.content === draft.content ? 'saved' : 'saving');
+            const send = (expectedUpdatedAt: string | undefined) =>
+              updatePageRef.current.mutateAsync({
+                pageId: draft.id,
+                body: { expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
+              });
+            const sameText = (other: { title: string; content: string }) => other.title === draft.title && other.content === draft.content;
+            // This draft is the page's final one: the editor still shows it (with
+            // any edit not serialized yet), or the author left the page and no
+            // later draft of it is queued.
+            const final = () => {
+              if (draftRef.current.synced?.id === draft.id) {
+                editorDraftRef.current?.flush();
+                return draftRef.current.synced?.id === draft.id && sameText(draftRef.current.draft);
+              }
+              const queued = saveQueue.pendingDraft();
+              return queued?.id !== draft.id || sameText(queued);
+            };
+            /**
+             * Take `page`, sent from `from`, as what the server holds: it stored
+             * exactly that text, and replaces the editor's server copy unless the
+             * editor moved on to a newer one (another client's, adopted while the
+             * write was in flight): the write's precondition held, so it was
+             * stored before that copy (#757). Returns what the server now holds.
+             */
+            const record = (page: Awaited<ReturnType<typeof send>>, from: string | undefined) => {
+              lastSavedRef.current = page;
+              tooLargeDraftRef.current = null;
+              const stored: ServerSnapshot = { id: draft.id, title: page.title, content: page.content, updatedAt: page.updatedAt };
+              const supersedes = (synced: ServerSnapshot | null) =>
+                synced?.id === draft.id && (from === undefined || synced.updatedAt === undefined || synced.updatedAt === from);
+              if (mounted.current) setSynced((synced) => (supersedes(synced) ? stored : synced));
+              return supersedes(draftRef.current.synced) ? stored : draftRef.current.synced;
+            };
+            const first = await send(draft.expectedUpdatedAt);
+            let saved = first;
+            let base = draft.expectedUpdatedAt;
+            // The server stored other text than this draft (it normalized it). While
+            // the draft is still the page's final one, send it once more from the
+            // revision just stored; if that is changed too, re-sending cannot
+            // converge, so saving pauses for the author to review (#757).
+            if (!sameText(first) && final()) {
+              // The server holds `first` now, whatever happens to the retry: the
+              // editor and the queue take it first, so the retry (or a draft
+              // queued meanwhile) moves on from its revision.
+              record(first, base);
+              saveQueue.acknowledge(draft.id, base, first.updatedAt);
+              base = first.updatedAt;
+              saved = await send(base);
+            }
+            const holds = record(saved, base);
+            if (!sameText(saved) && saved !== first) throw normalizedSaveConflict(draft.id);
+            const latest = draftRef.current.draft;
+            if (mounted.current && holds?.id === draft.id) {
+              setStatus(latest.title === holds.title && latest.content === holds.content ? 'saved' : 'saving');
             }
             return saved;
           } catch (error) {
@@ -631,6 +679,7 @@ function EditorPage() {
       ),
     [],
   );
+  supersededRef.current = saveQueue.superseded;
   // A refusal with its own fix (the page is too large) says so; other failures
   // keep the general "could not be saved" wording.
   const saveFailedMessage = (error: unknown) => (isPageTooLarge(error) ? friendlyErrorMessage(t, error, 'editor.saveError') : t('editor.saveError'));

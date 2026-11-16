@@ -41,3 +41,19 @@ draft. Those sequences add another client's copy arriving and the server storing
 normalized. The test checks the editor never sends more writes, and stores the final draft
 whenever main did. It was made against main's `editor-save-queue.ts` with
 `WRITE_AUTOSAVE_REVIEW_MAIN=1`.
+
+`autosave-adoption-main.json` holds main's (a804d679, whose editor, draft and save-queue sources
+are a716947c's) result for each seed of the #757 differential in the same test file: the writes
+sent, and the seed's outcome. Those sequences add another client's copy arriving and the server
+storing a write normalized, against a server with the real one's checks (later stamps, a refused
+stale `expectedUpdatedAt`). The outcomes are `stored` (the server holds the final draft),
+`conflict` (the editor showed the conflict banner; a write refused after the editor unmounted is
+not one), `untouched` and `lost`. The test checks every seed ends `stored` or `conflict`, and never
+sends more writes than main except to store a final draft main lost.
+
+`untouched` is a known divergence main has too, not counted as stored (#790): the author types,
+another client's copy arrives while the draft is dirty, and the author undoes back to the loaded
+text. The draft compares clean, so nothing is written and no conflict is raised, and the server
+keeps the other client's copy. The test names the seeds that end this way (95756 and 246217, the
+same on main) and allows that outcome for them only. The fixture was made against main's
+`editor.tsx`, `editor-draft.ts` and `editor-save-queue.ts` with `WRITE_AUTOSAVE_ADOPTION_MAIN=1`.

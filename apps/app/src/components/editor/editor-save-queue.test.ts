@@ -43,6 +43,58 @@ describe('editor save queue', () => {
     await queue.save({ ...base, content: 'stale queued text' });
     expect(save.mock.calls[3]?.[0]).toMatchObject({ expectedUpdatedAt: 'revision-1' });
   });
+  it('a revision the callback acknowledges before it fails still moves queued drafts on (#757)', async () => {
+    let queue: ReturnType<typeof createEditorSaveQueue<{ updatedAt: string }>> | undefined;
+    const save = vi.fn(async (sent: PageDraft) => {
+      if (sent.content !== 'normalized') return { updatedAt: `after-${sent.expectedUpdatedAt}` };
+      // Stored as other text at revision-2; sent again from it, and that fails.
+      queue?.acknowledge(sent.id, sent.expectedUpdatedAt, 'revision-2');
+      throw new Error('Network error');
+    });
+    queue = createEditorSaveQueue<{ updatedAt: string }>(save, (value) => value.updatedAt);
+    const base = { ...draft('normalized'), expectedUpdatedAt: 'revision-1' };
+    const failed = queue.save(base);
+    // Queued while the retry runs, from either revision the editor knew.
+    const queued = queue.save({ ...base, content: 'newer' });
+    await expect(failed).rejects.toThrow('Network error');
+    await queued;
+    await queue.save({ ...base, content: 'next', expectedUpdatedAt: 'revision-2' });
+    expect(save.mock.calls.map(([sent]) => [sent.content, sent.expectedUpdatedAt])).toEqual([
+      ['normalized', 'revision-1'],
+      ['newer', 'revision-2'],
+      ['next', 'after-revision-2'],
+    ]);
+  });
+
+  it('a revision the callback acknowledges before it succeeds is kept as a base (#757)', async () => {
+    let queue: ReturnType<typeof createEditorSaveQueue<{ updatedAt: string }>> | undefined;
+    const save = vi.fn(async (sent: PageDraft) => {
+      if (sent.content === 'normalized') queue?.acknowledge(sent.id, sent.expectedUpdatedAt, 'revision-2');
+      return { updatedAt: sent.content === 'normalized' ? 'revision-3' : 'revision-4' };
+    });
+    queue = createEditorSaveQueue<{ updatedAt: string }>(save, (value) => value.updatedAt);
+    await queue.save({ ...draft('normalized'), expectedUpdatedAt: 'revision-1' });
+    // A draft read while the retry ran, from the revision acknowledged in between.
+    await queue.save({ ...draft('typed meanwhile'), expectedUpdatedAt: 'revision-2' });
+    expect(save.mock.calls[1]?.[0]).toMatchObject({ expectedUpdatedAt: 'revision-3' });
+  });
+
+  it('knows the revisions its stored writes were sent from as superseded, not the latest or another page (#757)', async () => {
+    const save = vi.fn().mockResolvedValueOnce({ updatedAt: 'revision-2' }).mockResolvedValue({ updatedAt: 'revision-3' });
+    const queue = createEditorSaveQueue<{ updatedAt: string }>(save, (value) => value.updatedAt);
+    await queue.save({ ...draft('one'), expectedUpdatedAt: 'revision-1' });
+    await queue.save({ ...draft('two'), expectedUpdatedAt: 'revision-2' });
+    expect(['revision-1', 'revision-2', 'revision-3', 'foreign'].map((revision) => queue.superseded('page-a', revision))).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
+    expect(queue.superseded('page-b', 'revision-1')).toBe(false);
+    queue.resolveConflict('page-a', 'reviewed');
+    expect(queue.superseded('page-a', 'revision-1')).toBe(false);
+  });
+
   it('waits for an older request before saving a newer draft or another page', async () => {
     const first = deferred();
     const save = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue('saved');
