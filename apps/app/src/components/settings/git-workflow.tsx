@@ -7,8 +7,6 @@ import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useLocale } from '@nibleaf/i18n/react';
-import { randomUUID } from '@nibleaf/shared/uuid';
-import type { GitOperationBody } from '@nibleaf/validators';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -27,6 +25,7 @@ import { toast } from 'sonner';
 import { FailureMessage } from '@/components/failure-message';
 import { SecretInput } from '@/components/secret-input';
 import { env } from '@/env';
+import { useGitOperationCommand } from '@/features/site-git/components/use-git-operation-command';
 import {
   type GitConflict as Conflict,
   friendlyErrorMessage,
@@ -34,7 +33,6 @@ import {
   useConnectGitWorkflow,
   useDisconnectGitWorkflow,
   useGitWorkflow,
-  useQueueGitOperation,
   useResolveGitConflict,
   useRotateGitWorkflowWebhookSecret,
 } from '@/hooks/api';
@@ -179,7 +177,9 @@ export function GitWorkflow({
   const authorize = useAuthorizeGitWorkflow(projectId);
   const connect = useConnectGitWorkflow(projectId);
   const disconnect = useDisconnectGitWorkflow(projectId);
-  const operation = useQueueGitOperation(projectId);
+  // The operation panel shown: none while the status loads or failed to load (that screen replaces it).
+  const shownPanel = !query.isPending && !query.isError && connection && (intent === 'sync' || intent === 'publish') ? intent : null;
+  const operation = useGitOperationCommand({ projectId, panel: shownPanel });
   const rotate = useRotateGitWorkflowWebhookSecret(projectId);
   const confirm = useConfirm();
   const connectRepository = () =>
@@ -196,10 +196,7 @@ export function GitWorkflow({
         onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.connectError')),
       },
     );
-  const queueOperation = (body: GitOperationBody) =>
-    operation.mutate(body, {
-      onError: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.operationError')),
-    });
+  const operationFailed = (error: unknown) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.operationError'));
   const activeConflicts = useMemo(
     () => connection?.operations.flatMap((item) => item.conflicts.filter((conflict) => conflict.status === 'OPEN')) ?? [],
     [connection],
@@ -510,8 +507,8 @@ export function GitWorkflow({
           <Button
             className="mt-4"
             disabled={activeConflicts.length > 0}
-            loading={operation.isPending}
-            onClick={() => queueOperation({ idempotencyKey: randomUUID(), kind: 'PULL', sourceRef: connection.baseBranch })}
+            loading={operation.busy}
+            onClick={() => operation.sync(connection.baseBranch, operationFailed)}
           >
             <RefreshCw className="size-4" />{' '}
             {connection.lastSyncedAt ? t('settings.git.workflow.syncLatest') : t('settings.git.workflow.importExisting')}
@@ -548,18 +545,8 @@ export function GitWorkflow({
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
-              loading={operation.isPending}
-              onClick={() =>
-                queueOperation({
-                  idempotencyKey: randomUUID(),
-                  kind: 'PUSH',
-                  commitMessage: message,
-                  authorName,
-                  authorEmail,
-                  createPullRequest: true,
-                  pullRequestTitle: prTitle,
-                })
-              }
+              loading={operation.busy}
+              onClick={() => operation.updatePr({ commitMessage: message, authorName, authorEmail, pullRequestTitle: prTitle }, operationFailed)}
             >
               <GitPullRequest className="size-4" /> {t('settings.git.workflow.updatePr')}
             </Button>

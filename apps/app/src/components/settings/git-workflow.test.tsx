@@ -15,9 +15,12 @@ vi.mock('@/hooks/api', () => ({
   useAuthorizeGitWorkflow: () => mutation,
   useConnectGitWorkflow: () => mutation,
   useDisconnectGitWorkflow: () => mutation,
-  useQueueGitOperation: () => mutation,
   useResolveGitConflict: () => mutation,
   useRotateGitWorkflowWebhookSecret: () => mutation,
+}));
+// Sync and Update PR are covered with the real cache in git-workflow.operations.test.tsx.
+vi.mock('@/features/site-git/components/use-git-operation-command', () => ({
+  useGitOperationCommand: () => ({ busy: false, sync: vi.fn(), updatePr: vi.fn() }),
 }));
 
 import { GitWorkflow } from './git-workflow';
