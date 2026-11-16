@@ -17,7 +17,6 @@ vi.mock('@/hooks/api', () => ({
   useAuthorizeGitWorkflow: () => mutation,
   useConnectGitWorkflow: () => mutation,
   useDisconnectGitWorkflow: () => mutation,
-  useResolveGitConflict: () => mutation,
   useRotateGitWorkflowWebhookSecret: () => mutation,
 }));
 // Sync and Update PR are covered with the real cache in git-workflow.operations.test.tsx.

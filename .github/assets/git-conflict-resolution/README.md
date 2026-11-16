@@ -10,7 +10,7 @@ resolved anywhere.
 
 `capture.mjs` builds a temporary Vite fixture from the real code:
 
-- main's `git-workflow.tsx` and `useResolveGitConflict` (with the `useGitWorkflowMutation` helper it used), read with
+- main's `git-workflow.tsx` and its `hooks/api/git-workflow.ts` (for `useResolveGitConflict` and `useQueueGitOperation`), read with
   `git show` at the pinned base `9f4e4178`;
 - this branch's `GitWorkflow` and `features/site-git` card;
 - the design system, the EN/AR catalogs and the app's own `createQueryClient`, wrapped to record which keys are

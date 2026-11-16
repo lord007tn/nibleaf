@@ -74,19 +74,14 @@ let harness;
 try {
   harness = await mkdtemp(resolve(app, '.git-conflict-capture-'));
   await mkdir(resolve(harness, 'before'), { recursive: true });
-  // Main's resolution hook as it is on the base (this branch removed it), with the helper it used; every other hook is today's.
-  const mainHooks = git('show', `${BASE}:apps/app/src/hooks/api/git-workflow.ts`);
-  const mainResolve = /\nconst useGitWorkflowMutation = [\s\S]*?\nexport const useResolveGitConflict = [\s\S]*?\n {2}\);\n/.exec(mainHooks)?.[0];
-  assert.ok(mainResolve?.includes('export const useResolveGitConflict'), "main's useResolveGitConflict");
+  // Main's resolution and operation hooks as they are on the base (both are gone from the app); every other hook is today's.
+  await writeFile(
+    resolve(harness, 'before/git-workflow-hooks.ts'),
+    git('show', `${BASE}:apps/app/src/hooks/api/git-workflow.ts`).replace(/from '\.\/([\w-]+)'/g, "from '@/hooks/api/$1'"),
+  );
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
-    `export * from '@/hooks/api';
-import type { GitConflictResolutionBody } from '@nibleaf/validators';
-import { mutateData } from '@/hooks/api/client-helpers';
-import { queryKeys } from '@/hooks/api/query-keys';
-import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
-import { api } from '@/services/api';
-${mainResolve}`,
+    "export * from '@/hooks/api';\nexport { useQueueGitOperation, useResolveGitConflict } from './git-workflow-hooks';\n",
   );
   await writeFile(
     resolve(harness, 'before/git-workflow.tsx'),
