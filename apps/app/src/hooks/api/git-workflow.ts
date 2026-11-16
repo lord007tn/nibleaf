@@ -1,4 +1,3 @@
-import type { GitConnectionBody } from '@nibleaf/validators';
 import { useQuery } from '@tanstack/react-query';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
@@ -70,11 +69,6 @@ const useGitWorkflowMutation = <TVariables, TResult>(projectId: string, mutation
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail(projectId) }),
   });
 };
-
-export const useConnectGitWorkflow = (projectId: string) =>
-  useGitWorkflowMutation(projectId, async (json: GitConnectionBody) =>
-    mutateData(await api.app.projects[':projectId'].git.connection.$put({ param: { projectId }, json }), 'Could not connect the repository.'),
-  );
 
 export const useDisconnectGitWorkflow = (projectId: string) =>
   useGitWorkflowMutation(projectId, async (_: undefined) =>

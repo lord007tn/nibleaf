@@ -1,5 +1,5 @@
 import { hashKey, type Query, type QueryClient, useQueryClient as useCacheClient } from '@tanstack/react-query';
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { GitWorkflowStatus } from '@/hooks/api';
 import { ApiResponseError, mutateData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
@@ -8,6 +8,7 @@ import { useSessionQueryClient } from '@/integrations/tanstack-query/session-cac
 import { getSessionGeneration } from '@/integrations/tanstack-query/session-generation';
 import { api } from '@/services/api';
 import { type GitWorkflowConnectionValues, gitWorkflowConnectionPayload, type StoredGitWorkflowConnection } from '../model/git-workflow-connection';
+import { isWritingConnection, startConnectionWrite, useWritingConnection } from './git-connection-writes';
 
 /** A connection save: the site it is for and the settings as typed. The token goes beside it, never in it. */
 export type GitWorkflowConnectionSave = { projectId: string; values: GitWorkflowConnectionValues };
@@ -16,31 +17,6 @@ export type GitWorkflowConnectionSave = { projectId: string; values: GitWorkflow
 export type GitWorkflowConnectionResult = { connection: StoredGitWorkflowConnection; webhookSecret: string | null };
 
 const FAILED = 'Could not connect the repository.';
-
-/**
- * The saves in flight, per query client, session and site: a count, nothing
- * else (no request, values or token), so a save started before leaving and
- * coming back to a site still makes it busy, and another account's never does.
- */
-type Saving = { counts: Map<string, number>; listeners: Set<() => void> };
-const savingByClient = new WeakMap<QueryClient, Saving>();
-const savingOf = (client: QueryClient): Saving => {
-  let saving = savingByClient.get(client);
-  if (!saving) {
-    saving = { counts: new Map(), listeners: new Set() };
-    savingByClient.set(client, saving);
-  }
-  return saving;
-};
-const slot = (generation: number, projectId: string) => JSON.stringify([generation, projectId]);
-const isSaving = (client: QueryClient, generation: number, projectId: string) => (savingOf(client).counts.get(slot(generation, projectId)) ?? 0) > 0;
-const track = (client: QueryClient, key: string, change: 1 | -1) => {
-  const { counts, listeners } = savingOf(client);
-  const count = (counts.get(key) ?? 0) + change;
-  if (count > 0) counts.set(key, count);
-  else counts.delete(key);
-  for (const listener of listeners) listener();
-};
 
 /** Thrown once the session a save started in has ended: nothing more is read or sent for it. */
 const obsolete = () => new Error(FAILED);
@@ -139,8 +115,9 @@ const sanitized = (error: unknown) => {
  * - is never retried; once the session this hook belongs to has ended, it
  *   reads, sends and refreshes nothing.
  *
- * `pending` and `isPending()` say whether a save for `projectId` is in flight
- * from any instance in this session: `pending` for rendering, `isPending()`
+ * `pending` and `isPending()` say whether a write of `projectId`'s connection
+ * (a save, or the first Connect) is in flight from any instance in this
+ * session (`git-connection-writes.ts`): `pending` for rendering, `isPending()`
  * for a press, which reads it in the same tick. Each releases only when its
  * request (and the refresh after a success) ends.
  */
@@ -150,24 +127,13 @@ export function useSaveGitWorkflowConnection(projectId: string) {
   // The session this hook belongs to (dashboard hooks remount for another account); a save from it after that
   // session ended reads and sends nothing.
   const generation = useMemo(() => getSessionGeneration(cache), [cache]);
-  const subscribe = useCallback(
-    (listener: () => void) => {
-      const { listeners } = savingOf(cache);
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-    [cache],
-  );
-  const pending = useSyncExternalStore(subscribe, () => isSaving(cache, generation, projectId));
+  const pending = useWritingConnection(cache, generation, projectId);
 
   const save = useCallback(
     async (request: GitWorkflowConnectionSave, token?: string): Promise<GitWorkflowConnectionResult> => {
       const current = () => getSessionGeneration(cache) === generation;
       if (!current()) throw obsolete();
-      const key = slot(generation, request.projectId);
-      track(cache, key, 1);
+      const release = startConnectionWrite(cache, generation, request.projectId);
       try {
         const status = await latestConfirmedStatus(client, request.projectId, current);
         // Even a status taken from the cache resumes after a turn: a session that ended meanwhile sends nothing.
@@ -187,11 +153,11 @@ export function useSaveGitWorkflowConnection(projectId: string) {
         await client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail(request.projectId) });
         return result;
       } finally {
-        track(cache, key, -1);
+        release();
       }
     },
     [cache, client, generation],
   );
 
-  return { save, pending, isPending: () => isSaving(cache, generation, projectId) };
+  return { save, pending, isPending: () => isWritingConnection(cache, generation, projectId) };
 }
