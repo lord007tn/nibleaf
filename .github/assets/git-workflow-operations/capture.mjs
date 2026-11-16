@@ -257,6 +257,13 @@ createRoot(document.getElementById('root')!).render(
     );
   const siteRefresh = [['git-workflow', SITE]];
   const keysOf = (requests) => requests.map(({ body }) => body.idempotencyKey);
+  /** The evidence names each idempotency key by a label in order of first use (same key, same label), never the raw UUID. */
+  const keyLabels = new Map();
+  const labelled = (requests) =>
+    requests.map(({ call, body }) => {
+      if (!keyLabels.has(body.idempotencyKey)) keyLabels.set(body.idempotencyKey, `<idempotency#${keyLabels.size + 1}>`);
+      return { call, body: { ...body, idempotencyKey: keyLabels.get(body.idempotencyKey) } };
+    });
 
   const captures = [];
   const recordings = [];
@@ -275,7 +282,7 @@ createRoot(document.getElementById('root')!).render(
           assert.equal(seen.overflow, false, `${key} overflows at ${width}px`);
           assert.deepEqual(errors, []);
           shots[key] = await page.screenshot({ fullPage: true, animations: 'disabled' });
-          seenBy[key] = { ...seen, requests: [...requests], statusReads: reads.length };
+          seenBy[key] = { ...seen, requests: labelled(requests), statusReads: reads.length };
           return seen;
         };
         const after = (version) => version === 'after';
@@ -456,7 +463,7 @@ createRoot(document.getElementById('root')!).render(
     const video = page.video();
     await context.close();
     await video.saveAs(resolve(import.meta.dirname, file));
-    recordings.push({ file, locale, width, theme: 'light', requests, statusReads: reads.length, pageErrors: errors, steps });
+    recordings.push({ file, locale, width, theme: 'light', requests: labelled(requests), statusReads: reads.length, pageErrors: errors, steps });
 
     assert.equal(attempted.length, 0);
     await writeEvidenceJson(resolve(import.meta.dirname, 'evidence.json'), {

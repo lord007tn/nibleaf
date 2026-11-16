@@ -45,7 +45,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "f6e884ea-db42-422c-b907-9520c8caa74b",
+                "idempotencyKey": "<idempotency#1>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -53,7 +53,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "7548bd61-d47a-40c7-a66b-43615afaab3f",
+                "idempotencyKey": "<idempotency#2>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -79,7 +79,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "2fb93913-8533-48bd-aa9b-fd7df2b18f63",
+                "idempotencyKey": "<idempotency#3>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -91,7 +91,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "b6ec351f-e8fc-4772-8356-ca4cb839385a",
+                "idempotencyKey": "<idempotency#4>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -121,7 +121,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "7e733fd4-bd64-4e43-bf88-6c368233e9bd",
+                "idempotencyKey": "<idempotency#5>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -164,7 +164,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "cfadcc44-a1ab-4380-9cf4-3ce3bef65121",
+                "idempotencyKey": "<idempotency#6>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -190,7 +190,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "234b8556-bdce-40b0-853e-b95c9b0171dc",
+                "idempotencyKey": "<idempotency#7>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -220,7 +220,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "0418d098-bfec-4342-9da1-884372f74d81",
+                "idempotencyKey": "<idempotency#8>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -265,7 +265,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "8b20f8c4-526a-44ce-a11f-381b96af7a1e",
+                "idempotencyKey": "<idempotency#9>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -273,7 +273,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "d1c00c73-00fc-4311-a32f-16f1a06fc290",
+                "idempotencyKey": "<idempotency#10>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -299,7 +299,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "20d1e4a4-5d4f-4e79-b226-67a111dddd05",
+                "idempotencyKey": "<idempotency#11>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -311,7 +311,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "fc268ba8-ced8-4556-87e0-7dc194edf1da",
+                "idempotencyKey": "<idempotency#12>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -341,7 +341,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "3f2bbae1-3a57-4153-b371-3816c79e96da",
+                "idempotencyKey": "<idempotency#13>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -384,7 +384,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "05d5514b-2d62-4dc6-bb46-81ef04d85f5a",
+                "idempotencyKey": "<idempotency#14>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -410,7 +410,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "49357026-3a8e-44d1-b7e1-2e03b01aef95",
+                "idempotencyKey": "<idempotency#15>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -440,7 +440,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "218027d2-2808-4e64-9a29-36221a3d5604",
+                "idempotencyKey": "<idempotency#16>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -490,7 +490,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "e816b9d7-bc0c-40ac-8091-95a1b97fcd68",
+                "idempotencyKey": "<idempotency#17>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -498,7 +498,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "e5156468-5328-4199-bcfe-c9adbec1cedc",
+                "idempotencyKey": "<idempotency#18>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -524,7 +524,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "d8a9a578-e539-47d1-b9aa-cdf65d95644e",
+                "idempotencyKey": "<idempotency#19>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -536,7 +536,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "7e714925-381a-4f9b-b0af-0f05f6d59ee1",
+                "idempotencyKey": "<idempotency#20>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -566,7 +566,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "ade97776-2617-4ee1-8d58-8b617a35b490",
+                "idempotencyKey": "<idempotency#21>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -609,7 +609,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "9299fb1b-da56-4ca7-8c63-72402bca137b",
+                "idempotencyKey": "<idempotency#22>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -635,7 +635,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "e8692836-2c8d-425a-a6c5-2c39b2014ef1",
+                "idempotencyKey": "<idempotency#23>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -665,7 +665,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "a62ad6b3-b9bd-46f4-a79b-3a67ecace030",
+                "idempotencyKey": "<idempotency#24>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -710,7 +710,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "84b5a72d-d037-4311-975e-1eb17914d902",
+                "idempotencyKey": "<idempotency#25>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -718,7 +718,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "6ddb3403-fadf-4267-be22-c1637db11f04",
+                "idempotencyKey": "<idempotency#26>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -744,7 +744,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "ce92f673-4f6e-43c2-b580-b8a901faef77",
+                "idempotencyKey": "<idempotency#27>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -756,7 +756,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "1ddc2144-f62c-4e62-b2ac-5ce787f40e4c",
+                "idempotencyKey": "<idempotency#28>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -786,7 +786,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "d91c8ff8-755d-46a8-b796-778603f6ab1d",
+                "idempotencyKey": "<idempotency#29>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -829,7 +829,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "c11136f1-4a22-4701-a28e-1a46a72c930a",
+                "idempotencyKey": "<idempotency#30>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -855,7 +855,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "57c145e1-6697-4835-aa09-573c28d00ad6",
+                "idempotencyKey": "<idempotency#31>",
                 "kind": "PUSH",
                 "commitMessage": "  Refresh the handbook ",
                 "authorName": "Ada Example",
@@ -885,7 +885,7 @@
             {
               "call": "POST /api/app/projects/site-1/git/operations",
               "body": {
-                "idempotencyKey": "60937d09-d533-4cfc-a7c1-c506022fb735",
+                "idempotencyKey": "<idempotency#32>",
                 "kind": "PULL",
                 "sourceRef": "main"
               }
@@ -906,7 +906,7 @@
         {
           "call": "POST /api/app/projects/site-1/git/operations",
           "body": {
-            "idempotencyKey": "f18eff7f-9cbf-420c-ae98-8b1e223a7763",
+            "idempotencyKey": "<idempotency#33>",
             "kind": "PULL",
             "sourceRef": "main"
           }
@@ -914,7 +914,7 @@
         {
           "call": "POST /api/app/projects/site-1/git/operations",
           "body": {
-            "idempotencyKey": "77c1a4f8-b1e7-4080-881a-d7d8d1fa1421",
+            "idempotencyKey": "<idempotency#34>",
             "kind": "PULL",
             "sourceRef": "main"
           }
@@ -922,7 +922,7 @@
         {
           "call": "POST /api/app/projects/site-1/git/operations",
           "body": {
-            "idempotencyKey": "fa0cd7c9-02f4-4d63-b3aa-8554b707db45",
+            "idempotencyKey": "<idempotency#35>",
             "kind": "PUSH",
             "commitMessage": "  Refresh the handbook ",
             "authorName": "Ada Example",
