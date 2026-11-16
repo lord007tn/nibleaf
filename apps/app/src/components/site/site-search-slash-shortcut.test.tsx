@@ -259,6 +259,56 @@ describe("the '/' search shortcut readers can turn off (WCAG 2.1.4)", () => {
     }
   });
 
+  it('keeps the reader’s off for the visit when storage reads but cannot write', async () => {
+    window.localStorage.setItem('nibleaf:site-search:slash-shortcut:quota', 'on');
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    });
+    try {
+      const { props, rerender } = await render({ projectId: 'quota' });
+      await turnSlashOff(rerender);
+      props.onOpenChange.mockClear();
+      expect(await pressSlash(document.body)).toBe(false);
+      expect(props.onOpenChange).not.toHaveBeenCalled();
+    } finally {
+      setItem.mockRestore();
+    }
+  });
+
+  // Class-level: jsdom applies no CSS, so a click test can't see `hidden sm:flex`.
+  // '/' works at every width and pointer, so its switch must too.
+  it.each([
+    ['without filters', {}],
+    [
+      'with the language filter',
+      {
+        languages: [
+          { code: 'en', label: 'English' },
+          { code: 'ar', label: 'العربية' },
+        ],
+      },
+    ],
+  ] as const)('keeps the switch reachable at every width and pointer type, %s', async (_, extra) => {
+    await render({ open: true, ...extra });
+    const control = slashSwitch();
+    if (!control) throw new Error('Missing the / switch');
+    const dialog = control.closest('[role="dialog"]');
+    const gated: string[] = [];
+    for (let node: Element | null = control; node && node !== dialog; node = node.parentElement) {
+      if (node.hasAttribute('hidden') || node.getAttribute('aria-hidden') === 'true') gated.push(`${node.tagName} [hidden]`);
+      for (const token of node.classList) {
+        // `hidden`, and any breakpoint or pointer variant that sets display (sm:flex, pointer-coarse:hidden!).
+        if (
+          /^(?:[\w-]+:)*(?:hidden|flex|inline-flex|block|inline-block|grid|contents)!?$/.test(token) &&
+          (token === 'hidden' || token.includes(':'))
+        ) {
+          gated.push(`${node.tagName} .${token}`);
+        }
+      }
+    }
+    expect(gated).toEqual([]);
+  });
+
   it.each([
     [undefined, 'Control+K Meta+K /'],
     ['slash', '/ Control+K Meta+K'],

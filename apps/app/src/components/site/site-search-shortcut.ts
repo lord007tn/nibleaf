@@ -10,19 +10,20 @@ import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
  * modifier, so it is always on.
  */
 
-export const SLASH_SHORTCUT_DEFAULT = true;
+const SLASH_SHORTCUT_DEFAULT = true;
 
 const PREFIX = 'nibleaf:site-search:slash-shortcut:';
-// What the reader chose during this page view where the browser blocks storage,
-// so the switch still works until they leave.
+// What the reader chose during this page view when it couldn't be saved (storage
+// blocked, or full). It wins over whatever storage still holds until they leave.
 const chosen = new Map<string, boolean>();
 const listeners = new Set<() => void>();
 
 /** Whether '/' opens search on this site, for this reader. */
 export const readSlashShortcut = (projectId: string): boolean => {
+  const unsaved = chosen.get(projectId);
+  if (unsaved !== undefined) return unsaved;
   const stored = readSiteStorage('localStorage', PREFIX + projectId);
-  if (stored === 'on' || stored === 'off') return stored === 'on';
-  return chosen.get(projectId) ?? SLASH_SHORTCUT_DEFAULT;
+  return stored === 'on' || stored === 'off' ? stored === 'on' : SLASH_SHORTCUT_DEFAULT;
 };
 
 export const writeSlashShortcut = (projectId: string, on: boolean): void => {

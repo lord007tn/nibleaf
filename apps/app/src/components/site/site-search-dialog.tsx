@@ -782,12 +782,11 @@ export default function SiteSearchDialog({
 
           <div
             className={cn(
-              'shrink-0 items-center gap-4 border-border/70 border-t px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-muted-foreground text-xs',
-              // Phones keep the bar only for the filters. Touch screens wide enough for a
-              // keyboard case keep the '/' switch; the key hints are for mouse users.
-              showFilters ? 'flex' : 'hidden sm:flex',
+              'flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-border/70 border-t px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-muted-foreground text-xs',
             )}
           >
+            {/* Key hints are for mouse and keyboard users on wider screens. The bar itself
+                shows at every width: it holds the '/' switch, and '/' works everywhere. */}
             <div className="hidden items-center gap-4 sm:flex pointer-coarse:hidden!">
               <span className="inline-flex items-center gap-1.5">
                 <Key>↑</Key>
@@ -807,7 +806,7 @@ export default function SiteSearchDialog({
             </div>
             {/* WCAG 2.1.4: readers can turn the single-key '/' shortcut off (site-search-shortcut.ts). */}
             {/* biome-ignore lint/a11y/noLabelWithoutControl: the switch inside is the labelled control. */}
-            <label className="hidden h-8 cursor-pointer items-center gap-1.5 sm:inline-flex pointer-coarse:h-11">
+            <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 pointer-coarse:h-11">
               <Switch size="sm" checked={slashShortcut} onCheckedChange={(on) => writeSlashShortcut(projectId, on)} />
               <Key>/</Key>
               {t('searchKeysSlash')}
