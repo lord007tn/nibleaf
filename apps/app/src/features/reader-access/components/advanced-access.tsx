@@ -74,7 +74,8 @@ export function AdvancedAccess(props: Props) {
       <p className="mt-1 max-w-prose text-muted-foreground text-sm">{t('settings.visibility.advanced.body')}</p>
       <CollapsibleContent className="mt-6 flex flex-col gap-10" keepMounted>
         <AudiencesSection {...props} />
-        <JwtSection {...props} onInvalid={reveal} />
+        {/* Per site: another site's section starts without this one's confirmation or its pending answer. */}
+        <JwtSection {...props} key={props.projectId} onInvalid={reveal} />
         <AuditSection {...props} />
       </CollapsibleContent>
     </Collapsible>

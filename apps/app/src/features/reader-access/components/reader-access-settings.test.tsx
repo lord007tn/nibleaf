@@ -132,12 +132,14 @@ let root: Root;
 let dirty: Set<string>;
 /** Keeps the screen in a hidden <Activity> while true: React keeps it, off screen. */
 let hidden = false;
+/** The site the screen shows; the same screen can move to another. */
+let site = 'site-1';
 const render = () =>
   act(async () =>
     root.render(
       <ConfigDirtyProvider report={(id, changed) => (changed ? dirty.add(id) : dirty.delete(id))}>
         <Activity mode={hidden ? 'hidden' : 'visible'}>
-          <ReaderAccessSettings project={{ id: 'site-1' } as Project} />
+          <ReaderAccessSettings project={{ id: site } as Project} />
         </Activity>
       </ConfigDirtyProvider>,
     ),
@@ -154,6 +156,7 @@ const refetch = (data: ReaderAccessData) => {
 
 beforeEach(() => {
   hidden = false;
+  site = 'site-1';
   mocks.data = readerData();
   mocks.pages = { data: [], isPending: false, isError: false, isFetching: false, refetch: vi.fn() };
   mocks.status = 'admin';
@@ -967,6 +970,41 @@ describe('a confirmed save that ends while React hides the screen (<Activity>, #
     await hide(true);
     await act(async () => pending.resolve(undefined));
     await hide(false);
+    expect(dialog()).toBeNull();
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+    expect(mocks.toast.error).not.toHaveBeenCalled();
+  });
+});
+
+describe('a confirmed save still running when the screen moves to another site', () => {
+  it('visibility: the other site starts without the confirmation, and the answer says nothing there', async () => {
+    const pending = deferred<undefined>();
+    mocks.m.setMode.mutateAsync.mockReturnValueOnce(pending.promise);
+    await render();
+    await act(async () => radios()[0]?.click());
+    await act(async () => button(container, 'settings.visibility.save')?.click());
+    await confirmDialog();
+    site = 'site-2';
+    await render();
+    expect(dialog()).toBeNull();
+    await act(async () => pending.resolve(undefined));
+    expect(dialog()).toBeNull();
+    expect(document.querySelector('[role="alert"]')).toBeNull();
+    expect(mocks.toast.success).not.toHaveBeenCalled();
+  });
+
+  it('JWT: the other site starts without the confirmation, and the answer says nothing there', async () => {
+    const pending = deferred<undefined>();
+    mocks.m.saveJwt.mutateAsync.mockReturnValueOnce(pending.promise);
+    await render();
+    await openAdvanced();
+    await act(async () => enabledSwitch().click());
+    await saveBar();
+    await confirmDialog();
+    site = 'site-2';
+    await render();
+    expect(dialog()).toBeNull();
+    await act(async () => pending.resolve(undefined));
     expect(dialog()).toBeNull();
     expect(mocks.toast.success).not.toHaveBeenCalled();
     expect(mocks.toast.error).not.toHaveBeenCalled();

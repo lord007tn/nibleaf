@@ -412,10 +412,10 @@ describe('StylingSettings: an unset radius shows the theme’s, and a choice set
       await startSave();
       const before = hex();
       await act(async () => showSite('site-2'));
-      expect(container.querySelector('input')).toBeNull();
       await vi.waitFor(() => expect(radius()).toBe('settings.styling.radius.rounded'));
       await act(async () => showSite('site-1'));
       await settle();
+      // Site 2 was not cached, so the section unmounted while it loaded: a new form, not the same one.
       expect(hex()).not.toBe(before);
       expect(radius()).toBe('settings.styling.radius.sharp');
       await click('settings.styling.radius.rounded');

@@ -548,6 +548,18 @@ describe('create site dialog: creation that ends while React hides the dialog (<
     },
   );
 
+  it.each([
+    ['success', succeed],
+    ['failure', fail],
+    ['slug refusal', refuse],
+  ])('a %s answered after the dialog was closed and opened again on screen: the reopened dialog is left as it is', async (_name, settleCreate) => {
+    const { create, close } = await createHeld();
+    await reopenFromOutside();
+    await act(async () => settleCreate(create));
+    await settle();
+    expectNothingApplied(close);
+  });
+
   it('after a quiet failure, Create tries again, and a clean success navigates and closes', async () => {
     const { create, close } = await createHeld();
     await hide(true);
