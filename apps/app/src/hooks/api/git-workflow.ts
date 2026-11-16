@@ -74,8 +74,3 @@ export const useDisconnectGitWorkflow = (projectId: string) =>
   useGitWorkflowMutation(projectId, async (_: undefined) =>
     mutateData(await api.app.projects[':projectId'].git.connection.$delete({ param: { projectId } }), 'Could not disconnect the repository.'),
   );
-
-export const useRotateGitWorkflowWebhookSecret = (projectId: string) =>
-  useGitWorkflowMutation(projectId, async (_: undefined) =>
-    mutateData(await api.app.projects[':projectId'].git['webhook-secret'].$post({ param: { projectId } }), 'Could not rotate the webhook secret.'),
-  );

@@ -457,6 +457,29 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
     ];
     return checks.filter(([, ratio, target]) => ratio < target).map(([name, ratio]) => `${name}: ${ratio.toFixed(4)}:1`);
   };
+  /** The tint as the browser stores it: composited, then rounded to 8 bits a channel. */
+  const roundedTint = (color: number[], background: string) => hoverOver(hoverRgb(background), color, 0.1).map(Math.round);
+  /** Every target a HEX replacement misses by the margin a kept mix needs (4.51:1), on the tint both as
+   * composited and rounded (#758); a `color-mix()` that was kept is judged by `shortfalls` and the sweep. */
+  const replacementShortfalls = (brand: string) => {
+    const dark = legacyDark(brand);
+    const drawer = drawerRule(dark.css, 'dark');
+    const drawerTokens = drawer ? declarations(drawer) : {};
+    const isHex = (value: string | undefined) => /^#[0-9a-f]{6}$/.test(value ?? '');
+    const checks: [string, number][] = [];
+    const asText = (name: string, color: number[], background: string, onAccent: number[]) =>
+      checks.push(
+        [`${name} on ${background}`, hoverContrast(color, hoverRgb(background))],
+        [`${name} on its tint`, onOwnTint(color, background)],
+        [`${name} on its tint, rounded`, hoverContrast(color, roundedTint(color, background))],
+        [`text on ${name}`, hoverContrast(onAccent, color)],
+      );
+    if (isHex(dark.page['--primary'])) asText('--primary', dark.primary, CANVAS, dark.onPrimary);
+    if (isHex(drawerTokens['--primary'] ?? dark.page['--primary'])) asText('drawer --primary', dark.drawerPrimary, POPOVER, dark.drawerOnPrimary);
+    if (isHex(dark.light['--theme-code-accent']))
+      checks.push(['--theme-code-accent on the code surface', hoverContrast(dark.codeAccent, hoverRgb(CODE))]);
+    return checks.filter(([, ratio]) => ratio < 4.51).map(([name, ratio]) => `${name}: ${ratio.toFixed(4)}:1`);
+  };
 
   it.each([
     ['#000000', 1.36],
@@ -495,6 +518,39 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
     expect(shortfalls('#3a1408')).toEqual([]);
   });
 
+  // #753 held a replacement hex to 4.5:1 exactly, and the active row's tint is rounded when drawn (#758).
+  it.each([
+    ['#2d25e3', ['--primary on its tint: 4.5003:1', '--primary on its tint, rounded: 4.4879:1']],
+    [
+      '#490000',
+      ['text on --primary: 4.5069:1', 'drawer --primary on its tint, rounded: 4.4933:1', '--theme-code-accent on the code surface: 4.5056:1'],
+    ],
+    ['#3a1408', ['--theme-code-accent on the code surface: 4.5041:1']],
+  ] as const)('gives the hex replacements for %s a margin over 4.5:1 on every target (before: %j)', (brand, _before) => {
+    expect(replacementShortfalls(brand)).toEqual([]);
+    expect(shortfalls(brand)).toEqual([]);
+  });
+
+  it("checks #2d25e3's replacement on the tint as the browser rounds it: #5874f1 read 4.4879:1 on [18, 21, 33]", () => {
+    expect(roundedTint(hoverRgb('#5874f1'), CANVAS)).toEqual([18, 21, 33]);
+    expect(hoverContrast(hoverRgb('#5874f1'), roundedTint(hoverRgb('#5874f1'), CANVAS))).toBeCloseTo(4.4879, 4);
+    const dark = legacyDark('#2d25e3');
+    expect(dark.page['--primary']).toBe('#5c77f1');
+    expect(hoverContrast(dark.primary, roundedTint(dark.primary, CANVAS))).toBeGreaterThanOrEqual(4.51);
+    expect(onOwnTint(dark.primary, CANVAS)).toBeGreaterThanOrEqual(4.51);
+  });
+
+  it('keeps the hex #744 chose wherever it already had the margin: #494992 (its mix read 4.5083:1 on its tint)', () => {
+    expect(onOwnTint(hoverMixOklab(hoverRgb('#494992'), [255, 255, 255], 0.72), CANVAS)).toBeCloseTo(4.5083, 4);
+    const dark = legacyDark('#494992');
+    expect([dark.page['--primary'], dark.page['--primary-foreground'], drawerRule(dark.css, 'dark')]).toEqual([
+      '#797db4',
+      '#171717',
+      '--primary:#8387ba;--primary-foreground:#171717',
+    ]);
+    expect(replacementShortfalls('#494992')).toEqual([]);
+  });
+
   it('meets every target for any brand, and keeps each mix wherever it reads with room to spare', () => {
     const clears = (ratio: number) => ratio >= 4.51;
     const levels = [0, 36, 73, 109, 146, 182, 219, 255];
@@ -503,6 +559,7 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
         for (const b of levels) {
           const brand = toHex([r, g, b]);
           expect(shortfalls(brand), brand).toEqual([]);
+          expect(replacementShortfalls(brand), brand).toEqual([]);
           const { page, css } = legacyDark(brand);
           const mixed = hoverMixOklab([r, g, b], [255, 255, 255], 0.72);
           if (clears(hoverContrast(mixed, hoverRgb(CANVAS))) && clears(onOwnTint(mixed, CANVAS)) && clears(hoverContrast(hoverRgb(POPOVER), mixed)))
