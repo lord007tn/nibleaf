@@ -14,6 +14,7 @@ import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { Highlight } from '@/components/site/site-search-highlight';
 import { takeSearchKeystrokes } from '@/components/site/site-search-keystrokes';
 import { useSlashShortcut, writeSlashShortcut } from '@/components/site/site-search-shortcut';
+import { truncateSearchQuery } from '@/functions/site-search-input';
 import { useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
@@ -194,7 +195,10 @@ export default function SiteSearchDialog({
   const [keepPrevious, setKeepPrevious] = useState(true);
   // Enter pressed while a keyword search loads opens the best match once it arrives.
   const [pendingEnter, setPendingEnter] = useState(false);
-  const changeQuery = (value: string) => {
+  const changeQuery = (raw: string) => {
+    // The field holds at most the API's limit in code points (typed or pasted);
+    // `maxLength` would count UTF-16 units and cut emoji queries short.
+    const value = truncateSearchQuery(raw);
     setQuery(value);
     setPendingEnter(false);
     if (!value.trim()) setKeepPrevious(false);
@@ -223,7 +227,7 @@ export default function SiteSearchDialog({
       if (typed?.edited) {
         // What the reader typed replaces the old query, even when they deleted
         // it all again: an edited, now empty buffer stays empty.
-        const seeded = typed.text.slice(0, 300);
+        const seeded = truncateSearchQuery(typed.text);
         // Set the field now so the caret lands after the text; the controlled
         // value then renders the same string and leaves the caret in place.
         input.value = seeded;
@@ -567,7 +571,6 @@ export default function SiteSearchDialog({
               placeholder={placeholder?.trim() || t('searchPlaceholder')}
               value={query}
               onValueChange={changeQuery}
-              maxLength={300}
               enterKeyHint="search"
               className="h-14 px-2 text-base placeholder:text-muted-foreground/80 sm:text-[15px]"
               onKeyDown={(event) => {
@@ -668,7 +671,7 @@ export default function SiteSearchDialog({
                           key={item}
                           value={`recent-${index}`}
                           onSelect={() => {
-                            setQuery(item);
+                            setQuery(truncateSearchQuery(item));
                             inputRef.current?.focus();
                           }}
                           className={ROW}

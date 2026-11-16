@@ -5,15 +5,17 @@
  * authority; this check keeps the client from sending a request the API would
  * reject.
  *
- * It accepts and rejects the same inputs as the zod schema it replaced, and
- * returns the same shape, which `site-search-input.test.ts` checks against
- * that schema:
+ * It accepts and rejects the same inputs as this zod schema, and returns the
+ * same shape, which `site-search-input.test.ts` checks against that schema.
+ * The query's limit is the API's (`SEARCH_QUERY_MAX_LENGTH`, 200), not the 300
+ * the replaced schema allowed, so the browser never sends a query the API
+ * refuses with a 422:
  *
  *   z.object({
  *     projectId: z.string().min(1),
  *     sessionId: z.string().max(128).optional(),
  *     consentState: z.enum(['denied', 'granted', 'not_required', 'unknown']).default('unknown'),
- *     query: z.string().trim().min(1).max(300),
+ *     query: z.string().trim().min(1).max(SEARCH_QUERY_MAX_LENGTH),
  *     language: z.string().min(1).max(35).optional(),
  *     prefer: z.string().min(1).max(35).optional(),
  *     version: z.string().min(1).optional(),
@@ -24,6 +26,10 @@
  * an optional key that is present but `undefined` stays in the result as
  * `undefined`, an absent one stays absent, and unknown keys are dropped.
  */
+
+import { SEARCH_QUERY_MAX_LENGTH } from '@nibleaf/validators/search';
+
+export { SEARCH_QUERY_MAX_LENGTH };
 
 const CONSENT_STATES = ['denied', 'granted', 'not_required', 'unknown'] as const;
 type SearchConsentState = (typeof CONSENT_STATES)[number];
@@ -68,6 +74,22 @@ const codePointLength = (value: string) => {
   return count;
 };
 
+/** The first `SEARCH_QUERY_MAX_LENGTH` code points of `value`. A longer query is
+ * cut, never rejected, so search shows results for what fits; the cut falls
+ * between code points, so it never splits a surrogate pair. */
+export const truncateSearchQuery = (value: string): string => {
+  // Each code point takes at least one UTF-16 unit, so a short string fits as is.
+  if (value.length <= SEARCH_QUERY_MAX_LENGTH) return value;
+  let out = '';
+  let count = 0;
+  for (const codePoint of value) {
+    if (count === SEARCH_QUERY_MAX_LENGTH) break;
+    out += codePoint;
+    count++;
+  }
+  return out;
+};
+
 const lengthIn = (value: unknown, min: number, max: number): value is string => {
   if (typeof value !== 'string') return false;
   const length = codePointLength(value);
@@ -104,7 +126,7 @@ export function parseSearchSiteInput(input: unknown): SearchSiteData {
   const query = fields.query;
   if (typeof query !== 'string') throw new SearchSiteInputError('query');
   const trimmed = query.trim();
-  if (!lengthIn(trimmed, 1, 300)) throw new SearchSiteInputError('query');
+  if (!lengthIn(trimmed, 1, SEARCH_QUERY_MAX_LENGTH)) throw new SearchSiteInputError('query');
   out.query = trimmed;
 
   optionalText(fields, out, 'language', 1, 35);
