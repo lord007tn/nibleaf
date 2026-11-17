@@ -1,0 +1,111 @@
+{
+  "environment": "vitest + jsdom on main 84d80dc993663e8c84557dc03f1a5f2d5abb02cf before this branch changed anything: the real GitTab (per-site GitWorkflow stubbed), the app's createQueryClient, every API call answered by a mock and rotation POSTs held; fictional sites and placeholder secrets written as labels. Probe file deleted after the run; the same harness is src/features/site-git/components/git-settings-webhook-rotate.test.tsx.",
+  "base": "84d80dc993663e8c84557dc03f1a5f2d5abb02cf",
+  "facts": {
+    "pending": {
+      "posts": [{ "param": { "projectId": "<id#1>" } }],
+      "busy": true,
+      "mutations": 1,
+      "statuses": ["pending"],
+      "paused": [false],
+      "secretInMutationGraph": false,
+      "secretInStateData": false,
+      "secretInAllMutationDehydrate": false,
+      "defaultDehydrateMutations": 0,
+      "secretInSettingsQueryData": false,
+      "secretInDefaultQueryDehydrate": false
+    },
+    "afterSuccess": {
+      "revealed": { "value": "<credential#1>", "revealed": true },
+      "toasts": {
+        "success": [
+          "Webhook secret rotated — update it in your repository settings."
+        ],
+        "error": []
+      },
+      "mutations": 1,
+      "statuses": ["success"],
+      "paused": [false],
+      "secretInMutationGraph": true,
+      "secretInStateData": true,
+      "secretInAllMutationDehydrate": true,
+      "defaultDehydrateMutations": 0,
+      "secretInSettingsQueryData": true,
+      "secretInDefaultQueryDehydrate": true
+    },
+    "afterLeave": {
+      "mutations": 1,
+      "statuses": ["success"],
+      "paused": [false],
+      "secretInMutationGraph": true,
+      "secretInStateData": true,
+      "secretInAllMutationDehydrate": true,
+      "defaultDehydrateMutations": 0,
+      "secretInSettingsQueryData": true,
+      "secretInDefaultQueryDehydrate": true
+    },
+    "refusal": {
+      "toasts": {
+        "success": [],
+        "error": ["Could not rotate the webhook secret"]
+      },
+      "echoInMutationError": true,
+      "errorFields": [
+        [
+          "stack",
+          "message",
+          "status",
+          "code",
+          "retryAfter",
+          "path",
+          "sourceFile",
+          "limit",
+          "details",
+          "name"
+        ]
+      ],
+      "echoInAllMutationDehydrate": true
+    },
+    "offline": {
+      "atPress": {
+        "posts": 0,
+        "busy": true,
+        "mutations": 1,
+        "statuses": ["pending"],
+        "paused": [true],
+        "secretInMutationGraph": false,
+        "secretInStateData": false,
+        "secretInAllMutationDehydrate": false,
+        "defaultDehydrateMutations": 1,
+        "secretInSettingsQueryData": false,
+        "secretInDefaultQueryDehydrate": false
+      },
+      "afterReconnect": { "posts": 1 },
+      "afterAnswer": {
+        "toasts": { "success": [], "error": [] },
+        "mutations": 1,
+        "statuses": ["success"],
+        "paused": [false],
+        "secretInMutationGraph": true,
+        "secretInStateData": true,
+        "secretInAllMutationDehydrate": true,
+        "defaultDehydrateMutations": 0,
+        "secretInSettingsQueryData": false,
+        "secretInDefaultQueryDehydrate": false
+      }
+    },
+    "sameTick": { "posts": 2 },
+    "keyed": {
+      "bBusy": false,
+      "aBusyOnReturn": false,
+      "postsAfterReturnPress": ["<id#1>", "<id#1>"],
+      "toasts": {
+        "success": [
+          "Webhook secret rotated — update it in your repository settings."
+        ],
+        "error": []
+      },
+      "revealed": { "value": "<credential#1>", "revealed": true }
+    }
+  }
+}

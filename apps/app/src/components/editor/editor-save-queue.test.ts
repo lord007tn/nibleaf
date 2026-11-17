@@ -384,6 +384,22 @@ describe('conflicts the editor found, and resolutions (#789, #790)', () => {
     expect(save).toHaveBeenCalledTimes(2);
   });
 
+  it('tells which writes at the server carry a text, and which are in flight; a draft only queued carries nothing (#790)', async () => {
+    const first = deferred();
+    const queue = createEditorSaveQueue(vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue('saved'));
+    const inFlight = queue.save(draft('A'));
+    const queued = queue.save(draft('AB'));
+    await vi.waitFor(() => expect(queue.inFlight('page-a')).toBe(true));
+    expect(queue.carries('page-a', { title: 'Title', content: 'A' })).toBe(true);
+    expect(queue.carries('page-a', { title: 'Title', content: 'AB' })).toBe(false);
+    expect(queue.carries('page-b', { title: 'Title', content: 'A' })).toBe(false);
+    expect(queue.inFlight('page-b')).toBe(false);
+    first.resolve('saved');
+    await Promise.all([inFlight, queued]);
+    expect(queue.carries('page-a', { title: 'Title', content: 'AB' })).toBe(false);
+    expect(queue.inFlight('page-a')).toBe(false);
+  });
+
   it('reports the revision a draft is sent from: the latest own stored one, when based on one', async () => {
     const save = vi.fn().mockResolvedValue({ updatedAt: 'r2' });
     const queue = createEditorSaveQueue<{ updatedAt: string }>(save, (saved) => saved.updatedAt);

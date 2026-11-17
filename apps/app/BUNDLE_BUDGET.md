@@ -1,6 +1,6 @@
 # JavaScript bundle budget
 
-Public documentation pages have a 345,100-byte gzip JavaScript budget. The
+Public documentation pages have a 274,400-byte gzip JavaScript budget. The
 budget applies to each representative direct-navigation profile in
 `scripts/check-bundle-budget.mjs` and keeps a small regression buffer above the
 measured size. CI also rejects public profiles that contain known
@@ -125,6 +125,15 @@ include that chunk. So:
   `bundle:check` fails on a reader icon that a marketing chunk imports unless it
   is one of the icons already shared on main@88daac87
   (`marketingSharedReaderIcons` in `scripts/bundle-boundaries.mjs`).
+- Opening the reader's search doesn't load zod. The search dialog's query
+  hook calls the public API from the browser and checks its input with a plain
+  function (`functions/site-search-input.ts`, #841: −26 KiB gzip on the first
+  search open). `bundle:check` builds a "search open" profile from the module
+  report, the chunk holding `components/site/site-search-dialog.tsx` and its
+  static imports, and fails on any zod module there, or when no chunk holds
+  the dialog (`searchOpenFiles` and `searchOpenZodModules` in
+  `scripts/bundle-boundaries.mjs`; #842). It also prints what search open
+  fetches beyond the `public-docs` profile.
 - Dashboard chunk names stay out of the router's eager chunk. For each lazy
   import, Vite writes the chunks to preload with it into a `__vite__mapDeps`
   table in the importing chunk, and the router's eager chunk imports every
@@ -156,6 +165,30 @@ include that chunk. So:
   `forbiddenPublicModules`, so docs pages can't start loading it.
 
 ## Budget history
+
+### 345,100 → 274,400 bytes: zod out of published pages (PUB-017)
+
+Route `validateSearch` options can't be split, so they ship in the router's
+eager chunk. Seven of them parsed with zod, as did the reader's MDX props and
+inline icon, and the reader's language and nav helpers came from
+`@nibleaf/shared/site`, whose add-on schemas build zod objects as the module
+loads. zod's classic API rode along on every docs page. Eager routes now read
+their params with `lib/search-params.ts` (tested against the zod schemas they
+replace, keys included), the helpers load from `@nibleaf/shared/site-language`
+and `@nibleaf/shared/site-nav`, and `lib/zod-csp.ts` sets zod's global config
+without importing zod. `forbiddenPublicModules` rejects any zod module in a
+public profile. The dashboard and auth pages still load zod where they use it,
+and the reader loads it with the Ask AI panel or search when they open.
+
+Production builds with `BUNDLE_ANALYZE=true` (gzip level 9), main@c744c753:
+
+| Build | public-docs | public-docs-index | eager `index` chunk |
+| --- | --- | --- | --- |
+| main@c744c753 | 300.65 KiB | 299.32 KiB | 120.44 KiB |
+| this change | 266.02 KiB | 264.68 KiB | 93.81 KiB |
+
+The budget drops to the new size plus ~2 KiB, which also takes in READER-05's
+trims (the old budget had kept about 37 KiB of headroom).
 
 ### 345,100 bytes, unchanged: reader first load trimmed (READER-05)
 

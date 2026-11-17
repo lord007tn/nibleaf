@@ -1,6 +1,5 @@
 import type { DocumentationReaderTag } from '@nibleaf/shared/documentation-component-contract';
 import type { ComponentProps, FunctionComponent, ReactNode } from 'react';
-import { z } from 'zod';
 
 // MDX component tags. react-markdown's Components type only knows HTML tags, so
 // custom tags are typed separately and merged into the HTML component map.
@@ -42,8 +41,9 @@ export type DocumentationComponents = Omit<Record<DocumentationReaderTag | 'merm
   button: FunctionComponent<ButtonMdxProps>;
 };
 
-const optionalStringSchema = z.string().optional().catch(undefined);
-export const str = (value: unknown) => optionalStringSchema.parse(value);
+/** A string prop, or undefined. Plain code: the article renderer loads before
+ *  every article hydrates, so it carries no schema library. */
+export const str = (value: unknown): string | undefined => (typeof value === 'string' ? value : undefined);
 /** A numeric prop. `cols` and `size` are also HTML attribute names, so the HTML
  *  parser hands them over as numbers rather than strings. */
 export const numeric = (value: unknown): string | number | undefined => (typeof value === 'number' ? value : str(value));

@@ -902,20 +902,6 @@ const useSetProjectAddonEnabled = (projectId: string, action: 'activate' | 'deac
 export const useActivateProjectAddon = (projectId: string) => useSetProjectAddonEnabled(projectId, 'activate');
 export const useDeactivateProjectAddon = (projectId: string) => useSetProjectAddonEnabled(projectId, 'deactivate');
 
-/** Generate or rotate the push-to-deploy webhook secret (admin only). The
- *  secret is server-generated; the settings PATCH can never set it. */
-export const useRotateGitWebhookSecret = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async () =>
-      mutateData(
-        await api.app.projects[':projectId'].settings.git['webhook-secret'].$post({ param: { projectId } }),
-        'Could not rotate the webhook secret.',
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(projectId) }),
-  });
-};
-
 // ─── Content importers ───────────────────────────────────────────────────────
 
 /** Summary returned by the content importers (Mintlify, Ghost, …). */

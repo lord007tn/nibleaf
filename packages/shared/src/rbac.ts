@@ -62,6 +62,47 @@ export const canAssignRole = (actorRole: string, targetRole: string): boolean =>
  *  owner therefore requires being an owner. */
 export const canManageMember = (actorRole: string, memberRole: string): boolean => rankOf(actorRole) >= rankOf(memberRole);
 
+// ─── Issuing invitations and join links ──────────────────────────────────────
+
+/** An issuer as the issuer policy reads them: their org role and website grants. */
+export interface InvitationIssuer {
+  orgRole: string;
+  projectGrants: ReadonlyArray<{ projectId: string; role: string }>;
+}
+
+/** Why an issuer could not issue an admission themselves: it gives organization
+ *  access (org Admin, or no website at all), or a website they can't grant. */
+export type IssuerRefusal = 'orgAccess' | 'otherWebsites';
+
+/** Whether the viewer may resend a pending invitation from a website's Team
+ *  page, as the server's issuer policy decides it. Older servers send nothing:
+ *  read a missing value as `allowed`, and the resend itself stays the authority. */
+export type InvitationResend = 'allowed' | IssuerRefusal;
+
+/**
+ * The issuer policy (`issuerAuthorizes` in @nibleaf/auth runs it for invitations,
+ * resends, link previews and revocation): null when `issuer` could grant
+ * `orgRole` and `grants` themselves, otherwise why not. Pure, so a list can
+ * decide Resend up front without forking the rule.
+ */
+export const issuerRefusal = (
+  issuer: InvitationIssuer,
+  orgRole: string,
+  grants: ReadonlyArray<{ projectId: string; role: string }>,
+): IssuerRefusal | null => {
+  if (!(ASSIGNABLE_ORG_ROLES as readonly string[]).includes(orgRole)) return 'orgAccess';
+  const orgAdmin = issuer.orgRole === 'owner' || issuer.orgRole === 'admin';
+  if (orgRole === 'admin' && !orgAdmin) return 'orgAccess';
+  // A site administrator cannot invite a grantless organization member.
+  if (!orgAdmin && grants.length === 0) return 'orgAccess';
+  const grantable = grants.every((grant) => {
+    if (!(ASSIGNABLE_SITE_ROLES as readonly string[]).includes(grant.role)) return false;
+    const role = effectiveSiteRole(issuer.orgRole, issuer.projectGrants.find((g) => g.projectId === grant.projectId)?.role ?? null);
+    return role !== null && canAssignRole(role, grant.role);
+  });
+  return grantable ? null : 'otherWebsites';
+};
+
 // ─── Ownership transfer ──────────────────────────────────────────────────────
 
 export type OwnershipTransferRejection =

@@ -1422,3 +1422,160 @@ describe('StrictMode', () => {
     expect(undoButton().disabled).toBe(true);
   });
 });
+
+/**
+ * #824. Since #816, a site switch ends a running save's `submit()` at once while
+ * its request runs on. The site's write turn (`theme-writes`) must still last
+ * until that request and its readback settle. These tests switch sites on one
+ * retained section (unkeyed, so the same form instance goes A → B → A), which
+ * production never renders: the editor and settings key the section by site.
+ */
+describe('a save keeps its site’s write turn until its request settles (#824)', () => {
+  const A = JSON.stringify(['site-1', 'theme']);
+  const B = JSON.stringify(['site-2', 'theme']);
+  const applies = () => server.imports.filter((entry) => entry.apply);
+  const previewTemplate = async () => {
+    await typeTemplate(template('harbor'));
+    await click(buttonNamed('settings.theme.previewImport'));
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('preview'));
+  };
+  const ctrlS = () =>
+    act(async () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true }));
+    });
+  const show = async (site: Site) => {
+    await act(async () => showSite(site));
+    await settle();
+  };
+  /**
+   * A's save is held after its PATCH merged (or, with `before: 'merge'`, before
+   * it merges, where a failure is decided). The section then shows B, and A
+   * again unless `back` is false. `sameForm`: the form element survived (no remount).
+   */
+  const switchDuringSave = async ({ before = 'answer', back = true }: { before?: 'merge' | 'answer'; back?: boolean } = {}) => {
+    await open();
+    // B's project is already read, so the section never renders empty (and unmounts) while it loads.
+    await act(() => queryClient.prefetchQuery(projectQueryOptions('site-2')));
+    const form = container.querySelector('form');
+    const patch = gate();
+    if (before === 'merge') server.holdMerge = patch.promise;
+    else server.holdPatch = patch.promise;
+    await preset('manuscript');
+    await startSave();
+    const turn = writeFor(A);
+    expect(turn?.kind).toBe('save');
+    await show('site-2');
+    if (back) await show('site-1');
+    return { patch, turn, sameForm: container.querySelector('form') === form };
+  };
+
+  it.each([
+    ['one retained instance (A → B → A)', false],
+    ['control: keyed by site, as production renders it', true],
+  ])('%s: Apply, Save and Ctrl+S wait for the running request', async (_, keyed) => {
+    keyedBySite = keyed;
+    const { patch, turn, sameForm } = await switchDuringSave();
+    expect(sameForm).toBe(!keyed);
+    // The request is still running; its `submit()` has already ended on the unkeyed path.
+    expect(queryClient.isMutating()).toBe(1);
+    expect(writeFor(A)).toBe(turn);
+    await previewTemplate();
+    await click(buttonNamed('settings.theme.applyImport'));
+    await settle();
+    expect(applies()).toHaveLength(0);
+    await preset('signal');
+    await click(buttonNamed('common.save', region() ?? container));
+    await ctrlS();
+    await settle();
+    expect(server.patches).toHaveLength(1);
+    expect(writeFor(A)).toBe(turn);
+    await patch.open();
+    await finished();
+    expect(writeFor(A)).toBeUndefined();
+    // The turn is free again: this site's next save goes out.
+    await save();
+    expect(server.patches.map((entry) => entry.site)).toStrictEqual(['site-1', 'site-1']);
+    expect(storedTheme()).toMatchObject({ preset: 'signal' });
+    expect(writeFor(A)).toBeUndefined();
+  });
+
+  it('a rejected request keeps the turn until it answers, says nothing to the form it left, then a retry goes out', async () => {
+    const { patch, turn } = await switchDuringSave({ before: 'merge' });
+    server.failPatch = true;
+    expect(writeFor(A)).toBe(turn);
+    await preset('harbor');
+    await ctrlS();
+    await settle();
+    expect(server.patches).toHaveLength(1);
+    await patch.open();
+    await finished();
+    expect(writeFor(A)).toBeUndefined();
+    expect(toast.error).not.toHaveBeenCalled();
+    expect(storedTheme()).toMatchObject({ preset: 'signal' });
+    server.failPatch = false;
+    server.holdMerge = undefined;
+    await save();
+    expect(server.patches.map((entry) => entry.site)).toStrictEqual(['site-1', 'site-1']);
+    expect(storedTheme()).toMatchObject({ preset: 'harbor' });
+    expect(writeFor(A)).toBeUndefined();
+  });
+
+  it('a save refused before any request gives the turn back at once: Apply can follow', async () => {
+    await open({ theme: { version: 1, preset: 'harbor', colors: { dark: { foreground: '#111111' } } } });
+    await appearance('light');
+    await click(buttonNamed('common.save', region() ?? container));
+    await settle();
+    expect(server.patches).toHaveLength(0);
+    expect(status()).toBe('forms.fixHighlighted');
+    expect(writeFor(A)).toBeUndefined();
+    await discard();
+    await previewTemplate();
+    await click(buttonNamed('settings.theme.applyImport'));
+    await vi.waitFor(() => expect(importResult()?.dataset.importResult).toBe('applied'));
+    expect(applies()).toHaveLength(1);
+    expect(writeFor(A)).toBeUndefined();
+  });
+
+  it('another site is independent: B saves while A’s request runs, and neither releases the other’s turn', async () => {
+    const { patch } = await switchDuringSave({ back: false });
+    expect(writeFor(B)).toBeUndefined();
+    const second = gate();
+    server.holdPatch = second.promise;
+    await preset('signal');
+    await startSave();
+    const other = writeFor(B);
+    expect(other?.kind).toBe('save');
+    // A's request ends first: B's newer turn stays B's.
+    await patch.open();
+    await vi.waitFor(() => expect(writeFor(A)).toBeUndefined());
+    expect(writeFor(B)).toBe(other);
+    // A's form, back on screen, can write while B's request still runs.
+    await show('site-1');
+    expect(writeFor(B)).toBe(other);
+    server.holdPatch = undefined;
+    await preset('harbor');
+    await click(buttonNamed('common.save', region() ?? container));
+    await vi.waitFor(() => expect(server.patches).toHaveLength(3));
+    expect(server.patches.map((entry) => entry.site)).toStrictEqual(['site-1', 'site-2', 'site-1']);
+    await second.open();
+    await finished();
+    expect(writeFor(A)).toBeUndefined();
+    expect(writeFor(B)).toBeUndefined();
+  });
+
+  it('a true unmount keeps the turn until the request settles, then gives it back', async () => {
+    await open();
+    const patch = gate();
+    server.holdPatch = patch.promise;
+    await preset('manuscript');
+    await startSave();
+    const turn = writeFor(A);
+    expect(turn?.kind).toBe('save');
+    await act(async () => root.render(<QueryClientProvider client={queryClient}>{null}</QueryClientProvider>));
+    expect(writeFor(A)).toBe(turn);
+    await patch.open();
+    await finished();
+    expect(writeFor(A)).toBeUndefined();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+});

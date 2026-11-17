@@ -16,8 +16,9 @@ import { useWriteGitSettings } from '@/features/site-git/api/git-connection';
 import { GitConnectionForm } from '@/features/site-git/components/git-connection-form';
 import { GitPipeline } from '@/features/site-git/components/git-pipeline';
 import { useGitImportCommand } from '@/features/site-git/components/use-git-import';
+import { useGitSettingsWebhookRotateCommand } from '@/features/site-git/components/use-git-settings-webhook-rotate-command';
 import { type GitInstantChange, gitInstantPayload } from '@/features/site-git/model/git-instant-write';
-import { useGitWorkflow, useRotateGitWebhookSecret, useWorkspaceSettings } from '@/hooks/api';
+import { useGitWorkflow, useWorkspaceSettings } from '@/hooks/api';
 import { githubRepositoryPath } from '@/lib/git-repository';
 import { copyToClipboard } from '@/lib/invitations';
 import { GitWorkflow, type GitWorkflowPrefill } from './git-workflow';
@@ -113,8 +114,15 @@ function DeployOnPush({
   togglingAutoPublish: boolean;
 }) {
   const t = useT();
-  const rotateSecret = useRotateGitWebhookSecret(projectId);
   const [revealed, setRevealed] = useState(false);
+  // One rotation per press, outside every cache; reported only to this card, for this site and session.
+  const rotateSecret = useGitSettingsWebhookRotateCommand(projectId, {
+    rotated: () => {
+      setRevealed(true);
+      toast.success(t('settings.git.webhook.rotated'));
+    },
+    failed: (_error) => toast.error(t('settings.git.webhook.rotateError')),
+  });
   const [copying, setCopying] = useState(false);
   const [webhookOrigin, setWebhookOrigin] = useState('');
   useEffect(() => setWebhookOrigin(window.location.origin), []);
@@ -131,15 +139,6 @@ function DeployOnPush({
       toast.error(t('settings.git.webhook.copyError'));
     }
   };
-
-  const rotate = () =>
-    rotateSecret.mutate(undefined, {
-      onSuccess: () => {
-        setRevealed(true);
-        toast.success(t('settings.git.webhook.rotated'));
-      },
-      onError: (_error) => toast.error(t('settings.git.webhook.rotateError')),
-    });
 
   const instructions =
     git.provider === 'gitlab'
@@ -205,14 +204,14 @@ function DeployOnPush({
                     >
                       <Copy className="size-4" />
                     </Button>
-                    <Button loading={rotateSecret.isPending} onClick={rotate} type="button" variant="outline">
+                    <Button loading={rotateSecret.busy} onClick={() => void rotateSecret.press()} type="button" variant="outline">
                       <RefreshCw className="size-3.5" />
                       {t('settings.git.webhook.rotate')}
                     </Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <Button loading={rotateSecret.isPending} onClick={rotate} type="button" variant="outline">
+                    <Button loading={rotateSecret.busy} onClick={() => void rotateSecret.press()} type="button" variant="outline">
                       <RefreshCw className="size-3.5" />
                       {t('settings.git.webhook.generate')}
                     </Button>

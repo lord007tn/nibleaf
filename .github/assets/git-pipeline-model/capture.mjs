@@ -94,8 +94,11 @@ try {
     /\/\*\* Pull Markdown pages from the configured public Git provider[\s\S]*?\nexport const useImportFromGit = [\s\S]*?\n};\n/.exec(
       mainMutations,
     )?.[0],
+    /\/\*\* Generate or rotate the push-to-deploy webhook secret[\s\S]*?\nexport const useRotateGitWebhookSecret = [\s\S]*?\n};\n/.exec(
+      mainMutations,
+    )?.[0],
   ];
-  assert.ok(removedHooks.every(Boolean), "main's useUpdateWorkspaceSettings and useImportFromGit");
+  assert.ok(removedHooks.every(Boolean), "main's useUpdateWorkspaceSettings, useImportFromGit and useRotateGitWebhookSecret");
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
     `export * from '@/hooks/api';

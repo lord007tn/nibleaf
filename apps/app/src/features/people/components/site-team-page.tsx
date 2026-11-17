@@ -23,6 +23,7 @@ import { useProjectMembers } from '@/hooks/api/queries';
 import { useSession } from '@/services/auth-client';
 import { useChangeSiteRole, useRemoveFromSite, useResendSiteInvitation, useRevokeSiteInvitation } from '../api/mutations';
 import { siteJoinLinksQueryOptions } from '../api/query-options';
+import { resendDecision } from '../model/invitations';
 import { personDisplay } from '../model/person';
 import { assignableSiteRoles, type EffectiveSiteRole, isOrgAdminRole, isSiteRole, type SiteRole, siteRoleLabel } from '../model/roles';
 import { AddPeopleDialog } from './add-people-dialog';
@@ -261,6 +262,7 @@ export function SiteTeamPage({
               createdAt: invitation.createdAt,
               expiresAt: invitation.expiresAt,
               scope: t('people.site.invitedAs', { role: t(siteRoleLabel(invitation.role)) }),
+              resend: resendDecision(invitation.resend),
             }))}
           />
         </SettingsSection>
