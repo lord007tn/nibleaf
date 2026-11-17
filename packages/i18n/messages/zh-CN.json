@@ -4536,6 +4536,8 @@
   "people_reason_removeselfsite": "你不能移除自己。请联系其他管理员。",
   "people_reason_moreaccess": "对方的访问权限比你多。",
   "people_reason_roleaboveyours": "你只能授予不高于你自己的角色。",
+  "people_reason_resendorgaccess": "请让组织管理员重新发送：此邀请会授予组织级访问权限。",
+  "people_reason_resendotherwebsites": "请让组织管理员重新发送：此邀请还会授予你无权分配的其他网站的访问权限。",
   "people_invite_open": "邀请成员",
   "people_invite_title": "邀请成员加入 {org}",
   "people_invite_description": "对方会收到一封邮件，其中的链接 7 天内有效。",
@@ -5038,5 +5040,5 @@
   "editor_fix_explain_blogrootgroup": "读者会在侧边栏顶部看到这个名称。请按其页面内容重命名该栏目，例如“指南”。",
   "editor_fix_placed": "已高亮 {total} 个中的 {placed} 个",
   "editor_fix_previous": "上一个",
-  "editor_fix_insideblock": "这一处位于可视化编辑器按原样保留的区块中。请以 Markdown 编辑页面来修复。"
+  "editor_fix_insideblock": "位于按原样保留的区块中。请在 Markdown 中修复。"
 }

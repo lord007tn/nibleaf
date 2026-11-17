@@ -180,8 +180,15 @@ async function open(content: string, search: { fix?: PublishCheckCode; fixTarget
 const editor = () => (container.querySelector('.ProseMirror') as (HTMLElement & { editor?: TiptapCore }) | null)?.editor;
 const bar = () => container.querySelector<HTMLElement>('[data-publish-fix]');
 const status = () => container.querySelector('[data-testid="publish-fix-status"]')?.textContent ?? '';
-const button = (name: string) =>
-  [...(bar()?.querySelectorAll('button') ?? [])].find((item) => item.textContent === name || item.getAttribute('aria-label') === name);
+/** A control's name as assistive technology reads it: its `aria-label`, or its text without what is hidden from it (a short visible label). */
+const nameOf = (item: Element) => {
+  const label = item.getAttribute('aria-label');
+  if (label) return label;
+  const copy = item.cloneNode(true) as Element;
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove();
+  return copy.textContent ?? '';
+};
+const button = (name: string) => [...(bar()?.querySelectorAll('button') ?? [])].find((item) => nameOf(item) === name);
 const count = (current: number, total: number) => `editor.fix.count ${JSON.stringify({ current, total })}`;
 
 /** The replace navigation that dropped the Fix, applied to the address it arrived with. */
@@ -822,7 +829,7 @@ describe('P1-ED-002: the bar on a narrow screen (390 px)', () => {
     expect(actions?.className.split(/\s+/)).toEqual(expect.arrayContaining(['flex', 'flex-wrap', 'max-w-full']));
     expect(actions?.className.split(/\s+/)).not.toContain('shrink-0');
     // Keyboard order: Previous, Next, Back to publish, Close.
-    expect([...(actions?.querySelectorAll('button') ?? [])].map((item) => item.textContent || item.getAttribute('aria-label'))).toEqual([
+    expect([...(actions?.querySelectorAll('button') ?? [])].map(nameOf)).toEqual([
       'editor.fix.previous',
       'editor.fix.next',
       'editor.fix.back',
@@ -830,7 +837,7 @@ describe('P1-ED-002: the bar on a narrow screen (390 px)', () => {
     ]);
   });
 
-  it('the landed link scrolls in below the bar, by the bar’s height plus a gap', async () => {
+  it('the landed link scrolls in 16 px below the top of the page’s scrolling area, which already starts under the bar (#668)', async () => {
     // Layout, as at 390 px: the bar is 96 px tall, the scroller starts 150 px down, the link sits 900 px down.
     const rect = (top: number, height: number) =>
       ({ top, height, bottom: top + height, left: 0, right: 390, width: 390, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
@@ -843,8 +850,9 @@ describe('P1-ED-002: the bar on a narrow screen (390 px)', () => {
     try {
       await open(content, { fix: 'broken-internal-link', fixTarget: LONG_LINK });
       const landing = scrolledTo.at(-1);
-      // 900 − 150 + scrollTop (0) − (96 + 16): the link sits 112 px under the scroller's top, clear of the bar, with the room below for the link field.
-      expect(landing?.top).toBe(900 - 150 - (96 + 16));
+      // 900 − 150 + scrollTop (0) − 16: the link sits 16 px under the scroller's top. The bar is above the scroller, never over it,
+      // so its 96 px are not counted again (they were: the link landed 112 px down, 96 px lower than needed at 390 px).
+      expect(landing?.top).toBe(900 - 150 - 16);
       expect(landing?.scroller.contains(container.querySelector('.ProseMirror'))).toBe(true);
     } finally {
       Element.prototype.getBoundingClientRect = original;
@@ -872,7 +880,7 @@ describe('P1-ED-002: a finding inside a block the visual editor keeps as written
       if (!current) throw new Error('No editor');
       // The block is not selected, and focus is on the way to fix it, not in the page.
       expect(current.state.selection instanceof NodeSelection).toBe(false);
-      expect(document.activeElement?.textContent).toBe('editor.editSource');
+      expect(document.activeElement).toBe(button('editor.editSource'));
       const before = getMarkdown(current);
       const sources = blockSources();
       expect(sources.join('\n')).toContain('KEEP');
@@ -927,6 +935,46 @@ describe('P1-ED-002: a finding inside a block the visual editor keeps as written
     expect(getMarkdown(current)).toBe(before);
     await advance(20_000);
     expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('on a narrow bar (390 px) its buttons keep to one row: short visible names, full names read out (#668)', async () => {
+    await open('Intro.\n\n<Unknown>\n\nKEEP\n\n[inside](/configuration)\n\n</Unknown>', { fix: 'broken-internal-link', fixTarget: '/configuration' });
+    const classes = (element: Element | null | undefined) => element?.getAttribute('class')?.split(/\s+/) ?? [];
+    // The bar is the container its buttons size to (the canvas, not the window, sets how wide it is).
+    expect(classes(bar())).toContain('@container/fix');
+    // Edit as Markdown shows "Markdown" under 36rem, and its full name above; the full name is its accessible name at every width.
+    const editSource = button('editor.editSource');
+    const short = editSource?.querySelector('[data-testid="publish-fix-short"]');
+    expect(short?.textContent).toBe('editor.mode.markdown');
+    expect(short?.getAttribute('aria-hidden')).toBe('true');
+    expect(classes(short)).toContain('@xl/fix:hidden');
+    expect(classes(editSource?.querySelector('span:not([aria-hidden])'))).toEqual(expect.arrayContaining(['sr-only', '@xl/fix:not-sr-only']));
+    // Previous and Next show an arrow (pointing the reading direction's way) under 36rem, their name above, and keep it as a tooltip.
+    for (const [name, icon] of [
+      ['editor.fix.previous', 'lucide-chevron-left'],
+      ['editor.fix.next', 'lucide-chevron-right'],
+    ] as const) {
+      const control = button(name);
+      expect(control?.getAttribute('title')).toBe(name);
+      const arrow = control?.querySelector('svg');
+      expect(classes(arrow)).toEqual(expect.arrayContaining([icon, '@xl/fix:hidden', 'rtl:rotate-180']));
+      expect(arrow?.getAttribute('aria-hidden')).toBe('true');
+      expect(classes(control?.querySelector('span'))).toEqual(expect.arrayContaining(['sr-only', '@xl/fix:not-sr-only']));
+    }
+  });
+
+  it('the explanation is short enough for two lines at 390 px, in every language (#668)', async () => {
+    const { readFileSync, readdirSync } = await import('node:fs');
+    const { resolve } = await import('node:path');
+    const directory = resolve('../../packages/i18n/messages');
+    const lengths = Object.fromEntries(
+      readdirSync(directory)
+        .filter((file) => file.endsWith('.json'))
+        .map((file) => [file, [...String(JSON.parse(readFileSync(resolve(directory, file), 'utf8')).editor_fix_insideblock)].length]),
+    );
+    expect(Object.keys(lengths)).toHaveLength(12);
+    // It was a two-sentence paragraph (105 characters in English) that wrapped to three lines beside the evidence and the count.
+    for (const [file, length] of Object.entries(lengths)) expect([file, length <= 85]).toEqual([file, true]);
   });
 
   it('Edit as Markdown opens the page’s source, where the block can be changed', async () => {

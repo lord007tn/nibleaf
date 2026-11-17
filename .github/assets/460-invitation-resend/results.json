@@ -1,0 +1,290 @@
+{
+  "issue": 460,
+  "data": "Fictional. Viewer: Sam Site-Admin <id#2>, Admin of Docs <id#3> only (not of API <id#4>), org Member. Org Owner: Rana Owner <id#1>. Invitations sent by the Owner with sendEmail:false; no email was queued or sent.",
+  "invitations": {
+    "lina@example.test": "Docs Editor (expected: allowed)",
+    "omar.org-admin@example.test": "org Admin + Docs Admin (expected: orgAccess)",
+    "noor.two-sites@example.test": "Docs Viewer + API Editor (expected: otherWebsites)"
+  },
+  "before": {
+    "base": "origin/main a942254cd",
+    "org-admin invitation": {
+      "resendEnabled": true,
+      "click": "POST /api/app/projects/<id#3>/members/invitations/<id>/resend -> 403",
+      "toast": "Couldn’t resend the invitation to omar.org-admin@example.test / You don't have permission to do this. Ask a site admin for access."
+    }
+  },
+  "after": {
+    "head": "fix/460-invitation-resend-permission",
+    "org-admin invitation (recording)": {
+      "resendDisabled": true,
+      "enterThenClick": "no request, no toast, menu stays open"
+    },
+    "matrix": [
+      {
+        "context": "en-390-light",
+        "invitation": "org-access",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          {
+            "text": "ResendAsk an organization Admin to resend it: it gives organization access.",
+            "disabled": true
+          },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-390-light",
+        "invitation": "other-websites",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          {
+            "text": "ResendAsk an organization Admin to resend it: it also gives access to other websites you can’t grant.",
+            "disabled": true
+          },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-390-light",
+        "invitation": "allowed",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          { "text": "Resend", "disabled": false },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-390-dark",
+        "invitation": "org-access",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          {
+            "text": "ResendAsk an organization Admin to resend it: it gives organization access.",
+            "disabled": true
+          },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-390-dark",
+        "invitation": "other-websites",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          {
+            "text": "ResendAsk an organization Admin to resend it: it also gives access to other websites you can’t grant.",
+            "disabled": true
+          },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-390-dark",
+        "invitation": "allowed",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          { "text": "Resend", "disabled": false },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-1440-light",
+        "invitation": "org-access",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          {
+            "text": "ResendAsk an organization Admin to resend it: it gives organization access.",
+            "disabled": true
+          },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-1440-light",
+        "invitation": "other-websites",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          {
+            "text": "ResendAsk an organization Admin to resend it: it also gives access to other websites you can’t grant.",
+            "disabled": true
+          },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-1440-light",
+        "invitation": "allowed",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          { "text": "Resend", "disabled": false },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-1440-dark",
+        "invitation": "org-access",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          {
+            "text": "ResendAsk an organization Admin to resend it: it gives organization access.",
+            "disabled": true
+          },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-1440-dark",
+        "invitation": "other-websites",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          {
+            "text": "ResendAsk an organization Admin to resend it: it also gives access to other websites you can’t grant.",
+            "disabled": true
+          },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "en-1440-dark",
+        "invitation": "allowed",
+        "items": [
+          { "text": "Copy invite link", "disabled": false },
+          { "text": "Resend", "disabled": false },
+          { "text": "Remove from this invitation", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-390-light",
+        "invitation": "org-access",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          {
+            "text": "إعادة الإرسالاطلب من أحد مشرفي المؤسسة إعادة إرسالها: فهي تمنح صلاحيات على مستوى المؤسسة.",
+            "disabled": true
+          },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-390-light",
+        "invitation": "other-websites",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          {
+            "text": "إعادة الإرسالاطلب من أحد مشرفي المؤسسة إعادة إرسالها: فهي تمنح أيضًا وصولًا إلى مواقع أخرى لا يمكنك منحه.",
+            "disabled": true
+          },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-390-light",
+        "invitation": "allowed",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          { "text": "إعادة الإرسال", "disabled": false },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-390-dark",
+        "invitation": "org-access",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          {
+            "text": "إعادة الإرسالاطلب من أحد مشرفي المؤسسة إعادة إرسالها: فهي تمنح صلاحيات على مستوى المؤسسة.",
+            "disabled": true
+          },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-390-dark",
+        "invitation": "other-websites",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          {
+            "text": "إعادة الإرسالاطلب من أحد مشرفي المؤسسة إعادة إرسالها: فهي تمنح أيضًا وصولًا إلى مواقع أخرى لا يمكنك منحه.",
+            "disabled": true
+          },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-390-dark",
+        "invitation": "allowed",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          { "text": "إعادة الإرسال", "disabled": false },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-1440-light",
+        "invitation": "org-access",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          {
+            "text": "إعادة الإرسالاطلب من أحد مشرفي المؤسسة إعادة إرسالها: فهي تمنح صلاحيات على مستوى المؤسسة.",
+            "disabled": true
+          },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-1440-light",
+        "invitation": "other-websites",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          {
+            "text": "إعادة الإرسالاطلب من أحد مشرفي المؤسسة إعادة إرسالها: فهي تمنح أيضًا وصولًا إلى مواقع أخرى لا يمكنك منحه.",
+            "disabled": true
+          },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-1440-light",
+        "invitation": "allowed",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          { "text": "إعادة الإرسال", "disabled": false },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-1440-dark",
+        "invitation": "org-access",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          {
+            "text": "إعادة الإرسالاطلب من أحد مشرفي المؤسسة إعادة إرسالها: فهي تمنح صلاحيات على مستوى المؤسسة.",
+            "disabled": true
+          },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-1440-dark",
+        "invitation": "other-websites",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          {
+            "text": "إعادة الإرسالاطلب من أحد مشرفي المؤسسة إعادة إرسالها: فهي تمنح أيضًا وصولًا إلى مواقع أخرى لا يمكنك منحه.",
+            "disabled": true
+          },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      },
+      {
+        "context": "ar-1440-dark",
+        "invitation": "allowed",
+        "items": [
+          { "text": "نسخ رابط الدعوة", "disabled": false },
+          { "text": "إعادة الإرسال", "disabled": false },
+          { "text": "إزالة من هذه الدعوة", "disabled": false }
+        ]
+      }
+    ]
+  }
+}

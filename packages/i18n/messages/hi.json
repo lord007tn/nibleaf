@@ -4555,6 +4555,8 @@
   "people_reason_removeselfsite": "आप ख़ुद को नहीं निकाल सकते। किसी दूसरे एडमिन से कहें।",
   "people_reason_moreaccess": "उनके पास आपसे ज़्यादा एक्सेस है।",
   "people_reason_roleaboveyours": "आप अपनी भूमिका तक की भूमिकाएँ दे सकते हैं।",
+  "people_reason_resendorgaccess": "किसी संगठन एडमिन से इसे दोबारा भेजने को कहें: यह संगठन का एक्सेस देता है।",
+  "people_reason_resendotherwebsites": "किसी संगठन एडमिन से इसे दोबारा भेजने को कहें: यह दूसरी साइटों का ऐसा एक्सेस भी देता है जो आप नहीं दे सकते।",
   "people_invite_open": "लोगों को आमंत्रित करें",
   "people_invite_title": "{org} में लोगों को आमंत्रित करें",
   "people_invite_description": "उन्हें एक ईमेल मिलेगा जिसका लिंक 7 दिन तक काम करेगा।",
@@ -5060,5 +5062,5 @@
   "editor_fix_explain_blogrootgroup": "पाठक साइडबार के सबसे ऊपर यह नाम देखते हैं। अनुभाग का नाम उसके पेजों के अनुसार रखें, जैसे गाइड।",
   "editor_fix_placed": "{total} में से {placed} हाइलाइट किए गए",
   "editor_fix_previous": "पिछला",
-  "editor_fix_insideblock": "यह एक ऐसे ब्लॉक के अंदर है जिसे विज़ुअल एडिटर जैसा लिखा है वैसा ही रखता है। इसे ठीक करने के लिए पेज को Markdown में संपादित करें।"
+  "editor_fix_insideblock": "जैसा लिखा है वैसा ही रखे गए ब्लॉक के अंदर। इसे Markdown में ठीक करें।"
 }

@@ -18,7 +18,7 @@ import projectMembersRoutes from './routes';
 const app = new Hono<HonoEnv>()
   .get('/', ...projectMembersRoutes.list, async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();
-    return ctx.json({ data: await listMembers(organizationId, ctx.req.param('projectId')) }, 200);
+    return ctx.json({ data: await listMembers(organizationId, ctx.req.param('projectId'), getContextUserOrThrow().id) }, 200);
   })
   .get('/suggestions', ...projectMembersRoutes.suggestions, validator('query', z.object({ q: z.string().max(100).default('') })), async (ctx) => {
     const organizationId = getContextOrganizationIdOrThrow();

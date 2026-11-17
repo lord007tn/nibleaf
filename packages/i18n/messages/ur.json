@@ -4611,6 +4611,8 @@
   "people_reason_removeselfsite": "آپ خود کو نہیں ہٹا سکتے۔ کسی اور منتظم سے کہیں۔",
   "people_reason_moreaccess": "ان کی رسائی آپ سے زیادہ ہے۔",
   "people_reason_roleaboveyours": "آپ صرف اپنے کردار تک کے کردار دے سکتے ہیں۔",
+  "people_reason_resendorgaccess": "اسے دوبارہ بھیجنے کے لیے تنظیم کے کسی منتظم سے کہیں: یہ تنظیم تک رسائی دیتا ہے۔",
+  "people_reason_resendotherwebsites": "اسے دوبارہ بھیجنے کے لیے تنظیم کے کسی منتظم سے کہیں: یہ دوسری سائٹس تک ایسی رسائی بھی دیتا ہے جو آپ نہیں دے سکتے۔",
   "people_invite_open": "لوگوں کو مدعو کریں",
   "people_invite_title": "{org} میں لوگوں کو مدعو کریں",
   "people_invite_description": "انہیں ایک ای میل ملے گی جس کا لنک 7 دن کام کرے گا۔",
@@ -5116,5 +5118,5 @@
   "editor_fix_explain_blogrootgroup": "قارئین سائیڈبار کے سب سے اوپر یہ نام دیکھتے ہیں۔ حصے کا نام اس کے صفحات کے مطابق رکھیں، جیسے گائیڈز۔",
   "editor_fix_placed": "{total} میں سے {placed} نمایاں کیے گئے",
   "editor_fix_previous": "پچھلا",
-  "editor_fix_insideblock": "یہ ایک ایسے بلاک کے اندر ہے جسے بصری ایڈیٹر ویسا ہی رکھتا ہے جیسا لکھا گیا۔ اسے ٹھیک کرنے کے لیے صفحے میں Markdown کے طور پر ترمیم کریں۔"
+  "editor_fix_insideblock": "ایسے بلاک کے اندر جو جیسا لکھا گیا ویسا ہی رکھا گیا ہے۔ اسے Markdown میں ٹھیک کریں۔"
 }

@@ -140,15 +140,16 @@ const cleanTableRows = (lines: string[]): string[] => {
     if (start === row.length && row.endsWith('|') && parts.length > 1) parts.pop();
     return parts;
   };
-  const separator = (line: string) => line.includes('|') && cells(line).every((cell) => /^\s*:?-{3,}:?\s*$/.test(cell));
+  const separator = (line: string) => line.includes('|') && /^[\s|:-]+$/.test(line) && cells(line).every((cell) => /^\s*:?-{3,}:?\s*$/.test(cell));
   let table = false;
   return lines.map((line, index) => {
     if (separator(line)) return '';
     // A persisted chunk can start halfway through a table, after its header.
     if (separator(lines[index + 1] ?? '') || /^\s*\|.*\|\s*$/.test(line)) table = true;
     if (!line.includes('|') || !line.trim()) table = false;
+    // A table may start on the list item's opening line (`- | Name | ...`).
     return table
-      ? cells(line)
+      ? cells(line.trim().replace(/^(?:[-*+]|\d+[.)])[ \t]+(?=\|)/, ''))
           .map((cell) => cell.trim().replace(/\\\|/g, '|'))
           .join(' · ')
       : line;

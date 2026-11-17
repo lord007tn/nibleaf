@@ -3,6 +3,7 @@ import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
 import type { MarkdownOutput } from './markdown-output';
+import { markTightLists } from './tight-lists';
 
 /*
  * A paragraph wrapped across several lines in the source keeps those lines, so a
@@ -217,6 +218,8 @@ export const SourceParagraph = Paragraph.extend({
           setup(markdownit) {
             if (paragraphParsers.has(markdownit)) return;
             markdownit.core.ruler.after('block', 'nibleaf_paragraph_source', (state) => annotateParagraphs(state));
+            // Reads markdown-it's tight lists before a hidden paragraph is shown (tight-lists.ts).
+            markdownit.core.ruler.before('nibleaf_paragraph_source', 'nibleaf_tight_lists', (state) => markTightLists(state));
             markdownit.core.ruler.after('inline', 'nibleaf_soft_breaks', (state) => softBreaksAsSpaces(state));
             paragraphParsers.add(markdownit);
           },

@@ -4620,6 +4620,8 @@
   "people_reason_removeselfsite": "You can’t remove yourself. Ask another Admin.",
   "people_reason_moreaccess": "They have more access than you.",
   "people_reason_roleaboveyours": "You can give roles up to your own.",
+  "people_reason_resendorgaccess": "Ask an organization Admin to resend it: it gives organization access.",
+  "people_reason_resendotherwebsites": "Ask an organization Admin to resend it: it also gives access to other websites you can’t grant.",
   "people_invite_open": "Invite people",
   "people_invite_title": "Invite people to {org}",
   "people_invite_description": "They get an email with a link that works for 7 days.",
@@ -5125,5 +5127,5 @@
   "editor_fix_explain_blogrootgroup": "Readers see this name at the top of the sidebar. Rename the section to what its pages are, such as Guides.",
   "editor_fix_placed": "Highlighted {placed} of {total}",
   "editor_fix_previous": "Previous",
-  "editor_fix_insideblock": "This one is inside a block the visual editor keeps as written. Edit the page as Markdown to fix it."
+  "editor_fix_insideblock": "Inside a block kept as written. Fix it in Markdown."
 }

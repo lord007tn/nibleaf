@@ -13,6 +13,7 @@ import {
   EXPORT_CREATE_ROLE,
   EXPORT_SCHEDULE_ROLE,
   effectiveSiteRole,
+  issuerRefusal,
   planOwnershipTransfer,
   rankOf,
   roleAtLeast,
@@ -180,5 +181,48 @@ describe('export permissions', () => {
     expect(roleAtLeast(MemberRole.MEMBER, EXPORT_SCHEDULE_ROLE)).toBe(false);
     expect(roleAtLeast(MemberRole.ADMIN, EXPORT_SCHEDULE_ROLE)).toBe(true);
     expect(roleAtLeast('viewer', EXPORT_CREATE_ROLE)).toBe(false);
+  });
+});
+
+describe('issuerRefusal — who may issue (and resend) an invitation', () => {
+  // <site#1> is the website whose Team page lists the invitation; <site#2> is another one.
+  const SITE_1 = '00000000-0000-4000-8000-000000000001';
+  const SITE_2 = '00000000-0000-4000-8000-000000000002';
+  const issuer = (orgRole: string, grants: Array<[string, string]> = []) => ({
+    orgRole,
+    projectGrants: grants.map(([projectId, role]) => ({ projectId, role })),
+  });
+  const siteAdmin = issuer('member', [[SITE_1, 'admin']]);
+  const adminOfBoth = issuer('member', [
+    [SITE_1, 'admin'],
+    [SITE_2, 'admin'],
+  ]);
+  const adminHereEditorThere = issuer('member', [
+    [SITE_1, 'admin'],
+    [SITE_2, 'member'],
+  ]);
+  const here = { projectId: SITE_1, role: 'member' };
+  const there = { projectId: SITE_2, role: 'viewer' };
+  it.each([
+    // who views, the invitation's org role and grants, the refusal (null: may issue/resend), the viewer's roles
+    ['org Owner', 'member', [here, there], null, issuer('owner')],
+    ['org Owner', 'admin', [here], null, issuer('owner')],
+    ['org Admin', 'admin', [], null, issuer('admin')],
+    ['org Admin', 'member', [], null, issuer('admin')],
+    ['org Admin', 'member', [here, { projectId: SITE_2, role: 'admin' }], null, issuer('admin')],
+    ['site Admin', 'member', [here], null, siteAdmin],
+    ['site Admin', 'member', [{ projectId: SITE_1, role: 'admin' }], null, siteAdmin],
+    ['site Admin', 'admin', [here], 'orgAccess', siteAdmin],
+    ['site Admin', 'member', [], 'orgAccess', siteAdmin],
+    ['site Admin', 'member', [here, there], 'otherWebsites', siteAdmin],
+    ['site Admin of both', 'member', [here, there], null, adminOfBoth],
+    ['site Admin of both', 'admin', [here, there], 'orgAccess', adminOfBoth],
+    ['site Admin here, Editor there', 'member', [here, there], null, adminHereEditorThere],
+    ['site Admin here, Editor there', 'member', [here, { projectId: SITE_2, role: 'member' }], null, adminHereEditorThere],
+    ['site Admin here, Editor there', 'member', [here, { projectId: SITE_2, role: 'admin' }], 'otherWebsites', adminHereEditorThere],
+    ['org Owner', 'owner', [], 'orgAccess', issuer('owner')],
+    ['org Owner', 'member', [{ projectId: SITE_1, role: 'owner' }], 'otherWebsites', issuer('owner')],
+  ] as const)('%s, org %s invitation granting %j → %s', (_who, orgRole, grants, expected, viewer) => {
+    expect(issuerRefusal(viewer, orgRole, grants)).toBe(expected);
   });
 });

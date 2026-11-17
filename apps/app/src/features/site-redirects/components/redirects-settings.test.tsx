@@ -144,10 +144,10 @@ describe('RedirectsSettings — rows', () => {
     await render(projectWith(SAVED));
     expect(shown()).toEqual(rowsOf(SAVED));
     expect([...fromInputs(), toInput(0)].every((input) => input?.dir === 'ltr')).toBe(true);
-    // Remove is named after its row: its own label, then the rule's source.
+    // Remove is named after its row: its own label, then a hidden label holding the rule's source.
     const [own, source] = removeButton(1)?.getAttribute('aria-labelledby')?.split(' ') ?? [];
     expect(removeButton(1)?.id).toBe(own);
-    expect(document.getElementById(source ?? '')).toBe(fromInput(1));
+    expect(document.getElementById(source ?? '')?.textContent).toBe('⁦/legacy⁩');
     expect(saveRegion()).toBeNull();
     expect(problemsShown()).toBe(false);
   });
@@ -190,7 +190,9 @@ describe('RedirectsSettings — rows', () => {
       ['/legacy', 'https://archive.example.com/docs?ref=nib#top'],
       ['/دليل-قديم', '/ar/start'],
     ]);
-    expect(document.activeElement).toBe(fromInput(1));
+    // This toast is a stand-in, so focus never left the person: it stays on the same rule's Remove, now a row down.
+    // Focus with the real toast: redirects-settings.undo-focus.test.tsx.
+    expect(document.activeElement).toBe(removeButton(2));
     // Undo works once.
     await clickUndo();
     expect(fromInputs()).toHaveLength(3);

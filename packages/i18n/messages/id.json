@@ -4552,6 +4552,8 @@
   "people_reason_removeselfsite": "Anda tidak dapat mengeluarkan diri sendiri. Minta Admin lain.",
   "people_reason_moreaccess": "Mereka memiliki akses lebih tinggi daripada Anda.",
   "people_reason_roleaboveyours": "Anda dapat memberi peran hingga setara dengan peran Anda.",
+  "people_reason_resendorgaccess": "Minta Admin organisasi untuk mengirim ulang: undangan ini memberi akses ke organisasi.",
+  "people_reason_resendotherwebsites": "Minta Admin organisasi untuk mengirim ulang: undangan ini juga memberi akses ke situs lain yang tidak dapat Anda berikan.",
   "people_invite_open": "Undang orang",
   "people_invite_title": "Undang orang ke {org}",
   "people_invite_description": "Mereka menerima email berisi tautan yang berlaku 7 hari.",
@@ -5054,5 +5056,5 @@
   "editor_fix_explain_blogrootgroup": "Pembaca melihat nama ini di bagian atas bilah samping. Ganti nama bagian sesuai isi halamannya, misalnya Panduan.",
   "editor_fix_placed": "{placed} dari {total} disorot",
   "editor_fix_previous": "Sebelumnya",
-  "editor_fix_insideblock": "Yang ini ada di dalam blok yang dipertahankan editor visual seperti yang ditulis. Edit halaman sebagai Markdown untuk memperbaikinya."
+  "editor_fix_insideblock": "Di dalam blok yang dipertahankan seperti yang ditulis. Perbaiki di Markdown."
 }

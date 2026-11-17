@@ -4621,6 +4621,8 @@
   "people_reason_removeselfsite": "Você não pode remover a si mesmo. Peça a outro Administrador.",
   "people_reason_moreaccess": "A pessoa tem mais acesso que você.",
   "people_reason_roleaboveyours": "Você pode dar funções até o nível da sua.",
+  "people_reason_resendorgaccess": "Peça a um Administrador da organização para reenviá-lo: ele dá acesso à organização.",
+  "people_reason_resendotherwebsites": "Peça a um Administrador da organização para reenviá-lo: ele também dá acesso a outros sites que você não pode conceder.",
   "people_invite_open": "Convidar pessoas",
   "people_invite_title": "Convidar pessoas para {org}",
   "people_invite_description": "Elas recebem um e-mail com um link válido por 7 dias.",
@@ -5126,5 +5128,5 @@
   "editor_fix_explain_blogrootgroup": "Os leitores veem este nome no topo da barra lateral. Renomeie a seção de acordo com o que suas páginas tratam, como Guias.",
   "editor_fix_placed": "{placed} de {total} destacados",
   "editor_fix_previous": "Anterior",
-  "editor_fix_insideblock": "Este está dentro de um bloco que o editor visual mantém como foi escrito. Edite a página como Markdown para corrigi-lo."
+  "editor_fix_insideblock": "Dentro de um bloco mantido como foi escrito. Corrija em Markdown."
 }

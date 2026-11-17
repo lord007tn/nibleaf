@@ -1,0 +1,59 @@
+# The new and updated tests against main's component (base fe435f969657fb965370423b23c2a0b86b618193), before the fix
+# npx vitest run src/features/site-redirects/components/ --reporter=verbose
+# React ids are shown as <id#n>.
+ × src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — Remove's name > names each Remove after its rule's source, isolated left to right (en)
+ × src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — Remove's name > names each Remove after its rule's source, isolated left to right (ar)
+ × src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — Remove's name > follows the source as typed, and a blank source leaves just "Remove redirect"
+ × src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — rows > shows the stored rules in order, paths left to right in every locale, with no save bar
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — rows > with nothing stored, explains redirects and offers Add in an empty state
+ × src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — Remove's name > keeps the source out of the page: the label is hidden, with an id of its own per row
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — rows > Add, typing, Remove and Undo change only the draft; nothing is sent until Save
+ × src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — rows > removing a middle row keeps the neighbours' edits and order, and Undo puts it back in place
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — rows > removing the only row shows the empty state and moves focus to Add
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — generated provenance > a generated rule keeps its flag when another row changes
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — generated provenance > editing its source makes a generated rule the writer’s
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — generated provenance > editing its destination makes a generated rule the writer’s
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — generated provenance > Remove then Undo puts the rule back with its generated flag
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — saving > sends the whole list as typed: blank rows left out, queries, fragments, Unicode and order kept, chains not flattened
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — saving > deleting the last rule sends an empty list, and the refetch stays empty and clean
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — saving > Discard puts the saved rules back and retires a pending Undo
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — saving > a failed save keeps the draft and its Undo, says so once, claims no success, and can be retried
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — saving > a completed save retires the Undo: after the refetch, a late click restores nothing
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — saving > its own filtered echo, rendered before the save resolves, is not a conflict
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — saving > a newer edit and a row added during the save survive its echo and success, unsaved
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — refusing a draft > a half-filled row shows its problem once left, not while typing
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — refusing a draft > Enter with a half-filled row saves nothing (no other change slips through), focuses it and asks for a fix
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — refusing a draft > a cycle marks every rule in it; a problem in the summary takes focus to its field
+ × src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — focus around the real Undo toast > Undo from a click restores the rule and puts focus in its source, past Sonner handing focus back
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — refusing a draft > too many rules points at the rows past the limit
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — refusing a draft > clean, busy and invalid saves never announce Saved
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — server changes > a refetch while clean shows the new rules
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — server changes > a refetch of other settings keeps the draft and its Undo
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — server changes > a different list while dirty keeps the draft whole and asks: Use theirs, or Keep mine
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — server changes > a row removed after a conflict appeared is not restored once Use theirs is chosen
+ ✓ src/features/site-redirects/components/redirects-settings.test.tsx > RedirectsSettings — server changes > another site starts clean; the first site's Undo and save never reach it
+ × src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — focus around the real Undo toast > Undo from the keyboard (Alt+T, then Enter) lands on the restored source too
+ ✓ src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — focus around the real Undo toast > a tap that focuses nothing still lands on the restored source
+ ✓ src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — focus around the real Undo toast > dismissed without Undo, Sonner returns focus to where it was and nothing comes back
+ × src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — focus around the real Undo toast > a person who moved on keeps their field, value and caret, and their edit is saved beside the restored rule
+ × src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — focus around the real Undo toast > focus outside the form stays there
+ × src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — focus around the real Undo toast > a row before the restored one keeps focus where it is
+ ✓ src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — a stale Undo takes no focus > after leaving, a click during the toast's exit restores nothing and moves nothing
+ ✓ src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — a stale Undo takes no focus > after a site change, the first site's Undo neither restores into the second nor takes focus
+ ✓ src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx > RedirectsSettings — a stale Undo takes no focus > after Use theirs, a late Undo restores nothing and takes no focus
+⎯⎯⎯⎯⎯⎯ Failed Tests 11 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected '' to be '\u2066/legacy\u2069' // Object.is equality
+AssertionError: expected <input id="<id#1>-from" …(11)></input> to be <button type="button" …(8)>…(1)</button> // Object.is equality
+AssertionError: expected [ …(3) ] to deeply equal [ …(3) ]
+AssertionError: expected [ …(3) ] to deeply equal [ …(3) ]
+AssertionError: expected 'Remove redirect Redirect from path' to be 'Remove redirect \u2066/archive\u2069' // Object.is equality
+Expected: "Remove redirect ⁦/archive⁩"
+Received: "Remove redirect Redirect from path"
+AssertionError: expected false to be true // Object.is equality
+AssertionError: expected <button type="button" …(9)>…(1)</button> to be <input id="<id#2>-from" …(11)></input> // Object.is equality
+AssertionError: expected <button type="button" …(9)>…(1)</button> to be <input id="<id#3>-from" …(11)></input> // Object.is equality
+AssertionError: expected <input id="<id#4>-from" …(11)></input> to be <input id="<id#5>" …(11)></input> // Object.is equality
+AssertionError: expected <input id="<id#6>-from" …(11)></input> to be <button></button> // Object.is equality
+AssertionError: expected <input id="<id#7>-from" …(11)></input> to be <input id="<id#8>-from" …(11)></input> // Object.is equality
+ Test Files  2 failed (2)
+      Tests  11 failed | 29 passed (40)
