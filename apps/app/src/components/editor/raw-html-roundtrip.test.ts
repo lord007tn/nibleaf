@@ -476,3 +476,30 @@ describe('every other HTML element', () => {
     expectRoundTrip(page);
   });
 });
+
+// HTML ends a raw-text element only at a complete closing tag. A `</title` with no
+// `>` is part of the element's text, and with no complete closer after it the
+// element runs to the end of the page, kept opaque and byte for byte (#628).
+describe('a raw-text element with a malformed closer', () => {
+  /** Ten load/save cycles each give the page back byte for byte. */
+  const expectStable = (page: string) => {
+    let saved = page;
+    for (let cycle = 0; cycle < 10; cycle++) {
+      saved = getMarkdown(open(saved));
+      expect(saved).toBe(page);
+    }
+  };
+
+  describe.each(['title', 'script', 'style', 'textarea'])('<%s>', (tag) => {
+    it.each([
+      ['at the end of the page', [`Intro.\n\n<${tag}>Hello world</${tag}`]],
+      // A complete closer after it, even a spaced one (`</title >`), still ends the
+      // element; one with a longer name (`</titles>`) doesn't.
+      ['mid-page', [`Intro.\n\n<${tag}>Hello world</${tag}\n\nAfter.\n\n## Heading`, `<${tag}>a</${tag}\n\nb</${tag}s>c</${tag} >\n\nAfter.`]],
+      ['inside a list item', [`- first\n\n  <${tag}>Hello</${tag}\n\n- second`]],
+      ['inside a paragraph', [`Intro <${tag}>Hi</${tag} and more.\n\nAfter.`]],
+    ])('keeps a malformed closer %s byte for byte', (_where, pages) => {
+      for (const page of pages) expectStable(page);
+    });
+  });
+});
