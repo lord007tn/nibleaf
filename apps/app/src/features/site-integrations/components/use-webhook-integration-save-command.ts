@@ -1,7 +1,8 @@
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import type { IntegrationProviderId } from '@nibleaf/shared/integrations';
-import { useCallback, useLayoutEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { integrationErrorMessage } from '@/hooks/api/integrations';
 import { useWebhookIntegrationSave, type WebhookIntegrationSave } from '../api/webhook-integration-save';
@@ -15,10 +16,17 @@ import { useWebhookIntegrationSave, type WebhookIntegrationSave } from '../api/w
  * The panel that pressed owns the answer while the press is current: it says
  * "connected" or "saved" and clears the URL field, or shows one error. Editing
  * the URL (`retire`, even back to the same value), another provider, another
- * site, or the panel unmounting retires the press: its answer then says
- * nothing and leaves the fields as they are. The send itself still refreshes
- * the site it was for (`useWebhookIntegrationSave`). Label edits keep the
- * press. Nothing here holds the URL; it goes straight to the send.
+ * site, another query client, or the panel unmounting retires the press: its
+ * answer then says nothing and leaves the fields as they are. The send itself
+ * still refreshes the site it was for (`useWebhookIntegrationSave`). Label
+ * edits keep the press. Nothing here holds the URL; it goes straight to the
+ * send.
+ *
+ * `save` and `retire` belong to the committed panel they were rendered for,
+ * and `save` sends only that panel's site and provider. Kept past an unmount,
+ * a change of site, provider or query client (with or without a remount), or
+ * taken from a render React never committed, `save` sends nothing and returns
+ * false, and `retire` does nothing.
  */
 export function useWebhookIntegrationSaveCommand({
   projectId,
@@ -31,25 +39,34 @@ export function useWebhookIntegrationSaveCommand({
 }) {
   const t = useT();
   const { send, pending, isPending } = useWebhookIntegrationSave(projectId, providerId);
+  const cache = useQueryClient();
+  // The panel this render is for: another site, provider or query client is another panel, even without a remount.
+  const panel = useMemo(() => ({ projectId, providerId, cache }), [projectId, providerId, cache]);
+  // The panel React committed, null once unmounted.
+  const committed = useRef<object | null>(null);
   const current = useRef<object | null>(null);
   // An answer is worded in the language shown when it arrives.
   const translate = useRef(t);
   useLayoutEffect(() => {
     translate.current = t;
   }, [t]);
-  useLayoutEffect(
-    () => () => {
+  useLayoutEffect(() => {
+    committed.current = panel;
+    return () => {
+      // Leaving this panel retires its press.
+      committed.current = null;
       current.current = null;
-    },
-    [],
-  );
+    };
+  }, [panel]);
 
+  // A kept `retire` of another panel leaves this panel's press alone.
   const retire = useCallback(() => {
-    current.current = null;
-  }, []);
+    if (committed.current === panel) current.current = null;
+  }, [panel]);
 
   /** Sends `save` with `webhookUrl`; `saved` runs once the panel still owns a success. False when the press is refused. */
   const save = (request: WebhookIntegrationSave, webhookUrl: string, saved: () => void) => {
+    if (committed.current !== panel || request.projectId !== projectId || request.providerId !== providerId) return false;
     if (current.current || isPending()) return false;
     const press = {};
     current.current = press;
