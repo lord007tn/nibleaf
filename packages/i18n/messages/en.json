@@ -5127,5 +5127,5 @@
   "editor_fix_explain_blogrootgroup": "Readers see this name at the top of the sidebar. Rename the section to what its pages are, such as Guides.",
   "editor_fix_placed": "Highlighted {placed} of {total}",
   "editor_fix_previous": "Previous",
-  "editor_fix_insideblock": "This one is inside a block the visual editor keeps as written. Edit the page as Markdown to fix it."
+  "editor_fix_insideblock": "Inside a block kept as written. Fix it in Markdown."
 }
