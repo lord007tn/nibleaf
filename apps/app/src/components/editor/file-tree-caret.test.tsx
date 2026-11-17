@@ -291,6 +291,35 @@ describe('#670: the keyboard in a file’s name', () => {
     expect(icon?.closest('[contenteditable="false"]')).not.toBeNull();
     expect(fileNames(editor)).toEqual([{ text: 'a.ts', name: 'a.ts' }]);
   });
+
+  it('an attribute rename updates the editable name and saves only that attribute, including undo', async () => {
+    const source = '<FileTree>\n\n<File   name=\'original.ts\' icon="book"/>\n\n</FileTree>';
+    const editor = await make(source);
+    const [file] = nodesOf(editor, 'mdxFile');
+    if (!file) throw new Error('No file');
+    await act(async () => {
+      editor.view.dispatch(editor.state.tr.setNodeMarkup(file.pos, undefined, { ...file.node.attrs, name: 'renamed.ts' }));
+    });
+    expect(fileNames(editor)).toEqual([{ text: 'renamed.ts', name: 'renamed.ts' }]);
+    expect(getMarkdown(editor)).toBe(source.replace("name='original.ts'", 'name="renamed.ts"'));
+    await act(async () => {
+      editor.commands.undo();
+    });
+    expect(fileNames(editor)).toEqual([{ text: 'original.ts', name: 'original.ts' }]);
+    expect(getMarkdown(editor)).toBe(source);
+  });
+
+  it('attribute-only File JSON keeps its name when loaded', async () => {
+    const content = doc({ type: 'mdxFileTree', content: [{ type: 'mdxFile', attrs: { name: 'from-json.ts', icon: 'book' } }] });
+    const editor = await make(content);
+    expect(fileNames(editor)).toEqual([{ text: 'from-json.ts', name: 'from-json.ts' }]);
+    expect(getMarkdown(editor)).toBe('<FileTree>\n\n<File name="from-json.ts" icon="book" />\n\n</FileTree>');
+    await act(async () => {
+      editor.commands.setContent(content, { emitUpdate: false });
+    });
+    expect(fileNames(editor)).toEqual([{ text: 'from-json.ts', name: 'from-json.ts' }]);
+    expect(editor.schema.nodes.mdxFileTree?.createAndFill()?.firstChild?.type.name).toBe('mdxFolder');
+  });
 });
 
 /**
@@ -299,6 +328,8 @@ describe('#670: the keyboard in a file’s name', () => {
  * expressions, character references, a closing tag).
  */
 const SAVED_ON_MAIN: Array<[source: string, saved: string]> = [
+  ['<FileTree>\n\nRead me.\n\n</FileTree>', '<FileTree>\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n</FileTree>'],
+  ['<FileTree>\n\n</FileTree>', '<FileTree>\n\n<Folder>\n\n</Folder>\n\n</FileTree>'],
   [
     '<FileTree>\n  <Folder name="src">\n    <File name="a.ts" />\n  </Folder>\n  <File name={x} icon="y" />\n  <File name="&amp;b" ></File>\n</FileTree>',
     '<FileTree>\n\n<Folder name="src">\n\n<File name="a.ts" />\n\n</Folder>\n\n<File name={x} icon="y" />\n\n<File name="&amp;b" ></File>\n\n</FileTree>',

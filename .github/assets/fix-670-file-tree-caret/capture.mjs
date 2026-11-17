@@ -25,6 +25,7 @@ const out = resolve(root, '.github/assets', PR === '668' ? 'fix-668-fix-bar-390'
 const harness = await mkdtemp(resolve(app, '.editor-capture-'));
 const origin = 'http://editor-canvas.fixture.test';
 const results = [];
+let workspaceOutputs = [];
 try {
   const source = PHASE === 'before' ? resolve(harness, 'editor') : resolve(app, 'src/components/editor');
   if (PHASE === 'before') {
@@ -103,6 +104,18 @@ export {translateFn} from '@nibleaf/i18n';
       ],
     },
     plugins: [
+      {
+        name: 'capture-provenance',
+        generateBundle() {
+          const modules = [...this.getModuleIds()].map((id) => id.replaceAll('\\', '/'));
+          assert.ok(!modules.some((id) => id.includes('t3-89fd4b9f-50aa0b3ec1e75565')), 'no imports from the previous worktree');
+          workspaceOutputs = modules.filter((id) => /\/(?:apps\/server|packages\/(?:search|database|clickhouse|usage))\/dist\//.test(id));
+          assert.ok(
+            workspaceOutputs.every((id) => id.startsWith(root.replaceAll('\\', '/'))),
+            'workspace outputs belong to this worktree',
+          );
+        },
+      },
       {
         name: 'baseline-editor-neighbors',
         resolveId(specifier, importer) {
@@ -227,7 +240,7 @@ export {translateFn} from '@nibleaf/i18n';
   });
   await writeFile(
     resolve(out, `measurements-${PHASE}.json`),
-    `${JSON.stringify({ baseline, head: git('rev-parse', 'HEAD'), fixture: 'production canvas; mocked router and page lookup hooks', results }, null, 2)}\n`,
+    `${JSON.stringify({ baseline, head: git('rev-parse', 'HEAD'), fixture: 'production canvas; mocked router and page lookup hooks', workspaceOutputs, results }, null, 2)}\n`,
   );
   console.log(results.map(({ shot, barHeight, landingGap, caretInFileName }) => ({ shot, barHeight, landingGap, caretInFileName })));
 } finally {

@@ -1,6 +1,7 @@
 import { mergeAttributes, Node } from '@tiptap/core';
 import { Fragment, type Node as PMNode, type Schema } from '@tiptap/pm/model';
 import { Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state';
+import { Mapping } from '@tiptap/pm/transform';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { FileNameView } from '../file-name-view';
@@ -8,16 +9,55 @@ import { sourceMetadataAttributes, writeBlockTag } from '../mdx-roundtrip';
 import { atomTag, containerNode, registryAttributes, type SerializeState, titledNode } from './factories';
 
 // ─── Authored file tree (names are display data, never filesystem paths) ─────
+/** Preserve the tree parser's existing Folder wrapper for stray body content.
+ * An editable File can now hold text, so automatic wrapping would otherwise
+ * turn that text into a file name instead of retaining it as a folder body. */
+const treeContent = (element: HTMLElement): HTMLElement => {
+  const content = element.ownerDocument.createElement('div');
+  let pending: globalThis.Node[] = [];
+  const flush = () => {
+    if (pending.some((child) => child.nodeType === globalThis.Node.ELEMENT_NODE || child.textContent?.trim())) {
+      const folder = element.ownerDocument.createElement('div');
+      folder.setAttribute('data-mdx', 'Folder');
+      folder.append(...pending);
+      content.append(folder);
+    }
+    pending = [];
+  };
+  for (const child of element.childNodes) {
+    const copy = child.cloneNode(true);
+    if (child instanceof Element && child.matches('file, folder, div[data-mdx="File"], div[data-mdx="Folder"]')) {
+      flush();
+      content.append(copy);
+    } else pending.push(copy);
+  }
+  flush();
+  if (!content.hasChildNodes()) {
+    const folder = element.ownerDocument.createElement('div');
+    folder.setAttribute('data-mdx', 'Folder');
+    content.append(folder);
+  }
+  return content;
+};
+
 export const FileTree = containerNode({
   name: 'mdxFileTree',
   tag: 'FileTree',
   content: '(mdxFolder | mdxFile)+',
   className: 'pl-filetree',
+}).extend({
+  parseHTML: () => [
+    { tag: 'filetree', contentElement: treeContent },
+    { tag: 'div[data-mdx="FileTree"]', contentElement: treeContent },
+  ],
 });
 export const Folder = titledNode({
   name: 'mdxFolder',
   tag: 'Folder',
   className: 'pl-folder',
+}).extend({
+  // Preserve the tree's default child for createAndFill(), before File (101).
+  priority: 102,
 });
 
 /** A File's name as written in its tag, exactly as its `name` attribute parses (see `registryAttributes`). */
@@ -118,13 +158,28 @@ export const File = Node.create({
       new Plugin({
         key: fileNameKey,
         // Only what the transactions wrote is looked at, so typing elsewhere costs nothing.
-        appendTransaction(transactions, _previous, state) {
+        appendTransaction(transactions, previous, state) {
           if (!transactions.some((tr) => tr.docChanged)) return null;
           const tr = state.tr;
+          const mapping = new Mapping();
+          for (const transaction of transactions) mapping.appendMapping(transaction.mapping);
+          const backwards = mapping.invert();
           for (const [from, to] of changedRanges(transactions, state.doc.content.size)) {
             state.doc.nodesBetween(from, to, (node, pos) => {
               if (node.type !== type) return true;
-              if (node.attrs.name !== node.textContent) tr.setNodeAttribute(pos, 'name', node.textContent);
+              const currentPos = tr.mapping.map(pos);
+              const current = tr.doc.nodeAt(currentPos);
+              if (!current || current.attrs.name === current.textContent) return false;
+              const prior = backwards.mapResult(pos, 1);
+              const before = previous.doc.nodeAt(prior.pos);
+              // Attribute edits and attribute-only JSON are supported entry points,
+              // too. A text edit leaves the attribute unchanged until this plugin.
+              const renamed = before?.type === type && before.attrs.name !== node.attrs.name;
+              const attributeOnly = !node.content.size && node.attrs.name && (prior.deleted || before?.type !== type || !before.content.size);
+              if (renamed || attributeOnly) {
+                const name = String(current.attrs.name ?? '');
+                tr.replaceWith(currentPos + 1, currentPos + current.nodeSize - 1, name ? state.schema.text(name) : Fragment.empty);
+              } else tr.setNodeAttribute(currentPos, 'name', current.textContent);
               return false;
             });
           }
