@@ -32,6 +32,14 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * result for each page with a CR, read with LF endings (#702, see below); it was made
  * the same way, against main's `markdown-output.ts` and `editor-change-origin.ts`.
  * Regenerate it only when attribute reading changes on purpose.
+ *
+ * And #814: a non-Frame component whose opener main's reading, with backslash escapes
+ * in quoted values, finds no end for is found with MDX's reading. Among the
+ * `jsx-openers` pages here, whose main results that file's fixture holds, such a page
+ * counts only when main's save lost bytes, the page now saves byte for byte to a fixed
+ * point, and its edit is the page with only the edited attribute's value replaced
+ * (`title="Old\"` → `title="Edited"`, the value read to its first matching quote).
+ * Exactly these pages, by index (`BACKSLASH_KEPT`); every other page gives main's digest.
  */
 
 const SEED = 0x72_1b_1a_9e;
@@ -126,6 +134,21 @@ const corpora = [
   ...[HARD_WRAPPED_EN, HARD_WRAPPED_AR, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART].map((page) => ({ page, key: 'title' })),
 ];
 const pages = [...seeded, ...corpora];
+/** Where the `jsx-openers` pages start. */
+const JSX_OPENERS_AT = seeded.length + serializerCorpus().length;
+/** #814's pages, by index (see the top): the 99 `jsx-openers` pages of that file's own #814 exception. */
+const BACKSLASH_KEPT: readonly number[] = [0, 119, 238].flatMap((base) => [
+  ...Array.from({ length: 16 }, (_, at) => JSX_OPENERS_AT + base + 69 + at),
+  ...Array.from({ length: 17 }, (_, at) => JSX_OPENERS_AT + base + 102 + at),
+]);
+
+/** The page with only the first `key` value replaced (`key="Edited"`), read to its first matching quote. */
+const editedValue = (page: string, key: string): string | null => {
+  const at = page.indexOf(`${key}=`) + key.length + 1;
+  const quote = page[at];
+  if (at <= key.length || (quote !== '"' && quote !== "'")) return null;
+  return `${page.slice(0, at)}"Edited"${page.slice(page.indexOf(quote, at + 1) + 1)}`;
+};
 
 describe('the differential pages', () => {
   it(`cover every registry component on at least ${MIN_PAGES} pages, and none holds a blank line inside a value`, () => {
@@ -196,10 +219,25 @@ describe('pages without a blank line inside an attribute value read as on main',
     expect(main.pages).toBe(pages.length);
     expect(main.crAsLf.length).toBe(CR_PAGES);
     const crAsLf = new Map(crPages.map((index, at) => [index, main.crAsLf[at]]));
+    const backslashKept: number[] = [];
     const differences = digests.flatMap((value, index) => {
-      const { page } = pages[index] as { page: string };
+      const { page, key } = pages[index] as { page: string; key: string };
       const lfDigest = crAsLf.get(index);
-      if (lfDigest === undefined) return value === main.digests[index] ? [] : [page];
+      if (lfDigest === undefined) {
+        if (value === main.digests[index]) return [];
+        // #814 (see the top): main's recorded save is the `jsx-openers` fixture's.
+        const fromMain = jsxOpeners[index - JSX_OPENERS_AT];
+        const { saved, edited } = results[index] as ReturnType<typeof result>;
+        const kept =
+          !page.includes('<Frame ') &&
+          fromMain?.source === page &&
+          fromMain.saved !== page &&
+          saved === page &&
+          result(saved, key).saved === saved &&
+          edited === editedValue(page, key);
+        if (kept) backslashKept.push(index);
+        return kept ? [] : [page];
+      }
       const { nodes, saved, edited } = results[index] as ReturnType<typeof result>;
       const endings = readLineEndings(page);
       const kept =
@@ -213,5 +251,7 @@ describe('pages without a blank line inside an attribute value read as on main',
       `[blank-line-differential] ${pages.length} pages (${crPages.length} with a CR, read as LF on main), ${differences.length} differences`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
+    expect(backslashKept).toEqual(BACKSLASH_KEPT);
+    expect(backslashKept.length).toBe(99);
   }, 600_000);
 });

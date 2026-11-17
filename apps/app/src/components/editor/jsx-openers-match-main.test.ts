@@ -15,6 +15,14 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * edit rewrites only the caption, to its first matching quote. Main dropped most
  * of these Frames.
  *
+ * And #814: any other component whose opener main's reading, with backslash escapes
+ * in quoted values, finds no end for (`<Card title="Old\" id="x">`, where main
+ * dropped `id`) is found with MDX's reading, as a Frame's is. Such a page counts only
+ * when main's save lost bytes, the page now saves byte for byte to a fixed point, and
+ * its edit is the page with only the edited attribute's value replaced
+ * (`title="Old\"` → `title="Edited"`), every other byte kept. Exactly these pages,
+ * by index (`BACKSLASH_KEPT`); every page main saved byte for byte is still main's.
+ *
  * `__fixtures__/jsx-openers-main.json` holds main's results (main 14209455) and
  * whether `@mdx-js/mdx` compiles each page; it was made by running this generator
  * against main's editor. The test checks that the fixture holds exactly these pages.
@@ -54,6 +62,24 @@ const pages = COMPONENTS.flatMap(([tag, key]) =>
   ),
 );
 
+/** The page with only its opener's `key` value replaced (`key="Edited"`): the value as
+ *  the reader reads it, up to its first matching quote, with no backslash escapes
+ *  (`title="a \"a.b="x"` is `title="a \"` and then `a.b="x"`). */
+const editedValue = (source: string, key: string, value: string): string => {
+  const at = source.indexOf(`${key}=${value}`) + key.length + 1;
+  const quote = source[at] ?? '';
+  const end = source.indexOf(quote, at + 1) + 1;
+  return `${source.slice(0, at)}"Edited"${source.slice(end)}`;
+};
+
+/** #814's pages, by index (see the top): for Card, Step and Accordion, each 119 pages
+ *  from the last, the `"Old\"` value with every follower but none (that page gives
+ *  main's result), and the `"a \"a.b="x"` value with every follower. */
+const BACKSLASH_KEPT: readonly number[] = [0, 119, 238].flatMap((base) => [
+  ...Array.from({ length: 16 }, (_, at) => base + 69 + at),
+  ...Array.from({ length: 17 }, (_, at) => base + 102 + at),
+]);
+
 interface Result {
   nodes: string[];
   saved: string;
@@ -87,6 +113,9 @@ describe('component opening tags, as main reads them', () => {
 
   it(`gives main’s nodes, save and edited save for all ${pages.length} pages, except #579’s Frames`, () => {
     const differences: Array<{ source: string; expected: Result; head: Result }> = [];
+    const backslashKept: number[] = [];
+    /** The page saves byte for byte, and its save does too: a fixed point. */
+    const savesExactly = (head: Result, source: string, key: string) => head.saved === source && read(head.saved, key).saved === head.saved;
     let frames = 0;
     for (const [index, { tag, key, value, source }] of pages.entries()) {
       const fromMain = main[index] as (typeof main)[number];
@@ -100,9 +129,18 @@ describe('component opening tags, as main reads them', () => {
           edited: source.replace(/caption="[^"]*"/, 'caption="Edited"'),
         };
       }
-      if (JSON.stringify(head) !== JSON.stringify(expected)) differences.push({ source, expected, head });
+      if (JSON.stringify(head) === JSON.stringify(expected)) continue;
+      // #814 (see the top): a page main saved with a loss, now saved byte for byte to a
+      // fixed point, whose edit replaces only the edited attribute's value.
+      if (tag !== 'Frame' && fromMain.saved !== source && savesExactly(head, source, key) && head.edited === editedValue(source, key, value)) {
+        backslashKept.push(index);
+        continue;
+      }
+      differences.push({ source, expected, head });
     }
     expect(differences.slice(0, 3)).toEqual([]);
     expect(frames).toBe(51);
+    expect(backslashKept).toEqual(BACKSLASH_KEPT);
+    expect(backslashKept.length).toBe(99);
   }, 60_000);
 });
