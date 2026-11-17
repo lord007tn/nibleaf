@@ -143,7 +143,7 @@ for (const language of ['english', 'arabic'] as const) {
   });
 }
 const snapshot = JSON.stringify(identity);
-if (values.reference) assert.deepEqual(identity, JSON.parse(readFileSync(values.reference, 'utf8')));
+if (values.reference) assert.deepEqual(JSON.parse(snapshot), JSON.parse(readFileSync(values.reference, 'utf8')));
 if (values.snapshot) writeFileSync(values.snapshot, snapshot);
 process.stdout.write(
   `${JSON.stringify({ node: process.version, results, identityCases: Object.keys(identity).length, identitySha256: createHash('sha256').update(snapshot).digest('hex'), referenceMatched: Boolean(values.reference) }, null, 2)}\n`,
