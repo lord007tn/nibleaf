@@ -9,9 +9,10 @@ import { nitro } from 'nitro/vite';
 import remarkFrontmatter from 'remark-frontmatter';
 import remarkGfm from 'remark-gfm';
 import remarkMdxFrontmatter from 'remark-mdx-frontmatter';
-import { defineConfig, loadEnv } from 'vite';
+import { defaultClientConditions, defineConfig, loadEnv } from 'vite';
 import { z } from 'zod';
 import { bundleAnalysisPlugin } from './scripts/bundle-analysis-plugin.ts';
+import { dashboardCatalogPlugin } from './scripts/dashboard-catalog-plugin.ts';
 import { DASHBOARD_PRELOADS_CACHE_CONTROL, dashboardPreloadPlugin } from './scripts/dashboard-preload-plugin.ts';
 import { readerIconGroups } from './scripts/reader-icons.ts';
 
@@ -75,6 +76,7 @@ export default defineConfig(({ mode }) => {
     // `ssr_exports` re-export that fails only when the production server starts.
     environments: {
       client: {
+        resolve: { conditions: ['nibleaf-dashboard', ...defaultClientConditions] },
         build: {
           // Dashboard routes keep their preload lists out of the router's eager chunk
           // (the one published docs load); see scripts/dashboard-preload-plugin.ts.
@@ -152,6 +154,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     plugins: [
+      dashboardCatalogPlugin(),
       paraglideVitePlugin({
         project: '../../packages/i18n/project.inlang',
         outdir: '../../packages/i18n/src/paraglide',

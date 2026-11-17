@@ -9,6 +9,7 @@ import { PageLoader } from '@/components/page-loader';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { reloadOnceOnChunkLoadFailure } from '@/lib/chunk-reload';
 import { hydratedCustomDomainProjectId, rewriteCustomDomainInput, rewriteCustomDomainOutput } from '@/lib/custom-domain-rewrite';
+import { needsDashboardLocale } from '@/lib/dashboard-locale-path';
 import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { routeTree } from './routeTree.gen';
 
@@ -64,12 +65,18 @@ export function getRouter() {
     // Runs in the browser before React hydrates. A page whose server HTML marks
     // code-split reader content (`data-hydration-module`, written by the
     // islands in lib/reader-hydration-modules.ts) loads it first, so hydrating
-    // keeps that HTML instead of swapping it for a fallback. Other pages, the
-    // dashboard and marketing, load nothing.
-    hydrate: () =>
-      document.querySelector('[data-hydration-module]')
-        ? import('@/lib/reader-hydration-modules').then((module) => module.loadServerRenderedReaderModules(document)).catch(() => undefined)
-        : undefined,
+    // keeps that HTML instead of swapping it for a fallback. Dashboard and
+    // private-preview documents first load the server's interface catalog;
+    // auth, marketing and published docs never load that catalog.
+    hydrate: async () => {
+      if (needsDashboardLocale(window.location.pathname)) {
+        const { hydrateDashboardLocale } = await import('@/lib/dashboard-locale');
+        await hydrateDashboardLocale();
+      }
+      if (document.querySelector('[data-hydration-module]')) {
+        await import('@/lib/reader-hydration-modules').then((module) => module.loadServerRenderedReaderModules(document)).catch(() => undefined);
+      }
+    },
     rewrite: customDomainProjectId
       ? {
           input: ({ url }) => rewriteCustomDomainInput(url, customDomainProjectId),

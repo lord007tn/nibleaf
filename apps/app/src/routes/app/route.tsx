@@ -43,6 +43,8 @@ export const Route = createFileRoute('/app')({
   // Lazily, from its own small module: this file is in the router's eager chunk,
   // which public docs pages load, so nothing here may add to their first load.
   loader: async ({ context: { queryClient } }) => {
+    const { loadDashboardLocale } = await import('@/lib/dashboard-locale');
+    await loadDashboardLocale();
     prefetchRouteData(queryClient, switcherQueryOptions());
     const { unreadNotificationCountQueryOptions } = await import('@/hooks/api/notification-query-options');
     prefetchRouteData(queryClient, unreadNotificationCountQueryOptions());

@@ -1,0 +1,14 @@
+[
+  {
+    "profile": "locale",
+    "file": "assets/ar-BTaLrh-B.js",
+    "exit": 1,
+    "expected": "ar:"
+  },
+  {
+    "profile": "dashboard-home",
+    "file": "assets/dashboard-catalog.client-CG_UDOmY.js",
+    "exit": 1,
+    "expected": "BUNDLE BUDGET FAILED: dashboard-home"
+  }
+]

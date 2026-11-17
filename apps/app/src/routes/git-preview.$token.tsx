@@ -33,6 +33,8 @@ import { safeDecode } from '@/lib/site-paths';
 
 export const Route = createFileRoute('/git-preview/$token')({
   loader: async ({ params }): Promise<{ snapshot: SiteSnapshot } | { snapshot: null }> => {
+    const { loadDashboardLocale } = await import('@/lib/dashboard-locale');
+    await loadDashboardLocale();
     try {
       return JSON.parse(await getGitPreviewFn({ data: { token: params.token } })) as { snapshot: SiteSnapshot };
     } catch (error) {

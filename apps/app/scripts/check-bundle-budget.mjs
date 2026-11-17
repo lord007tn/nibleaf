@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
@@ -11,6 +11,8 @@ import {
   searchOpenFiles,
   searchOpenZodModules,
 } from './bundle-boundaries.mjs';
+import { dashboardCatalogChunks, dashboardCatalogFailures, dashboardHomeGzipBudget, dashboardLocaleGzipBudget } from './dashboard-catalog-budget.mjs';
+import { transitiveImports } from './dashboard-preload-plugin.ts';
 
 const appRoot = resolve(import.meta.dirname, '..');
 const publicRoot = join(appRoot, '.output', 'public');
@@ -80,6 +82,7 @@ const profiles = {
 // in READER-05's trims, which kept the old budget. Measured 266.02 and 264.68 KiB
 // (about 272,404 and 271,032 bytes) locally; the margin is ~2 KiB.
 const gzipBudgets = {
+  'dashboard-home': dashboardHomeGzipBudget,
   'public-docs': 274_400,
   'public-docs-index': 274_400,
   'auth-sign-in': 324_100,
@@ -210,6 +213,52 @@ for (const [profile, routeIds] of Object.entries(profiles)) {
   };
 }
 
+const catalogReports = chunkReport
+  ? dashboardCatalogChunks(chunkReport).map((catalog) => ({
+      ...catalog,
+      gzip: catalog.files.length
+        ? catalog.files.reduce((sum, file) => sum + gzipSync(readFileSync(join(publicRoot, file)), { level: 9 }).byteLength, 0)
+        : null,
+    }))
+  : [];
+for (const catalog of catalogReports) {
+  console.log(
+    `catalog ${catalog.locale}: ${catalog.gzip ?? 'missing'} gzip bytes (budget ${dashboardLocaleGzipBudget}), ${catalog.files.join(', ') || 'MISSING'}`,
+  );
+}
+// Keep the historical route-preload denominator above unchanged. Report the
+// extra pre-hydration bootstrap and active-locale imports separately as well,
+// so a smaller preload list cannot conceal first-load catalog transfer.
+const bootstrap = chunkReport?.find((chunk) => chunk.modules.some((module) => module.id.endsWith('/apps/app/src/lib/dashboard-locale.ts')));
+const chunksByFile = new Map(chunkReport?.map((chunk) => [chunk.fileName, chunk]) ?? []);
+const dashboardInitialLoads = bootstrap
+  ? catalogReports.map((catalog) => {
+      if (catalog.files.length !== 1 || catalog.gzip === null) return { locale: catalog.locale, gzip: null, extraGzip: null, extraFiles: [] };
+      const initial = reports['dashboard-home'];
+      const baseFiles = new Set(initial.assets.map((asset) => asset.url.replace(/^\//, '')));
+      const files = new Set(
+        [bootstrap.fileName, ...catalog.files].flatMap((file) => [...transitiveImports(file, (name) => chunksByFile.get(name)?.imports)]),
+      );
+      const extra = [...files].filter((file) => !baseFiles.has(file));
+      const extraGzip = extra.reduce((sum, file) => sum + gzipSync(readFileSync(join(publicRoot, file)), { level: 9 }).byteLength, 0);
+      return { locale: catalog.locale, gzip: initial.gzip + extraGzip, extraGzip, extraFiles: extra };
+    })
+  : null;
+for (const initial of dashboardInitialLoads ?? []) {
+  console.log(
+    `dashboard-home ${initial.locale}: ${initial.gzip ?? 'missing'} gzip bytes including bootstrap/active catalog (${initial.extraGzip ?? 'missing'} beyond route preloads)`,
+  );
+}
+const jsonArgument = process.argv.indexOf('--json');
+if (jsonArgument >= 0) {
+  const destination = process.argv[jsonArgument + 1];
+  if (!destination) throw new Error('--json requires an output filename');
+  writeFileSync(
+    destination,
+    `${JSON.stringify({ method: 'unique route preloads, gzip level 9', profiles: reports, catalogs: catalogReports, dashboardInitialLoads }, null, 2)}\n`,
+  );
+}
+
 console.log('JavaScript bundle report (unique route preloads, gzip level 9)');
 for (const [profile, report] of Object.entries(reports)) {
   const budget = gzipBudgets[profile];
@@ -244,6 +293,54 @@ const shared = Object.values(reports)
 if (shared.length > 0) console.log(`\nShared by every profile: ${shared.join(', ')}`);
 
 if (process.argv.includes('--check')) {
+  if (!chunkReport) {
+    console.error('DASHBOARD CATALOG BOUNDARY FAILED: build with BUNDLE_ANALYZE=true to measure locale chunks.');
+    invalid = true;
+  } else {
+    if (!dashboardInitialLoads) {
+      console.error('DASHBOARD CATALOG BOUNDARY FAILED: locale bootstrap is missing from the module report.');
+      invalid = true;
+    }
+    for (const initial of dashboardInitialLoads ?? []) {
+      if (initial.gzip === null || initial.gzip > dashboardHomeGzipBudget) {
+        console.error(
+          `BUNDLE BUDGET FAILED: dashboard-home ${initial.locale}, including bootstrap/active catalog, exceeds ${dashboardHomeGzipBudget} gzip bytes.`,
+        );
+        invalid = true;
+      }
+    }
+    const initialFiles = new Set(reports['dashboard-home']?.assets.map((asset) => asset.url.replace(/^\//, '')) ?? []);
+    for (const failure of dashboardCatalogFailures(catalogReports, initialFiles)) {
+      console.error(`DASHBOARD CATALOG BUDGET FAILED: ${failure}`);
+      invalid = true;
+    }
+    for (const initial of dashboardInitialLoads ?? []) {
+      const fetched = new Set([...initialFiles, ...initial.extraFiles]);
+      for (const catalog of catalogReports) {
+        if (catalog.locale === 'en' || catalog.locale === initial.locale) continue;
+        if (catalog.files.some((file) => fetched.has(file))) {
+          console.error(`DASHBOARD CATALOG BOUNDARY FAILED: ${initial.locale} startup also imports the nonactive ${catalog.locale} catalog.`);
+          invalid = true;
+        }
+      }
+    }
+    for (const asset of reports['dashboard-home']?.assets ?? []) {
+      const modules = moduleReport.get(asset.url.replace(/^\//, '')) ?? [];
+      if (modules.some((module) => /\/i18n\/src\/dashboard-catalog\.server\.ts$/.test(module.id))) {
+        console.error(`DASHBOARD CATALOG BOUNDARY FAILED: ${asset.url} includes the server catalog.`);
+        invalid = true;
+      }
+    }
+    for (const profile of [...publicProfiles, 'auth-sign-in', 'auth-sign-up']) {
+      for (const asset of reports[profile]?.assets ?? []) {
+        const modules = moduleReport.get(asset.url.replace(/^\//, '')) ?? [];
+        if (modules.some((module) => /\/i18n\/src\/(?:generated\/dashboard\/|dashboard-catalog\.)/.test(module.id))) {
+          console.error(`DASHBOARD CATALOG BOUNDARY FAILED: ${profile} includes dashboard catalog code in ${asset.url}.`);
+          invalid = true;
+        }
+      }
+    }
+  }
   for (const [profile, budget] of Object.entries(gzipBudgets)) {
     const actual = reports[profile]?.gzip;
     if (actual === undefined || actual > budget) {

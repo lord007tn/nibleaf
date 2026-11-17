@@ -58,8 +58,24 @@ export function rememberInterfaceLocale(locale: Locale): void {
   void setLocale(locale, { reload: false });
 }
 
+let prepareLanguage: ((locale: Locale) => Promise<boolean>) | undefined;
+let languageChange = 0;
+
+/** Installed only by the dashboard client catalog. Scoped auth and published
+ * translators do not import or download dashboard messages. */
+export function registerLanguagePreparation(prepare: (locale: Locale) => Promise<boolean>): void {
+  if (typeof document !== 'undefined') prepareLanguage = prepare;
+}
+
 export async function setLanguage(locale: Locale): Promise<void> {
+  // Request rendering uses withInterfaceLocale's async context. UI choices
+  // must never change module-level locale state in a shared server process.
+  if (typeof document === 'undefined') return;
+  const change = ++languageChange;
+  if (prepareLanguage && !(await prepareLanguage(locale))) return;
+  if (change !== languageChange) return;
   await setLocale(locale, { reload: false });
+  if (change !== languageChange) return;
   chosenLocale = locale;
   synchronizeDocumentLanguageFn(locale);
   for (const listener of languageListeners) listener();
