@@ -309,11 +309,12 @@ const readableOnFills = (color: string, fills: Fill[]): string => {
  * when that endpoint fails on one of the fills: surface overrides that put the
  * muted fill on the far side of the code surface, such as a light `muted` with a
  * near-black `code` in the dark palette (#832). No preset and no accent gets
- * there; only conflicting overrides do. There may then be no colour at all that
- * reads on both sides with the margin: with a white tab list in Signal's black
- * callout, no luminance reaches 4.51:1 on all five fills (the best any colour
- * can do is about 4.5097:1; #757776 reads 4.5096:1). So the two get their own
- * colours, each the nearest shade of the code accent that reads on its fills:
+ * there; only conflicting overrides do. When no searched shade reaches the
+ * required 4.51 margin on every fill, the two get their own colours, each the
+ * nearest shade of the code accent that reads on its own fills. (For a white tab
+ * list in Signal's black callout no colour at all reaches 4.51:1 on all five
+ * fills: the best is about 4.5097:1. Other palettes may have one off the
+ * accent's shades; the split doesn't need it.) The two colours are
  * `--primary` on the four callout fills, which links and an underline tab list's
  * labels sit on, and a `tabList` value the CSS sets on boxed and pill tab lists,
  * which draw the muted fill. Like the rest of the theme, the result depends on
@@ -388,7 +389,7 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
         // light palette and descendants inherit those values, so they are bound
         // again here (h5/h6 and rules use them).
         `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:${solidCallout.primary};--typeset-muted:var(--muted-foreground);--typeset-rule:var(--border)}`,
-        // Only when no one colour reads on both the callout and a muted tab list (#832).
+        // Only when no searched shade reaches the 4.51 margin on both the callout and a muted tab list (#832).
         ...(solidCallout.tabList
           ? [
               `.nibleaf-site-chrome[data-theme-callouts="solid"]:is([data-theme-tabs="boxed"],[data-theme-tabs="pills"]) [data-theme-component="callout"] [data-theme-component="tabs-list"]{--primary:${solidCallout.tabList}}`,

@@ -305,8 +305,9 @@ const onStackedTint = (color: string, background: string, weight: number, layers
 // from the code accent towards white (black on a light code surface). Surface
 // overrides that put the tab list's muted fill on the far side of the code
 // surface leave no step that reads on every fill, and main then kept the code
-// accent. No single colour reads on both sides there, so the callout and a
-// boxed or pill tab list (the ones that draw the muted fill) get one each.
+// accent. When no searched shade reaches the required 4.51 margin on every
+// fill, the callout and a boxed or pill tab list (the ones that draw the muted
+// fill) each get their own nearest readable shade.
 describe("a solid callout's --primary when no shade of the code accent reads on every fill (#832)", () => {
   const ISLAND = '.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{';
   const TAB_LIST =
