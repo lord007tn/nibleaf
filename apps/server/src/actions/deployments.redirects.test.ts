@@ -413,7 +413,7 @@ describe('pending and overview starter content contract', () => {
     mocks.deploymentFindFirst.mockResolvedValue(null);
   });
 
-  it('carries the project baseline relation and raw bodies through one existing draft read', async () => {
+  it('carries the project baseline relation and raw bodies through the same draft read path', async () => {
     const raw = 'Original {{ product }} starter.';
     const value = project([]);
     Object.assign(value.config, { variables: [{ key: 'product', value: 'Resolved product name' }] });
@@ -433,6 +433,8 @@ describe('pending and overview starter content contract', () => {
     expect(pending.hasRealContent).toBe(false);
     expect(pending).not.toHaveProperty('baselines');
     expect(pending).not.toHaveProperty('rawBodies');
+    // These are application-call counts, not SQL statement counts. The real
+    // Prisma compiler's separate baseline SELECT is covered in deployments.sql.test.ts.
     expect(mocks.projectFindUnique).toHaveBeenCalledTimes(1);
     expect(mocks.projectFindUnique).toHaveBeenCalledWith(
       expect.objectContaining({ include: expect.objectContaining({ starterBaselines: { select: { bodyHash: true } } }) }),
@@ -440,7 +442,7 @@ describe('pending and overview starter content contract', () => {
     expect(mocks.pageFindMany).toHaveBeenCalledTimes(1);
   });
 
-  it('flips for one real edit, without a separate baseline or page read', async () => {
+  it('flips for one real edit without reloading the draft in the pending check', async () => {
     const value = project([]);
     value.starterBaselines = [{ bodyHash: starterBodyHash('Original starter.') }];
     mocks.projectFindUnique.mockResolvedValue(value);

@@ -117,7 +117,7 @@ interface CurrentDraft {
   baselines: { bodyHash: string }[];
 }
 
-/** Read the complete effective publish input once and compose the same snapshot
+/** Load the complete effective publish input through one read path and compose the snapshot
  * shape the worker will validate. Keeping preflight and worker inputs aligned
  * prevents the dashboard from approving a different route graph. A publish
  * passes its transaction, so the read happens under the project lock. */
@@ -129,6 +129,8 @@ export const getCurrentDraft = async (projectId: string, db: Prisma.TransactionC
       branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], omit: { forkBaseline: true } },
       openApiDocument: true,
       addons: { select: { key: true, enabled: true, config: true } },
+      // Query-based relation loading adds one small SELECT, indexed by the
+      // (projectId, bodyHash) primary key. It is not joined into the project SQL.
       starterBaselines: { select: { bodyHash: true } },
       organization: {
         select: {

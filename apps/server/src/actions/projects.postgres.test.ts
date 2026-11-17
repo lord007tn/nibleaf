@@ -70,7 +70,7 @@ describe.skipIf(process.env.CREATE_SITE_POSTGRES !== '1')('site creation on Post
     });
     const storedPages = await db.prisma.page.findMany({ where: { projectId: winner.value.id } });
     const storedBaselines = await db.prisma.projectStarterBaseline.findMany({ where: { projectId: winner.value.id } });
-    expect(storedBaselines.map((row) => row.bodyHash)).toEqual(storedPages.map((page) => starterBodyHash(page.content)));
+    expect(storedBaselines.map((row) => row.bodyHash).sort()).toEqual(storedPages.map((page) => starterBodyHash(page.content)).sort());
     expect(await db.prisma.page.findUnique({ where: { id: winner.value.firstPageId ?? '' } })).toMatchObject({
       projectId: winner.value.id,
       title: 'مرحباً',
