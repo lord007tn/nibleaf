@@ -1,6 +1,6 @@
 {
   "baseline": "45a6a3a784beababe8321ff2cddf27e41042fca9",
-  "head": "303474b652950c311c4618bca6acb5a7341a6ff3",
+  "head": "45822fd8aea00dde3311f12f2ec170ad80b89635",
   "fixture": "production canvas; mocked router and page lookup hooks",
   "workspaceOutputs": [],
   "results": [
