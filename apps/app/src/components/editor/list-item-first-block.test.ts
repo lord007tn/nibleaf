@@ -49,6 +49,9 @@ const bodies = [
   '1. Alpha\n   - Beta\n\n   - Gamma\n2. Delta',
 ];
 const indices = [0, 1, 2, 6, 7, 8, 12, 13, 14, 18, 19, 20, 72, 73, 74, 78, 79, 80];
+const arabic: Record<string, string> = {
+  Alpha: 'ألف', Beta: 'باء', Charlie: 'جيم', Delta: 'دال', Top: 'أعلى', Gamma: 'جيم', Tail: 'نهاية', Item: 'عنصر', Next: 'التالي',
+};
 let index = 0;
 for (const body of bodies) {
   for (const tag of ['Note', 'Accordion title="A"']) {
@@ -75,7 +78,7 @@ describe('list items led by a block (#604, #865)', () => {
     ].map((source) => ({ source, saved: getMarkdown(open(source)) }))).toMatchInlineSnapshot();
   });
   it.each(acceptance)('#858 interaction case $index stays nested after deleting its first textblock, EN and AR', ({ source }) => {
-    for (const page of [source, source.replace(/Alpha|Beta|Charlie|Delta|Top|Gamma|Tail|Item|Next/g, (word) => `عربي${word}`)]) {
+    for (const page of [source, source.replace(/Alpha|Beta|Charlie|Delta|Top|Gamma|Tail|Item|Next/g, (word) => arabic[word] ?? word)]) {
       const editor = open(page);
       let component: { node: PMNode; pos: number } | undefined;
       editor.state.doc.descendants((node, pos) => {
