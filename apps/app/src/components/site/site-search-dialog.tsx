@@ -270,18 +270,33 @@ export default function SiteSearchDialog({
       const previous = input.value;
       const start = input.selectionStart ?? previous.length;
       const end = input.selectionEnd ?? start;
-      const next = previous.slice(0, start) + text + previous.slice(end);
+      const direction = input.selectionDirection ?? 'none';
+      const prefix = previous.slice(0, start);
+      const suffix = previous.slice(end);
+      const next = prefix + text + suffix;
       if (!exceedsSearchQueryLimit(next)) return;
       event.preventDefault();
       const capped = capSearchQueryEdit(previous, next, start + text.length);
       if (capped.value !== previous) {
-        // A native edit retains the browser's undo entry. Assigning `value`
-        // after the paste instead clears that history. Replace the field as
-        // one edit so Ctrl+Z restores the exact pre-paste text.
-        input.select();
+        // Insert over the actual selection so native undo restores its range,
+        // not a full-field selection. Reject overflow when native insertion
+        // is unavailable: setRangeText/value assignment would lose undo history.
         const document = input.ownerDocument;
-        if (typeof document.execCommand !== 'function' || !document.execCommand('insertText', false, capped.value)) {
-          input.setRangeText(capped.value, 0, input.value.length, 'end');
+        const insertion = capped.value.slice(start, capped.value.length - suffix.length);
+        if (prefix + insertion + suffix === capped.value) {
+          // Reapplying the range closes the preceding typing transaction while
+          // retaining the original selection for this edit's undo entry.
+          input.setSelectionRange(start, end, direction);
+          try {
+            document.execCommand?.('insertText', false, insertion);
+          } catch {
+            // Unsupported native edits fall through to the rejection below.
+          }
+        }
+        if (input.value !== capped.value) {
+          input.setSelectionRange(start, end, direction);
+          setQueryLimited(true);
+          return;
         }
         applyQuery(input.value);
       }
@@ -377,12 +392,15 @@ export default function SiteSearchDialog({
   // request per keystroke.
   const [debouncedQuery] = useDebouncedValue(query, { wait: 120 });
   const trimmed = query.trim();
+  // Composition stays intact in the field. An oversized first grapheme has no
+  // valid prefix, so pass an empty query to the hook's existing skipToken gate.
+  const transportQuery = truncateSearchQuery(debouncedQuery.trim());
   // Keyword search is intentionally language-independent. Omitting `language`
   // asks the public endpoint to search every enabled language in the published
   // snapshot; each hit carries its own language for correct localized routing.
   // `prefer` ranks the reader's language first, so it survives the result limit.
   // The language filter, when the reader picks one, narrows the search to it.
-  const hitsQuery = useSiteSearch(projectId, debouncedQuery.trim(), {
+  const hitsQuery = useSiteSearch(projectId, transportQuery, {
     ...(selectedLanguage ? { language: selectedLanguage } : {}),
     prefer: lang,
     version: selectedVersion,
@@ -396,7 +414,7 @@ export default function SiteSearchDialog({
   // own content in place.
   const queryPending =
     Boolean(trimmed) &&
-    (trimmed !== debouncedQuery.trim() || hitsQuery.isPlaceholderData || (hitsQuery.isFetching && hitsQuery.data === undefined && !hitsQuery.error));
+    (trimmed !== transportQuery || hitsQuery.isPlaceholderData || (hitsQuery.isFetching && hitsQuery.data === undefined && !hitsQuery.error));
   const searchFailed = Boolean(trimmed && !queryPending && hitsQuery.error);
   // The reader's own language first; other languages stay available below.
   const hits: SiteSearchHit[] = trimmed && !hitsQuery.error && (!queryPending || keepPrevious) ? readerLanguageFirst(hitsQuery.data ?? [], lang) : [];

@@ -23,10 +23,16 @@ The script verifies ownership and leaves service teardown and lock release to
 the caller. It rejects non-local network attempts.
 
 The browser regression uses native clipboard paste and Ctrl+Z in English and
-Arabic, asserting that undo restores the exact text from before the paste. It
-also checks selection replacement, caret placement and stable live-region text.
+Arabic, asserting that undo restores the exact text and caret or selection from
+before the paste, and that subsequent typing edits at that restored position.
+Forced unavailable, false-returning and throwing native-insertion cases reject
+overflow without changing prior text, caret or the preceding undo entry. These
+forced failures in Chromium do not establish native behavior in another browser.
+It also checks selection replacement and stable live-region text.
 
 Composition tests dispatch synthetic events in both event orders, including
-Latin combining text. This coverage does not establish actual OS IME, Safari,
+Latin combining text and a first grapheme larger than the entire budget, which
+must stay uncut while active without sending an empty request. This coverage does
+not establish actual OS IME, Safari,
 Gboard device, software-keyboard, or screen-reader speech behavior. Mobile
 captures use desktop Chromium with a resized viewport.

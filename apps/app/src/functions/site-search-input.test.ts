@@ -353,6 +353,16 @@ describe('fitting an edit of the search field into the limit', () => {
     expect(capSearchQueryEdit(before, `${a(190)}👩🏽‍💻zzzzzzzz`, 197)).toEqual({ value: `${a(190)}zzzzzzzz`, caret: 190 });
   });
 
+  it('places the caret outside a flag formed when a replacement joins regional indicators', () => {
+    const prefix = a(197);
+    expect(capSearchQueryEdit(`${prefix}🇺x🇸`, `${prefix}🇺بَ🇸`, 201)).toEqual({ value: `${prefix}🇺🇸`, caret: 197 });
+  });
+
+  it('keeps an inserted regional indicator while placing the caret before its new flag', () => {
+    const prefix = a(198);
+    expect(capSearchQueryEdit(`${prefix}x🇸`, `${prefix}🇺بَ🇸`, 202)).toEqual({ value: `${prefix}🇺🇸`, caret: 198 });
+  });
+
   it('tells an over-long value apart in code points', () => {
     expect(exceedsSearchQueryLimit(a(200))).toBe(false);
     expect(exceedsSearchQueryLimit(a(201))).toBe(true);

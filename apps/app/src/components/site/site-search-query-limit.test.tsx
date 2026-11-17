@@ -54,6 +54,18 @@ beforeEach(() => {
       ? Response.json({ data: { hits: [hit], searchId: 'search-1' } })
       : Response.json({ error: { code: 'validation:failed', message: 'Validation failed' } }, { status: 422 }),
   );
+  // Model a supported native edit for value/state checks. Real undo and
+  // selection restoration are checked by the browser regression.
+  Object.defineProperty(document, 'execCommand', {
+    configurable: true,
+    value: vi.fn((_command: string, _showUi: boolean, text: string) => {
+      const field = input();
+      if (!field) return false;
+      field.setRangeText(text, field.selectionStart ?? 0, field.selectionEnd ?? 0, 'end');
+      field.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: text }));
+      return true;
+    }),
+  });
 });
 
 afterEach(async () => {
@@ -62,6 +74,7 @@ afterEach(async () => {
   cancelSearchKeystrokes();
   document.body.replaceChildren();
   vi.clearAllMocks();
+  Reflect.deleteProperty(document, 'execCommand');
 });
 
 const settle = () => act(async () => new Promise<void>((resolve) => setTimeout(resolve, 0)));
@@ -152,11 +165,17 @@ describe('reader search query length', () => {
     await render();
     await setField('a'.repeat(200), 'insertText');
     input()?.setSelectionRange(50, 60);
+    vi.mocked(document.execCommand).mockImplementation((_command, _showUi, text) => {
+      expect(caret()).toEqual([50, 60]);
+      input()?.setRangeText(text ?? '', 50, 60, 'end');
+      return true;
+    });
     const event = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: `👩🏽‍💻${'b'.repeat(20)}` });
     await act(async () => input()?.dispatchEvent(event));
     expect(event.defaultPrevented).toBe(true);
     expect(input()?.value).toBe(`${'a'.repeat(50)}👩🏽‍💻${'b'.repeat(6)}${'a'.repeat(140)}`);
     expect(caret()).toEqual([63, 63]);
+    expect(document.execCommand).toHaveBeenCalledWith('insertText', false, `👩🏽‍💻${'b'.repeat(6)}`);
     await expectSearchWithinLimit();
   });
 
@@ -169,6 +188,45 @@ describe('reader search query length', () => {
     expect(event.defaultPrevented).toBe(true);
     expect(input()?.value).toBe('a'.repeat(200));
     expect(caret()).toEqual([60, 60]);
+  });
+
+  it('inserts retained text even when the final caret moves before a newly formed flag', async () => {
+    await render();
+    const prefix = 'a'.repeat(198);
+    await setField(`${prefix}x🇸`, 'insertText');
+    input()?.setSelectionRange(198, 199);
+    const event = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: '🇺بَ' });
+    await act(async () => input()?.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+    expect(input()?.value).toBe(`${prefix}🇺🇸`);
+    expect(caret()).toEqual([198, 198]);
+    expect(document.execCommand).toHaveBeenCalledWith('insertText', false, '🇺');
+    expect(limitHint()?.textContent).toContain('200');
+  });
+
+  it.each(['absent', 'false', 'throw'])('rejects overflow without changing text or selection when native insertion is %s', async (mode) => {
+    await render();
+    const previous = 'a'.repeat(200);
+    await setField(previous, 'insertText');
+    input()?.setSelectionRange(50, 60, 'backward');
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value:
+        mode === 'absent'
+          ? undefined
+          : vi.fn(() => {
+              if (mode === 'throw') throw new DOMException('Native insertion is unsupported');
+              return false;
+            }),
+    });
+    const event = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: 'b'.repeat(30) });
+    await act(async () => input()?.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+    expect(input()?.value).toBe(previous);
+    expect(caret()).toEqual([50, 60]);
+    expect(input()?.selectionDirection).toBe('backward');
+    expect(limitHint()?.textContent).toContain('200');
+    await expectSearchWithinLimit();
   });
 
   it('leaves active Latin composition beforeinput alone even when it overflows', async () => {
@@ -301,6 +359,30 @@ describe('reader search query length', () => {
   describe('editing inside a full field (#851 review)', () => {
     const full = `${'a'.repeat(199)}z`;
 
+    it.each(['input-first', 'compositionend-first'])(
+      'does not request an empty transport prefix during an oversized first grapheme in %s order',
+      async (order) => {
+        await render('ar');
+        const raw = `ب${'َ'.repeat(200)}`;
+        await compose('compositionstart');
+        await editField(raw, raw.length, 'insertCompositionText');
+        await settle();
+        expect(input()?.value).toBe(raw);
+        expect(limitHint()).toBeNull();
+        expect(sentQueries()).toEqual([]);
+        expect(failed()).toBe(false);
+        if (order === 'input-first') await editField(raw, raw.length, 'insertText');
+        await compose('compositionend', raw);
+        if (order === 'compositionend-first') await editField(raw, raw.length, 'insertText');
+        await settle();
+        expect(input()?.value).toBe('');
+        expect(caret()).toEqual([0, 0]);
+        expect(limitHint()?.textContent).toContain('200');
+        expect(sentQueries()).toEqual([]);
+        expect(failed()).toBe(false);
+      },
+    );
+
     it.each(['input-first', 'compositionend-first'])('reconciles Latin composition in %s order without cutting while active', async (order) => {
       await render();
       const prefix = 'a'.repeat(198);
@@ -326,9 +408,17 @@ describe('reader search query length', () => {
       await setField('a'.repeat(198), 'insertText');
       await compose('compositionstart');
       await editField(`${'a'.repeat(198)}e`, 199, 'insertCompositionText');
-      await compose('compositionend', 'é');
-      await editField(`${'a'.repeat(198)}é`, 199, 'insertText');
-      expect(input()?.value).toBe(`${'a'.repeat(198)}é`);
+      const committed = `${'a'.repeat(198)}é`;
+      await act(async () => {
+        const field = input();
+        Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(field, committed);
+        field?.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: 'é' }));
+      });
+      await until(() => sentQueries().at(-1) === committed);
+      expect(input()?.value).toBe(committed);
+      expect(sentQueries().at(-1)).toBe(committed);
+      await editField(committed, 199, 'insertText');
+      expect(input()?.value).toBe(committed);
       expect(limitHint()).toBeNull();
       await expectSearchWithinLimit();
     });

@@ -28,14 +28,20 @@ await withLocalOnlyBrowser({ allowedHosts: [hostKey(APP)] }, async ({ browser, a
   });
   const field = page.locator(FIELD);
   const hint = page.locator('[role="status"]').filter({ hasText: /200/ });
+  const searchRequest = (query) =>
+    page.waitForRequest((request) => {
+      const url = new URL(request.url());
+      return url.pathname.endsWith('/search') && url.searchParams.get('q') === query;
+    });
   const paste = async (text) => {
     await page.evaluate((value) => navigator.clipboard.writeText(value), text);
-    await page.keyboard.press('Control+v');
+    await page.keyboard.press('ControlOrMeta+v');
   };
   const replace = async (text) => {
     await field.focus();
-    await page.keyboard.press('Control+a');
-    await paste(text);
+    await page.keyboard.press('ControlOrMeta+a');
+    if (text) await paste(text);
+    else await page.keyboard.press('Backspace');
   };
   const expectValue = async (expected) => {
     try {
@@ -50,7 +56,7 @@ await withLocalOnlyBrowser({ allowedHosts: [hostKey(APP)] }, async ({ browser, a
       const trigger = document.querySelector('[data-theme-region="search-trigger"]');
       return trigger && Object.keys(trigger).some((key) => key.startsWith('__reactProps'));
     });
-    await page.keyboard.press('Control+k');
+    await page.keyboard.press('ControlOrMeta+k');
     await field.waitFor();
   };
 
@@ -65,8 +71,10 @@ await withLocalOnlyBrowser({ allowedHosts: [hostKey(APP)] }, async ({ browser, a
       await page.locator('[data-theme-surface="search"] [aria-busy="false"]').waitFor();
       await page.screenshot({ path: `${output}/before-${lang}-${size}.png` });
       const prefix = (lang === 'ar' ? 'ب' : 'x').repeat(199);
+      const requested = searchRequest(prefix);
       await replace(`${prefix}${lang === 'ar' ? 'بَ' : '👩🏽‍💻'}extra`);
       await expectValue(prefix);
+      await requested;
       await hint.waitFor();
       await page.locator('[data-theme-surface="search"] [aria-busy="false"]').waitFor();
       assert.equal(await hint.innerText(), lang === 'ar' ? 'الحد الأقصى للبحث هو 200 حرفًا.' : 'Search is limited to 200 characters.');
@@ -86,11 +94,66 @@ await withLocalOnlyBrowser({ allowedHosts: [hostKey(APP)] }, async ({ browser, a
     await open(lang);
     const previous = lang === 'ar' ? 'دليل البحث ' : 'Search guide ';
     await page.keyboard.type(previous);
+    const requested = searchRequest(previous + (lang === 'ar' ? 'ب' : 'x').repeat(200 - [...previous].length));
     await paste((lang === 'ar' ? 'ب' : 'x').repeat(250));
     await expectValue(previous + (lang === 'ar' ? 'ب' : 'x').repeat(200 - [...previous].length));
-    await page.keyboard.press('Control+z');
+    await requested;
+    await page.keyboard.press('ControlOrMeta+z');
     await expectValue(previous);
-    checks.push(`${lang}: native Ctrl+Z restores exact pre-paste text ${JSON.stringify(previous)}`);
+    assert.deepEqual(await field.evaluate((element) => [element.selectionStart, element.selectionEnd]), [previous.length, previous.length]);
+    const appended = lang === 'ar' ? 'مزيد' : 'again';
+    await page.keyboard.type(appended);
+    await expectValue(previous + appended);
+    checks.push(`${lang}: native Ctrl+Z restores exact pre-paste text and caret; subsequent typing appends`);
+
+    const unit = lang === 'ar' ? 'ب' : 'a';
+    const replacement = lang === 'ar' ? 'ت' : 'b';
+    await replace(unit.repeat(200));
+    await field.evaluate((element) => element.setSelectionRange(50, 60));
+    await paste(replacement.repeat(30));
+    await expectValue(unit.repeat(50) + replacement.repeat(10) + unit.repeat(140));
+    await page.keyboard.press('ControlOrMeta+z');
+    await expectValue(unit.repeat(200));
+    assert.deepEqual(await field.evaluate((element) => [element.selectionStart, element.selectionEnd]), [50, 60]);
+    await page.keyboard.type(replacement);
+    await expectValue(unit.repeat(50) + replacement + unit.repeat(140));
+    checks.push(`${lang}: native Ctrl+Z restores the pre-paste selection; subsequent typing replaces only that range`);
+
+    for (const mode of ['absent', 'false', 'throw']) {
+      const seed = lang === 'ar' ? 'دليل' : 'Guide';
+      const added = lang === 'ar' ? ' البحث' : ' search';
+      await replace(seed);
+      await paste(added);
+      const before = seed + added;
+      await field.evaluate((element, failure) => {
+        window.readerExecCommand = element.ownerDocument.execCommand;
+        Object.defineProperty(element.ownerDocument, 'execCommand', {
+          configurable: true,
+          value:
+            failure === 'absent'
+              ? undefined
+              : () => {
+                  if (failure === 'throw') throw new DOMException('Unsupported native insertion');
+                  return false;
+                },
+        });
+      }, mode);
+      try {
+        await paste(unit.repeat(250));
+        await expectValue(before);
+        assert.deepEqual(await field.evaluate((element) => [element.selectionStart, element.selectionEnd]), [before.length, before.length]);
+        await hint.waitFor();
+      } finally {
+        await field.evaluate((element) => {
+          Object.defineProperty(element.ownerDocument, 'execCommand', { configurable: true, value: window.readerExecCommand });
+          delete window.readerExecCommand;
+        });
+      }
+      await page.keyboard.press('ControlOrMeta+z');
+      await expectValue(seed);
+      assert.deepEqual(await field.evaluate((element) => [element.selectionStart, element.selectionEnd]), [seed.length, seed.length]);
+      checks.push(`${lang}: forced ${mode} native-insertion path rejects overflow without changing text/caret or the preceding native undo entry`);
+    }
   }
 
   await open('en');
@@ -107,6 +170,27 @@ await withLocalOnlyBrowser({ allowedHosts: [hostKey(APP)] }, async ({ browser, a
   await expectValue('a'.repeat(200));
   assert.deepEqual(await field.evaluate((element) => [element.selectionStart, element.selectionEnd]), [60, 60]);
   checks.push('identical capped selection replacement collapses the caret after retained text');
+
+  const flagPrefix = 'a'.repeat(197);
+  await replace(`${flagPrefix}🇺x🇸`);
+  await field.evaluate((element) => element.setSelectionRange(199, 200));
+  await paste('بَ');
+  await expectValue(`${flagPrefix}🇺🇸`);
+  assert.deepEqual(await field.evaluate((element) => [element.selectionStart, element.selectionEnd]), [197, 197]);
+  await page.keyboard.type('b');
+  await expectValue(`${flagPrefix}b🇺🇸`);
+  checks.push('replacement joining regional indicators leaves the caret outside the resulting flag before the next insertion');
+
+  await replace(`${'a'.repeat(198)}x🇸`);
+  await field.evaluate((element) => element.setSelectionRange(198, 199));
+  await paste('🇺بَ');
+  await expectValue(`${'a'.repeat(198)}🇺🇸`);
+  assert.deepEqual(await field.evaluate((element) => [element.selectionStart, element.selectionEnd]), [198, 198]);
+  checks.push('native replacement retains the inserted regional indicator when the final caret moves before its new flag');
+
+  await replace('a'.repeat(200));
+  await page.keyboard.type('z');
+  await hint.waitFor();
 
   // Observe live-region text mutations, rather than assuming no reannouncement.
   await page.evaluate(() => {
@@ -131,9 +215,39 @@ await withLocalOnlyBrowser({ allowedHosts: [hostKey(APP)] }, async ({ browser, a
   checks.push('accepted edit clears the stale hint');
 
   for (const order of ['input-first', 'compositionend-first']) {
-    await replace('a'.repeat(198));
-    const result = await field.evaluate((element, eventOrder) => {
-      const raw = `${'a'.repeat(198)}e\u0301xy`;
+    const prefix = (order === 'input-first' ? 'a' : 'c').repeat(198);
+    await replace(prefix);
+    const requested = searchRequest(`${prefix}e\u0301`);
+    const result = await field.evaluate(
+      (element, { eventOrder, prefix }) => {
+        const raw = `${prefix}e\u0301xy`;
+        const input = (type) => {
+          Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, raw);
+          element.setSelectionRange(raw.length, raw.length);
+          element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: type, isComposing: type === 'insertCompositionText' }));
+        };
+        element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+        input('insertCompositionText');
+        const during = element.value;
+        if (eventOrder === 'input-first') input('insertText');
+        element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: 'e\u0301xy' }));
+        if (eventOrder === 'compositionend-first') input('insertText');
+        return { during, raw };
+      },
+      { eventOrder: order, prefix },
+    );
+    assert.equal(result.during, result.raw);
+    await expectValue(`${prefix}e\u0301`);
+    await requested;
+    await hint.waitFor();
+    checks.push(`synthetic Latin composition in real Chromium: ${order}, uncut until compositionend`);
+
+    await replace('');
+    await expectValue('');
+    await page.waitForLoadState('networkidle');
+    const count = queries.length;
+    const oversized = await field.evaluate(async (element, eventOrder) => {
+      const raw = `ب${'َ'.repeat(200)}`;
       const input = (type) => {
         Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(element, raw);
         element.setSelectionRange(raw.length, raw.length);
@@ -141,26 +255,33 @@ await withLocalOnlyBrowser({ allowedHosts: [hostKey(APP)] }, async ({ browser, a
       };
       element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
       input('insertCompositionText');
+      await new Promise((resolve) => setTimeout(resolve, 240)); // Cross the real debounce while composition stays active.
       const during = element.value;
+      const error = document.querySelector('[data-theme-surface="search"] [role="alert"]') !== null;
       if (eventOrder === 'input-first') input('insertText');
-      element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: 'e\u0301xy' }));
+      element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: raw }));
       if (eventOrder === 'compositionend-first') input('insertText');
-      return { during, raw };
+      return { during, raw, error };
     }, order);
-    assert.equal(result.during, result.raw);
-    await expectValue(`${'a'.repeat(198)}e\u0301`);
+    assert.equal(oversized.during, oversized.raw);
+    assert.equal(oversized.error, false);
+    await expectValue('');
     await hint.waitFor();
-    checks.push(`synthetic Latin composition in real Chromium: ${order}, uncut until compositionend`);
+    assert.equal(queries.length, count);
+    checks.push(`oversized first grapheme: ${order}, no request/error while active, empty-field reconciliation and hint on commit`);
   }
 
   // Chromium protocol composition exercises its native event sequence. This is
   // still automation, not acceptance of an actual OS IME or Gboard keyboard.
-  await replace('a'.repeat(198));
+  const protocolPrefix = 'd'.repeat(198);
+  await replace(protocolPrefix);
+  const protocolRequest = searchRequest(`${protocolPrefix}e\u0301`);
   const cdp = await context.newCDPSession(page);
   await cdp.send('Input.imeSetComposition', { text: 'e\u0301xy', selectionStart: 4, selectionEnd: 4 });
-  await expectValue(`${'a'.repeat(198)}e\u0301xy`);
+  await expectValue(`${protocolPrefix}e\u0301xy`);
   await cdp.send('Input.insertText', { text: 'e\u0301xy' });
-  await expectValue(`${'a'.repeat(198)}e\u0301`);
+  await expectValue(`${protocolPrefix}e\u0301`);
+  await protocolRequest;
   await hint.waitFor();
   await cdp.detach();
   checks.push('Chromium protocol Latin composition stays uncut while active and reconciles its native commit event sequence');
@@ -177,16 +298,19 @@ await withLocalOnlyBrowser({ allowedHosts: [hostKey(APP)] }, async ({ browser, a
   await recording.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: APP });
   const demo = await recording.newPage();
   await demo.goto(`${APP}/sites/preview-harbor`, { waitUntil: 'networkidle' });
-  await demo.keyboard.press('Control+k');
+  await demo.keyboard.press('ControlOrMeta+k');
   await demo.locator(FIELD).waitFor();
   await demo.keyboard.type('Search guide ');
   await demo.evaluate(() => navigator.clipboard.writeText(`${'x'.repeat(185)}👩🏽‍💻extra`));
-  await demo.keyboard.press('Control+v');
+  await demo.keyboard.press('ControlOrMeta+v');
   await demo.locator('[role="status"]').filter({ hasText: /200/ }).waitFor();
   await demo.waitForTimeout(900); // Leave the hint readable in the review recording.
-  await demo.keyboard.press('Control+z');
+  await demo.keyboard.press('ControlOrMeta+z');
+  assert.equal(await demo.locator(FIELD).inputValue(), 'Search guide ');
+  assert.deepEqual(await demo.locator(FIELD).evaluate((element) => [element.selectionStart, element.selectionEnd]), [13, 13]);
   await demo.waitForTimeout(600);
   await demo.keyboard.type('again');
+  assert.equal(await demo.locator(FIELD).inputValue(), 'Search guide again');
   const video = demo.video();
   await recording.close();
   await video.saveAs(`${output}/interaction.webm`);

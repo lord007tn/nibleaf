@@ -136,7 +136,8 @@ export function capSearchQueryEdit(previous: string, next: string, caret: number
       if (((!kept && start < commonStart) || (end > position && kept.length < end - start)) && !exceedsSearchQueryLimit(previous)) {
         return { value: previous, caret: graphemeBoundary(previous, commonStart) };
       }
-      return { value: prefix + kept + tail, caret: start + kept.length };
+      const value = prefix + kept + tail;
+      return { value, caret: graphemeBoundary(value, start + kept.length) };
     }
   }
   const value = truncateSearchQuery(next);
