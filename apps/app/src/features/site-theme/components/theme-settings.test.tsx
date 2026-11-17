@@ -85,8 +85,8 @@ vi.mock('@/lib/site-theme', () => ({
   siteAppearance: (config?: { styling?: { theme?: string } } | null) => config?.styling?.theme ?? 'system',
 }));
 vi.mock('@/components/site/documentation-theme-provider', () => ({
-  DocumentationThemeProvider: ({ children, theme }: { children: unknown; theme: { id: string } }) => (
-    <div data-preset={theme.id} data-testid="preview">
+  DocumentationThemeProvider: ({ children, theme }: { children: unknown; theme: { id: string; layout: { radius: string } } }) => (
+    <div data-preset={theme.id} data-radius={theme.layout.radius} data-testid="preview">
       {children as never}
     </div>
   ),
@@ -411,6 +411,100 @@ const template = (preset: string, extra: Config = {}) =>
     metadata: { name: 'Imported', description: 'From a file' },
     config: { theme: { preset }, ...extra },
   });
+
+describe('Theme radius and the Styling override (#763)', () => {
+  const radiusField = () => field('settings.styling.radius.label');
+  const shownRadius = () => radiusField().querySelector('[data-slot="select-value"]')?.textContent;
+  const previewRadius = () => container.querySelector<HTMLElement>('[data-testid="preview"]')?.dataset.radius;
+  const chooseRadius = async (radius: string) => {
+    await click(radiusField().querySelector<HTMLElement>('[role="combobox"]') as HTMLElement);
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(
+      (item) => item.textContent === `settings.theme.option.${radius}`,
+    );
+    if (!option) throw new Error(`No radius option ${radius}`);
+    await click(option);
+  };
+  const override = () => container.querySelector('[data-radius-override]');
+
+  it('shows and saves the Theme choice while disclosing the effective Styling radius, then refetches and discards honestly', async () => {
+    await open();
+    // Signal's own radius is Sharp; the reader uses Styling's Pill.
+    expect(shownRadius()).toBe('settings.theme.option.sharp');
+    expect(previewRadius()).toBe('pill');
+    expect(override()?.textContent).toContain('settings.styling.title: settings.styling.radius.pill');
+    expect(override()?.textContent).toContain('settings.styling.radius.override');
+    expect(radiusField().closest('fieldset')?.getAttribute('aria-describedby')).toBe(override()?.id);
+    expect(server.patches).toStrictEqual([]);
+    expect(region()).toBeNull();
+
+    await chooseRadius('rounded');
+    expect(shownRadius()).toBe('settings.theme.option.rounded');
+    expect(previewRadius()).toBe('pill');
+    await save();
+    expect(lastPatch()).toStrictEqual({ theme: { ...AUTHORED, layout: { radius: 'rounded' } } });
+    expect(storedStyling()).toStrictEqual(STYLING);
+    expect(server.config['site-1'].seo).toStrictEqual(SIBLINGS.seo);
+    await elsewhere((config) => config);
+    expect(shownRadius()).toBe('settings.theme.option.rounded');
+    expect(region()).toBeNull();
+    await chooseRadius('sharp');
+    await discard();
+    expect(shownRadius()).toBe('settings.theme.option.rounded');
+    expect(previewRadius()).toBe('pill');
+    expect(server.patches).toHaveLength(1);
+  });
+
+  it.each([
+    ['unset theme', undefined, 'rounded'],
+    ['preset radius', { version: 1, preset: 'signal' }, 'sharp'],
+    ['stored theme radius', { version: 1, preset: 'signal', layout: { radius: 'pill' } }, 'pill'],
+  ] as const)('%s without a Styling override follows the theme and creates no default writes', async (_name, theme, expected) => {
+    await open({ ...SIBLINGS, theme });
+    expect(shownRadius()).toBe(`settings.theme.option.${expected}`);
+    expect(previewRadius()).toBe(expected);
+    expect(override()).toBeNull();
+    await elsewhere((config) => config);
+    expect(region()).toBeNull();
+    expect(server.patches).toStrictEqual([]);
+    await chooseRadius(expected === 'pill' ? 'rounded' : 'pill');
+    await save();
+    expect(Object.keys(lastPatch() ?? {})).toStrictEqual(['theme']);
+    expect(storedStyling()).toBeUndefined();
+    expect(previewRadius()).toBe(expected === 'pill' ? 'rounded' : 'pill');
+  });
+
+  it('takes a refetched Styling radius without replacing a dirty Theme radius or writing Styling back', async () => {
+    await open();
+    await chooseRadius('rounded');
+    await elsewhere((config) => ({ ...config, styling: { ...STYLING, radius: 'sharp' } }));
+    expect(shownRadius()).toBe('settings.theme.option.rounded');
+    expect(previewRadius()).toBe('sharp');
+    expect(override()?.textContent).toContain('settings.styling.radius.sharp');
+    expect(conflict()).toBe(false);
+    await save();
+    expect(lastPatch()).toStrictEqual({ theme: { ...AUTHORED, layout: { radius: 'rounded' } } });
+    expect(storedStyling()).toStrictEqual({ ...STYLING, radius: 'sharp' });
+    expect(shownRadius()).toBe('settings.theme.option.rounded');
+    expect(previewRadius()).toBe('sharp');
+  });
+
+  it.each(['theirs', 'mine'] as const)('keeps Theme conflict resolution (%s) separate from Styling', async (choice) => {
+    await open();
+    await chooseRadius('rounded');
+    await elsewhere((config) => ({ ...config, theme: { ...AUTHORED, layout: { radius: 'pill' } } }));
+    expect(conflict()).toBe(true);
+    expect(shownRadius()).toBe('settings.theme.option.rounded');
+    await click(buttonNamed(choice === 'theirs' ? 'forms.useTheirs' : 'forms.keepMine'));
+    expect(conflict()).toBe(false);
+    expect(shownRadius()).toBe(`settings.theme.option.${choice === 'theirs' ? 'pill' : 'rounded'}`);
+    expect(previewRadius()).toBe('pill');
+    if (choice === 'mine') {
+      await save();
+      expect(lastPatch()).toStrictEqual({ theme: { ...AUTHORED, layout: { radius: 'rounded' } } });
+    } else expect(server.patches).toStrictEqual([]);
+    expect(storedStyling()).toStrictEqual(STYLING);
+  });
+});
 
 describe('Theme Studio follows the project query', () => {
   it('main regression: a refetch reaches a clean draft (main seeded it once, on mount)', async () => {

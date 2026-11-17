@@ -1,0 +1,342 @@
+{
+  "baseline": "081299f4d304c42a96a655acb308e4d4dc2f93a4",
+  "synthetic": true,
+  "evidence": [
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "mode": "light",
+      "themeRadius": "rounded",
+      "select": "Pill",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "mode": "dark",
+      "themeRadius": "rounded",
+      "select": "Pill",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "mode": "light",
+      "themeRadius": "rounded",
+      "select": "Pill",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "mode": "dark",
+      "themeRadius": "rounded",
+      "select": "Pill",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "mode": "light",
+      "themeRadius": "rounded",
+      "select": "كبسولة",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "mode": "dark",
+      "themeRadius": "rounded",
+      "select": "كبسولة",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "mode": "light",
+      "themeRadius": "rounded",
+      "select": "كبسولة",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "mode": "dark",
+      "themeRadius": "rounded",
+      "select": "كبسولة",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "mode": "light",
+      "themeRadius": "rounded",
+      "select": "Rounded",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "mode": "dark",
+      "themeRadius": "rounded",
+      "select": "Rounded",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "mode": "light",
+      "themeRadius": "rounded",
+      "select": "Rounded",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "mode": "dark",
+      "themeRadius": "rounded",
+      "select": "Rounded",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "mode": "light",
+      "themeRadius": "rounded",
+      "select": "مستدير",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "mode": "dark",
+      "themeRadius": "rounded",
+      "select": "مستدير",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "mode": "light",
+      "themeRadius": "rounded",
+      "select": "مستدير",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "mode": "dark",
+      "themeRadius": "rounded",
+      "select": "مستدير",
+      "reader": "pill",
+      "patches": [
+        {
+          "theme": {
+            "version": 1,
+            "preset": "signal",
+            "layout": {
+              "radius": "rounded"
+            }
+          }
+        }
+      ],
+      "errors": []
+    }
+  ]
+}
