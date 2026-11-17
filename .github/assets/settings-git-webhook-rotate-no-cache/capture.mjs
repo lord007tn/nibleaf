@@ -35,6 +35,8 @@ const msg = (locale, id) => catalogs[locale][id.replaceAll('.', '_').toLowerCase
 const origin = 'http://settings-git-webhook-rotate.fixture.test';
 /** The main commit this branch starts from (#827); evidence.json records it as `base`. */
 const BASE = '84d80dc993663e8c84557dc03f1a5f2d5abb02cf';
+// #855 removes settings-query disclosure. Preserve this historical #854 comparison's own contract locally.
+const AFTER = 'fe435f969657fb965370423b23c2a0b86b618193';
 const SITE_A = '00000000-0000-4000-8000-000000000001';
 const SITE_B = '00000000-0000-4000-8000-000000000002';
 const SECRETS = ['test-secret-0001', 'test-secret-0002', 'test-secret-0003', 'test-secret-0004'];
@@ -47,6 +49,37 @@ const credentialsIn = (text) => LABELS.filter(([value, name]) => name.startsWith
 let harness;
 try {
   harness = await mkdtemp(resolve(app, '.settings-rotate-capture-'));
+  const settingsFactory = /export const workspaceSettingsQueryOptions = [\s\S]*?\n {2}\}\);/.exec(
+    git('show', `${AFTER}:apps/app/src/hooks/api/query-options.ts`),
+  )?.[0];
+  assert.ok(settingsFactory, 'historical settings query at #854');
+  await writeFile(
+    resolve(harness, 'historical-settings.ts'),
+    `export * from '@/hooks/api';
+import { queryOptions, useQuery } from '@tanstack/react-query';
+import { getData } from '@/hooks/api/client-helpers';
+import { queryKeys } from '@/hooks/api/query-keys';
+import type { WorkspaceSettings } from '@/hooks/api/types';
+import { api } from '@/services/api';
+${settingsFactory}
+export const useWorkspaceSettings = (projectId?: string) => useQuery(workspaceSettingsQueryOptions(projectId));
+`,
+  );
+  for (const file of git('ls-tree', '-r', '--name-only', AFTER, 'apps/app/src/features/site-git')
+    .split('\n')
+    .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))) {
+    const target = resolve(harness, 'after/site-git', file.replace('apps/app/src/features/site-git/', ''));
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, git('show', `${AFTER}:${file}`));
+  }
+  await writeFile(
+    resolve(harness, 'after/git-tab.tsx'),
+    git('show', `${AFTER}:apps/app/src/components/settings/git-tab.tsx`)
+      .replaceAll("from '@/features/site-git/", "from './site-git/")
+      .replace("from '@/hooks/api'", "from '../historical-settings'")
+      .replace("from './git-workflow'", "from '@/components/settings/git-workflow'")
+      .replace("from './section'", "from '@/components/settings/section'"),
+  );
   const slice = git('ls-tree', '-r', '--name-only', BASE, 'apps/app/src/features/site-git')
     .split('\n')
     .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file));
@@ -64,6 +97,7 @@ try {
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
     `export * from '@/hooks/api';
+export { useWorkspaceSettings } from '../historical-settings';
 import { mutateData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
@@ -99,7 +133,7 @@ import { setLanguage } from '@nibleaf/i18n/locale-state';
 import { dehydrate, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { GitTab as After } from '@/components/settings/git-tab';
+import { GitTab as After } from './after/git-tab';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { GitTab as Before } from './before/git-tab';
 

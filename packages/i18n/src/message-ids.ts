@@ -2292,6 +2292,8 @@ export const MESSAGE_IDS = {
   'settings.git.workflow.openPreview': 'settings_git_workflow_openpreview',
   'settings.git.workflow.noPr': 'settings_git_workflow_nopr',
   'settings.git.workflow.webhookDescription': 'settings_git_workflow_webhookdescription',
+  'settings.git.webhook.configured': 'settings_git_webhook_configured',
+  'settings.git.webhook.oneTime': 'settings_git_webhook_onetime',
   'settings.git.workflow.copySecret': 'settings_git_workflow_copysecret',
   'settings.git.workflow.rotateSecret': 'settings_git_workflow_rotatesecret',
   'settings.git.workflow.configuration': 'settings_git_workflow_configuration',
