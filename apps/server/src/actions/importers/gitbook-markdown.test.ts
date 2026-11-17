@@ -1,4 +1,6 @@
 import { posix } from 'node:path';
+import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
+import MarkdownIt from 'markdown-it';
 import { describe, expect, it } from 'vitest';
 import {
   convertGitBookMarkdown,
@@ -11,6 +13,83 @@ import {
 
 const convert = (source: string, resolveFile: (reference: string) => string | undefined = () => undefined) =>
   convertGitBookMarkdown(source, { resolveFile });
+
+describe('neighbouring untitled GitBook embeds (#599)', () => {
+  const first = '{% embed url="https://youtu.be/abcdefghijk" %}';
+  const second = '{% embed url="https://youtu.be/lmnopqrstuv" %}';
+  const third = '{% embed url="https://youtu.be/zyxwvutsrqp" %}';
+  const markdown = new MarkdownIt({ html: true });
+
+  it.each([
+    ['two adjacent embeds', `${first}${second}`, 2],
+    ['three adjacent embeds', `${first}${second}${third}`, 3],
+    ['prose between embeds', `${first} Between [guide](https://example.test/guide). ${second}`, 2],
+  ] as const)('keeps %s stable across three conversions in prose, quotes and lists', (_name, body, count) => {
+    for (const [opening, prefix] of [
+      ['', ''],
+      ['', '> '],
+      ['- Item\n\n', '  '],
+      ['> - Item\n>\n', '>   '],
+    ] as const) {
+      const source = `${opening}${prefix}${body}`;
+      const once = convert(source);
+      const twice = convert(once.content);
+      const thrice = convert(twice.content);
+      expect(twice).toEqual(once);
+      expect(thrice).toEqual(once);
+      expect(once.warnings).toEqual([]);
+      expect(once.issues).toEqual([]);
+      const embeds = scanAuthoredEmbeds(once.content);
+      expect(embeds).toHaveLength(count);
+      expect(embeds.map((embed) => embed.attributes.get('src'))).toEqual(
+        ['abcdefghijk', 'lmnopqrstuv', 'zyxwvutsrqp'].slice(0, count).map((id) => `https://www.youtube-nocookie.com/embed/${id}`),
+      );
+      for (const embed of embeds) {
+        expect(embed.attributes.get('title')).toBeTruthy();
+        expect(embed.attributes.get('title')).not.toContain('{%');
+        expect(embed.attributes.get('title')).not.toContain('<');
+      }
+      const tokens = markdown.parse(once.content, {});
+      expect(tokens.filter((token) => token.type === 'html_block')).toHaveLength(count);
+      if (prefix.includes('>')) expect(tokens.some((token) => token.type === 'blockquote_open')).toBe(true);
+      if (opening) expect(tokens.some((token) => token.type === 'list_item_open')).toBe(true);
+      if (body.includes('Between')) {
+        expect(once.content).toContain('Between [guide](https://example.test/guide).');
+        expect(tokens.flatMap((token) => token.children ?? []).filter((token) => token.type === 'link_open')).toHaveLength(1);
+      }
+    }
+  });
+
+  it('uses the default title without copying neighbouring Liquid or HTML into attributes', () => {
+    expect(convert(`> ${first}${second}`).content).toBe(
+      '> <iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title=">"></iframe>\n>\n> <iframe src="https://www.youtube-nocookie.com/embed/lmnopqrstuv" title="Video"></iframe>',
+    );
+    const content = convert(`Before <span>label</span> ${first}`).content;
+    expect(content).toContain('Before <span>label</span>');
+    expect(scanAuthoredEmbeds(content)[0]?.attributes.get('title')).toBe('Video');
+  });
+
+  it('retains explicit titles, captions, ordinary context and attribute escaping', () => {
+    const source = `${first}{% embed url="https://youtu.be/lmnopqrstuv" title='Authored "tour" &amp; more' %}`;
+    const once = convert(source);
+    expect(scanAuthoredEmbeds(once.content).map((embed) => embed.attributes.get('title'))).toEqual(['Video', 'Authored "tour" & more']);
+    expect(once.content).toContain('title="Authored &quot;tour&quot; &amp; more"');
+    expect(convert(once.content)).toEqual(once);
+    expect(convert(convert(once.content).content)).toEqual(once);
+    expect(scanAuthoredEmbeds(convert(`Release "tour" &amp; more\n\n${first}`).content)[0]?.attributes.get('title')).toBe('Release "tour" & more');
+    expect(scanAuthoredEmbeds(convert(`${first}\nA caption\n{% endembed %}`).content)[0]?.attributes.get('title')).toBe('A caption');
+  });
+
+  it.each([
+    ['inline code', `\`${first}${second}\``],
+    ['fenced code', `\`\`\`md\n${first}${second}\n\`\`\``],
+    ['quoted fence', `> \`\`\`md\n> ${first}${second}\n> \`\`\``],
+    ['list fence', `- Item\n\n  \`\`\`md\n  ${first}${second}\n  \`\`\``],
+    ['indented code', `Example:\n\n    ${first}${second}`],
+  ])('preserves %s bytes and does not report literal embeds', (_name, source) => {
+    expect(convert(source)).toEqual({ content: source, warnings: [], issues: [] });
+  });
+});
 
 describe('parseGitBookFrontmatter', () => {
   it('reads folded descriptions, icons, visibility, and layout', () => {

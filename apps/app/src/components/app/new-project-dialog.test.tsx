@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Activity, act, useState } from 'react';
+import { Activity, act, StrictMode, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -453,7 +453,7 @@ describe('create site dialog: creation that ends while React hides the dialog (<
   /** The same changes, committed synchronously from wherever the test calls them (a microtask, say). */
   let commit: { organization: (organizationId: string) => void; open: (open: boolean) => void };
   /** The dialog inside an <Activity>, opened and closed as a caller would. */
-  async function renderHideable() {
+  async function renderHideable(strict = false) {
     const node = document.createElement('div');
     document.body.append(node);
     const root = createRoot(node);
@@ -490,7 +490,13 @@ describe('create site dialog: creation that ends while React hides the dialog (<
     await act(async () =>
       root.render(
         <QueryClientProvider client={client}>
-          <Harness />
+          {strict ? (
+            <StrictMode>
+              <Harness />
+            </StrictMode>
+          ) : (
+            <Harness />
+          )}
         </QueryClientProvider>,
       ),
     );
@@ -528,10 +534,10 @@ describe('create site dialog: creation that ends while React hides the dialog (<
   };
   const busy = () => document.querySelector('[aria-busy="true"]') !== null;
   /** Names the site, continues, and starts creating it; the create answers when the test says. */
-  async function createHeld({ press = true } = {}) {
+  async function createHeld({ press = true, strict = false } = {}) {
     const create = deferred<{ id: string; firstPageId: string }>();
     mocks.create.mockReturnValueOnce(create.promise);
-    const close = await renderHideable();
+    const close = await renderHideable(strict);
     await nameSite();
     await click(button('newSite.continue'));
     if (!press) return { create, close };
@@ -667,6 +673,141 @@ describe('create site dialog: creation that ends while React hides the dialog (<
       expect(busy()).toBe(false);
       expect(element<HTMLInputElement>('input[type="radio"][value="blank"]').checked).toBe(true);
     });
+  });
+
+  describe.each([false, true])('#776 synthetic residual state (StrictMode: %s)', (strict) => {
+    it.each([
+      ['failure', fail, 'newSite.error'],
+      ['slug refusal', refuse, 'newSite.slugTaken'],
+    ] as const)('retires an applied %s after a microtask organization switch, including A → B → A', async (_name, settleCreate, message) => {
+      const { create, close } = await createHeld({ strict });
+      let injected = false;
+      mocks.onTranslate = (key) => {
+        if (key !== message || injected) return;
+        injected = true;
+        // The failure/refusal was applied while A owned the action. This is
+        // synthetic: an ordinary UI interaction cannot land in this gap.
+        queueMicrotask(() => commit.organization('org-b'));
+      };
+      await act(async () => settleCreate(create));
+      expect(injected).toBe(true);
+      await settle();
+      expectNothingApplied(close);
+      await click(button('common.back'));
+      expect(document.body.textContent).not.toContain('newSite.error');
+      expect(document.querySelector('input[dir="ltr"]')).toBeNull();
+      await type(nameField(), 'B Draft');
+      await settle();
+      expect(nameField().value).toBe('B Draft');
+      expect(document.querySelector('output')?.textContent).toBe('b-draft.nibleaf.com');
+
+      // Returning to the same org ID is another epoch, never the first A.
+      await switchOrganization('org-a');
+      await settle();
+      expect(document.body.textContent).not.toContain('newSite.error');
+      expect(document.body.textContent).not.toContain('newSite.slugTaken');
+      expect(document.querySelector('input[dir="ltr"]')).toBeNull();
+      expect(nameField().value).toBe('');
+    });
+
+    it.each([
+      ['failure', fail, 'newSite.error'],
+      ['slug refusal', refuse, 'newSite.slugTaken'],
+    ] as const)('retires an applied %s on close/reopen without losing the draft', async (_name, settleCreate, message) => {
+      const { create, close } = await createHeld({ strict });
+      let injected = false;
+      mocks.onTranslate = (key) => {
+        if (key !== message || injected) return;
+        injected = true;
+        queueMicrotask(() => {
+          commit.open(false);
+          commit.open(true);
+        });
+      };
+      await act(async () => settleCreate(create));
+      expect(injected).toBe(true);
+      await settle();
+      expectNothingApplied(close);
+      await click(button('common.back'));
+      expect(document.body.textContent).not.toContain('newSite.error');
+      expect(document.querySelector('input[dir="ltr"]')).toBeNull();
+      expect(nameField().value).toBe('Acme Docs');
+    });
+  });
+
+  it.each([
+    ['failure', fail],
+    ['slug refusal', refuse],
+  ] as const)('#776 uses the render-tracked epoch to retire an applied %s across hidden A → B → A', async (kind, settleCreate) => {
+    const { create, close } = await createHeld();
+    await act(async () => settleCreate(create));
+    if (kind === 'failure') await click(button('common.back'));
+    expect(document.body.textContent).toContain(kind === 'failure' ? 'newSite.error' : 'newSite.slugTaken');
+    await hide(true);
+    // Activity runs no draft effects here: returning to A leaves the draft's
+    // identity/generation unchanged, but the render-tracked org epoch moved.
+    await switchOrganization('org-b');
+    await switchOrganization('org-a');
+    await hide(false);
+    await settle();
+    expect(document.body.textContent).not.toContain('newSite.error');
+    expect(document.body.textContent).not.toContain('newSite.slugTaken');
+    if (kind === 'slug refusal') {
+      expectNothingApplied(close);
+      await click(button('common.back'));
+    }
+    expect(document.querySelector('input[dir="ltr"]')).toBeNull();
+    expect(nameField().value).toBe('Acme Docs');
+  });
+
+  it.each([
+    ['failure', fail],
+    ['slug refusal', refuse],
+  ] as const)('#776 keeps B’s own %s and draft when A’s old request finishes later', async (_name, settleCreate) => {
+    const { create: oldCreate, close } = await createHeld();
+    await switchOrganization('org-b');
+    await settle();
+    await click(button('common.back'));
+    await type(nameField(), 'B Draft');
+    await settle();
+    await click(button('newSite.continue'));
+    const ownCreate = deferred<{ id: string; firstPageId: string }>();
+    mocks.create.mockReturnValueOnce(ownCreate.promise);
+    await click(button('newSite.create'));
+    await act(async () => settleCreate(ownCreate));
+    if (_name === 'failure') await click(button('common.back'));
+    expect(nameField().value).toBe('B Draft');
+    const ownMessage = _name === 'failure' ? 'newSite.error' : 'newSite.slugTaken: acme-docs-2';
+    expect(document.body.textContent).toContain(ownMessage);
+    await act(async () => refuse(oldCreate));
+    await settle();
+    expect(nameField().value).toBe('B Draft');
+    expect(document.body.textContent).toContain(ownMessage);
+    // A locale change keeps this owner and its authored draft/message.
+    mocks.locale = 'ar';
+    await hide(true);
+    await hide(false);
+    expect(nameField().value).toBe('B Draft');
+    expect(document.body.textContent).toContain(ownMessage);
+    expect(close).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+    expect(busy()).toBe(false);
+    // Each visible owned outcome still permits a valid retry and clean success.
+    if (_name === 'slug refusal') await click(button('newSite.useSuggestion: acme-docs-2'));
+    else {
+      await click(button('newSite.editAddress'));
+      await type(element<HTMLInputElement>('input[dir="ltr"]'), 'b-draft-manual');
+      expect(document.body.textContent).toContain('newSite.error');
+    }
+    await settle();
+    await click(button('newSite.continue'));
+    await click(button('newSite.create'));
+    expect(mocks.create).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'B Draft', organizationId: 'org-b', language: 'ar' }));
+    expect(mocks.create).toHaveBeenLastCalledWith(expect.objectContaining({ slug: _name === 'failure' ? 'b-draft-manual' : 'acme-docs-2' }));
+    expect(close).toHaveBeenCalledWith(false);
+    expect(mocks.navigate).toHaveBeenCalledOnce();
+    expect(toast.success).toHaveBeenCalledOnce();
   });
 
   it('after a quiet failure, Create tries again, and a clean success navigates and closes', async () => {

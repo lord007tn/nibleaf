@@ -59,6 +59,7 @@
       ]
     },
     "packages/database": {
+      "entry": ["scripts/starter-baseline-migration-smoke.ts"],
       "ignoreDependencies": ["@prisma/client"]
     },
     "packages/i18n": {
