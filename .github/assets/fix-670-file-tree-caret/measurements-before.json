@@ -1,7 +1,8 @@
 {
-  "baseline": "7491b8fcc074041144d63b782982759db08bf8a8",
-  "head": "1372427a6f506cb5d506828ab7c1a7542468f032",
+  "baseline": "45a6a3a784beababe8321ff2cddf27e41042fca9",
+  "head": "303474b652950c311c4618bca6acb5a7341a6ff3",
   "fixture": "production canvas; mocked router and page lookup hooks",
+  "workspaceOutputs": [],
   "results": [
     {
       "width": 1440,
@@ -9,7 +10,29 @@
       "locale": "en",
       "scenario": "tree",
       "phase": "before",
+      "shot": "menu-before-en-1440-light.png",
+      "directions": {
+        "html": "ltr",
+        "root": "ltr",
+        "provider": "ltr",
+        "editor": "ltr",
+        "menu": "ltr"
+      }
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "tree",
+      "phase": "before",
       "shot": "typed-before-en-1440-light.png",
+      "directions": {
+        "html": "ltr",
+        "root": "ltr",
+        "provider": "ltr",
+        "editor": "ltr",
+        "menu": null
+      },
       "barHeight": null,
       "sourceTop": null,
       "labelBottom": null,
@@ -72,7 +95,29 @@
       "locale": "ar",
       "scenario": "tree",
       "phase": "before",
+      "shot": "menu-before-ar-390-light.png",
+      "directions": {
+        "html": "rtl",
+        "root": "rtl",
+        "provider": "rtl",
+        "editor": "rtl",
+        "menu": "rtl"
+      }
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "ar",
+      "scenario": "tree",
+      "phase": "before",
       "shot": "typed-before-ar-390-light.png",
+      "directions": {
+        "html": "rtl",
+        "root": "rtl",
+        "provider": "rtl",
+        "editor": "rtl",
+        "menu": null
+      },
       "barHeight": null,
       "sourceTop": null,
       "labelBottom": null,
