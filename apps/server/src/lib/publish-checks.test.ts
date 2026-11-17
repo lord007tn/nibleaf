@@ -68,6 +68,7 @@ describe('broken-internal-link', () => {
         code: 'broken-internal-link',
         severity: 'error',
         pageId: linking.id,
+        versionId: 'v1',
         languageCode: 'en',
         title: 'Introduction',
         path: 'guides/intro',
@@ -158,6 +159,21 @@ describe('broken-internal-link', () => {
       '[^1]: A footnote, not a link.',
     ].join('\n');
     expect(linkChecks(content)).toEqual(['/reference-missing', '/image-link-missing', '/card-attribute']);
+  });
+
+  it('names the docs version of each check, so same-address pages in two versions stay apart', () => {
+    const v1Guide = page({ path: 'guide', title: 'Guide', content: '[a](/gone)' });
+    const v2Guide = page({ path: 'guide', title: 'Guide', versionId: 'v2', content: '[a](/gone)' });
+    const found = codes(snapshot([v1Guide, v2Guide]), 'broken-internal-link').map((check) => [
+      check.pageId,
+      check.versionId,
+      check.path,
+      check.detail,
+    ]);
+    expect(found).toEqual([
+      [v1Guide.id, 'v1', 'guide', '/gone'],
+      [v2Guide.id, 'v2', 'guide', '/gone'],
+    ]);
   });
 
   it('keeps links inside their docs version', () => {
