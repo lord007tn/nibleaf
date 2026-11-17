@@ -34,9 +34,11 @@ export const Route = createFileRoute('/app/projects/$projectId/preview')({
     }),
   loaderDeps: ({ search: { branchId, languageId, pageId } }) => ({ branchId, languageId, pageId }),
   // The parent route prefetches the site, languages and branches; this adds the
-  // previewed page list and, for a deep link, the page itself.
+  // previewed page list, the default language's list (a translated language's
+  // home is the translation of its home) and, for a deep link, the page itself.
   loader: ({ context: { queryClient }, params: { projectId }, deps: { branchId, languageId, pageId } }) => {
     prefetchScopedPages(queryClient, projectId, { branchId, languageId });
+    if (languageId) prefetchScopedPages(queryClient, projectId, { branchId });
     if (pageId) prefetchRouteData(queryClient, pageQueryOptions(projectId, pageId));
   },
   component: ProjectPreview,
@@ -73,10 +75,23 @@ function ProjectPreview() {
   const { data: pages, isPending: pagesPending } = pagesQuery;
   // The same tree readers get once this is published, so the order matches the editor's.
   const nav = useMemo(() => previewNavTree(pages, activeLanguage?.code), [pages, activeLanguage?.code]);
+  // The home of a translated language is the translation of the default
+  // language's home, so it is chosen from that language's drafts in the same version.
+  const homeCode = activeLanguage?.code;
+  const defaultLanguageId = defaultScopeId(languages);
+  const defaultCode = languages?.find((language) => language.id === defaultLanguageId)?.code;
+  const previewsTranslation = Boolean(homeCode && defaultCode && homeCode !== defaultCode);
+  const defaultPagesQuery = usePages(previewEnabled && previewsTranslation ? projectId : undefined, defaultLanguageId, activeBranchId);
+  const defaultLanguagePages = defaultPagesQuery.data;
+  // Wait for that list rather than open on another page first; if it fails, the
+  // language's own home (an empty-address page, else its first page) still opens.
+  const homePending = previewsTranslation && !defaultLanguagePages && !defaultPagesQuery.isError;
   const selected = useMemo(() => {
-    const homeId = previewHomeId(pages, nav);
-    return pages?.find((page) => page.id === search.pageId) ?? pages?.find((page) => page.id === homeId);
-  }, [nav, pages, search.pageId]);
+    const requested = pages?.find((page) => page.id === search.pageId);
+    if (requested || homePending) return requested;
+    const homeId = previewHomeId(pages, defaultLanguagePages, homeCode && defaultCode ? { code: homeCode, defaultCode } : undefined);
+    return pages?.find((page) => page.id === homeId);
+  }, [defaultCode, defaultLanguagePages, homeCode, homePending, pages, search.pageId]);
   // The content column stays mounted between pages; start each page at its top,
   // as the published site does (the router only restores the window's scroll).
   const contentRef = useRef<HTMLDivElement>(null);
@@ -89,7 +104,7 @@ function ProjectPreview() {
   // A page with math waits for KaTeX behind the skeleton too, so it never
   // appears with raw TeX (it mounts fresh after each uncached fetch).
   const mathReady = useMathReady(page?.content);
-  const contentPending = pagesPending || (Boolean(selected) && (pagePending || !mathReady));
+  const contentPending = pagesPending || (!selected && homePending) || (Boolean(selected) && (pagePending || !mathReady));
   // A failed request must not read as "no draft pages": offer a retry of whichever one failed.
   const failedQuery = pagesQuery.isError && !pages ? pagesQuery : selected && pageQuery.isError && !page ? pageQuery : undefined;
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);

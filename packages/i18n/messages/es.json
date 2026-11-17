@@ -4620,6 +4620,8 @@
   "people_reason_removeselfsite": "No puedes quitarte a ti mismo. Pídeselo a otro Administrador.",
   "people_reason_moreaccess": "Tiene más acceso que tú.",
   "people_reason_roleaboveyours": "Puedes dar roles hasta el tuyo.",
+  "people_reason_resendorgaccess": "Pide a un Administrador de la organización que la reenvíe: da acceso a la organización.",
+  "people_reason_resendotherwebsites": "Pide a un Administrador de la organización que la reenvíe: también da acceso a otros sitios que tú no puedes conceder.",
   "people_invite_open": "Invitar personas",
   "people_invite_title": "Invitar personas a {org}",
   "people_invite_description": "Recibirán un correo con un enlace válido durante 7 días.",

@@ -125,6 +125,15 @@ include that chunk. So:
   `bundle:check` fails on a reader icon that a marketing chunk imports unless it
   is one of the icons already shared on main@88daac87
   (`marketingSharedReaderIcons` in `scripts/bundle-boundaries.mjs`).
+- Opening the reader's search doesn't load zod. The search dialog's query
+  hook calls the public API from the browser and checks its input with a plain
+  function (`functions/site-search-input.ts`, #841: −26 KiB gzip on the first
+  search open). `bundle:check` builds a "search open" profile from the module
+  report, the chunk holding `components/site/site-search-dialog.tsx` and its
+  static imports, and fails on any zod module there, or when no chunk holds
+  the dialog (`searchOpenFiles` and `searchOpenZodModules` in
+  `scripts/bundle-boundaries.mjs`; #842). It also prints what search open
+  fetches beyond the `public-docs` profile.
 - Dashboard chunk names stay out of the router's eager chunk. For each lazy
   import, Vite writes the chunks to preload with it into a `__vite__mapDeps`
   table in the importing chunk, and the router's eager chunk imports every

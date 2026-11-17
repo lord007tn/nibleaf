@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { deliverySummary, emailsError, invitationTiming, parseEmails } from './invitations';
+import { deliverySummary, emailsError, invitationTiming, parseEmails, resendDecision } from './invitations';
 import { draftNeedsWarning, type JoinLinkDraft, joinLinkBody, joinLinkErrors, linkActions, normalizeDomain } from './join-links';
 import { assignableSiteRoles, DEFAULT_INVITE_SITE_ROLE, DEFAULT_JOIN_LINK_SITE_ROLE, orgRoleLabel, SITE_ROLE_OPTIONS, siteRoleLabel } from './roles';
 
@@ -78,5 +78,18 @@ describe('join link drafts', () => {
     expect(draftNeedsWarning({ grants: { p1: 'viewer', p2: 'member' } })).toBe(true);
     expect(linkActions('active')).toEqual({ regenerate: true, disable: true, delete: false });
     expect(linkActions('revoked').delete).toBe(true);
+  });
+});
+
+describe('Resend on a website Team page (#460)', () => {
+  it.each([
+    // The server's per-invitation `resend` for this viewer → the row's decision.
+    ['allowed', { allowed: true }],
+    ['orgAccess', { allowed: false, reason: 'people.reason.resendOrgAccess' }],
+    ['otherWebsites', { allowed: false, reason: 'people.reason.resendOtherWebsites' }],
+    // An older server sends nothing: Resend stays as it was, and the server decides.
+    [undefined, { allowed: true }],
+  ] as const)('%s → %j', (resend, decision) => {
+    expect(resendDecision(resend)).toEqual(decision);
   });
 });
