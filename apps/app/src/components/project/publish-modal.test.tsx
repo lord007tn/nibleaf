@@ -50,6 +50,12 @@ const pendingChange = {
   truncated: false,
 };
 vi.mock('@/hooks/api', () => ({
+  useBranches: () => ({
+    data: [
+      { id: 'v1', name: 'Stable' },
+      { id: 'v2', name: 'Next' },
+    ],
+  }),
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useDomains: () => domains,
   usePublish: () => ({ isPending: false, mutate }),
@@ -208,6 +214,17 @@ describe('publish draft barrier', () => {
     const checks = document.querySelector('[data-testid="publish-checks"]');
     expect(checks?.textContent).toContain('publish.checks.allClear');
     expect(isUnavailable(publishButton())).toBe(false);
+  });
+
+  it('passes cached branch names to checks from different versions', async () => {
+    preflight.checks = [
+      check({ code: 'broken-internal-link', severity: 'error', versionId: 'v1', pageId: 'page-1', detail: '/gone' }),
+      check({ code: 'broken-internal-link', severity: 'error', versionId: 'v2', pageId: 'page-2', detail: '/gone' }),
+    ];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const fixes = [...document.querySelectorAll('[data-testid="publish-checks"] a')];
+    expect(fixes.map((link) => link.querySelector('bdi')?.textContent)).toEqual(['editor.branch.trigger', 'editor.branch.trigger']);
+    expect(fixes.map((link) => new URL(link.getAttribute('href') ?? '', 'https://app.test').searchParams.get('page'))).toEqual(['page-1', 'page-2']);
   });
 
   it('lists warnings by type with a summary and still publishes', async () => {
