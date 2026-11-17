@@ -16,9 +16,10 @@ const mocks = vi.hoisted(() => {
     getDefaultLanguage: vi.fn(),
     prisma: {
       $transaction: vi.fn(),
+      $queryRaw: vi.fn(),
       branch: { findFirst: vi.fn() },
       gitAuditEvent: { create: vi.fn() },
-      gitConnection: { findUnique: vi.fn(), update: vi.fn(), upsert: vi.fn() },
+      gitConnection: { findUnique: vi.fn(), update: vi.fn(), create: vi.fn(), upsert: vi.fn() },
       gitFileState: { deleteMany: vi.fn(), upsert: vi.fn() },
       language: { findFirst: vi.fn() },
       page: { findMany: vi.fn() },
@@ -49,6 +50,7 @@ vi.mock('./github', () => ({
   },
 }));
 
+import { buildThemeRepository, THEME_REPOSITORY_DOCS_CONFIG_PATH } from '@nibleaf/shared/theme-repository';
 import { gitConnectionBody } from '@nibleaf/validators';
 import {
   type GitWorkflowConnectionValues,
@@ -92,17 +94,20 @@ const storedConnection = () => ({
   importLanguageId: null as string | null,
   credentialEncrypted: encryptGitSecret(STORED_TOKEN),
   credentialFingerprint: gitCredentialFingerprint(STORED_TOKEN),
-  webhookSecretEncrypted: encryptGitSecret(STORED_WEBHOOK),
+  webhookSecretEncrypted: encryptGitSecret(STORED_WEBHOOK) as string | null,
   remoteBaseSha: 'old-base-sha',
   remoteHeadSha: 'old-head-sha',
   createdById: 'user-0',
 });
 
-/** Mocked Prisma rows: update merges into the stored row, upsert creates. */
+/** PostgreSQL version reads/locks are mocked here; the separate PG suite proves isolation. */
 const installConnection = (row: ReturnType<typeof storedConnection> | null) => {
   mocks.prisma.gitConnection.findUnique.mockResolvedValue(row);
+  mocks.prisma.$queryRaw.mockImplementation(async (query: TemplateStringsArray) =>
+    query.join('').includes('FOR UPDATE') ? (row ? [{ id: row.id }] : []) : row ? [{ ...row, saveVersion: 'fictional-version' }] : [],
+  );
   mocks.prisma.gitConnection.update.mockImplementation(async ({ data }: { data: object }) => ({ ...row, ...data }));
-  mocks.prisma.gitConnection.upsert.mockImplementation(async ({ create }: { create: object }) => ({ id: 'connection-new', ...create }));
+  mocks.prisma.gitConnection.create.mockImplementation(async ({ data }: { data: object }) => ({ id: 'connection-new', ...data }));
 };
 
 /** The first argument a mocked Prisma method received; fails the test when it was never called. */
@@ -118,7 +123,9 @@ const fileStateWrites = () =>
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.providerTokens.length = 0;
-  mocks.prisma.$transaction.mockImplementation(async (writes: Promise<unknown>[]) => Promise.all(writes));
+  mocks.prisma.$transaction.mockImplementation(async (work: unknown) =>
+    typeof work === 'function' ? work(mocks.prisma) : Promise.all(work as Promise<unknown>[]),
+  );
   mocks.prisma.gitFileState.upsert.mockResolvedValue({});
   mocks.prisma.gitFileState.deleteMany.mockResolvedValue({ count: 1 });
   mocks.prisma.gitAuditEvent.create.mockResolvedValue({});
@@ -148,7 +155,7 @@ describe('connectGitHub with the real Git crypto', () => {
     expect(mocks.providerTokens).toEqual([STORED_TOKEN]);
     expect(mocks.prisma.gitConnection.upsert).not.toHaveBeenCalled();
     expect(mocks.prisma.gitConnection.update).toHaveBeenCalledWith({
-      where: { projectId: 'project-1' },
+      where: { id: 'connection-1', projectId: 'project-1' },
       data: {
         repository: 'acme/docs',
         baseBranch: 'main',
@@ -203,7 +210,7 @@ describe('connectGitHub with the real Git crypto', () => {
     });
 
     expect(mocks.prisma.gitConnection.update).not.toHaveBeenCalled();
-    const { create } = firstInput<{ create: Record<string, unknown> }>(mocks.prisma.gitConnection.upsert);
+    const { data: create } = firstInput<{ data: Record<string, unknown> }>(mocks.prisma.gitConnection.create);
     expect(create).toMatchObject({ projectId: 'project-1', provider: 'github', repository: 'acme/docs', createdById: 'user-1' });
     expect(decryptGitSecret(create.credentialEncrypted as string)).toBe(NEW_TOKEN);
     expect(create.credentialFingerprint).toBe(gitCredentialFingerprint(NEW_TOKEN));
@@ -223,7 +230,76 @@ describe('connectGitHub with the real Git crypto', () => {
 
     expect(mocks.providerTokens).toEqual([]);
     expect(mocks.prisma.gitConnection.upsert).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitConnection.create).not.toHaveBeenCalled();
     expect(mocks.prisma.gitConnection.update).not.toHaveBeenCalled();
+  });
+
+  it('stores exactly the generated missing webhook secret in the existing-row update', async () => {
+    installConnection({ ...storedConnection(), webhookSecretEncrypted: null });
+    const result = await connectGitHub('project-1', 'user-1', { repository: 'acme/docs', baseBranch: 'main', headBranch: 'nibleaf/docs', token: '' });
+    expect(result.webhookSecret).toMatch(/^[a-f0-9]{64}$/);
+    expect(decryptGitSecret(savedData().webhookSecretEncrypted as string) === result.webhookSecret).toBe(true);
+    expect(savedData()).not.toHaveProperty('credentialEncrypted');
+    expect(result.connection.webhookConfigured).toBe(true);
+    expect(result.connection).not.toHaveProperty('saveVersion');
+  });
+
+  it('rejects a missed version predicate before any connection, ledger or audit write', async () => {
+    const stored = storedConnection();
+    installConnection(stored);
+    mocks.prisma.$queryRaw.mockResolvedValueOnce([{ ...stored, saveVersion: 'fictional-version' }]).mockResolvedValueOnce([]);
+    await expect(
+      connectGitHub('project-1', 'user-1', {
+        repository: 'acme/changed',
+        baseBranch: 'main',
+        headBranch: 'nibleaf/docs',
+        token: NEW_TOKEN,
+      }),
+    ).rejects.toMatchObject({ status: 409, code: 'database:conflict' });
+    expect(mocks.prisma.gitConnection.update).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitConnection.create).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitFileState.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitAuditEvent.create).not.toHaveBeenCalled();
+    expect(mocks.prisma.$queryRaw).toHaveBeenLastCalledWith(expect.anything(), 'connection-1', 'project-1', 'fictional-version');
+  });
+
+  it('maps a duplicate first create to a safe conflict without replay or an upsert', async () => {
+    installConnection(null);
+    mocks.prisma.gitConnection.create.mockRejectedValueOnce(Object.assign(new Error('fictional database failure'), { code: 'P2002' }));
+    await expect(
+      connectGitHub('project-1', 'user-1', {
+        repository: 'acme/docs',
+        baseBranch: 'main',
+        headBranch: 'nibleaf/docs',
+        token: NEW_TOKEN,
+      }),
+    ).rejects.toMatchObject({ status: 409, code: 'database:conflict' });
+    expect(mocks.prisma.gitConnection.create).toHaveBeenCalledTimes(1);
+    expect(mocks.prisma.gitConnection.upsert).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitAuditEvent.create).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+  });
+
+  it('validates generated platform files with real crypto before any persistence', async () => {
+    installConnection(null);
+    const files = buildThemeRepository(snapshot).map((file, index) => ({ path: file.path, sha: `blob-${index}`, content: file.content }));
+    const config = files.find((file) => file.path === THEME_REPOSITORY_DOCS_CONFIG_PATH);
+    expect(config).toBeDefined();
+    if (!config) throw new Error('Missing generated docs config');
+    config.content = '{}\n';
+    mocks.provider.listThemeRepositoryFiles.mockResolvedValueOnce(files);
+    await expect(
+      connectGitHub('project-1', 'user-1', {
+        repository: 'acme/docs',
+        baseBranch: 'main',
+        headBranch: 'nibleaf/docs',
+        token: NEW_TOKEN,
+      }),
+    ).rejects.toThrow(/docs\.json.*generated by Nibleaf/);
+    expect(mocks.prisma.gitConnection.create).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitConnection.update).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
   });
 
   it('keeps the file-state baseline when the topology is unchanged', async () => {
@@ -324,7 +400,7 @@ describe("the connect wizard's first Connect", () => {
     const result = await connectGitHub('project-1', 'user-1', body);
 
     expect(mocks.providerTokens).toEqual([token]);
-    const { create } = firstInput<{ create: Record<string, unknown> }>(mocks.prisma.gitConnection.upsert);
+    const { data: create } = firstInput<{ data: Record<string, unknown> }>(mocks.prisma.gitConnection.create);
     expect(create).toMatchObject({
       repository: 'acme/docs',
       baseBranch: 'main',
