@@ -226,9 +226,9 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
   const removed: Element[] = [];
   const leads = Array.from(element.querySelectorAll('li > p[data-md-item-lead]'));
   const candidates = new Set(leads.map((lead) => lead.parentElement));
-  const simpleItems = new Map<Element, boolean>();
-  const simpleItem = (item: Element): boolean => {
-    const cached = simpleItems.get(item);
+  const simpleContents = new Map<Element, boolean>();
+  const simpleContent = (item: Element): boolean => {
+    const cached = simpleContents.get(item);
     if (cached !== undefined) return cached;
     const clone = item.cloneNode(true) as HTMLElement;
     for (const staged of clone.querySelectorAll('p[data-md-item-lead]')) staged.remove();
@@ -237,7 +237,7 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
       if (!ITEM_CONTENT_NODES.has(node.type.name)) simple = false;
       return simple;
     });
-    simpleItems.set(item, simple);
+    simpleContents.set(item, simple);
     return simple;
   };
   for (const lead of leads.reverse()) {
@@ -259,9 +259,17 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
     fitted?.forEach((child) => {
       if (block && child.eq(block)) stayed = true;
     });
-    let safe = true;
+    let safe = simpleContent(list);
+    // Hoisting an inline block can turn later ordered items into a new bullet
+    // list. Keeping those items byte-identical to main needs a serializer fix.
+    // A marker-only item after an edit is a different source shape (#858).
+    if (list.tagName === 'OL' && lead.getAttribute('data-md-item-lead') === 'inline') {
+      for (let next = item.nextElementSibling; next; next = next.nextElementSibling) {
+        if (next.tagName === 'LI' && !next.firstElementChild?.matches('p[data-md-item-lead]')) safe = false;
+      }
+    }
     for (let ancestor: Element | null = item; ancestor; ancestor = ancestor.parentElement) {
-      if (candidates.has(ancestor) && !simpleItem(ancestor)) safe = false;
+      if (candidates.has(ancestor) && !simpleContent(ancestor)) safe = false;
       // Canonical markers merge adjacent lists on reload. Restoring an item
       // there needs a separate serializer change, not just a load-time lead.
       if (ancestor.matches('ul,ol') &&
