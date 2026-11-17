@@ -27,6 +27,21 @@ describe('reader search transport', () => {
     expect(hits).toEqual([{ ...hit, searchId: 'search-1' }]);
   });
 
+  it('rejects input the API would refuse without sending a request', async () => {
+    for (const data of [
+      { projectId: 'docs', query: '   ' },
+      { projectId: '', query: 'domain' },
+      { projectId: 'docs', query: 'x'.repeat(301) },
+      { projectId: 'docs', query: 'domain', limit: Number.NaN },
+      { projectId: 'docs', query: 'domain', language: 'x'.repeat(36) },
+    ]) {
+      await expect(searchSiteFn({ data })).rejects.toThrow('Invalid search input');
+    }
+    mocks.analytics.mockReturnValue({ consentState: 'denied', sessionId: 'x'.repeat(129) });
+    await expect(searchSiteFn({ data: { projectId: 'docs', query: 'domain' } })).rejects.toThrow('Invalid search input: sessionId');
+    expect(mocks.get).not.toHaveBeenCalled();
+  });
+
   it('preserves API failures rather than turning them into an empty result', async () => {
     mocks.get.mockResolvedValue(Response.json({ error: { code: 'http:rate_limit', message: 'Slow down' } }, { status: 429 }));
     await expect(searchSiteFn({ data: { projectId: 'docs', query: 'domain' } })).rejects.toMatchObject({ status: 429, message: 'Slow down' });

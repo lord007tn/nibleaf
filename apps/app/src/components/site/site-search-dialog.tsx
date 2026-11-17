@@ -9,11 +9,12 @@ import { siteSearchT } from '@nibleaf/i18n/site-search';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { useRouter } from '@tanstack/react-router';
 import { AlertCircle, Clock, CornerDownLeft, FileText, Hash, Languages, Loader2, RotateCcw, Search, SearchX, Sparkles } from 'lucide-react';
-import { Fragment, type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type CSSProperties, Fragment, type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { Highlight } from '@/components/site/site-search-highlight';
 import { takeSearchKeystrokes } from '@/components/site/site-search-keystrokes';
 import { useSlashShortcut, writeSlashShortcut } from '@/components/site/site-search-shortcut';
+import { useVisualViewport } from '@/components/site/use-visual-viewport';
 import { useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
@@ -173,6 +174,15 @@ export default function SiteSearchDialog({
   const router = useRouter();
   const t = siteSearchT(lang);
   const slashShortcut = useSlashShortcut(projectId);
+  // The phone sheet follows the visual viewport, so its footer and last results
+  // stay above the software keyboard. The size is kept until the sheet has
+  // finished animating out, then dropped. An opening clears `exited` as it
+  // starts, not when its animation completes: Base UI drops that completion
+  // when a close interrupts the opening, and the interrupted sheet must keep its
+  // size through its exit too.
+  const [exited, setExited] = useState(!open);
+  if (open && exited) setExited(false);
+  const viewport = useVisualViewport(open, open || !exited);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   // cmdk re-selects the first row whenever the list changes. Only highlight
@@ -507,15 +517,18 @@ export default function SiteSearchDialog({
     ) : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} onOpenChangeComplete={(isOpen) => setExited(!isOpen)}>
       <DialogContent
         className={cn(
-          // Phones: a full-screen sheet so the keyboard never covers results.
-          'inset-0 top-0 start-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none p-0 ring-0 rtl:translate-x-0',
+          // Phones: a full-screen sheet sized to the visual viewport, so the keyboard
+          // never covers the results or the footer. Without one (older browsers, or
+          // before the first reading) it fills the dynamic viewport.
+          'inset-x-0 start-0 top-[var(--search-top,0px)] bottom-auto flex h-[var(--search-height,100dvh)] max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none p-0 ring-0 rtl:translate-x-0',
           // Larger screens: a panel anchored near the top, so it grows downward
           // as results arrive instead of jumping around the center.
           'sm:inset-auto sm:start-1/2 sm:top-[12vh] sm:h-auto sm:max-h-[min(76vh,680px)] sm:max-w-2xl sm:-translate-x-1/2 sm:rounded-xl sm:shadow-2xl sm:ring-1 sm:rtl:translate-x-1/2',
         )}
+        style={viewport ? ({ '--search-height': `${viewport.height}px`, '--search-top': `${viewport.top}px` } as CSSProperties) : undefined}
         data-theme-surface="search"
         dir={rtl ? 'rtl' : 'ltr'}
         showCloseButton={false}
