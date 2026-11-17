@@ -36,6 +36,28 @@ describe('Paraglide message catalogs', () => {
   });
   const expectedKeys = [...orderedKeys].sort();
 
+  it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s uses its Ask AI name throughout dashboard status copy and links', (locale) => {
+    const catalog = loadCatalog(locale);
+    for (const key of [
+      'settings_integrations_opensmartai',
+      'settings_integrations_smartaiowned',
+      'settings_ai_switch_on',
+      'settings_ai_reason_serverunavailable',
+      'settings_ai_reason_publishfirst',
+      'settings_ai_sources_title',
+      'settings_ai_check_description',
+      'settings_ai_check_source_idle',
+      'settings_ai_problem_limitreached',
+      'settings_ai_notworking_title',
+      'settings_ai_toast_on',
+      'settings_ai_toast_off',
+      'settings_ai_toast_source',
+      'settings_search_aianswers_manage',
+    ]) {
+      expect(catalog[key], key).toContain(catalog.settings_ai);
+    }
+  });
+
   it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s localizes shell recovery and accessible names', (locale) => {
     const catalog = loadCatalog(locale);
     for (const key of [
