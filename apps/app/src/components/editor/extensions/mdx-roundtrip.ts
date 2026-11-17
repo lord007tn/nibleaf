@@ -30,6 +30,14 @@ export const writeBlockTag = (state: SerializeState, node: PMNode, tag: string):
   state.closeBlock(node);
 };
 
+/** The output a component's tight layout reads back (LinearMarkdownSerializerState). */
+interface ChildrenOutput {
+  length: number;
+  lastLine: () => string;
+  lineFrom: (start: number) => string;
+  insertAt: (start: number, text: string) => void;
+}
+
 /** prosemirror-markdown's state, with the members a component's tight layout writes with. */
 type ChildrenState = SerializeState & {
   ensureNewLine: () => void;
@@ -37,31 +45,78 @@ type ChildrenState = SerializeState & {
   flushClose: (size?: number) => void;
   /** prosemirror-markdown internal: the block just closed, its line breaks not yet written. */
   closed?: unknown;
+  /** The prefix of the containers being written (`> `, a list item's indent). */
+  delim?: string;
+  output?: ChildrenOutput;
 };
+
+/** For each serializer, the tight openers written and not yet closed, innermost last: the
+ *  component, and where its children start in the output. */
+const openTight = new WeakMap<object, Array<{ node: PMNode; start: number }>>();
+
+/**
+ * Whether a line written next to a component's tag keeps the tight layout when the page
+ * is read again: it must be what `childrenLayout` reads as a child's Markdown line, not
+ * blank in its containers (`> ` left by an emptied quote) and not another tag.
+ */
+const tightLine = (line: string): boolean => !blankInContainers(line) && !TAG_LINE.test(line);
 
 /**
  * A component's opening tag before its children (#606). Where the author started the
  * children on the line right after the tag, they start there again; otherwise a blank
- * line follows the tag, as after any block tag.
+ * line follows the tag, as after any block tag. Whether they still can is read back when
+ * the component closes (`writeChildrenCloser`).
  */
 export const writeChildrenOpener = (state: SerializeState, node: PMNode, tag: string): void => {
-  if (!isTightOpen(node)) {
+  const children = state as ChildrenState;
+  if (!isTightOpen(node) || !children.output) {
     writeBlockTag(state, node, tag);
     return;
   }
   separateBlock(state, node);
   state.write(tag);
-  (state as ChildrenState).ensureNewLine();
+  children.ensureNewLine();
+  const open = openTight.get(state) ?? [];
+  open.push({ node, start: children.output.length });
+  openTight.set(state, open);
 };
 
-/** A component's closing tag after its children: on the line right after them where the
- *  author wrote it so (#606), otherwise after a blank line. */
+/**
+ * A component's closing tag after its children: on the line right after them where the
+ * author wrote it so (#606), otherwise after a blank line. The tight layout is kept only
+ * where it reads back the same: the children's first and last lines written must each be
+ * a Markdown line (see `tightLine`). An edit that emptied the first or last child, removed
+ * every child, or left a tag or a blank line there gets main's blank-line layout on that
+ * side, so every save loads to itself.
+ */
 export const writeChildrenCloser = (state: SerializeState, node: PMNode, tag: string): void => {
-  if (!isTightClose(node)) {
+  const children = state as ChildrenState;
+  const { output } = children;
+  const open = openTight.get(state);
+  const opened = open?.[open.length - 1]?.node === node ? open.pop() : undefined;
+  if (output && opened) {
+    const empty = output.length === opened.start;
+    const first = empty ? '' : output.lineFrom(opened.start);
+    const containers = (children.delim ?? '').replace(/\s+$/, '');
+    // A first line blank in the component's own containers is already the blank line a
+    // block tag gets (an empty first paragraph wrote it); anything else that isn't a
+    // Markdown line (a quote's `> ` left empty, a tag) gets one, in the same containers.
+    if (empty || (first.trim() !== containers.trim() && !tightLine(first))) output.insertAt(opened.start, `${containers}\n`);
+    if (empty) {
+      // No child wrote anything (an emptied paragraph): main's `<Note>⏎⏎</Note>`, with no
+      // more blank lines owed for the empty child.
+      children.closed = null;
+      writeBlockTag(state, node, tag);
+      return;
+    }
+  }
+  // The children's last line: the block written last still owes its line break, or wrote it
+  // itself (a table); a line break written with no block owing one leaves a blank line.
+  const last = output && (children.closed || state.atBlank?.() === false) ? output.lastLine() : '';
+  if (!isTightClose(node) || !output || !tightLine(last)) {
     writeBlockTag(state, node, tag);
     return;
   }
-  const children = state as ChildrenState;
   if (children.closed) children.flushClose(1);
   else children.ensureNewLine();
   state.write(tag);
@@ -1799,7 +1854,13 @@ function metadataAttributes(
 }
 
 /** Where the line holding `at` starts. */
-const lineStartOf = (source: string, at: number): number => Math.max(source.lastIndexOf('\n', at - 1), source.lastIndexOf('\r', at - 1)) + 1;
+const lineStartOf = (source: string, at: number): number => {
+  // Back to the nearest line break only: `lastIndexOf('\r')` on a page with none read the
+  // whole page before every component.
+  let start = at;
+  while (start > 0 && source[start - 1] !== '\n' && source[start - 1] !== '\r') start -= 1;
+  return start;
+};
 /** What may come before a tag on its line for it to start that line: indentation and quote markers. */
 const LINE_LEAD = /^[ \t>]*$/;
 /** A line that starts with a tag (after its quote markers): another component's, or HTML. */

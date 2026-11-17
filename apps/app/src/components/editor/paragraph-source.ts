@@ -1,5 +1,5 @@
 import Paragraph from '@tiptap/extension-paragraph';
-import type { Node as PMNode } from '@tiptap/pm/model';
+import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
 import type { MarkdownOutput } from './markdown-output';
@@ -152,7 +152,21 @@ interface ParagraphSerializeState {
  * Write a paragraph: its source lines when the paragraph still reads the same as
  * they do (see the note at the top), otherwise the serializer's single line.
  */
-function writeParagraph(state: ParagraphSerializeState, node: PMNode): void {
+/** The containers whose first line their serializer writes before their first child: a
+ *  list item's marker, a quote's `>`. */
+const LINE_CONTAINERS: ReadonlySet<string> = new Set(['listItem', 'blockquote']);
+
+/**
+ * Whether `node` is an empty paragraph that opens a list item or quote with more after it.
+ * Markdown has no empty paragraph there: written (`- `, a blank line, then the rest), it
+ * read back as an empty item and a paragraph outside the list, or as nothing, so a page
+ * with one never saved to a fixed point. It is left out; what follows opens the item.
+ */
+const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: number | undefined): boolean =>
+  index === 0 && node.content.size === 0 && !!parent && 'type' in parent && LINE_CONTAINERS.has(parent.type.name) && parent.childCount > 1;
+
+function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: PMNode | Fragment, index?: number): void {
+  if (emptyLead(node, parent, index)) return;
   const source = String(node.attrs.sourceParagraph ?? '');
   const joined = source ? joinedSourceLines(source) : null;
   if (joined === null) {
@@ -195,9 +209,9 @@ export const SourceParagraph = Paragraph.extend({
   addStorage() {
     return {
       markdown: {
-        serialize(state, node) {
+        serialize(state, node, parent, index) {
           // The editor saves with LinearMarkdownSerializerState (markdown-output.ts).
-          writeParagraph(state as unknown as ParagraphSerializeState, node);
+          writeParagraph(state as unknown as ParagraphSerializeState, node, parent, index);
         },
         parse: {
           setup(markdownit) {

@@ -40,6 +40,14 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
+  // Each component's children right after its tag (#606), on a page with LF line breaks
+  // only: finding where each tag's line starts must not search the page before it.
+  it('prepares a page of components whose children touch their tags, on LF lines, in one pass (#606)', () => {
+    const tight = (n: number) => '<Note>\nx\n</Note>\n\n'.repeat(n);
+    const [small, large] = growthMs(parse, tight(3000), tight(12_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
   it('prepares one value holding n blank lines in one pass (#721)', () => {
     const longValue = (n: number) => `<Card title="${'a\n\n'.repeat(n)}">\n\nBody\n\n</Card>\n`;
     const [small, large] = growthMs(parse, longValue(5000), longValue(20_000), { budgetMs: 10_000 });

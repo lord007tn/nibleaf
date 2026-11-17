@@ -75,6 +75,67 @@ export class MarkdownOutput {
     return 0;
   }
 
+  /** The last line written, without a line break that ends it (a table writes its own):
+   *  '' after a blank line or before anything is written. Only that line is read. */
+  lastLine(): string {
+    const end = this.lastChar() === '\n' ? this.length - 1 : this.length;
+    let start = end;
+    const parts: string[] = [];
+    let pieceEnd = this.length;
+    for (let index = this.pieces.length - 1; index >= 0 && pieceEnd > 0; index -= 1) {
+      const piece = this.pieces[index] ?? '';
+      const pieceStart = pieceEnd - piece.length;
+      if (pieceStart < end) {
+        const to = Math.min(piece.length, end - pieceStart);
+        const at = piece.lastIndexOf('\n', to - 1);
+        parts.push(piece.slice(at + 1, to));
+        start = pieceStart + at + 1;
+        if (at !== -1) break;
+      }
+      pieceEnd = pieceStart;
+    }
+    this.charactersRead += end - start;
+    return parts.reverse().join('');
+  }
+
+  /** The piece holding the character at `start` (a length the output had), and where that
+   *  piece starts; the piece count and the length when `start` is the end. */
+  private pieceAt(start: number): { index: number; offset: number } {
+    let index = this.pieces.length;
+    let offset = this.length;
+    while (index > 0 && offset > start) {
+      index -= 1;
+      offset -= this.pieces[index]?.length ?? 0;
+    }
+    return { index, offset };
+  }
+
+  /** What was written from `start` (a length the output had) to the next line break, or
+   *  to now: only that line is read. */
+  lineFrom(start: number): string {
+    let { index, offset } = this.pieceAt(start);
+    let at = start - offset;
+    let line = '';
+    for (; index < this.pieces.length; index += 1, at = 0) {
+      const piece = this.pieces[index] ?? '';
+      const end = piece.indexOf('\n', at);
+      line += piece.slice(at, end === -1 ? piece.length : end);
+      if (end !== -1) break;
+    }
+    this.charactersRead += line.length;
+    return line;
+  }
+
+  /** Put `text` in at `start` (a length the output had), before what was written from there. */
+  insertAt(start: number, text: string): void {
+    if (text === '') return;
+    const { index, offset } = this.pieceAt(start);
+    const piece = this.pieces[index];
+    if (piece === undefined) this.pieces.push(text);
+    else this.pieces.splice(index, 1, ...[piece.slice(0, start - offset), text, piece.slice(start - offset)].filter(Boolean));
+    this.length += text.length;
+  }
+
   /** Cut the output back to its first `length` characters. */
   truncate(length: number): void {
     while (this.length > length) {
