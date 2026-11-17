@@ -122,7 +122,8 @@ const restoreCode = (value: string, code: readonly string[]): string =>
 /** Code spans are already held out, so their literal pipes stay untouched. */
 const cleanTableRows = (lines: string[]): string[] => {
   const cells = (line: string) => {
-    const row = line.trim();
+    // A table may start on the list item's opening line (`- | Name | ...`).
+    const row = line.trim().replace(/^(?:[-*+]|\d+[.)])[ \t]+(?=\|)/, '');
     const parts: string[] = [];
     let start = 0;
     let backslashes = 0;
@@ -140,7 +141,7 @@ const cleanTableRows = (lines: string[]): string[] => {
     if (start === row.length && row.endsWith('|') && parts.length > 1) parts.pop();
     return parts;
   };
-  const separator = (line: string) => line.includes('|') && cells(line).every((cell) => /^\s*:?-{3,}:?\s*$/.test(cell));
+  const separator = (line: string) => line.includes('|') && /^[\s|:-]+$/.test(line) && cells(line).every((cell) => /^\s*:?-{3,}:?\s*$/.test(cell));
   let table = false;
   return lines.map((line, index) => {
     if (separator(line)) return '';

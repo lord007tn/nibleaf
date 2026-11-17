@@ -137,9 +137,9 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
   });
   indexLanguages.set(db, language);
   indexDocuments.set(db, new Map(docs.map((doc) => [doc.id, doc])));
-  readerDocuments.set(db, new Map(docs.map((doc) => [doc.id, { fields: readerSearchFields(doc, language), text: cleanSearchText(doc.content) }])));
-  const searchable = (value: string) => {
-    const clean = cleanSearchText(value);
+  const readerDocs = new Map(docs.map((doc) => [doc.id, { fields: readerSearchFields(doc, language), text: cleanSearchText(doc.content) }]));
+  readerDocuments.set(db, readerDocs);
+  const searchable = (value: string, clean = cleanSearchText(value)) => {
     // Keep existing source tokens (including code/URLs), and add visible words
     // that markup can bind into a different token, such as __publish__.
     const text = clean === value ? value : `${value}\n${clean}`;
@@ -154,7 +154,7 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
         searchTitle: searchable(doc.title),
         searchDescription: searchable(doc.description),
         searchHeadings: searchable(doc.headings),
-        searchContent: searchable(doc.content),
+        searchContent: searchable(doc.content, readerDocs.get(doc.id)?.text),
         morphologyTitle: morphological(doc.title),
         morphologyDescription: morphological(doc.description),
         morphologyHeadings: morphological(doc.headings),
