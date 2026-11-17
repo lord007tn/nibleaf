@@ -155,6 +155,12 @@ describe('pages without a blank line inside an attribute value read as on main',
     editor.state.doc.descendants((node, pos) => {
       nodes.push(`${node.type.name}${JSON.stringify(node.attrs)}`);
       if (!target && key in node.attrs) target = { pos, attrs: node.attrs };
+      // #670's editable name duplicates the existing attribute. The historical
+      // atom had no text child; saved and edited Markdown still compare exactly.
+      if (node.type.name === 'mdxFile') {
+        expect(node.textContent).toBe(node.attrs.name);
+        return false;
+      }
     });
     const saved = getMarkdown(editor);
     let edited: string | null = null;
@@ -191,6 +197,7 @@ describe('pages without a blank line inside an attribute value read as on main',
     if (process.env.WRITE_BLANK_LINE_MAIN) {
       const crAsLf = crPages.map((index) => digest(result(normalizeLineEndings(pages[index]?.page as string), pages[index]?.key as string)));
       writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests, crAsLf }, null, 2)}\n`);
+      return;
     }
     const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[]; crAsLf: string[] };
     expect(main.pages).toBe(pages.length);

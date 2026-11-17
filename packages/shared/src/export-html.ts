@@ -18,6 +18,22 @@ import {
 
 export { mayHaveActiveExportHtml } from './export-html-source';
 
+export interface ExportFallbackContext {
+  pageId: string;
+  onLiteralFallback: (event: { pageId: string }) => void;
+}
+
+// Report only the selected fallback's owned regions, never its source/model.
+const reportFallback = (count: number, context?: ExportFallbackContext) => {
+  if (context) for (let index = 0; index < count; index++) context.onLiteralFallback({ pageId: context.pageId });
+};
+
+const literalFallback = (model: ExportStructure, context?: ExportFallbackContext, nativeBoundaries = false): string => {
+  const output = literalExportText(model, nativeBoundaries);
+  reportFallback((model.rescue ?? model.literal ?? []).length, context);
+  return output;
+};
+
 const neutralize = (source: string, remaining = false, state = readExportHtml(source)) => {
   if (!state) return { output: source, active: 0 };
   const { tokens, spans, editable, code, leaders } = state;
@@ -82,7 +98,13 @@ const settle = (first: string): string => {
  * of an edited raw-HTML run (blank outside lists, thematic inside), plus
  * whitespace padding on its own blank lines.
  * Container prefixes move to the separator; author/code bytes are retained. */
-const boundedLiteralization = (model: ExportStructure, tokens: Token[], initial: Uint8Array, regions: ExportHtmlRun[]): string => {
+const boundedLiteralization = (
+  model: ExportStructure,
+  tokens: Token[],
+  initial: Uint8Array,
+  regions: ExportHtmlRun[],
+  context?: ExportFallbackContext,
+): string => {
   const source = model.source;
   const records = exportSourceLines(source);
   const lines = records.map((line) => line.text);
@@ -135,11 +157,16 @@ const boundedLiteralization = (model: ExportStructure, tokens: Token[], initial:
     }
   }
   const bounded = settle(body.join(''));
-  return compareExportStructure(model, bounded, parseExportTokens(bounded)).equal ? bounded : literalExportText(model);
+  return compareExportStructure(model, bounded, parseExportTokens(bounded)).equal ? bounded : literalFallback(model, context);
 };
 
 /** Risky runs become literal text before any structural repair is attempted. */
-const literalizeRun = (source: string, state: NonNullable<ReturnType<typeof readExportHtml>>, model: ExportStructure): string => {
+const literalizeRun = (
+  source: string,
+  state: NonNullable<ReturnType<typeof readExportHtml>>,
+  model: ExportStructure,
+  context?: ExportFallbackContext,
+): string => {
   const owned = new Uint8Array(source.length);
   for (const range of model.literal ?? []) owned.fill(1, range.from, range.to);
   const leaders = new Set(state.leaders);
@@ -153,7 +180,7 @@ const literalizeRun = (source: string, state: NonNullable<ReturnType<typeof read
     else pieces.push(c);
   }
   const output = pieces.join('');
-  if (!compareExportStructure(model, output, parseExportTokens(output)).equal) return literalExportText(model);
+  if (!compareExportStructure(model, output, parseExportTokens(output)).equal) return literalFallback(model, context);
   const visible = renderedExportText(output);
   const records = exportSourceLines(source);
   let visibleAt = 0;
@@ -167,31 +194,32 @@ const literalizeRun = (source: string, state: NonNullable<ReturnType<typeof read
             .join('')
         : source.slice(range.from, range.to).replaceAll('\r\n', '\n').replaceAll('\r', '\n').replaceAll('\0', '\uFFFD');
     const end = exportTextEnd(authoredExportText(expected), visible, visibleAt);
-    if (end < 0) return literalExportText(model);
+    if (end < 0) return literalFallback(model, context);
     visibleAt = end;
   }
+  reportFallback((model.literal ?? []).length, context);
   return output;
 };
 
-const escapeActiveElements = (source: string): string => {
+const escapeActiveElements = (source: string, context?: ExportFallbackContext): string => {
   const state = readExportHtml(source);
   if (!state) return source;
   const model = captureExportStructure(source, state.tokens, state);
-  if (model.risky) return literalizeRun(source, state, model);
+  if (model.risky) return literalizeRun(source, state, model, context);
   const first = neutralize(source, false, state);
-  if (!first.active || !first.tokens || !first.escaped) return literalExportText(model);
+  if (!first.active || !first.tokens || !first.escaped) return literalFallback(model, context);
   const output = settle(first.output);
   const comparison = compareExportStructure(model, output, parseExportTokens(output));
   if (comparison.equal) return output;
-  return boundedLiteralization(model, first.tokens, first.escaped, comparison.regions);
+  return boundedLiteralization(model, first.tokens, first.escaped, comparison.regions, context);
 };
 
 /** Preserve the foundation's projection first. Only constructs that remain live
  * in its rendered output acquire an owned literal-text region. */
-export const escapeDisallowedExportHtml = (source: string): string => {
-  const baseline = escapeActiveElements(source);
+export const escapeDisallowedExportHtml = (source: string, context?: ExportFallbackContext): string => {
+  const baseline = escapeActiveElements(source, context);
   const state = readExportHtml(baseline, { hazards: true });
   if (!state) return baseline;
   const model = captureExportStructure(baseline, state.tokens, state);
-  return literalExportText(model, true);
+  return literalFallback(model, context, true);
 };

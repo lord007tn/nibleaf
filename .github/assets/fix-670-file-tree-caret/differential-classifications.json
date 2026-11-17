@@ -1,0 +1,901 @@
+{
+  "base": "c3285e6c2de544aa251b627924f513758be0815d",
+  "head": "45822fd8aea00dde3311f12f2ec170ad80b89635",
+  "sourceChanges": [
+    {
+      "id": "fixture/72",
+      "changes": [
+        "saved",
+        "rename",
+        "add",
+        "delete",
+        "undoRename",
+        "undoAdd",
+        "undoDelete",
+        "reloaded"
+      ],
+      "classification": "preserves-authored-file-sibling-hierarchy",
+      "main": {
+        "id": "fixture/72",
+        "source": "<FileTree>\n\n<File name=\"first\" />\n\nRead me.\n\n<File name=\"last\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "names": ["first", "last"],
+        "trees": 1,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"last\" />\n\n</Folder>\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<Folder>\n\nRead me.\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>"
+      },
+      "head": {
+        "id": "fixture/72",
+        "source": "<FileTree>\n\n<File name=\"first\" />\n\nRead me.\n\n<File name=\"last\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "names": ["first", "last"],
+        "trees": 1,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"last\" />\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>"
+      },
+      "reason": "Unsupported body content is wrapped in an anonymous Folder; following authored File siblings stay at their authored level. Main absorbs those Files into the synthetic Folder. No content or File attributes are lost.",
+      "proof": {
+        "onlySyntheticFolderCloserMoves": true,
+        "sourceFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "mainSavedFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 1
+          }
+        ],
+        "headSavedFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "allChangedOperationsPreserveContentAndFileAttributes": true
+      }
+    },
+    {
+      "id": "fixture/74",
+      "changes": [
+        "saved",
+        "rename",
+        "add",
+        "delete",
+        "undoRename",
+        "undoAdd",
+        "undoDelete",
+        "reloaded"
+      ],
+      "classification": "preserves-authored-file-sibling-hierarchy",
+      "main": {
+        "id": "fixture/74",
+        "source": "<FileTree>\n\n<File name=\"first\" />\n\n<p>one</p><p>two</p>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "names": ["first", "last"],
+        "trees": 1,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<Folder>\n\none\n\ntwo\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n<File name=\"last\" />\n\n</Folder>\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<Folder>\n\none\n\ntwo\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>"
+      },
+      "head": {
+        "id": "fixture/74",
+        "source": "<FileTree>\n\n<File name=\"first\" />\n\n<p>one</p><p>two</p>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "names": ["first", "last"],
+        "trees": 1,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<Folder>\n\none\n\ntwo\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n</Folder>\n\n<File name=\"last\" />\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<Folder>\n\none\n\ntwo\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\none\n\ntwo\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>"
+      },
+      "reason": "Unsupported body content is wrapped in an anonymous Folder; following authored File siblings stay at their authored level. Main absorbs those Files into the synthetic Folder. No content or File attributes are lost.",
+      "proof": {
+        "onlySyntheticFolderCloserMoves": true,
+        "sourceFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "mainSavedFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 1
+          }
+        ],
+        "headSavedFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "allChangedOperationsPreserveContentAndFileAttributes": true
+      }
+    },
+    {
+      "id": "fixture/78",
+      "changes": [
+        "saved",
+        "rename",
+        "add",
+        "delete",
+        "undoRename",
+        "undoAdd",
+        "undoDelete",
+        "reloaded"
+      ],
+      "classification": "preserves-authored-file-sibling-hierarchy",
+      "main": {
+        "id": "fixture/78",
+        "source": "<FileTree>\n\n<File name=\"first\" />\n\n<ul><li>one</li><li>two</li></ul>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "names": ["first", "last"],
+        "trees": 1,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<Folder>\n\n- one\n- two\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n<File name=\"last\" />\n\n</Folder>\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<Folder>\n\n- one\n- two\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>"
+      },
+      "head": {
+        "id": "fixture/78",
+        "source": "<FileTree>\n\n<File name=\"first\" />\n\n<ul><li>one</li><li>two</li></ul>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "names": ["first", "last"],
+        "trees": 1,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<Folder>\n\n- one\n- two\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n</Folder>\n\n<File name=\"last\" />\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<Folder>\n\n- one\n- two\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n- one\n- two\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>"
+      },
+      "reason": "Unsupported body content is wrapped in an anonymous Folder; following authored File siblings stay at their authored level. Main absorbs those Files into the synthetic Folder. No content or File attributes are lost.",
+      "proof": {
+        "onlySyntheticFolderCloserMoves": true,
+        "sourceFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "mainSavedFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 1
+          }
+        ],
+        "headSavedFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "allChangedOperationsPreserveContentAndFileAttributes": true
+      }
+    },
+    {
+      "id": "fixture/79",
+      "changes": [
+        "saved",
+        "rename",
+        "add",
+        "delete",
+        "undoRename",
+        "undoAdd",
+        "undoDelete",
+        "reloaded"
+      ],
+      "classification": "preserves-authored-file-sibling-hierarchy",
+      "main": {
+        "id": "fixture/79",
+        "source": "<FileTree>\n\n<File name=\"a\" />\n\nRead me.\n\n<File name=\"b\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n</Folder>\n\n</FileTree>",
+        "names": ["a", "b"],
+        "trees": 1,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n</Folder>\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n</Folder>\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n</Folder>\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n</Folder>\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n</Folder>\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n</Folder>\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n</Folder>\n\n</FileTree>"
+      },
+      "head": {
+        "id": "fixture/79",
+        "source": "<FileTree>\n\n<File name=\"a\" />\n\nRead me.\n\n<File name=\"b\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n</FileTree>",
+        "names": ["a", "b"],
+        "trees": 1,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n</FileTree>"
+      },
+      "reason": "Unsupported body content is wrapped in an anonymous Folder; following authored File siblings stay at their authored level. Main absorbs those Files into the synthetic Folder. No content or File attributes are lost.",
+      "proof": {
+        "onlySyntheticFolderCloserMoves": true,
+        "sourceFiles": [
+          {
+            "attributes": {
+              "name": "a"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "b"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "mainSavedFiles": [
+          {
+            "attributes": {
+              "name": "a"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "b"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 1
+          }
+        ],
+        "headSavedFiles": [
+          {
+            "attributes": {
+              "name": "a"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "b"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "allChangedOperationsPreserveContentAndFileAttributes": true
+      }
+    },
+    {
+      "id": "fixture/80",
+      "changes": [
+        "saved",
+        "rename",
+        "add",
+        "delete",
+        "undoRename",
+        "undoAdd",
+        "undoDelete",
+        "reloaded"
+      ],
+      "classification": "preserves-authored-file-sibling-hierarchy",
+      "main": {
+        "id": "fixture/80",
+        "source": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\nRead me.\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "names": ["first", "a", "b", "last"],
+        "trees": 1,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</Folder>\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>"
+      },
+      "head": {
+        "id": "fixture/80",
+        "source": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\nRead me.\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</FileTree>",
+        "names": ["first", "a", "b", "last"],
+        "trees": 1,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"first\" />\n\n<File name=\"a\" />\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n<File name=\"b\" />\n\n<File name=\"last\" />\n\n</FileTree>"
+      },
+      "reason": "Unsupported body content is wrapped in an anonymous Folder; following authored File siblings stay at their authored level. Main absorbs those Files into the synthetic Folder. No content or File attributes are lost.",
+      "proof": {
+        "onlySyntheticFolderCloserMoves": true,
+        "sourceFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "a"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "b"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "mainSavedFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "a"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "b"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 1
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 1
+          }
+        ],
+        "headSavedFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "a"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "b"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "allChangedOperationsPreserveContentAndFileAttributes": true
+      }
+    },
+    {
+      "id": "fixture/82",
+      "changes": [
+        "saved",
+        "rename",
+        "add",
+        "delete",
+        "undoRename",
+        "undoAdd",
+        "undoDelete",
+        "reloaded"
+      ],
+      "classification": "preserves-authored-file-sibling-hierarchy",
+      "main": {
+        "id": "fixture/82",
+        "source": "<FileTree>\n\n<File name=\"first\" />\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "names": ["first", "nested", "last"],
+        "trees": 2,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n<File name=\"last\" />\n\n</Folder>\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n<File name=\"last\" />\n\n</Folder>\n\n</FileTree>"
+      },
+      "head": {
+        "id": "fixture/82",
+        "source": "<FileTree>\n\n<File name=\"first\" />\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "saved": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "names": ["first", "nested", "last"],
+        "trees": 2,
+        "rename": "<FileTree>\n\n<File name=\"renamed.ts\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "undoRename": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "add": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n</Folder>\n\n<File name=\"last\" />\n\n<File name=\"added.ts\" />\n\n</FileTree>",
+        "undoAdd": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "delete": "<FileTree>\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "undoDelete": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>",
+        "reloaded": "<FileTree>\n\n<File name=\"first\" />\n\n<Folder>\n\n<FileTree>\n\n<File name=\"nested\" />\n\n</FileTree>\n\n</Folder>\n\n<File name=\"last\" />\n\n</FileTree>"
+      },
+      "reason": "Unsupported body content is wrapped in an anonymous Folder; following authored File siblings stay at their authored level. Main absorbs those Files into the synthetic Folder. No content or File attributes are lost.",
+      "proof": {
+        "onlySyntheticFolderCloserMoves": true,
+        "sourceFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "nested"
+            },
+            "fileTreeDepth": 2,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "mainSavedFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "nested"
+            },
+            "fileTreeDepth": 2,
+            "folderDepth": 1
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 1
+          }
+        ],
+        "headSavedFiles": [
+          {
+            "attributes": {
+              "name": "first"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          },
+          {
+            "attributes": {
+              "name": "nested"
+            },
+            "fileTreeDepth": 2,
+            "folderDepth": 1
+          },
+          {
+            "attributes": {
+              "name": "last"
+            },
+            "fileTreeDepth": 1,
+            "folderDepth": 0
+          }
+        ],
+        "allChangedOperationsPreserveContentAndFileAttributes": true
+      }
+    }
+  ],
+  "canonicalBaselineNormalizations": [
+    {
+      "id": "frame/66",
+      "main": "Intro.\n\nSome\n\n<File name={<b title=\"</Card>\">x</b>} {...props} />\n\n more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<File name={<b title=\"</Card>\">x</b>} {...props} />\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<File name={<b title=\"</Card>\">x</b>} {...props} />\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/176",
+      "main": "Intro.\n\nSome\n\n<Folder name={/\"/}{...props}\n>\n\ninline text\n\n</Folder>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<Folder name={/\"/}{...props}\n>\n\ninline text\n\n</Folder>\n\nmore text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<Folder name={/\"/}{...props}\n>\n\ninline text\n\n</Folder>\n\nmore text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/214",
+      "main": "Intro.\n\nSome\n\n<File name='A' />\n\n more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<File name='A' />\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<File name='A' />\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/251",
+      "main": "Intro.\n\nSome\n\n<File name=\"a > b\"{...props}></File>\n\n more text.\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<File name=\"a > b\"{...props}></File>\n\nmore text.\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<File name=\"a > b\"{...props}></File>\n\nmore text.\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/325",
+      "main": "Intro.\n\nSome\n\n<File name={\"x\"} a.b=\"x\"\n></File>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<File name={\"x\"} a.b=\"x\"\n></File>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<File name={\"x\"} a.b=\"x\"\n></File>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/545",
+      "main": "Intro.\n\nSome\n\n<FileTree title=\"\"<b>\n\n<Folder>\n\n\" xml:lang=\"en\"\n\n> inline text\n\n</Folder>\n\n</FileTree>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<FileTree title=\"\"<b>\n\n<Folder>\n\n\" xml:lang=\"en\"\n\n> inline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<FileTree title=\"\"<b>\n\n<Folder>\n\n\" xml:lang=\"en\"\n\n> inline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/584",
+      "main": "Intro.\n\nSome\n\n<File name=\"<b>\"\n  aria-label=\"L\"\n\n></File>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<File name=\"<b>\"\n  aria-label=\"L\"\n\n></File>\n\nmore text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<File name=\"<b>\"\n  aria-label=\"L\"\n\n></File>\n\nmore text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/732",
+      "main": "Intro.\n\nSome\n\n<File name={a / b} href=\"/docs\"title=\"B\" />\n\n more text.\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<File name={a / b} href=\"/docs\"title=\"B\" />\n\nmore text.\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<File name={a / b} href=\"/docs\"title=\"B\" />\n\nmore text.\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/880",
+      "main": "Intro.\n\nSome\n\n<File name={<b title=\"</Card>\">x</b>} href=\"/docs\"title=\"B\"\n></File>\n\n more text.\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<File name={<b title=\"</Card>\">x</b>} href=\"/docs\"title=\"B\"\n></File>\n\nmore text.\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<File name={<b title=\"</Card>\">x</b>} href=\"/docs\"title=\"B\"\n></File>\n\nmore text.\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/989",
+      "main": "Intro.\n\nSome\n\n<FileTree title={<b title=\"</Card>\">x</b>}\n>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<FileTree title={<b title=\"</Card>\">x</b>}\n>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<FileTree title={<b title=\"</Card>\">x</b>}\n>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/1102",
+      "main": "Intro.\n\nSome\n\n<File name='A'\n  aria-label=\"L\"\n />\n\n more text.\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<File name='A'\n  aria-label=\"L\"\n />\n\nmore text.\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<File name='A'\n  aria-label=\"L\"\n />\n\nmore text.\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/1175",
+      "main": "Intro.\n\nSome\n\n<Folder name=\"\u00fc\" xml:lang=\"en\">\n\ninline text\n\n</Folder>\n\n more text.\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<Folder name=\"\u00fc\" xml:lang=\"en\">\n\ninline text\n\n</Folder>\n\nmore text.\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<Folder name=\"\u00fc\" xml:lang=\"en\">\n\ninline text\n\n</Folder>\n\nmore text.\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/1286",
+      "main": "Intro.\n\nSome\n\n<Folder name=\"A\" data-x={1}>\n\ninline text\n\n</Folder>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<Folder name=\"A\" data-x={1}>\n\ninline text\n\n</Folder>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<Folder name=\"A\" data-x={1}>\n\ninline text\n\n</Folder>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/1323",
+      "main": "Intro.\n\nSome\n\n<Folder name=\"Old\\\">\n\nmore text.\n\n</Folder>\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<Folder name=\"Old\\\">\n\nmore text.\n\n## Later heading\n\nOutro.\n\n</Folder>",
+      "mainReload": "Intro.\n\nSome\n\n<Folder name=\"Old\\\">\n\nmore text.\n\n## Later heading\n\nOutro.\n\n</Folder>",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "frame/1396",
+      "main": "Intro.\n\nSome\n\n<FileTree title=\"\u00fc\" id=\"x\">\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<FileTree title=\"\u00fc\" id=\"x\">\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<FileTree title=\"\u00fc\" id=\"x\">\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/30",
+      "main": "Intro.\n\n- Some\n\n  <File name=\"{`a\nb`}\"\n  \n    id=\"x\" />\n\n   more text.\n\nOutro.",
+      "head": "Intro.\n\n- Some",
+      "mainReload": "Intro.\n\n- Some",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/136",
+      "main": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<FileTree title=\"R&amp;D\nx\" id=\"x\">\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\n more text.\n\n</Step>\n\n</Steps>\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<FileTree title=\"R&amp;D\nx\" id=\"x\">\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n</Step>\n\n</Steps>\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<FileTree title=\"R&amp;D\nx\" id=\"x\">\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n</Step>\n\n</Steps>\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/137",
+      "main": "Intro.\n\n> \n>\n> <Folder name=\"a\n&lt;/blockquote&gt;&lt;p&gt;&gt; b&quot;&gt;&lt;/p&gt;&lt;blockquote&gt;&lt;p&gt;First.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;p&gt;one&lt;/p&gt;&lt;/li&gt;&lt;li&gt;&lt;p&gt;two&lt;/p&gt;&lt;/li&gt;&lt;/ul&gt;&lt;pre&gt;&lt;code data-mdx-fence-open=\" hidden>\n>\n> const x = 1; const y = 2;\n>\n> </Folder>\n\nOutro.",
+      "head": "Intro.\n\n> ",
+      "mainReload": "Intro.\n\n> ",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/172",
+      "main": "Intro.\n\n- Some\n\n  <FileTree title=\"a\n  b\"{...props}>\n\n  <Folder>\n\n  </Folder>\n\n  </FileTree>\n\n   more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\n- Some\n\n  <FileTree title=\"a\n  b\"{...props}>\n\n  <Folder>\n\n  </Folder>\n\n  </FileTree>\n\n  more text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\n- Some\n\n  <FileTree title=\"a\n  b\"{...props}>\n\n  <Folder>\n\n  </Folder>\n\n  </FileTree>\n\n  more text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/246",
+      "main": "Intro.\n\n> Some\n>\n> <File name=\"<b>\n> </Card>\"\n></File>\n\nOutro.",
+      "head": "Intro.\n\n> Some",
+      "mainReload": "Intro.\n\n> Some",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/353",
+      "main": "Intro.\n\nSome\n\n<Folder name=\"A\" hidden />\n\n more text.\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<Folder name=\"A\" hidden />\n\nmore text.\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<Folder name=\"A\" hidden />\n\nmore text.\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/424",
+      "main": "Intro.\n\n- Some\n\n  <FileTree title={`a\n  b`}>\n\n  <Folder>\n\n  inline text\n\n  </Folder>\n\n  </FileTree>\n\n   more text.\n\nOutro.",
+      "head": "Intro.\n\n- Some\n\n  <FileTree title={`a\n  b`}>\n\n  <Folder>\n\n  inline text\n\n  </Folder>\n\n  </FileTree>\n\n  more text.\n\nOutro.",
+      "mainReload": "Intro.\n\n- Some\n\n  <FileTree title={`a\n  b`}>\n\n  <Folder>\n\n  inline text\n\n  </Folder>\n\n  </FileTree>\n\n  more text.\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/460",
+      "main": "Intro.\n\nSome\n\n<FileTree title={`a\nb`}\n\n  id=\"x\">\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<FileTree title={`a\nb`}\n\n  id=\"x\">\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<FileTree title={`a\nb`}\n\n  id=\"x\">\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/461",
+      "main": "Intro.\n\n> Some\n>\n> <Folder name=\"A\"{...props}\n>\n>\n> &gt;inline text\n>\n> </Folder>\n>\n>  more text.\n\nOutro.",
+      "head": "Intro.\n\n> Some\n>\n> <Folder name=\"A\"{...props}\n>\n>\n> &gt;inline text\n>\n> </Folder>\n>\n> more text.\n\nOutro.",
+      "mainReload": "Intro.\n\n> Some\n>\n> <Folder name=\"A\"{...props}\n>\n>\n> &gt;inline text\n>\n> </Folder>\n>\n> more text.\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/496",
+      "main": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<FileTree title=\"a\nb\" hidden>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\n more text.\n\n</Step>\n\n</Steps>\n\nOutro.",
+      "head": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<FileTree title=\"a\nb\" hidden>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n</Step>\n\n</Steps>\n\nOutro.",
+      "mainReload": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<FileTree title=\"a\nb\" hidden>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n</Step>\n\n</Steps>\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/533",
+      "main": "Intro.\n\n> \n>\n> <Folder name=\"a\r&lt;/blockquote&gt;&lt;p&gt;b&quot;&gt;   aria-label=&quot;L&quot;&lt;/p&gt;&lt;blockquote&gt;&lt;blockquote&gt;&lt;/blockquote&gt;&lt;p&gt;First.&lt;/p&gt;&lt;ul&gt;&lt;li&gt;&lt;p&gt;one&lt;/p&gt;&lt;/li&gt;&lt;li&gt;&lt;p&gt;two&lt;/p&gt;&lt;/li&gt;&lt;/ul&gt;&lt;pre&gt;&lt;code data-mdx-fence-open=\"\n>\n>\n> const x = 1; const y = 2;\n>\n> </Folder>\n\nOutro.",
+      "head": "Intro.\n\n> ",
+      "mainReload": "Intro.\n\n> ",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/534",
+      "main": "Intro.\n\n> Some\n>\n> <File name=\"a\n>  \u00a0\n> b\"\n></File>\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\n> Some\n>\n> <File name=\"a\n&lt;/blockquote&gt;&lt;p data-md-paragraph-source=\"\n></File>\n>\n> ## Later heading\n>\n> Outro.",
+      "mainReload": "Intro.\n\n> Some\n>\n> <File name=\"a\n&lt;/blockquote&gt;&lt;p data-md-paragraph-source=\"\n></File>\n>\n> ## Later heading\n>\n> Outro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/606",
+      "main": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<File name=\"a\nb\" data-x={1}\n\n />\n\n more text.\n\n</Step>\n\n</Steps>\n\nOutro.",
+      "head": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<File name=\"a\nb\" data-x={1}\n\n />\n\nmore text.\n\n</Step>\n\n</Steps>\n\nOutro.",
+      "mainReload": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<File name=\"a\nb\" data-x={1}\n\n />\n\nmore text.\n\n</Step>\n\n</Steps>\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/713",
+      "main": "Intro.\n\n> Some\n>\n> <Folder name='a\n>   b'{...props}\n>\n>\n> &gt;inline text\n>\n> </Folder>\n>\n>  more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\n> Some",
+      "mainReload": "Intro.\n\n> Some",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/714",
+      "main": "Intro.\n\nSome\n\n<File name=\"a\\n\\nb\"\n\n  id=\"x\" />\n\n more text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<File name=\"a\\n\\nb\"\n\n  id=\"x\" />\n\nmore text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<File name=\"a\\n\\nb\"\n\n  id=\"x\" />\n\nmore text.\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/749",
+      "main": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<Folder name=\"A\"{...props}>\n\ninline text\n\n</Folder>\n\n more text.\n\n</Step>\n\n</Steps>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "head": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<Folder name=\"A\"{...props}>\n\ninline text\n\n</Folder>\n\nmore text.\n\n</Step>\n\n</Steps>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "mainReload": "Intro.\n\n<Steps>\n\n<Step title=\"S\">\n\nSome\n\n<Folder name=\"A\"{...props}>\n\ninline text\n\n</Folder>\n\nmore text.\n\n</Step>\n\n</Steps>\n\n<Card title=\"Next\">\n\nMore\n\n</Card>\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/750",
+      "main": "Intro.\n\n> \n>\n> <File name=\"{{\n&lt;/blockquote&gt;&lt;p data-md-paragraph-source=\" />\n>\n> <Card title=\"Next\">\n>\n> More\n>\n> </Card>\n>\n> Outro.",
+      "head": "Intro.\n\n> \n>\n> <File name=\"{{\n&lt;/blockquote&gt;&lt;p&gt;&lt;/blockquote&gt;&lt;p data-md-paragraph-source=&quot;&gt;&lt;/div&gt;&lt;/p&gt;&lt;blockquote&gt;&lt;div data-mdx=\" />\n>\n> Outro.",
+      "mainReload": "Intro.\n\n> \n>\n> <File name=\"{{\n&lt;/blockquote&gt;&lt;p&gt;&lt;/blockquote&gt;&lt;p data-md-paragraph-source=&quot;&gt;&lt;/div&gt;&lt;/p&gt;&lt;blockquote&gt;&lt;div data-mdx=\" />\n>\n> Outro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/785",
+      "main": "Intro.\n\n> \n>\n> <Folder name=\"a\n&lt;/blockquote&gt;&lt;p&gt;&gt;   b&quot;&gt;&lt;/div&gt;&lt;/p&gt;&lt;div data-mdx=\"{...props}>\n>\n> More\n>\n> </Folder>\n>\n> Outro.",
+      "head": "Intro.\n\n> ",
+      "mainReload": "Intro.\n\n> ",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/820",
+      "main": "Intro.\n\nSome\n\n<FileTree title=\"<b>\n</Card>\"\n\n  id=\"x\"\n>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<FileTree title=\"<b>\n</Card>\"\n\n  id=\"x\"\n>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<FileTree title=\"<b>\n</Card>\"\n\n  id=\"x\"\n>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/822",
+      "main": "Intro.\n\n> Some\n>\n> <File name=\"a\\n\\nb\" hidden />\n>\n>  more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\n> Some\n>\n> <File name=\"a\\n\\nb\" hidden />\n>\n> more text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\n> Some\n>\n> <File name=\"a\\n\\nb\" hidden />\n>\n> more text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "blank/856",
+      "main": "Intro.\n\nSome\n\n<FileTree title=\"<b>\n</Card>\" hidden\n>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\n more text.\n\n## Later heading\n\nOutro.",
+      "head": "Intro.\n\nSome\n\n<FileTree title=\"<b>\n</Card>\" hidden\n>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "mainReload": "Intro.\n\nSome\n\n<FileTree title=\"<b>\n</Card>\" hidden\n>\n\n<Folder>\n\ninline text\n\n</Folder>\n\n</FileTree>\n\nmore text.\n\n## Later heading\n\nOutro.",
+      "classification": "existing-main-reload-normalization"
+    },
+    {
+      "id": "lf/479",
+      "main": "![Diagram](/diagram.png)\n\n\n![Diagram](/diagram.png)\n\n- [ ] todo\n\n- [x] done Line one\\\n  line two.\n\n<Folder name=\"Line one\nline two\">\n\nBody text\nwrapped.\n\n</Folder>",
+      "head": "![Diagram](/diagram.png)\n\n![Diagram](/diagram.png)\n\n- [ ] todo\n\n- [x] done Line one\\\n  line two.\n\n<Folder name=\"Line one\nline two\">\n\nBody text\nwrapped.\n\n</Folder>",
+      "mainReload": "![Diagram](/diagram.png)\n\n![Diagram](/diagram.png)\n\n- [ ] todo\n\n- [x] done Line one\\\n  line two.\n\n<Folder name=\"Line one\nline two\">\n\nBody text\nwrapped.\n\n</Folder>",
+      "classification": "existing-main-reload-normalization"
+    }
+  ],
+  "gatePassed": true
+}

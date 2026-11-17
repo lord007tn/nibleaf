@@ -1429,6 +1429,10 @@ export interface GitConfigStored extends GitConfig {
   lastSyncError?: string;
 }
 
+/** Public settings GET/PATCH shape. Verification material is never a public settings field. */
+export type PublicGitSettings = Omit<GitConfigStored, 'webhookSecret'> &
+  Record<string, unknown> & { webhookConfigured: boolean; webhookSecret?: never };
+
 // ─── Bidirectional Git authoring ────────────────────────────────────────────
 
 const invalidGitBranchCharacter = (character: string): boolean =>

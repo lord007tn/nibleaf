@@ -65,7 +65,7 @@ async function mount(projectId: string, key = 'first') {
 }
 /** Starts a rotation and lets React render what it changed (the busy slot); `done` is the rotation itself. */
 const start = async (hook: () => Rotation, site: string) => {
-  let done: Promise<boolean> = Promise.resolve(false);
+  let done: Promise<{ webhookSecret: string | null } | null> = Promise.resolve(null);
   await act(async () => {
     done = hook().rotate(site);
   });
@@ -140,12 +140,12 @@ describe('the busy slot belongs to the session and site that started it', () => 
 
     const readsBefore = mocks.settingsGet.mock.calls.length;
     await answer(0, json(200, { data: { webhookSecret: SECRET } }));
-    await expect(old).resolves.toBe(false);
+    await expect(old).resolves.toBeNull();
     expect(mocks.settingsGet.mock.calls.length).toBe(readsBefore);
     // The old session's answer did not free the new session's rotation.
     expect(next().pending).toBe(true);
     await answer(1, json(200, { data: { webhookSecret: SECRET } }));
-    await expect(current).resolves.toBe(true);
+    await expect(current).resolves.toEqual({ webhookSecret: SECRET });
     expect(next().pending).toBe(false);
   });
 
@@ -161,10 +161,10 @@ describe('the busy slot belongs to the session and site that started it', () => 
     const { done: rotation } = await start(hook, 'site-a');
     await answer(0, json(200, { data: { webhookSecret: SECRET } }));
     expect(hook().pending).toBe(true);
-    await expect(hook().rotate('site-a')).resolves.toBe(false);
+    await expect(hook().rotate('site-a')).resolves.toBeNull();
     expect(mocks.rotatePost).toHaveBeenCalledTimes(1);
     await act(async () => finishRead(json(200, { data: { git: {} } })));
-    await expect(rotation).resolves.toBe(true);
+    await expect(rotation).resolves.toEqual({ webhookSecret: SECRET });
     await act(async () => new Promise((done) => setTimeout(done, 0)));
     expect(hook().pending).toBe(false);
   });

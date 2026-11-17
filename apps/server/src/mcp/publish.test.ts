@@ -8,11 +8,19 @@ const mocks = vi.hoisted(() => ({
     SITE_BASE_DOMAIN: undefined as string | undefined,
   },
   findDomains: vi.fn(),
+  getCurrentDraft: vi.fn(),
+  getPendingChanges: vi.fn(),
+  listDeployments: vi.fn(),
+  deploymentFindFirst: vi.fn(),
 }));
 
 vi.mock('@/env', () => ({ env: mocks.env }));
-vi.mock('@nibleaf/database', () => ({ prisma: { domain: { findMany: mocks.findDomains } } }));
-vi.mock('@/actions/deployments', () => ({}));
+vi.mock('@nibleaf/database', () => ({ prisma: { domain: { findMany: mocks.findDomains }, deployment: { findFirst: mocks.deploymentFindFirst } } }));
+vi.mock('@/actions/deployments', () => ({
+  getCurrentDraft: mocks.getCurrentDraft,
+  getPendingChanges: mocks.getPendingChanges,
+  listDeployments: mocks.listDeployments,
+}));
 
 import {
   changedSiteSettings,
@@ -21,6 +29,7 @@ import {
   publishedSiteUrl,
   publishStateDigest,
   readPublishPreviewToken,
+  readPublishState,
 } from './publish';
 
 const pageEntry = (id: string, content: string, updatedAt = '2026-11-02T00:00:00.000Z') => ({
@@ -168,4 +177,23 @@ describe('publishedSiteUrl', () => {
     mocks.env.SITE_BASE_DOMAIN = undefined;
     await expect(publishedSiteUrl('site-1', 'acme')).resolves.toBe('https://app.nibleaf.test/sites/site-1');
   });
+});
+
+it('passes the same server-only raw-body companion into the MCP pending check', async () => {
+  const current = snapshot([]);
+  const draft = {
+    snapshot: current,
+    rawBodies: [{ kind: 'PAGE', content: 'Raw {{ product }} body.' }],
+    baselines: [{ bodyHash: 'fictional-body-hash' }],
+  };
+  mocks.listDeployments.mockResolvedValue([]);
+  mocks.getCurrentDraft.mockResolvedValue(draft);
+  mocks.getPendingChanges.mockResolvedValue({ lastVersion: null, hasRealContent: false });
+  mocks.deploymentFindFirst.mockResolvedValue(null);
+  const result = await readPublishState('project-1');
+  expect(mocks.getCurrentDraft).toHaveBeenCalledTimes(1);
+  expect(mocks.getPendingChanges).toHaveBeenCalledWith('project-1', draft);
+  expect(result.snapshot).toBe(current);
+  expect(result).not.toHaveProperty('rawBodies');
+  expect(result).not.toHaveProperty('baselines');
 });

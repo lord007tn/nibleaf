@@ -26,8 +26,7 @@ import projectSettingsRoutes from './routes';
 // Guards resolve the owning org; website settings always use the explicit projectId.
 const app = new Hono<HonoEnv>()
   .get('/', ...projectSettingsRoutes.get, async (ctx) => {
-    // Same scoped DTO as the workspace settings GET: the webhook secret is
-    // ADMIN material, and this GET is member-level.
+    // Same secret-free public DTO as the compatibility workspace settings GET/PATCH.
     const organizationId = getContextOrganizationIdOrThrow();
     return ctx.json({ data: await getScopedWorkspaceSettings(organizationId, getContextMembership()?.role ?? '', ctx.req.param('projectId')) }, 200);
   })

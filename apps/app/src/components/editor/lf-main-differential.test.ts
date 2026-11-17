@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
-import { Editor } from '@tiptap/core';
+import { Editor, type JSONContent } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import {
@@ -109,6 +109,17 @@ const pages: Array<{ page: string; edits: readonly CorpusEdit[] }> = [
   ),
 ];
 
+/** Project only #670's duplicated File name text to the historical atom shape.
+ * The name attribute, every other node, and all Markdown remain in the digest. */
+const mainFileShape = (node: JSONContent): JSONContent => {
+  if (node.type === 'mdxFile') {
+    expect(node.content?.map((child) => child.text ?? '').join('') ?? '').toBe(node.attrs?.name ?? '');
+    const { content: _name, ...atom } = node;
+    return atom;
+  }
+  return node.content ? { ...node, content: node.content.map(mainFileShape) } : node;
+};
+
 describe('pages with LF only save as on main (#702)', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => editor.destroy());
@@ -121,7 +132,7 @@ describe('pages with LF only save as on main (#702)', () => {
     edit: (target: Editor) => DifferentialEditor = (target) => target as unknown as DifferentialEditor,
   ): string => {
     editor.commands.setContent(page, { emitUpdate: false });
-    const nodes = JSON.stringify(editor.state.doc.toJSON());
+    const nodes = JSON.stringify(mainFileShape(editor.state.doc.toJSON()));
     const saved = getMarkdown(editor);
     applyCorpusEdits(edit(editor), edits);
     const edited = getMarkdown(editor);
@@ -135,7 +146,10 @@ describe('pages with LF only save as on main (#702)', () => {
 
   it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages, but #660’s`, () => {
     const digests = pages.map(({ page, edits }) => digest(page, edits));
-    if (process.env.WRITE_LF_MAIN) writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
+    if (process.env.WRITE_LF_MAIN) {
+      writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
+      return;
+    }
     const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[] };
     expect(main.pages).toBe(pages.length);
     const changed = digests.flatMap((value, index) => (value === main.digests[index] ? [] : [index]));

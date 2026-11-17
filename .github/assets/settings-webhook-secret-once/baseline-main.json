@@ -1,0 +1,18 @@
+{
+  "ordinary": {
+    "baseline": "c3285e6c2de544aa251b627924f513758be0815d",
+    "case": "ordinary main HTTP settings response; real QueryClient, settings query, GitTab and rotation command; held HTTP only",
+    "storedCredential": "<credential#2>",
+    "responseCredential": "<credential#1>",
+    "queryRetainsStored": true,
+    "defaultDehydrateRetainsStored": true,
+    "initialFieldHoldsStored": true,
+    "rotatesViaMutation": false,
+    "rotatedQueryRetainsAnswer": true,
+    "revealsAfterQueryReadback": true
+  },
+  "syntheticStaleReadback": {
+    "label": "synthetic HTTP readback deliberately differs from the explicit rotation response",
+    "revealsQueryInsteadOfResponse": true
+  }
+}
