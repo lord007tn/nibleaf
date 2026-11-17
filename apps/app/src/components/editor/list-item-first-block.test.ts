@@ -51,7 +51,15 @@ const bodies = [
 ];
 const indices = [0, 1, 2, 6, 7, 8, 12, 13, 14, 18, 19, 20, 72, 73, 74, 78, 79, 80];
 const arabic: Record<string, string> = {
-  Alpha: 'ألف', Beta: 'باء', Charlie: 'جيم', Delta: 'دال', Top: 'أعلى', Gamma: 'جيم', Tail: 'نهاية', Item: 'عنصر', Next: 'التالي',
+  Alpha: 'ألف',
+  Beta: 'باء',
+  Charlie: 'جيم',
+  Delta: 'دال',
+  Top: 'أعلى',
+  Gamma: 'جيم',
+  Tail: 'نهاية',
+  Item: 'عنصر',
+  Next: 'التالي',
 };
 let index = 0;
 for (const body of bodies) {
@@ -59,8 +67,16 @@ for (const body of bodies) {
     for (const layout of ['\n', '\n\n']) {
       for (const container of [0, 1, 2]) {
         let source = `<${tag}>${layout}${body}\n\nTail.${layout}</${tag.split(' ')[0]}>`;
-        if (container === 1) source = source.split('\n').map((line) => `> ${line}`).join('\n');
-        if (container === 2) source = `- Item\n\n${source.split('\n').map((line) => `  ${line}`).join('\n')}\n\n- Next`;
+        if (container === 1)
+          source = source
+            .split('\n')
+            .map((line) => `> ${line}`)
+            .join('\n');
+        if (container === 2)
+          source = `- Item\n\n${source
+            .split('\n')
+            .map((line) => `  ${line}`)
+            .join('\n')}\n\n- Next`;
         if (indices.includes(index)) acceptance.push({ index, source });
         index++;
       }
@@ -72,16 +88,26 @@ describe('list items led by a block (#604, #865)', () => {
   // #871 owns HTML/component-led items; their load and save must remain main's
   // until Lane A teaches mdx-roundtrip.ts's separateBlock about an item lead.
   it('keeps HTML and component-led items exactly as main saves them', () => {
-    expect([
-      '- <Note>\n\n  Text\n\n  </Note>\n\n- next',
-      '- <Custom>\n\n  stuff\n\n  </Custom>\n\n- next',
-      '- <Accordion title="A">\n\n  Text\n\n  </Accordion>\n\n- next',
-      '- <div class="note">\n  <b>Bold</b>\n  </div>\n\nOutro.',
-    ].flatMap((source) => [
-      source,
-      source.split('\n').map((line) => `> ${line}`).join('\n'),
-      `1. Item\n\n${source.split('\n').map((line) => `   ${line}`).join('\n')}\n\n2. Next`,
-    ]).map((source) => ({ source, saved: getMarkdown(open(source)) }))).toMatchInlineSnapshot(`
+    expect(
+      [
+        '- <Note>\n\n  Text\n\n  </Note>\n\n- next',
+        '- <Custom>\n\n  stuff\n\n  </Custom>\n\n- next',
+        '- <Accordion title="A">\n\n  Text\n\n  </Accordion>\n\n- next',
+        '- <div class="note">\n  <b>Bold</b>\n  </div>\n\nOutro.',
+      ]
+        .flatMap((source) => [
+          source,
+          source
+            .split('\n')
+            .map((line) => `> ${line}`)
+            .join('\n'),
+          `1. Item\n\n${source
+            .split('\n')
+            .map((line) => `   ${line}`)
+            .join('\n')}\n\n2. Next`,
+        ])
+        .map((source) => ({ source, saved: getMarkdown(open(source)) })),
+    ).toMatchInlineSnapshot(`
       [
         {
           "saved": "- 
@@ -378,9 +404,12 @@ describe('list items led by a block (#604, #865)', () => {
 // The actual parked-branch swallowing case is attribute-blank-line differential #27.
 // Its HTML-led item stays main-equivalent here; #871 owns its existing attribute damage.
 it('does not swallow Outro in the parked attribute differential case 27', () => {
-  const source = "Intro.\n\n- <Update label=\"a\rb\" hidden>\n  \n  <Card title=\"Inner\n  line\">\n  \n  Inner text.\n  \n  </Card>\n  \n  </Update>\n\nOutro.";
+  const source =
+    'Intro.\n\n- <Update label="a\rb" hidden>\n  \n  <Card title="Inner\n  line">\n  \n  Inner text.\n  \n  </Card>\n  \n  </Update>\n\nOutro.';
   const saved = getMarkdown(open(source));
-  expect(saved).toBe("Intro.\n\n- \n\n<Update label=\"a\n&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;b&quot;&gt;&lt;/p&gt;  &lt;div data-mdx=\" hidden>\n\nInner text.\n\n</Update>\n\nOutro.");
+  expect(saved).toBe(
+    'Intro.\n\n- \n\n<Update label="a\n&lt;/li&gt;&lt;/ul&gt;&lt;p&gt;b&quot;&gt;&lt;/p&gt;  &lt;div data-mdx=" hidden>\n\nInner text.\n\n</Update>\n\nOutro.',
+  );
   const doc = open(saved).state.doc;
   expect(doc.lastChild?.type.name).toBe('paragraph');
   expect(doc.lastChild?.textContent).toBe('Outro.');
@@ -397,4 +426,16 @@ it.each(mainFixedPages)('serializer page %i must not lose its main fixed point',
   const editor = open(page.source);
   applyCorpusEdits(editor as unknown as DifferentialEditor, page.edits);
   stable(getMarkdown(editor));
+});
+
+it('non-default nested ordered starts keep main’s delimiter and start number (corpus 658)', () => {
+  const page = corpus[658];
+  if (!page) throw new Error('Missing page 658');
+  const editor = open(page.source);
+  applyCorpusEdits(editor as unknown as DifferentialEditor, page.edits);
+  const saved = getMarkdown(editor);
+  expect(saved).toBe(
+    '~~~md\nconst a = 1;\n\n  two\n~~~\n\n<iframe src="https://www.youtube.com/embed/abcdefghijk"></iframe>\n\n<!-- a comment -->\n\n````js\n````\n\n3. \n\n\n10) دليل a*b a*b #hash\n    *italic* #hash `code` 🚀\n\n<Steps>\n\n<Step title="One">\n\nthe tab here 2 &lt; 3 2 &lt; 3 [a link](/guide) the المحرر [*a link*](/guide) 2 &lt; 3 2 &lt; 3 page 🚀 **bold** t~~he~~ الصفحة ~~gone~~ [a link](/guide) Wow\\![a link](/x) a\\*b **🚀**\n\n~~~js title="x"\n  two\n\n~~~\n\n</Step>\n\n<Step title="Two">\n\nالمحرر ~~gone~~ editor the\n\n</Step>\n\n</Steps>',
+  );
+  stable(saved);
 });

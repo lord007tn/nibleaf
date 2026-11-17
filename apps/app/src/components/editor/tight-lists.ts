@@ -116,7 +116,8 @@ function writeTightLists<T extends MarkdownToken>(state: MarkdownCoreState<T>): 
         list.hidden &&= token.hidden;
       }
     }
-    if (LIST_OPEN.has(token.type)) lists.push({ token, paragraphs: false, hidden: true, tight: true, safe: true, previous: null, lead: false, blank: false, end: -1 });
+    if (LIST_OPEN.has(token.type))
+      lists.push({ token, paragraphs: false, hidden: true, tight: true, safe: true, previous: null, lead: false, blank: false, end: -1 });
     if (list && LIST_CLOSE.has(token.type) && list.token.level === token.level) {
       lists.pop();
       if (list.tight && list.hidden && (list.paragraphs || (list.lead && !list.blank))) list.token.attrSet('data-tight', 'true');

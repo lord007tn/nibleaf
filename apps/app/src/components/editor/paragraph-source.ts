@@ -1,6 +1,6 @@
 import { Extension } from '@tiptap/core';
 import Paragraph from '@tiptap/extension-paragraph';
-import { DOMParser as PMDOMParser, type Fragment, type Node as PMNode, type Schema } from '@tiptap/pm/model';
+import { type Fragment, DOMParser as PMDOMParser, type Node as PMNode, type Schema } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
 import type { MarkdownOutput } from './markdown-output';
@@ -280,6 +280,16 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
       if (block && child.eq(block)) stayed = true;
     });
     let safe = simpleContent(list);
+    // A hoisted ordered list is adjacent to its ordered parent, so main uses
+    // `)` to separate them. Defer non-default starts rather than change that
+    // delimiter (or the start number) while putting the list back inside
+    // (serializer corpus page 658).
+    if (
+      list.tagName === 'OL' &&
+      block?.type.name === 'orderedList' &&
+      (Number(list.getAttribute('start') ?? 1) !== 1 || Number(block.attrs.start ?? 1) !== 1)
+    )
+      safe = false;
     // Hoisting an inline block can turn later ordered items into a new bullet
     // list. Keeping those items byte-identical to main needs a serializer fix.
     // A marker-only item after an edit is a different source shape (#858).
@@ -290,8 +300,11 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
       if (candidates.has(ancestor) && !simpleContent(ancestor)) safe = false;
       // Canonical markers merge adjacent lists on reload. Restoring an item
       // there needs a separate serializer change, not just a load-time lead.
-      if (ancestor.matches('ul,ol') &&
-        (ancestor.previousElementSibling?.tagName === ancestor.tagName || ancestor.nextElementSibling?.tagName === ancestor.tagName)) safe = false;
+      if (
+        ancestor.matches('ul,ol') &&
+        (ancestor.previousElementSibling?.tagName === ancestor.tagName || ancestor.nextElementSibling?.tagName === ancestor.tagName)
+      )
+        safe = false;
     }
     if (safe && block && ITEM_LEAD_NODES.has(block.type.name) && !stayed) continue;
     lead.remove();
