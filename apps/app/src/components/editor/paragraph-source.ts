@@ -58,6 +58,7 @@ interface MarkdownToken {
   content: string;
   hidden: boolean;
   children: MarkdownToken[] | null;
+  attrGet(name: string): string | null;
   attrSet(name: string, value: string): void;
 }
 
@@ -91,7 +92,10 @@ function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>
     const list = lists[lists.length - 1];
     if (list && LIST_CLOSE.has(token.type)) {
       lists.pop();
-      if (list.revealed && !list.shown) list.token.attrSet('data-tight', 'true');
+      if (list.revealed && !list.shown) {
+        list.token.attrSet('data-tight', 'true');
+        if (list.token.attrGet('data-md-item-main-tight') !== null) list.token.attrSet('data-md-item-main-tight', 'true');
+      }
       const parent = lists[lists.length - 1];
       if (parent) {
         parent.shown ||= list.shown;
@@ -212,6 +216,7 @@ function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: P
 const paragraphParsers = new WeakSet<object>();
 
 const ITEM_LEAD_NODES = new Set(['blockquote', 'heading', 'bulletList', 'orderedList']);
+const ITEM_CONTENT_NODES = new Set(['paragraph', 'text', 'hardBreak', 'listItem', ...ITEM_LEAD_NODES]);
 
 /** Validate the staged lead after callout and task-list DOM conversions. A token
  * called a quote can now be an HTML-backed callout (#871). Probe the unmodified
@@ -219,7 +224,23 @@ const ITEM_LEAD_NODES = new Set(['blockquote', 'heading', 'bulletList', 'ordered
 function fitItemLeads(element: HTMLElement, schema: Schema): void {
   const parser = PMDOMParser.fromSchema(schema);
   const removed: Element[] = [];
-  for (const lead of Array.from(element.querySelectorAll('li > p[data-md-item-lead]')).reverse()) {
+  const leads = Array.from(element.querySelectorAll('li > p[data-md-item-lead]'));
+  const candidates = new Set(leads.map((lead) => lead.parentElement));
+  const simpleItems = new Map<Element, boolean>();
+  const simpleItem = (item: Element): boolean => {
+    const cached = simpleItems.get(item);
+    if (cached !== undefined) return cached;
+    const clone = item.cloneNode(true) as HTMLElement;
+    for (const staged of clone.querySelectorAll('p[data-md-item-lead]')) staged.remove();
+    let simple = true;
+    parser.parseSlice(clone).content.descendants((node) => {
+      if (!ITEM_CONTENT_NODES.has(node.type.name)) simple = false;
+      return simple;
+    });
+    simpleItems.set(item, simple);
+    return simple;
+  };
+  for (const lead of leads.reverse()) {
     const item = lead.parentElement;
     const list = item?.parentElement;
     if (!item || !list) continue;
@@ -238,13 +259,24 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
     fitted?.forEach((child) => {
       if (block && child.eq(block)) stayed = true;
     });
-    if (block && ITEM_LEAD_NODES.has(block.type.name) && !stayed) continue;
+    let safe = true;
+    for (let ancestor: Element | null = item; ancestor; ancestor = ancestor.parentElement) {
+      if (candidates.has(ancestor) && !simpleItem(ancestor)) safe = false;
+      // Canonical markers merge adjacent lists on reload. Restoring an item
+      // there needs a separate serializer change, not just a load-time lead.
+      if (ancestor.matches('ul,ol') &&
+        (ancestor.previousElementSibling?.tagName === ancestor.tagName || ancestor.nextElementSibling?.tagName === ancestor.tagName)) safe = false;
+    }
+    if (safe && block && ITEM_LEAD_NODES.has(block.type.name) && !stayed) continue;
     lead.remove();
     removed.push(list);
   }
   for (const list of removed) {
     for (let ancestor: Element | null = list; ancestor; ancestor = ancestor.parentElement) {
-      if (ancestor.matches('ul,ol') && !ancestor.querySelector('p[data-md-item-lead]')) ancestor.removeAttribute('data-tight');
+      if (ancestor.matches('ul,ol') && !ancestor.querySelector('p[data-md-item-lead]')) {
+        if (ancestor.getAttribute('data-md-item-main-tight') === 'true') ancestor.setAttribute('data-tight', 'true');
+        else ancestor.removeAttribute('data-tight');
+      }
     }
   }
 }
@@ -261,7 +293,7 @@ const ListItemLeadFitting = Extension.create({
             fitItemLeads(element, this.editor.schema);
           },
         },
-      } satisfies MarkdownNodeSpec,
+      } satisfies Pick<MarkdownNodeSpec, 'parse'>,
     };
   },
 });

@@ -48,6 +48,25 @@ function itemBlock(token: MarkdownToken): ItemBlock {
  * the source gap between its items decides whether it is tight.
  */
 export function markTightLists<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
+  const original: T[] = [];
+  let staged = false;
+  for (let index = 0; index < state.tokens.length; index++) {
+    const token = state.tokens[index] as T;
+    if (token.type === 'paragraph_open' && token.attrGet('data-md-item-lead')) {
+      staged = true;
+      index += 2;
+    } else original.push(token);
+  }
+  if (staged) {
+    writeTightLists({ ...state, tokens: original });
+    for (const token of original) {
+      if (LIST_OPEN.has(token.type)) token.attrSet('data-md-item-main-tight', token.attrGet('data-tight') ?? 'false');
+    }
+  }
+  writeTightLists(state);
+}
+
+function writeTightLists<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   const { tokens } = state;
   const lines = state.src.split('\n');
   /** Open lists, innermost last: whether they hold a paragraph with text of their
