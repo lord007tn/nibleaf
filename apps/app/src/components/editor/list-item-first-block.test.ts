@@ -5,6 +5,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Markdown } from '@/components/markdown';
+import { applyCorpusEdits, type DifferentialEditor, serializerCorpus } from './__fixtures__/serializer-corpus';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 const editors: Editor[] = [];
@@ -379,4 +380,17 @@ it('does not swallow Outro in the parked attribute differential case 27', () => 
   const doc = open(saved).state.doc;
   expect(doc.lastChild?.type.name).toBe('paragraph');
   expect(doc.lastChild?.textContent).toBe('Outro.');
+});
+
+// These pages saved to fixed points on main, but the first version of #604's load
+// rule made them unstable. They must stay stable even when a complex item is left
+// on main's fitting path rather than repaired by the narrowly supported rule.
+const mainFixedPages = [12, 23, 33, 62, 73, 78, 87, 210, 241, 283, 365, 401, 470, 476, 633, 666, 707, 772, 839, 861, 964];
+const corpus = serializerCorpus();
+it.each(mainFixedPages)('serializer page %i must not lose its main fixed point', (index) => {
+  const page = corpus[index];
+  if (!page) throw new Error(`Missing serializer page ${index}`);
+  const editor = open(page.source);
+  applyCorpusEdits(editor as unknown as DifferentialEditor, page.edits);
+  stable(getMarkdown(editor));
 });
