@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { forbiddenModuleIds, leakedDashboardPreloads, marketingSharedReaderIcons, preloadTableFiles } from './bundle-boundaries.mjs';
+import {
+  forbiddenModuleIds,
+  leakedDashboardPreloads,
+  marketingSharedReaderIcons,
+  preloadTableFiles,
+  searchOpenFiles,
+  searchOpenZodModules,
+} from './bundle-boundaries.mjs';
 
 const root = 'C:/work/nibleaf';
 const app = (path) => `${root}/apps/app/src/${path}`;
@@ -143,5 +150,58 @@ describe('dashboard chunk names in the eager preload table (#393)', () => {
 
   it('allows dashboard data hooks that sign-in also loads, mixed chunks and CSS', () => {
     expect(leakedDashboardPreloads(chunks, 'assets/index.js', ['assets/session.js', 'assets/ui.js', 'assets/editor.css'])).toEqual([]);
+  });
+});
+
+describe('zod on search open (#842)', () => {
+  const zod = (file) => ({ id: `${root}/node_modules/zod/v4/${file}` });
+  const module = (path) => ({ id: app(path) });
+  const chunk = (fileName, modules, imports = [], dynamicImports = [], facadeModuleId = null) => ({
+    fileName,
+    facadeModuleId,
+    imports,
+    dynamicImports,
+    modules,
+  });
+  // #841's shape: the reader's entry loads the dialog lazily; the dialog chunk
+  // pulls in its query hook and the transport. The Ask AI panel is another lazy
+  // chunk that may load zod, but not when search opens.
+  // Windows builds report the facade with backslashes.
+  const dialog = `${root.replaceAll('/', '\\')}\\apps\\app\\src\\components\\site\\site-search-dialog.tsx`;
+  const chunks = [
+    chunk('assets/index.js', [module('routes/__root.tsx'), module('components/site/site-search.tsx')], [], ['assets/dialog.js', 'assets/ask.js']),
+    chunk('assets/dialog.js', [module('components/site/site-search-dialog.tsx')], ['assets/index.js', 'assets/hook.js'], [], dialog),
+    chunk('assets/hook.js', [module('hooks/api/site-search.ts'), module('functions/site-search.ts')], ['assets/input.js']),
+    chunk('assets/input.js', [module('functions/site-search-input.ts'), { id: `${root}/packages/validators/src/search.ts` }]),
+    chunk('assets/ask.js', [module('components/site/ai-chat/panel.tsx')], ['assets/schemas.js']),
+    chunk('assets/schemas.js', [zod('classic/schemas.js'), zod('core/core.js')]),
+  ];
+
+  it('collects the dialog chunk and its static imports, not lazy chunks', () => {
+    expect(searchOpenFiles(chunks)).toEqual(['assets/dialog.js', 'assets/hook.js', 'assets/index.js', 'assets/input.js']);
+  });
+
+  it('passes when no chunk loaded on search open holds zod', () => {
+    expect(searchOpenZodModules(chunks)).toEqual([]);
+  });
+
+  it('fails when zod comes back on search open, through any static import', () => {
+    const withZod = chunks.map((entry) => (entry.fileName === 'assets/input.js' ? { ...entry, imports: ['assets/schemas.js'] } : entry));
+    expect(searchOpenZodModules(withZod)).toEqual([
+      { file: 'assets/schemas.js', id: `${root}/node_modules/zod/v4/classic/schemas.js` },
+      { file: 'assets/schemas.js', id: `${root}/node_modules/zod/v4/core/core.js` },
+    ]);
+    const pnpmZod = { id: `${root}/node_modules/.pnpm/zod@4.6.7/node_modules/zod/v4/mini/schemas.js` };
+    const inDialog = chunks.map((entry) => (entry.fileName === 'assets/hook.js' ? { ...entry, modules: [...entry.modules, pnpmZod] } : entry));
+    expect(searchOpenZodModules(inDialog)).toEqual([{ file: 'assets/hook.js', ...pnpmZod }]);
+  });
+
+  it('finds the dialog when it shares a chunk without being its facade', () => {
+    const merged = chunks.map((entry) => (entry.fileName === 'assets/dialog.js' ? { ...entry, facadeModuleId: null } : entry));
+    expect(searchOpenFiles(merged)).toContain('assets/hook.js');
+  });
+
+  it('returns nothing when no chunk holds the dialog, which the budget check reports as a failure', () => {
+    expect(searchOpenFiles(chunks.filter((entry) => entry.fileName !== 'assets/dialog.js'))).toEqual([]);
   });
 });
