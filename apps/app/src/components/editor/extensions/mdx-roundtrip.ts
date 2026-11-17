@@ -41,9 +41,15 @@ const atItemLead = (state: object): boolean => {
 
 /** Write a block-level MDX tag on its own blank-line-separated line. */
 export const writeBlockTag = (state: SerializeState, node: PMNode, tag: string): void => {
+  const lead = atItemLead(state);
   separateBlock(state, node);
   state.write(tag);
   state.closeBlock(node);
+  // On a tight list item's first line (#604), a list right after the tag would follow it
+  // with no blank line, as in the tight list around it: the blank line is written here.
+  const list = state as { inTightList?: boolean; flushClose?: (size?: number) => void };
+  const empty = node.childCount === 0 || (node.childCount === 1 && node.firstChild?.type.name === 'paragraph' && node.firstChild.content.size === 0);
+  if (lead && list.inTightList && !node.isAtom && !empty) list.flushClose?.(2);
 };
 
 export type SupportedDefinition = {

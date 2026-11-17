@@ -136,12 +136,19 @@ describe('a list item whose first block opens it on its first line (#604)', () =
     expectFourCycles(`1. <Accordion title="A">\n\n   - ${WORDS.ar.text}\n\n   </Accordion>\n\n2. next`);
     expectFourCycles('- <Steps>\n\n  <Step title="A">\n\n  Do it.\n\n  </Step>\n\n  </Steps>\n\n- next');
     expectFourCycles('- <Custom>\n\n  stuff\n\n  </Custom>\n\n- next');
+    expectFourCycles(`- <Callout type="info">\n\n  - ${WORDS.ar.text}\n\n  </Callout>\n- next`);
   });
 
-  it('a heading and then text in a tight item saves once to a loose list and stays there', () => {
-    // The editor can't write an item's second block on the next line; it keeps the item.
+  it('a table opening the item', () => {
+    expect(shape('10. | b | c |\n    | --- | --- |\n    | 1 | 2 |\n11. next').items[0]).toEqual(['paragraph', 'table']);
+    expectFourCycles('10. | b | c |\n    | --- | --- |\n    | 1 | 2 |\n11. next');
+    expectFourCycles(`- | ${WORDS.ar.text} |\n  | --- |\n  | 1 |\n- ${WORDS.ar.more}`);
+  });
+
+  it('a heading and then text in an item saves once with a blank line between them, and stays there', () => {
+    // The editor writes an item's blocks blank-line apart; the items stay as close as they were.
     const saved = getMarkdown(open('- # H\n  text\n- b'));
-    expect(saved).toBe('- # H\n\n  text\n\n- b');
+    expect(saved).toBe('- # H\n\n  text\n- b');
     expectFourCycles(saved);
   });
 });

@@ -121,7 +121,13 @@ const LIST_OPEN = new Set(['bullet_list_open', 'ordered_list_open']);
 const LIST_CLOSE = new Set(['bullet_list_close', 'ordered_list_close']);
 
 /** The blocks besides a fence that can open a list item on its first line (#604). */
-const ITEM_LEAD_BLOCKS: ReadonlySet<string> = new Set(['blockquote_open', 'heading_open', 'bullet_list_open', 'ordered_list_open']);
+const ITEM_LEAD_BLOCKS: ReadonlySet<string> = new Set([
+  'blockquote_open',
+  'heading_open',
+  'bullet_list_open',
+  'ordered_list_open',
+  'table_open',
+]);
 /** An HTML block the editor reads as a block of its own: a component (`<div data-mdx`,
  *  a callout's `<div data-callout`), a block kept as source, or a video embed. */
 const BLOCK_HTML = /^<(?:div data-(?:mdx|callout)=|nibleaf-mdx-opaque-block |nibleaf-video-embed )/;
@@ -139,60 +145,45 @@ function opensItemLine(token: MarkdownToken, item: MarkdownToken): boolean {
 }
 
 /**
- * How the blocks straight inside a list's items are laid out, to read whether the list
- * is tight the way markdown-it does: its items' own paragraphs are hidden, or, with no
- * paragraph of their own, no blank line sits between two of their blocks or two items.
- * A blank line inside a block (a quote's `>` line, a nested list's) doesn't count.
- * Such a list is only marked tight where the serializer writes it back that way:
- * each item holds one block, then nothing but nested lists (prosemirror-markdown
- * writes a blank line between any other two blocks of an item), and no component,
- * whose tags it writes with blank lines around its children.
+ * Whether a list's items follow each other with no blank line between, as the source
+ * has them. That is what a list's `tight` attribute writes back (the blocks inside an
+ * item are written blank-line apart either way), so a list holding a lead other than a
+ * fence's, which tiptap-markdown would read as loose for its `<p>`, is marked tight
+ * exactly when its items are. A blank line inside a block (a quote's `>` line, a nested
+ * list's) doesn't count.
  */
 interface ItemBlocks {
   /** A block other than a fence got a lead paragraph. */
   lead: boolean;
   /** A list inside got one: tiptap-markdown reads a `<p>` in this list too. */
   inner: boolean;
-  paragraphs: boolean;
-  shown: boolean;
+  /** A blank line between two items. */
   blank: boolean;
-  /** The serializer can write every item as it is read, on consecutive lines. */
-  writable: boolean;
-  /** The blocks read so far in the item open now. */
-  count: number;
   /** The line after the last block's last line with content, or -1. */
   end: number;
 }
 
-const itemBlocks = (): ItemBlocks => ({
-  lead: false,
-  inner: false,
-  paragraphs: false,
-  shown: false,
-  blank: false,
-  writable: true,
-  count: 0,
-  end: -1,
-});
+const itemBlocks = (): ItemBlocks => ({ lead: false, inner: false, blank: false, end: -1 });
 
 const blankLine = (line: string | undefined): boolean => line !== undefined && /^[ \t>]*$/.test(line);
 
-function readItemBlock(blocks: ItemBlocks, token: MarkdownToken, lines: readonly string[]): void {
-  if (token.type === 'paragraph_open') {
-    blocks.paragraphs = true;
-    blocks.shown ||= !token.hidden;
-  }
-  if (token.type === 'html_block' || (blocks.count > 0 && !LIST_OPEN.has(token.type))) blocks.writable = false;
-  blocks.count += 1;
-  if (!token.map) return;
-  const [start, end] = token.map;
-  if (blocks.end >= 0) for (let line = blocks.end; line < start && !blocks.blank; line++) blocks.blank = blankLine(lines[line]);
-  let last = end - 1;
-  while (last > start && blankLine(lines[last])) last--;
-  blocks.end = last + 1;
+/** An item's start: a blank line since the last block's content means the items are apart. */
+function readItemStart(blocks: ItemBlocks, item: MarkdownToken, lines: readonly string[]): void {
+  const start = item.map?.[0];
+  if (start === undefined || blocks.end < 0) return;
+  for (let line = blocks.end; line < start && !blocks.blank; line++) blocks.blank = blankLine(lines[line]);
 }
 
-const tightItems = (blocks: ItemBlocks): boolean => blocks.writable && (blocks.paragraphs ? !blocks.shown : !blocks.blank);
+/** A block straight inside an item: where its content ends. */
+function readItemBlock(blocks: ItemBlocks, token: MarkdownToken, lines: readonly string[]): void {
+  if (!token.map) return;
+  const [start, end] = token.map;
+  let last = end - 1;
+  while (last > start && blankLine(lines[last])) last--;
+  blocks.end = Math.max(blocks.end, last + 1);
+}
+
+const tightItems = (blocks: ItemBlocks): boolean => !blocks.blank;
 
 /**
  * A markdown-it core rule, run after the block rules. Each fence gets its source:
@@ -223,7 +214,7 @@ export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState
     previous = token;
     // Before a list opening here is pushed: the list this token sits straight in.
     const outer = lists[lists.length - 1];
-    if (outer && token.level === outer.token.level + 1 && token.type === 'list_item_open') outer.blocks.count = 0;
+    if (outer && token.level === outer.token.level + 1 && token.type === 'list_item_open') readItemStart(outer.blocks, token, lines);
     if (outer && token.level === outer.token.level + 2 && token.nesting !== -1) readItemBlock(outer.blocks, token, lines);
     // A quote, heading, list or component block on its item's first line (#604).
     if (after?.type === 'list_item_open' && outer && opensItemLine(token, after)) {
