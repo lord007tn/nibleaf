@@ -129,10 +129,10 @@ const ITEM_LEAD_BLOCKS = new Set(['blockquote_open', 'heading_open', 'bullet_lis
  * and its lines exactly as written. Keeping the prefixes added another on every
  * save until the fence broke (`> ```js` saved as `> > ```js`; #574 in list items).
  *
- * A fence that opens on its list item's first line (`- ```js`) gets an empty
- * paragraph before it: the editor's list item starts with a paragraph, and without
- * one the code block was moved out of the list (#578). The serializer leaves that
- * paragraph out again (see `writeFence`).
+ * A list item starting with a fence, quote, heading or nested list gets an empty
+ * paragraph before that block: the editor's schema requires one (#578, #604).
+ * The paragraph serializer preserves whether a quote, heading or list shared its
+ * marker's line; fences keep their existing source handling (see `writeFence`).
  */
 export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   const lines = state.src.split('\n');

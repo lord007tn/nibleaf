@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
 import { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
+import { Markdown } from '@/components/markdown';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 const editors: Editor[] = [];
@@ -62,6 +65,8 @@ for (const body of bodies) {
 }
 
 describe('list items led by a block (#604, #865)', () => {
+  // #871 owns HTML/component-led items; their load and save must remain main's
+  // until Lane A teaches mdx-roundtrip.ts's separateBlock about an item lead.
   it('keeps HTML and component-led items exactly as main saves them', () => {
     expect([
       '- <Note>\n\n  Text\n\n  </Note>\n\n- next',
@@ -101,6 +106,16 @@ describe('list items led by a block (#604, #865)', () => {
     expect(parentTypes).toEqual(['listItem']);
     stable(source);
   });
+
+  it('the published reader keeps the #865 quote inside the same nested item', () => {
+    const source = '- Top\n  - > Alpha';
+    const render = (content: string) => renderToStaticMarkup(createElement(Markdown, { content }));
+    const html = render(source);
+    expect(render(getMarkdown(open(source)))).toBe(html);
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    expect(root.querySelector('li > ul > li > blockquote')?.textContent?.trim()).toBe('Alpha');
+  }, 30_000);
 
   it.each(['> quoted', '## Heading', '- nested', '1. nested'])('keeps %s on the marker line in tight and loose lists', (block) => {
     for (const marker of ['- ', '1. ']) {

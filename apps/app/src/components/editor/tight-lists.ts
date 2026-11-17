@@ -41,10 +41,11 @@ function itemBlock(token: MarkdownToken): ItemBlock {
  * the paragraphs of its items exactly when it reads a list as tight. Such a list is
  * marked tight (`data-tight`, which tiptap-markdown reads before looking for a
  * `<p>`) when the serializer writes every item's blocks back on consecutive lines:
- * each item starts with a paragraph (or a fence's lead, fence-source.ts), and holds
- * nothing after it but nested lists, which prosemirror-markdown's `renderList`
- * writes straight after the line before in a tight list. A list holding a quote, a
- * fence after text, or anything else is left as tiptap-markdown reads it.
+ * each item starts with a paragraph or a block's schema lead (fence-source.ts),
+ * followed only by blocks that can share its spacing. A quote followed by another
+ * paragraph must stay loose, or that paragraph becomes the quote's lazy continuation.
+ * A list with only leads has no paragraph whose hidden flag gives its spacing, so
+ * the source gap between its items decides whether it is tight.
  */
 export function markTightLists<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   const { tokens } = state;
@@ -54,8 +55,15 @@ export function markTightLists<T extends MarkdownToken>(state: MarkdownCoreState
    *  written tight, whether its items fit the schema (start with a paragraph), and
    *  the block before in the item open now (null at its start). */
   const lists: Array<{
-    token: T; paragraphs: boolean; hidden: boolean; tight: boolean; safe: boolean; previous: ItemBlock | null;
-    lead: boolean; blank: boolean; end: number;
+    token: T;
+    paragraphs: boolean;
+    hidden: boolean;
+    tight: boolean;
+    safe: boolean;
+    previous: ItemBlock | null;
+    lead: boolean;
+    blank: boolean;
+    end: number;
   }> = [];
   for (const [index, token] of tokens.entries()) {
     const list = lists[lists.length - 1];
@@ -81,7 +89,8 @@ export function markTightLists<T extends MarkdownToken>(state: MarkdownCoreState
       else
         list.tight &&=
           list.previous === 'lead' ||
-          (block === 'list' && list.previous !== 'list') || (block === 'fence' && list.previous === 'paragraph' && tokens[index - 2]?.content === '');
+          (block === 'list' && list.previous !== 'list') ||
+          (block === 'fence' && list.previous === 'paragraph' && tokens[index - 2]?.content === '');
       list.previous = block;
       if (block === 'paragraph' && (tokens[index + 1]?.content ?? '') !== '') {
         list.paragraphs = true;
