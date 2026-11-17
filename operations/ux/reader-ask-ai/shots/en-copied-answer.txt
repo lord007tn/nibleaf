@@ -1,8 +1,8 @@
-To serve your docs from your own address, add the domain in Nibleaf, then add two DNS records at your domain provider. [S1]
+To serve your docs from your own address, add the domain in Nibleaf, then add the DNS records that Nibleaf shows for it at your domain provider. [S1]
 
 1. Open **Settings → Custom domain**, enter your domain (for example `docs.example.com`) and select **Add domain**. [S1]
-2. Nibleaf shows a **CNAME** record, which points your address to your site, and a **TXT** record, which proves you own the domain. [S1]
-3. Add both records in your provider's DNS settings. Use **Copy DNS record** to avoid typing mistakes, then select **Check again**. [S1]
+2. Nibleaf shows the DNS records required for your domain, including routing and any ownership or certificate validation records. [S1]
+3. Add all the displayed records in your provider's DNS settings. Use **Copy DNS record** to avoid typing mistakes, then select **Check again**. [S1]
 
 DNS changes usually take a few minutes but can take up to 24 hours. When it's ready, the domain shows **Connected — secure (HTTPS) ✓**. [S2]
 

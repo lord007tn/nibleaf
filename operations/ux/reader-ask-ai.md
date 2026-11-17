@@ -64,24 +64,24 @@ English, with bidi isolation. The work ships as **9 small PRs** (§8), with **10
 
 | Step | What the reader sees | Reader's words |
 |---|---|---|
-| Lands on the page (first visit) | No "Ask AI" anywhere. The launcher returns `null` while the consent banner holds its corner (`chat-ui.tsx:229`). The header has search only. ![](reader-ask-ai/shots/en-1440-light-01-first-visit-no-ask-ai.jpg) | "Where's the AI thing everyone has?" |
-| Answers the banner | The floating **Ask AI** appears bottom-right. ![](reader-ask-ai/shots/en-1440-light-02-launcher.jpg) | "Oh, there it is." |
-| Opens it | A modal sheet blurs the page. The starters are generic plus the site's two. ![](reader-ask-ai/shots/en-1440-light-04-panel-empty.jpg) | "I can't read the page I was on anymore." |
-| Asks | "Looking through the docs…", then text streams with its markers stripped. ![](reader-ask-ai/shots/en-1440-light-06-streaming.jpg) | (fine) |
-| Reads | Markers reappear as small chips when the checked answer replaces the stream. Paragraphs run together because the answer's `p` elements have no spacing. ![](reader-ask-ai/shots/en-1440-light-07-answer-top.jpg) | "What are these little 1s?" |
-| Looks for sources | Three cards, each repeating **Connect a custom domain** with a different section. ![](reader-ask-ai/shots/en-1440-light-08-answer-sources-followups.jpg) | "Is this three pages or one?" |
+| Lands on the page (first visit) | No "Ask AI" anywhere. The launcher returns `null` while the consent banner holds its corner (`chat-ui.tsx:229`). The header has search only. ![First visit with consent banner and no Ask AI launcher](reader-ask-ai/shots/en-1440-light-01-first-visit-no-ask-ai.jpg) | "Where's the AI thing everyone has?" |
+| Answers the banner | The floating **Ask AI** appears bottom-right. ![Ask AI launcher after answering the consent banner](reader-ask-ai/shots/en-1440-light-02-launcher.jpg) | "Oh, there it is." |
+| Opens it | A modal sheet blurs the page. The starters are generic plus the site's two. ![Empty Ask AI modal blurring the page](reader-ask-ai/shots/en-1440-light-04-panel-empty.jpg) | "I can't read the page I was on anymore." |
+| Asks | "Looking through the docs…", then text streams with its markers stripped. ![Answer streaming without citation markers](reader-ask-ai/shots/en-1440-light-06-streaming.jpg) | (fine) |
+| Reads | Markers reappear as small chips when the checked answer replaces the stream. Paragraphs run together because the answer's `p` elements have no spacing. ![Answer with small citation chips and crowded paragraphs](reader-ask-ai/shots/en-1440-light-07-answer-top.jpg) | "What are these little 1s?" |
+| Looks for sources | Three cards, each repeating **Connect a custom domain** with a different section. ![Three source cards repeating the same page title](reader-ask-ai/shots/en-1440-light-08-answer-sources-followups.jpg) | "Is this three pages or one?" |
 
 ### 2.2 "Where did that come from? Show me." Verify the answer
 
 - **Clicking a chip doesn't open the docs.** It scrolls to the card inside the panel and focuses it
-  (`message.tsx:76-80`). ![](reader-ask-ai/shots/en-1440-light-09-marker-click-jumps-to-card.jpg)
+  (`message.tsx:76-80`). ![Citation chip focusing a source card inside the panel](reader-ask-ai/shots/en-1440-light-09-marker-click-jumps-to-card.jpg)
   Reader: *"I clicked the source and nothing happened."*
 - **The card's link does reach the exact section.** It opens `custom-domains?lang=en#add-your-domain`, so section
   anchors already work server-side (`withSectionAnchors`, `site-chat.ts:104`). But on desktop the modal stays open
   over a blurred page, so the reader can't see the section it scrolled to.
-  ![](reader-ask-ai/shots/en-1440-light-21-after-source-click.jpg) On a phone the sheet closes and the section shows,
+  ![Desktop source page obscured by the open modal](reader-ask-ai/shots/en-1440-light-21-after-source-click.jpg) On a phone the sheet closes and the section shows,
   but the conversation is now one tap away with no "back to answer".
-  ![](reader-ask-ai/shots/en-390-light-08-after-source-tap.jpg)
+  ![Phone source section after the chat sheet closes](reader-ask-ai/shots/en-390-light-08-after-source-tap.jpg)
 - **Copy answer pastes internals.** It copies raw Markdown with `[S1]`, `[S2]` and `**bold**`. The source list below
   it has no numbers, so `[S2]` maps to nothing ([`en-copied-answer.txt`](reader-ask-ai/shots/en-copied-answer.txt)).
   Reader: *"I pasted it into Slack and it's full of [S1]."*
@@ -95,14 +95,14 @@ English, with bidi isolation. The work ships as **9 small PRs** (§8), with **10
   find a clear answer in the docs. Try searching with different words, or contact support for help." plus **Contact
   support**. There is no search link, even though the copy says to search. The final event's `suggestions` is
   hard-coded `[]` (`site-chat.ts:469`, `:515`; removed in #452 because they were irrelevant).
-  ![](reader-ask-ai/shots/en-1440-light-12-not-in-docs.jpg) Reader: *"OK, so where do I search? This is a dead end."*
+  ![Not-in-docs reply with support but no search link](reader-ask-ai/shots/en-1440-light-12-not-in-docs.jpg) Reader: *"OK, so where do I search? This is a dead end."*
 - **Stale follow-ups.** The first answer's **Related questions** stay on screen under two later "couldn't find"
   replies (`panel.tsx:337,446` keys them to the latest *answered* turn). They look like suggestions for the current
   question.
 - **The stream-then-vanish problem (P0).** The reader asks "Can I keep Cloudflare's proxy turned on?". A confident,
-  uncited claim streams onto the screen. ![](reader-ask-ai/shots/en-1440-light-13-unverified-streaming.jpg)
+  uncited claim streams onto the screen. ![Unchecked claim visible during streaming](reader-ask-ai/shots/en-1440-light-13-unverified-streaming.jpg)
   At the end the validator withdraws the whole answer and the reader sees the generic refusal.
-  ![](reader-ask-ai/shots/en-1440-light-14-unverified-withdrawn.jpg)
+  ![Generic refusal replacing the streamed claim](reader-ask-ai/shots/en-1440-light-14-unverified-withdrawn.jpg)
   - Mechanism: `streamGroundedChat` releases deltas as soon as 24 characters prove they aren't the sentinel
     (`answer-chat.ts:618-626`). Validation runs only after the stream ends (`:653`).
   - Truncation (`seen.truncated`) withdraws the answer the same way. On GPT-6 reasoning models the 1,200-token
@@ -114,9 +114,9 @@ English, with bidi isolation. The work ships as **9 small PRs** (§8), with **10
 
 - **Arabic question, English-only docs** («كيف أربط نطاقًا مخصصًا بموقعي؟»). The cross-language retrieval from
   #452 works: the answer is in Arabic and cites the English page.
-  ![](reader-ask-ai/shots/ar-1440-light-04-answer-ar-on-en.jpg) But:
+  ![Arabic answer citing an English-only page](reader-ask-ai/shots/ar-1440-light-04-answer-ar-on-en.jpg) But:
   - **The source cards are in English with no signal that the page is English.** The reader taps and lands on an
-    English page (`?lang=en`). ![](reader-ask-ai/shots/ar-1440-light-05-sources-ar-on-en.jpg)
+    English page (`?lang=en`). ![English source cards without language labels in Arabic chat](reader-ask-ai/shots/ar-1440-light-05-sources-ar-on-en.jpg)
   - **English UI labels inside Arabic sentences aren't isolated.** `Settings → Custom domain` and `Add domain.` sit in
     the RTL run, so the period and the following citation chip reorder around them. A chip ("1") wraps alone onto its
     own line (item 2 in the shot).
@@ -124,41 +124,41 @@ English, with bidi isolation. The work ships as **9 small PRs** (§8), with **10
     in one string («٥٠٠ حرف», `site_ai_invalid`). The marker's accessible name is «المصدر 1».
 - **Arabic question, Arabic docs** («كيف أنشر التغييرات على موقعي؟»). The answer and sources are Arabic with correct
   anchors (`publishing?lang=ar#انشر`). The repeated-page-title cards and chip wrapping are the same as in English.
-  ![](reader-ask-ai/shots/ar-1440-light-06-answer-ar-on-ar.jpg)
+  ![Arabic answer citing Arabic documentation](reader-ask-ai/shots/ar-1440-light-06-answer-ar-on-ar.jpg)
 - **Three words for "docs" in one panel.** The subtitle and intro say «الوثائق». The refusal says «الدليل» («لم أجد
   إجابة واضحة في الدليل»). The glossary says **«التوثيق»** (`docs/ARABIC_GLOSSARY.md`).
-  ![](reader-ask-ai/shots/ar-1440-light-07-not-in-docs.jpg)
+  ![Arabic not-in-docs reply](reader-ask-ai/shots/ar-1440-light-07-not-in-docs.jpg)
 - **The Arabic empty state has two generic starters only.** Site starter questions show only in the default language
   (`panel.tsx`, `options.lang === options.defaultLanguage`), so an Arabic reader gets «كيف أبدأ؟» and «ما الذي يمكنني
-  فعله هنا؟». ![](reader-ask-ai/shots/ar-1440-light-02-panel-empty.jpg)
+  فعله هنا؟». ![Arabic panel without site starter questions](reader-ask-ai/shots/ar-1440-light-02-panel-empty.jpg)
 - **What works:** the RTL layout mirrors correctly, the panel opens from the left, the composer's send arrow flips,
   and `dir="auto"` per paragraph keeps an English answer inside an Arabic panel readable. Dark mode holds in both
-  directions. ![](reader-ask-ai/shots/ar-1440-dark-01-answer-ar-on-en.jpg)
+  directions. ![Arabic dark-mode answer with mixed text directions](reader-ask-ai/shots/ar-1440-dark-01-answer-ar-on-en.jpg)
 
 ### 2.5 Mobile (390)
 
 - First visit: no Ask AI (consent banner), then a round icon launcher.
-  ![](reader-ask-ai/shots/en-390-light-02-launcher.jpg)
+  ![Phone Ask AI launcher](reader-ask-ai/shots/en-390-light-02-launcher.jpg)
 - The full-screen sheet and its composer work. The keyboard is not opened on touch, which is correct.
-  ![](reader-ask-ai/shots/en-390-light-03-panel-empty.jpg)
+  ![Phone modal covering the documentation](reader-ask-ai/shots/en-390-light-03-panel-empty.jpg)
 - A long answer is a wall of 13 px text with 1-character chips that are smaller than a 24 px tap target.
-  ![](reader-ask-ai/shots/en-390-light-05-long-answer-top.jpg)
-  ![](reader-ask-ai/shots/en-390-light-07-sources-followups.jpg)
+  ![Long answer on a phone](reader-ask-ai/shots/en-390-light-05-long-answer-top.jpg)
+  ![Source cards and follow-ups on a phone](reader-ask-ai/shots/en-390-light-07-sources-followups.jpg)
 - Tapping a chip scrolls within the sheet. Tapping a card closes the sheet and navigates. Coming back means opening
   the launcher again, which keeps the conversation but doesn't say so.
-  ![](reader-ask-ai/shots/ar-390-light-07-marker-tap.jpg)
-  ![](reader-ask-ai/shots/ar-390-light-08-after-source-tap.jpg)
+  ![Arabic citation chip tapped on a phone](reader-ask-ai/shots/ar-390-light-07-marker-tap.jpg)
+  ![English source section opened from Arabic chat](reader-ask-ai/shots/ar-390-light-08-after-source-tap.jpg)
 
 ### 2.6 Errors and limits
 
 | State | Today (EN / AR) | Problem |
 |---|---|---|
-| AI unavailable (real) | "The assistant isn't available right now." + **Retry** ![](reader-ask-ai/shots/en-1440-light-18-unavailable-real.jpg) | Retry loops on a state that won't change. There's no path to search. The launcher was offered even though AI can't answer. |
-| Rate limited | "You're asking quickly — wait a moment and try again." + Retry ![](reader-ask-ai/shots/en-1440-light-15-rate-limited.jpg) | No wait time. Retry fails again if pressed early. |
-| Daily quota | "…reached today's limit… You can still search the docs." ![](reader-ask-ai/shots/en-1440-light-16-quota.jpg) ![](reader-ask-ai/shots/ar-390-dark-02-quota.jpg) | Says "search the docs" but gives no search button. |
-| Conversation limit | "This chat is getting long…" + **New chat** (question carried over) ![](reader-ask-ai/shots/en-1440-light-17-conversation-limit.jpg) | Good. Keep. |
-| Offline | "You're offline…" + Retry, question kept ![](reader-ask-ai/shots/en-1440-light-19-offline.jpg) | OK. Copy can say the question is kept. |
-| Slow (7 s to first word) | Dots + "Looking through the docs…" ![](reader-ask-ai/shots/en-1440-light-20-slow-typing.jpg) | No reassurance after a few seconds. |
+| AI unavailable (real) | "The assistant isn't available right now." + **Retry** ![Unavailable reply with Retry and no search action](reader-ask-ai/shots/en-1440-light-18-unavailable-real.jpg) | Retry loops on a state that won't change. There's no path to search. The launcher was offered even though AI can't answer. |
+| Rate limited | "You're asking quickly — wait a moment and try again." + Retry ![Rate-limit reply without a wait time](reader-ask-ai/shots/en-1440-light-15-rate-limited.jpg) | No wait time. Retry fails again if pressed early. |
+| Daily quota | "…reached today's limit… You can still search the docs." ![English daily-quota reply without a search button](reader-ask-ai/shots/en-1440-light-16-quota.jpg) ![Arabic daily-quota reply in dark mode](reader-ask-ai/shots/ar-390-dark-02-quota.jpg) | Says "search the docs" but gives no search button. |
+| Conversation limit | "This chat is getting long…" + **New chat** (question carried over) ![Conversation-limit reply with New chat](reader-ask-ai/shots/en-1440-light-17-conversation-limit.jpg) | Good. Keep. |
+| Offline | "You're offline…" + Retry, question kept ![Offline reply retaining the question](reader-ask-ai/shots/en-1440-light-19-offline.jpg) | OK. Copy can say the question is kept. |
+| Slow (7 s to first word) | Dots + "Looking through the docs…" ![Slow answer showing searching status](reader-ask-ai/shots/en-1440-light-20-slow-typing.jpg) | No reassurance after a few seconds. |
 | Revoked reader (private site) | Not reproduced locally. From the code: a `401`/`403` from the chat route becomes `failed` ("Something went wrong. Please try again.") and a `404` becomes `unavailable` (`upstreamError`, `helpers.ts:62`). | The reader is told something broke, or that AI is down, when their access ended. Retry can't fix it. They should be told to sign in again. |
 
 ### 2.7 Issue list
@@ -231,7 +231,7 @@ English, with bidi isolation. The work ships as **9 small PRs** (§8), with **10
 
 ### 4.2 Layout and entry points (mockups A, F)
 
-![](reader-ask-ai/mockup-f-entry-points-en-1440.png)
+![Proposed header and floating entry points](reader-ask-ai/mockup-f-entry-points-en-1440.png)
 
 - **Entry points:**
   - a **header button "Ask AI"** beside search, server-rendered from `capabilities.answer`, so it exists on first
@@ -248,7 +248,7 @@ English, with bidi isolation. The work ships as **9 small PRs** (§8), with **10
 
 ### 4.3 An answered question (mockups A, D)
 
-![](reader-ask-ai/mockup-a-answer-en-1440.png)
+![Proposed answer with section citations](reader-ask-ai/mockup-a-answer-en-1440.png)
 
 - **Status line** (`role=status`, announced once per phase): "Looking through the docs…", then "Writing…". After 8 s
   it adds "Still working. Answers can take up to 20 seconds."
@@ -278,7 +278,7 @@ English, with bidi isolation. The work ships as **9 small PRs** (§8), with **10
 
 ### 4.4 Not in these docs (mockups B, E)
 
-![](reader-ask-ai/mockup-b-not-in-docs-en-1440.png)
+![Proposed not-covered state with search hand-off](reader-ask-ai/mockup-b-not-in-docs-en-1440.png)
 
 - "**These docs don't cover that.** I didn't find anything about it in these docs, so I won't guess."
 - **Search the docs for "{query}"**: opens the existing search dialog prefilled with the condensed standalone query
@@ -293,7 +293,7 @@ English, with bidi isolation. The work ships as **9 small PRs** (§8), with **10
 
 ### 4.5 States, errors and limits (mockup C)
 
-![](reader-ask-ai/mockup-c-states-en.png)
+![Proposed working, checked, held-back and error states](reader-ask-ai/mockup-c-states-en.png)
 
 Every error keeps the reader's question in the field and offers **Search the docs**. **Retry** appears only where
 retrying can work.
@@ -398,7 +398,7 @@ Server, `packages/search/src/answer-validation.ts` and `answer-chat.ts`:
 3. **Claim check (new, cheap, deterministic).** In a cited block, these must appear in the cited source's text (after
    normalizing case, Arabic letters via `normalizeArabicSearchText`, whitespace and quotes):
    - every **bold** run with no spaces-only content (UI labels);
-   - every inline `code` span;
+   - every inline `code` span and every fenced code block, including commands in a fence followed by a cited line;
    - every number with a unit or 3 or more digits.
 
    If one doesn't appear, the block is dropped (D8). This catches invented button names, commands and limits, the
@@ -408,10 +408,13 @@ Server, `packages/search/src/answer-validation.ts` and `answer-chat.ts`:
    deployment and language the reader can read**. If it doesn't, the citation is page-level with label = page title.
    A citation to a page the reader can't read is impossible by construction (retrieval is grant-filtered) and is
    asserted in a test.
-5. **Withdraw rule.** If dropped blocks exceed 1/3 of substantive blocks (current rule), or no cited block survives,
-   the turn ends as "held back". The client has received only checked blocks, so the turn collapses into the held-back
-   card with its search hand-off, and nothing it showed was wrong. Numbers are assigned by first use, on the server
-   (`final.citations` order = display order). The client never renumbers.
+5. **Withdraw rule (before first release only).** Buffer checked blocks until dropped blocks are at most 1/3 of
+   substantive blocks seen so far and at least one cited block survives. Then release the buffered checked blocks
+   and stream later blocks only after checking them. If generation ends before that gate passes, the turn is
+   "held back" and sends zero text deltas. After the first release, never collapse the answer: keep displayed blocks,
+   drop unsupported later blocks and report the removed count, even if the final dropped fraction exceeds 1/3.
+   Numbers are assigned by first use, on the server (`final.citations` order = display order). The client never
+   renumbers.
 
 ### 6.3 Prompt and grounding (`chat-v9`)
 
@@ -532,8 +535,8 @@ One at a time, in this order. Each PR includes:
 
 | # | PR | Content | Acceptance checks |
 |---|---|---|---|
-| 1 | `fix(reader-chat): honest dead ends and clean copy` | Client only, plus `searchQuery` in `final`. Search hand-off from not-in-docs, quota and unavailable. No Retry on unavailable (quota already has none). Stale follow-ups cleared. Copy emits `[n]` and a numbered source list. Paragraph spacing. Arabic «التوثيق» everywhere. Starters per language fallback. | Not-in-docs shows **Search the docs for "{query}"** and opens search prefilled (test) · copied text contains no `[S` and no `**` (test) · follow-ups only under the latest turn (test) · `ar.json` has no «الوثائق»/«الدليل» in chat keys (test) |
-| 2 | `feat(ai-chat): show only checked blocks` | Server incremental block check (§6.2.2 and .5), `removed` count, held-back state. Unknown ids drop the block, not the turn. `chat-v9` prompt. Truncation recorded. | A replayed stream with an uncited first paragraph never sends it (test on the generator) · held-back turn sends zero text deltas · EN/AR eval: no regression in answered rate, held-back rate reported · prompt-version bump recorded |
+| 1 | `fix(reader-chat): honest dead ends and clean copy` | Client changes plus the server addition of `searchQuery` in `final` (section 6.1). Search hand-off from not-in-docs, quota and unavailable. No Retry on unavailable (quota already has none). Stale follow-ups cleared. Copy emits `[n]` and a numbered source list. Paragraph spacing. Arabic «التوثيق» everywhere. Starters per language fallback. | Not-in-docs shows **Search the docs for "{query}"** and opens search prefilled (test) · copied text contains no `[S` and no `**` (test) · follow-ups only under the latest turn (test) · `ar.json` has no «الوثائق»/«الدليل» in chat keys (test) |
+| 2 | `feat(ai-chat): show only checked blocks` | Server incremental block check (§6.2.2 and .5), `removed` count, held-back state. Unknown ids drop the block, not the turn. `chat-v9` prompt. Truncation recorded. | A replayed stream with an uncited first paragraph never sends it (test on the generator) · held-back turn sends zero text deltas; one released block followed by two dropped blocks stays visible with a removed count (test) · EN/AR eval: no regression in answered rate, held-back rate reported · prompt-version bump recorded |
 | 3 | `feat(ai-chat): claim check for labels, code and numbers` | §6.2.3, with an Arabic normalizer. | Invented **Button** or `command` in a cited block drops the block (EN and AR tests) · eval false-drop rate ≤ 5% on correct answers |
 | 4 | `feat(search): section anchors in the index` | `anchor` and `headingPath` per chunk at index time (payload backfill job, no re-embed). `nibleaf.chat.sources` event. Citations section-resolved or page-level. | Every citation `anchor` exists in the deployment's page headings (property test over the fixtures) · duplicate headings resolve to the right id · backfill is idempotent and resumable |
 | 5 | `feat(reader-chat): citations open the docs` | Numbered `<a>` citations with live resolution while streaming. Sources grouped by page with language labels. Desktop open-in-page with highlight. Phone source preview and "Back to answer". | A citation's `href` = `path?lang#anchor` (test) · accessible name includes page and section · 24 px targets · no lone-chip wrap at 390 (visual check EN/AR) · reduced motion respected |
@@ -542,7 +545,7 @@ One at a time, in this order. Each PR includes:
 | 8 | `feat(ai-chat): fair limits and access errors` | Quota consumed after the confidence gate. `retryAfterSeconds`. `access_ended`. Redaction before storage. | Low-confidence turn leaves the daily count unchanged (test) · countdown copy · 401/403 maps to `access_ended` · redaction tests EN/AR, model input unchanged |
 | 9 | `chore(i18n): reader Ask AI copy in every locale` | §7 keys in 12 locales; remove dead keys. | `pnpm --filter @nibleaf/i18n run setup` clean · knip clean · AR reviewed against the glossary |
 
-PRs 1 and 6 need no server change and can merge first. PRs 2→3 and 4→5 are the core of "proper citations".
+PR 1 includes the server `searchQuery` addition; PR 6 needs no server change. Both can merge before PR 2. PRs 2→3 and 4→5 are the core of "proper citations".
 The plan-of-record's PR 5 (move reader options to AI answers) should land before this plan's PR 1 adds per-language
 starters, or PR 1 skips that item.
 
@@ -564,7 +567,7 @@ starters, or PR 1 skips that item.
 | D5 | **Header "Ask AI" on every site with AI answers** | yes / floating launcher only / owner setting | **Yes, always when capable.** Search and Ask AI side by side, with the launcher kept for long pages on phones. An owner toggle can come later if asked. |
 | D6 | **Does a "not covered" reply (no model call) count against the daily limit?** | count / don't count | **Don't count.** The reader got no generated answer, and Mintlify does the same. |
 | D7 | **Answer output cap** (reasoning tokens count) | keep 1,200 / 2,000 / per-model | **2,000 for GPT-6 Luna, after PR 2 measures truncation.** It is bounded by the existing turn reservation and daily token budget; it costs more only on long answers. |
-| D8 | **Claim check strictness** (bold label, code or number not in the cited source) | drop the block / drop the whole answer / only log | **Drop the block** and say "I removed one sentence…". The whole answer goes only under the existing 1/3 rule. |
+| D8 | **Claim check strictness** (bold label, code or number not in the cited source) | drop the block / drop the whole answer / only log | **Drop the block** and say "I removed one sentence…". The whole answer is held back only before first release, under the gate in section 6.2.5. |
 | D9 | **Arabic question, English-only docs** | answer in Arabic, keep English UI labels, label sources / answer in English / refuse | **Answer in Arabic with English labels kept and a one-line "from pages available only in English".** The reader asked in Arabic, and the labels must match the screen they'll see. |
 | D10 | **Redact personal details and secrets before storing conversations** | yes / no | **Yes.** It costs nothing for readers, and it lowers the risk of keeping question text. |
 
