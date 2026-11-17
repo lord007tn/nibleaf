@@ -84,6 +84,7 @@ describe('plain search snippets', () => {
   });
 
   const tableEdges = [
+    ['list item resembling an alignment row', 'Intro\n\n- | --- | ---', 'Intro | --- | ---', 'Intro'],
     ['table on a bullet opening line', '- | Name | Symbol |\n  | --- | --- |\n  | mode | value |', 'Name · Symbol mode · value', 'mode'],
     ['table on an ordered list opening line', '1. | Name | Symbol |\n   | --- | --- |\n   | mode | value |', 'Name · Symbol mode · value', 'mode'],
     [
