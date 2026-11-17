@@ -3,7 +3,7 @@ import type { ReaderText } from '@/lib/reader-text';
 
 import type { AddonAvailabilityState, AddonGroup, AddonId } from '@nibleaf/shared/addons';
 import type { PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
-import type { LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
+import type { LanguageConfig, PageConfig, ProjectConfig, PublicGitSettings } from '@nibleaf/validators';
 
 export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
 
@@ -308,7 +308,7 @@ export interface WorkspaceSettings {
   plan: string;
   notifications: Record<string, boolean>;
   integrations: Record<string, unknown>;
-  git: Record<string, unknown>;
+  git: PublicGitSettings;
   name: string;
   slug: string | null;
   projectCount: number;

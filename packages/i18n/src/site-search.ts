@@ -18,6 +18,7 @@ import { site_searchnoresultsfor } from './paraglide/messages/site_searchnoresul
 import { site_searchnoresultshint } from './paraglide/messages/site_searchnoresultshint.js';
 import { site_searchpages } from './paraglide/messages/site_searchpages.js';
 import { site_searchprompt } from './paraglide/messages/site_searchprompt.js';
+import { site_searchquerylimit } from './paraglide/messages/site_searchquerylimit.js';
 import { site_searchrecent } from './paraglide/messages/site_searchrecent.js';
 import { site_searchresultcount } from './paraglide/messages/site_searchresultcount.js';
 import { site_searchretry } from './paraglide/messages/site_searchretry.js';
@@ -33,6 +34,7 @@ import { type SiteTranslator, siteT } from './site';
  */
 
 const searchVariableMessages = {
+  searchQueryLimit: site_searchquerylimit,
   searchNoResultsFor: site_searchnoresultsfor,
   searchAskAiAbout: site_searchaskaiabout,
   searchResultCount: site_searchresultcount,

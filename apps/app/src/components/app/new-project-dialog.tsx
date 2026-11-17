@@ -40,6 +40,8 @@ type Ended =
  */
 type Owner = { opening: number; epoch: number; generation: number; ended?: Ended };
 
+type CreateProblem = { owner: Owner; failure?: string; refusal?: { slug: string; suggestion: string } };
+
 type NewProjectDialogProps = { open: boolean; onOpenChange: (open: boolean) => void; organizationId: string; organizationName?: string };
 
 export function NewProjectDialog({ open, onOpenChange, organizationId, organizationName }: NewProjectDialogProps) {
@@ -49,8 +51,7 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
   const [step, setStep] = useState(1);
   const [editingAddress, setEditingAddress] = useState(false);
   const [addressEdited, setAddressEdited] = useState(false);
-  const [conflict, setConflict] = useState<{ slug: string; suggestion: string } | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
+  const [problem, setProblem] = useState<CreateProblem | null>(null);
   const [generation, setGeneration] = useState(0);
   /** The create whose site this opening moved on to; its close starts the dialog over. */
   const completed = useRef<Owner | undefined>(undefined);
@@ -102,7 +103,7 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
         owner.ended = { kind: 'invalid' };
         return 'invalid';
       }
-      if (owns()) setFailure(null);
+      if (owns()) setProblem(null);
       const importInstead = destination.current === 'import';
       try {
         const project = await create.mutateAsync(
@@ -140,11 +141,19 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
     seenNow.current.opening === owner.opening &&
     seenNow.current.epoch === owner.epoch &&
     draft.settlement().generation === owner.generation;
+  // A result may have been applied just before the caller changes identity.
+  // Keep its message and refused address local to that owner, rather than
+  // writing the refused address into a draft that can outlive the opening.
+  const ownedProblem =
+    problem && problem.owner.opening === opening && problem.owner.epoch === epoch && problem.owner.generation === draft.settlement().generation
+      ? problem
+      : null;
+  const refusal = ownedProblem?.refusal;
   const values = useStore(form.store, (state) => state.values);
   const name = values.name.trim();
   const derived = deriveSiteSlug(name);
-  const showAddress = editingAddress || addressEdited || (Boolean(name) && derived.needsCustomAddress);
-  const typedSlug = addressEdited ? values.slug : undefined;
+  const showAddress = Boolean(refusal) || editingAddress || addressEdited || (Boolean(name) && derived.needsCustomAddress);
+  const typedSlug = refusal?.slug ?? (addressEdited ? values.slug : undefined);
   const validSlug = typedSlug === undefined || projectSlug.safeParse(typedSlug).success;
   const [checked, setChecked] = useState({ name, slug: typedSlug });
   useEffect(() => {
@@ -159,11 +168,10 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
     open && !pending && Boolean(name) && name.length <= 120 && validSlug && current,
   );
   const result = current ? availability.data : undefined;
-  const slug = addressEdited ? values.slug : (result?.suggestion ?? (name ? derived.slug : 'site'));
+  const slug = typedSlug ?? result?.suggestion ?? (name ? derived.slug : 'site');
   const baseDomain = env.VITE_SITE_BASE_DOMAIN?.replace(/^\*\./, '').replace(/\.$/, '') || 'nibleaf.com';
-  const activeConflict = conflict?.slug === slug ? conflict : null;
-  const taken = Boolean(activeConflict || (result && !result.available && (addressEdited || !result.suggestion)));
-  const suggestion = activeConflict?.suggestion ?? result?.suggestion;
+  const taken = Boolean(refusal || (result && !result.available && (addressEdited || !result.suggestion)));
+  const suggestion = refusal?.suggestion ?? result?.suggestion;
   const nameTaken =
     projects.data?.some((site) => site.name.trim().normalize('NFC').toLocaleLowerCase() === name.normalize('NFC').toLocaleLowerCase()) ?? false;
   const ready = Boolean(name && validSlug && result && !nameTaken && !taken && !availability.isFetching && !availability.isError);
@@ -213,13 +221,7 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
     }
     if (end.kind === 'failed') {
       const { refusal } = end;
-      if (refusal) {
-        form.setFieldValue('slug', refusal.slug);
-        setEditingAddress(true);
-        setAddressEdited(true);
-        setConflict(refusal);
-        setStep(1);
-      } else setFailure(t('newSite.error'));
+      setProblem(refusal ? { owner, refusal } : { owner, failure: t('newSite.error') });
     }
     throw new Error('Site creation was not saved');
   };
@@ -235,7 +237,7 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
   };
   const description = organizationName ? t('newSite.descInOrganization', { org: organizationName }) : t('newSite.desc');
 
-  if (step === 2)
+  if (step === 2 && !refusal)
     return (
       <ActionDialog
         open={open}
@@ -251,7 +253,7 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
             setStep(1);
             setAddressEdited(false);
             setEditingAddress(false);
-            setConflict(null);
+            setProblem(null);
           }
         }}
         title={t('newSite.startingPoint')}
@@ -319,7 +321,7 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
           onSubmit={(event) => {
             event.preventDefault();
             if (!ready) return;
-            setFailure(null);
+            setProblem(null);
             destination.current = 'editor';
             setStep(2);
           }}
@@ -376,9 +378,10 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
                           spellCheck={false}
                           dir="ltr"
                           maxLength={63}
-                          value={addressEdited ? value : slug}
+                          value={refusal ? refusal.slug : addressEdited ? value : slug}
                           onChange={(event) => {
-                            setConflict(null);
+                            setProblem((current) => (current === ownedProblem && current?.refusal ? null : current));
+                            setStep(1);
                             setAddressEdited(true);
                             onValueChange(event.target.value);
                           }}
@@ -420,7 +423,8 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
                         if (suggestion) {
                           form.setFieldValue('slug', suggestion);
                           setAddressEdited(true);
-                          setConflict(null);
+                          setProblem((current) => (current === ownedProblem && current?.refusal ? null : current));
+                          setStep(1);
                         }
                       }}
                     >
@@ -473,9 +477,9 @@ export function NewProjectDialog({ open, onOpenChange, organizationId, organizat
               )}
             </form.Field>
           </fieldset>
-          {failure ? (
+          {ownedProblem?.failure ? (
             <Callout tone="danger" urgent>
-              {failure}
+              {ownedProblem.failure}
             </Callout>
           ) : null}
           <DialogFooter>

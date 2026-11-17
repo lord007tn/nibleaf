@@ -23,8 +23,8 @@ import type {
   PageNode,
   Project,
   ProjectAddon,
-  WorkspaceSettings,
 } from './types';
+import { readWorkspaceSettings } from './workspace-settings-response';
 
 /*
  * Query factories (`queryOptions`) are the single definition of each query: its
@@ -257,8 +257,8 @@ export const workspaceSettingsQueryOptions = (projectId?: string) =>
     queryKey: projectId ? queryKeys.workspace.projectSettings(projectId) : queryKeys.workspace.settings(),
     queryFn: async () =>
       projectId
-        ? getData<WorkspaceSettings>(await api.app.projects[':projectId'].settings.$get({ param: { projectId } }), 'site settings')
-        : getData<WorkspaceSettings>(await api.app.workspace.$get(), 'workspace settings'),
+        ? readWorkspaceSettings(api.app.projects[':projectId'].settings.$get({ param: { projectId } }), 'Failed to load site settings.')
+        : readWorkspaceSettings(api.app.workspace.$get(), 'Failed to load workspace settings.'),
   });
 
 /** Members + pending invitations for a single site (its own organization). */
