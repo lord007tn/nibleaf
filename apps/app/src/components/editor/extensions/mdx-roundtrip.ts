@@ -30,6 +30,99 @@ export const writeBlockTag = (state: SerializeState, node: PMNode, tag: string):
   state.closeBlock(node);
 };
 
+/** The output a component's tight layout reads back (LinearMarkdownSerializerState). */
+interface ChildrenOutput {
+  length: number;
+  lastLine: () => string;
+  lineFrom: (start: number) => string;
+  insertAt: (start: number, text: string) => void;
+}
+
+/** prosemirror-markdown's state, with the members a component's tight layout writes with. */
+type ChildrenState = SerializeState & {
+  ensureNewLine: () => void;
+  /** prosemirror-markdown internal: write the line breaks a closed block still owes. */
+  flushClose: (size?: number) => void;
+  /** prosemirror-markdown internal: the block just closed, its line breaks not yet written. */
+  closed?: unknown;
+  /** The prefix of the containers being written (`> `, a list item's indent). */
+  delim?: string;
+  output?: ChildrenOutput;
+};
+
+/** For each serializer, the tight openers written and not yet closed, innermost last: the
+ *  component, and where its children start in the output. */
+const openTight = new WeakMap<object, Array<{ node: PMNode; start: number }>>();
+
+/**
+ * Whether a line written next to a component's tag keeps the tight layout when the page
+ * is read again: it must be what `childrenLayout` reads as a child's Markdown line, not
+ * blank in its containers (`> ` left by an emptied quote) and not another tag.
+ */
+const tightLine = (line: string): boolean => !blankInContainers(line) && !TAG_LINE.test(line);
+
+/**
+ * A component's opening tag before its children (#606). Where the author started the
+ * children on the line right after the tag, they start there again; otherwise a blank
+ * line follows the tag, as after any block tag. Whether they still can is read back when
+ * the component closes (`writeChildrenCloser`).
+ */
+export const writeChildrenOpener = (state: SerializeState, node: PMNode, tag: string): void => {
+  const children = state as ChildrenState;
+  if (!isTightOpen(node) || !children.output) {
+    writeBlockTag(state, node, tag);
+    return;
+  }
+  separateBlock(state, node);
+  state.write(tag);
+  children.ensureNewLine();
+  const open = openTight.get(state) ?? [];
+  open.push({ node, start: children.output.length });
+  openTight.set(state, open);
+};
+
+/**
+ * A component's closing tag after its children: on the line right after them where the
+ * author wrote it so (#606), otherwise after a blank line. The tight layout is kept only
+ * where it reads back the same: the children's first and last lines written must each be
+ * a Markdown line (see `tightLine`). An edit that emptied the first or last child, removed
+ * every child, or left a tag or a blank line there gets main's blank-line layout on that
+ * side, so every save loads to itself.
+ */
+export const writeChildrenCloser = (state: SerializeState, node: PMNode, tag: string): void => {
+  const children = state as ChildrenState;
+  const { output } = children;
+  const open = openTight.get(state);
+  const opened = open?.[open.length - 1]?.node === node ? open.pop() : undefined;
+  if (output && opened) {
+    const empty = output.length === opened.start;
+    const first = empty ? '' : output.lineFrom(opened.start);
+    const containers = (children.delim ?? '').replace(/\s+$/, '');
+    // A first line blank in the component's own containers is already the blank line a
+    // block tag gets (an empty first paragraph wrote it); anything else that isn't a
+    // Markdown line (a quote's `> ` left empty, a tag) gets one, in the same containers.
+    if (empty || (first.trim() !== containers.trim() && !tightLine(first))) output.insertAt(opened.start, `${containers}\n`);
+    if (empty) {
+      // No child wrote anything (an emptied paragraph): main's `<Note>⏎⏎</Note>`, with no
+      // more blank lines owed for the empty child.
+      children.closed = null;
+      writeBlockTag(state, node, tag);
+      return;
+    }
+  }
+  // The children's last line: the block written last still owes its line break, or wrote it
+  // itself (a table); a line break written with no block owing one leaves a blank line.
+  const last = output && (children.closed || state.atBlank?.() === false) ? output.lastLine() : '';
+  if (!isTightClose(node) || !output || !tightLine(last)) {
+    writeBlockTag(state, node, tag);
+    return;
+  }
+  if (children.closed) children.flushClose(1);
+  else children.ensureNewLine();
+  state.write(tag);
+  state.closeBlock(node);
+};
+
 export type SupportedDefinition = {
   canonical: string;
   attrs: string[];
@@ -1738,7 +1831,15 @@ function placeholder(range: SourceRange): string {
   return `<${tag} data-source="${encodeMdxSource(range.source)}" data-name="${escapeHtmlAttribute(range.name)}"${broken}></${tag}>`;
 }
 
-function metadataAttributes(open: TagToken, close: TagToken | undefined, definition: SupportedDefinition): string {
+function metadataAttributes(
+  open: TagToken,
+  close: TagToken | undefined,
+  definition: SupportedDefinition,
+  layout: { open?: string; close: boolean } | null = null,
+): string {
+  // A tight layout (#606) is kept as a line break after the opener and before the closer.
+  const sourceOpen = layout?.open === undefined ? open.raw : `${open.raw}\n`;
+  const sourceClose = close && layout?.close ? `\n${close.raw}` : (close?.raw ?? '');
   const attrs = parseAttributes(open.raw, open.name);
   const effective = effectiveAttributes(definition, attrs);
   const known = definition.attrs
@@ -1747,9 +1848,70 @@ function metadataAttributes(open: TagToken, close: TagToken | undefined, definit
       return value === '' || value === false || value == null ? '' : ` data-${name}="${escapeOpenerAttribute(String(value))}"`;
     })
     .join('');
-  return ` data-mdx-source-open="${encodeMdxSource(open.raw)}" data-mdx-source-close="${encodeMdxSource(close?.raw ?? '')}" data-mdx-source-original="${encodeMdxSource(
+  return ` data-mdx-source-open="${encodeMdxSource(sourceOpen)}" data-mdx-source-close="${encodeMdxSource(sourceClose)}" data-mdx-source-original="${encodeMdxSource(
     JSON.stringify(effective),
   )}"${known}`;
+}
+
+/** Where the line holding `at` starts. */
+const lineStartOf = (source: string, at: number): number => {
+  // Back to the nearest line break only: `lastIndexOf('\r')` on a page with none read the
+  // whole page before every component.
+  let start = at;
+  while (start > 0 && source[start - 1] !== '\n' && source[start - 1] !== '\r') start -= 1;
+  return start;
+};
+/**
+ * Where the line holding `at` starts, when only indentation and quote markers come before
+ * `at` on it (the tag starts its line); -1 otherwise. Reads back only over those, so a tag
+ * in the middle of a long line is turned down at the first character that isn't one.
+ */
+const leadStartOf = (source: string, at: number): number => {
+  let start = at;
+  for (; start > 0; start -= 1) {
+    const char = source[start - 1];
+    if (char === '\n' || char === '\r') break;
+    if (char !== ' ' && char !== '\t' && char !== '>') return -1;
+  }
+  return start;
+};
+/** A line that starts with a tag (after its quote markers): another component's, or HTML. */
+const TAG_LINE = /^[ \t>]*</;
+/** The rest of a tag's line (whitespace only), its line break, and the line after it. */
+const NEXT_LINE = /^[ \t]*(\r\n|\r|\n)([^\r\n]*)/;
+
+/**
+ * Whether a block component's children start on the line right after its opening tag
+ * (`open`), and its closing tag is on the line right after them (`close`), with no
+ * blank line between (#606). `open` is what goes after the opener's markup to keep
+ * those children Markdown: a line break and the quote markers before the tag, so a
+ * blank line in the same quote follows the tag. Both need a tag that starts its own
+ * line, and an opener that ends its own.
+ */
+function childrenLayout(source: string, open: TagToken, close: TagToken | undefined): { open?: string; close: boolean } | null {
+  const leadStart = leadStartOf(source, open.start);
+  if (leadStart < 0) return null;
+  const lead = source.slice(leadStart, open.start);
+  // In a quote, an opener over several lines may end at a quote's `>` marker: left as it was.
+  if (lead.includes('>') && /[\r\n]/.test(open.raw)) return null;
+  const next = NEXT_LINE.exec(source.slice(open.end, open.end + 4096));
+  if (!next) return null;
+  const [, lineBreak = '\n', firstLine = ''] = next;
+  const tightOpen = !blankInContainers(firstLine) && !TAG_LINE.test(firstLine);
+  let tightClose = false;
+  if (close) {
+    // The line before the closing tag is read only once the tag is known to start its line.
+    const closeLine = leadStartOf(source, close.start);
+    if (closeLine > open.end) {
+      const previousEnd = source[closeLine - 1] === '\n' && source[closeLine - 2] === '\r' ? closeLine - 2 : closeLine - 1;
+      const previous = source.slice(lineStartOf(source, previousEnd), previousEnd);
+      tightClose = !blankInContainers(previous) && !TAG_LINE.test(previous);
+    }
+  }
+  if (!tightOpen && !tightClose) return null;
+  // The quotes the tag is in: the children may open a quote of their own.
+  const markers = lead.replace(/[ \t]+$/, '');
+  return { open: tightOpen ? `${lineBreak}${markers}` : undefined, close: tightClose };
 }
 
 /** A component tag at the start of a line, read in place from `lastIndex` (sticky). */
@@ -1908,8 +2070,11 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
             : definition.calloutVariant,
         )}"`
       : ` data-mdx="${definition.canonical}"`;
-    const open = `<${wrapper}${marker}${metadataAttributes(token, close, definition)}>`;
-    replacements.push({ start: token.start, end: token.end, value: token.selfClosing ? `${open}</${wrapper}>` : open });
+    const layout = definition.inline || token.selfClosing ? null : childrenLayout(source, token, close);
+    const open = `<${wrapper}${marker}${metadataAttributes(token, close, definition, layout)}>`;
+    // Children on the very next line would be read as the raw text of the HTML block the
+    // tag opens: a blank line there, in the same quote, has them read as Markdown (#606).
+    replacements.push({ start: token.start, end: token.end, value: token.selfClosing ? `${open}</${wrapper}>` : `${open}${layout?.open ?? ''}` });
   }
 
   // From the end, skipping any replacement that overlaps one already taken; then
@@ -1967,6 +2132,19 @@ export function sourceMetadataAttributes() {
   };
 }
 
+/** The line break `sourceOpen` ends with, and `sourceClose` starts with, where the
+ *  children start right after the opening tag, and the closing tag right after them
+ *  (#606). Kept in those values, so every other component's attributes stay as they were. */
+const TIGHT_BREAK = '\n';
+const isTightOpen = (node: PMNode): boolean => String(node.attrs.sourceOpen ?? '').endsWith(TIGHT_BREAK);
+const isTightClose = (node: PMNode): boolean => String(node.attrs.sourceClose ?? '').startsWith(TIGHT_BREAK);
+
+/** A component's opening tag as authored, without the line break that marks a tight layout. */
+export const sourceOpeningTag = (node: PMNode): string => {
+  const raw = String(node.attrs.sourceOpen ?? '');
+  return isTightOpen(node) ? raw.slice(0, -TIGHT_BREAK.length) : raw;
+};
+
 const equalSourceValue = (left: unknown, right: unknown): boolean => String(left ?? '') === String(right ?? '');
 
 /** Where an opening tag's end starts: its `>`, its `/>`, or a spaced `/ >` (#714), read
@@ -2009,7 +2187,7 @@ export function replaceOpeningAttribute(raw: string, componentName: string, name
 
 /** Reuse an author's exact opener until a visually editable prop changes. */
 export function preservedOpeningTag(node: PMNode, canonical: string, attrKeys: string[], selfClosing = false): string {
-  const raw = String(node.attrs.sourceOpen ?? '');
+  const raw = sourceOpeningTag(node);
   if (!raw) {
     const attrs = attrKeys
       .map((key) => {
@@ -2037,7 +2215,8 @@ export function preservedOpeningTag(node: PMNode, canonical: string, attrKeys: s
   );
 }
 
-export const preservedClosingTag = (node: PMNode, canonical: string): string => String(node.attrs.sourceClose ?? '') || `</${canonical}>`;
+export const preservedClosingTag = (node: PMNode, canonical: string): string =>
+  String(node.attrs.sourceClose ?? '').slice(isTightClose(node) ? TIGHT_BREAK.length : 0) || `</${canonical}>`;
 
 function opaqueAttributes() {
   return {
