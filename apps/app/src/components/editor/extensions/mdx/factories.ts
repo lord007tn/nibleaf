@@ -4,7 +4,15 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import { preservedClosingTag, preservedOpeningTag, SUPPORTED_MDX_COMPONENTS, sourceMetadataAttributes, writeBlockTag } from '../mdx-roundtrip';
+import {
+  preservedClosingTag,
+  preservedOpeningTag,
+  SUPPORTED_MDX_COMPONENTS,
+  sourceMetadataAttributes,
+  writeBlockTag,
+  writeChildrenCloser,
+  writeChildrenOpener,
+} from '../mdx-roundtrip';
 import { TitledBlockView } from '../titled-block-view';
 
 /**
@@ -52,9 +60,9 @@ const mdxBlockSerializer =
       writeBlockTag(state, node, opening);
       return;
     }
-    writeBlockTag(state, node, opening.replace(SELF_CLOSING_OPENER, '>'));
+    writeChildrenOpener(state, node, opening.replace(SELF_CLOSING_OPENER, '>'));
     state.renderContent(node);
-    writeBlockTag(state, node, preservedClosingTag(node, tag));
+    writeChildrenCloser(state, node, preservedClosingTag(node, tag));
   };
 
 const markdownStorage = (tag: string) => ({
@@ -156,28 +164,6 @@ export const titledNode = (config: { name: string; tag: string; className: strin
     renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className }), 0],
     addNodeView: () => ReactNodeViewRenderer(TitledBlockView),
     addStorage: () => markdownStorage(config.tag),
-  });
-
-/** A self-closing, attribute-only MDX block such as `<File name="…" />`. */
-export const atomNode = (config: { name: string; tag: string; className: string }) =>
-  Node.create({
-    name: config.name,
-    group: 'block',
-    atom: true,
-    selectable: true,
-    defining: true,
-    addAttributes: () => ({ ...registryAttributes(config.tag), ...sourceMetadataAttributes() }),
-    parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `div[data-mdx="${config.tag}"]` }],
-    renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className })],
-    addNodeView: () => ReactNodeViewRenderer(TitledBlockView),
-    addStorage: () => ({
-      markdown: {
-        serialize(state: SerializeState, node: PMNode) {
-          writeBlockTag(state, node, atomTag(node, config.tag));
-        },
-        parse: {},
-      } satisfies MarkdownNodeSpec,
-    }),
   });
 
 export const inlineWrapperNode = (config: { name: string; tag: string; className: string }) =>

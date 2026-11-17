@@ -1,0 +1,196 @@
+{
+  "testedHead": "45822fd8aea00dde3311f12f2ec170ad80b89635",
+  "mainBaseline": "c3285e6c2de544aa251b627924f513758be0815d",
+  "oldRegressionHead": "3fdb370b411b639232d3929baa5ddbc4218c8950",
+  "blockerTests": {
+    "oldFailed": 3,
+    "newPassed": 3,
+    "names": [
+      "copies only selected text within one File name",
+      "synchronizes a File name changed by setNodeAttribute",
+      "hydrates legacy constructor JSON before the first edit"
+    ]
+  },
+  "editor": {
+    "passed": 2690,
+    "skipped": 59,
+    "files": 113
+  },
+  "growth": {
+    "passed": 65,
+    "skipped": 0,
+    "files": 12
+  },
+  "mdxRoundTripPassedWithoutExpectationEdits": 142,
+  "gates": {
+    "build": {
+      "build-dependencies": {
+        "command": [
+          "pnpm",
+          "exec",
+          "turbo",
+          "run",
+          "build",
+          "--filter=@nibleaf/app^...",
+          "--force",
+          "--concurrency=2"
+        ],
+        "exit": 0,
+        "seconds": 21.16
+      }
+    },
+    "typecheck": {
+      "typecheck": {
+        "command": [
+          "pnpm",
+          "exec",
+          "turbo",
+          "run",
+          "typecheck",
+          "--concurrency=2"
+        ],
+        "exit": 0,
+        "seconds": 26.44
+      }
+    },
+    "editor": {
+      "editor": {
+        "command": [
+          "pnpm",
+          "--filter",
+          "@nibleaf/app",
+          "exec",
+          "vitest",
+          "run",
+          "src/components/editor",
+          "--maxWorkers=2",
+          "--reporter=json",
+          "--outputFile=C:\\Users\\raedb\\.t3\\worktrees\\nibleaf\\t3-46f1d327-88e13ee8f21afcfa\\.tmp\\editor-670-round2/editor-results.json"
+        ],
+        "exit": 0,
+        "seconds": 494.66
+      }
+    },
+    "growth": {
+      "growth": {
+        "command": [
+          "pnpm",
+          "--filter",
+          "@nibleaf/app",
+          "run",
+          "test:growth",
+          "--reporter=json",
+          "--outputFile=C:\\Users\\raedb\\.t3\\worktrees\\nibleaf\\t3-46f1d327-88e13ee8f21afcfa\\.tmp\\editor-670-round2/growth-results.json"
+        ],
+        "exit": 0,
+        "seconds": 136.29
+      }
+    },
+    "static": {
+      "biome": {
+        "command": ["pnpm", "lint"],
+        "exit": 0,
+        "seconds": 22.69
+      },
+      "knip": {
+        "command": ["pnpm", "check:dead-code"],
+        "exit": 0,
+        "seconds": 33.58
+      },
+      "docs": {
+        "command": ["pnpm", "docs:check"],
+        "exit": 0,
+        "seconds": 1.6
+      },
+      "release": {
+        "command": ["pnpm", "release:check"],
+        "exit": 0,
+        "seconds": 2.22
+      },
+      "self-host": {
+        "command": ["pnpm", "self-host:check"],
+        "exit": 0,
+        "seconds": 1.35
+      },
+      "type-scale": {
+        "command": [
+          "pnpm",
+          "--filter",
+          "@nibleaf/app",
+          "run",
+          "check:type-scale"
+        ],
+        "exit": 0,
+        "seconds": 1.5
+      },
+      "script-tests": {
+        "command": ["pnpm", "test:scripts"],
+        "exit": 0,
+        "seconds": 23.14
+      },
+      "untranslated": {
+        "command": [
+          "node",
+          "packages/i18n/scripts/untranslated.mjs",
+          "--check-base",
+          "c3285e6c2de544aa251b627924f513758be0815d"
+        ],
+        "exit": 0,
+        "seconds": 1.84
+      }
+    }
+  },
+  "differentialGatePassed": true,
+  "captureSourceHead": "45822fd8aea00dde3311f12f2ec170ad80b89635",
+  "allEightScreenshotsAndFourRecordingsRetaken": true,
+  "arabicDirections": [
+    {
+      "shot": "menu-before-ar-390-light.png",
+      "directions": {
+        "html": "rtl",
+        "root": "rtl",
+        "provider": "rtl",
+        "editor": "rtl",
+        "menu": "rtl"
+      }
+    },
+    {
+      "shot": "typed-before-ar-390-light.png",
+      "directions": {
+        "html": "rtl",
+        "root": "rtl",
+        "provider": "rtl",
+        "editor": "rtl",
+        "menu": null
+      }
+    },
+    {
+      "shot": "menu-after-ar-390-light.png",
+      "directions": {
+        "html": "rtl",
+        "root": "rtl",
+        "provider": "rtl",
+        "editor": "rtl",
+        "menu": "rtl"
+      }
+    },
+    {
+      "shot": "typed-after-ar-390-light.png",
+      "directions": {
+        "html": "rtl",
+        "root": "rtl",
+        "provider": "rtl",
+        "editor": "rtl",
+        "menu": null
+      }
+    }
+  ],
+  "installedLockfileMatches": "40ea16efe872a356b40689c695622967f3c3d16695106d0e15803eaee1e01cf6",
+  "rebuiltFromOwnSources": [
+    "server",
+    "search",
+    "database",
+    "clickhouse",
+    "usage"
+  ]
+}

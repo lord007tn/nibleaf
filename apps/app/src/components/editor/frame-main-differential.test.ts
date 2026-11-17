@@ -305,6 +305,12 @@ describe('pages without a Frame read as on main', () => {
       nodes.push(node.type.name);
       blankLineValue ||= Object.values(node.attrs).some((value) => typeof value === 'string' && BLANK_LINE.test(value));
       if (!target && key in node.attrs) target = { pos, type: node.type.name, attrs: node.attrs };
+      // #670 adds editable name text where the recorded schema had an atom.
+      // Keep comparing its original name attribute and all saved/edited bytes.
+      if (node.type.name === 'mdxFile') {
+        expect(node.textContent).toBe(node.attrs.name);
+        return false;
+      }
     });
     const saved = getMarkdown(editor);
     let edited: string | null = null;

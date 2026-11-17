@@ -204,6 +204,10 @@ export interface DifferentialEditor {
 function textPositions(editor: DifferentialEditor): number[] {
   const positions: number[] = [];
   editor.state.doc.descendants((node, pos) => {
+    // These recorded edits target the page's body. File names were attributes
+    // when the baseline was recorded; #670's new text must not move the edit
+    // schedule onto different characters. File-name editing has its own tests.
+    if (node.type.name === 'mdxFile') return false;
     if (node.isText) for (let offset = 0; offset <= node.nodeSize; offset++) positions.push(pos + offset);
     return true;
   });

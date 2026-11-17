@@ -1,0 +1,162 @@
+{
+  "baseline": "45a6a3a784beababe8321ff2cddf27e41042fca9",
+  "head": "45822fd8aea00dde3311f12f2ec170ad80b89635",
+  "fixture": "production canvas; mocked router and page lookup hooks",
+  "workspaceOutputs": [],
+  "results": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "tree",
+      "phase": "after",
+      "shot": "menu-after-en-1440-light.png",
+      "directions": {
+        "html": "ltr",
+        "root": "ltr",
+        "provider": "ltr",
+        "editor": "ltr",
+        "menu": "ltr"
+      }
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "tree",
+      "phase": "after",
+      "shot": "typed-after-en-1440-light.png",
+      "directions": {
+        "html": "ltr",
+        "root": "ltr",
+        "provider": "ltr",
+        "editor": "ltr",
+        "menu": null
+      },
+      "barHeight": null,
+      "sourceTop": null,
+      "labelBottom": null,
+      "labelPosition": null,
+      "landingGap": null,
+      "revealedGap": 108,
+      "revealedTag": "DIV",
+      "caretInFileName": true,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "mdxFileTree",
+            "attrs": {
+              "sourceOpen": "",
+              "sourceClose": "",
+              "sourceOriginal": ""
+            },
+            "content": [
+              {
+                "type": "mdxFile",
+                "attrs": {
+                  "name": "index.ts",
+                  "icon": "",
+                  "sourceOpen": "",
+                  "sourceClose": "",
+                  "sourceOriginal": ""
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "index.ts"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            }
+          }
+        ]
+      },
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n</FileTree>",
+      "overflowX": false
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "ar",
+      "scenario": "tree",
+      "phase": "after",
+      "shot": "menu-after-ar-390-light.png",
+      "directions": {
+        "html": "rtl",
+        "root": "rtl",
+        "provider": "rtl",
+        "editor": "rtl",
+        "menu": "rtl"
+      }
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "ar",
+      "scenario": "tree",
+      "phase": "after",
+      "shot": "typed-after-ar-390-light.png",
+      "directions": {
+        "html": "rtl",
+        "root": "rtl",
+        "provider": "rtl",
+        "editor": "rtl",
+        "menu": null
+      },
+      "barHeight": null,
+      "sourceTop": null,
+      "labelBottom": null,
+      "labelPosition": null,
+      "landingGap": null,
+      "revealedGap": 96,
+      "revealedTag": "DIV",
+      "caretInFileName": true,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "mdxFileTree",
+            "attrs": {
+              "sourceOpen": "",
+              "sourceClose": "",
+              "sourceOriginal": ""
+            },
+            "content": [
+              {
+                "type": "mdxFile",
+                "attrs": {
+                  "name": "دليل.md",
+                  "icon": "",
+                  "sourceOpen": "",
+                  "sourceClose": "",
+                  "sourceOriginal": ""
+                },
+                "content": [
+                  {
+                    "type": "text",
+                    "text": "دليل.md"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            }
+          }
+        ]
+      },
+      "markdown": "<FileTree>\n\n<File name=\"دليل.md\" />\n\n</FileTree>",
+      "overflowX": false
+    }
+  ]
+}

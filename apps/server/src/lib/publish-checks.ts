@@ -23,6 +23,9 @@ export interface PublishCheck {
   code: PublishCheckCode;
   severity: 'error' | 'warning';
   pageId: string;
+  /** The docs version (branch) the page belongs to, so the dialog can tell
+   *  apart same-address pages in different versions. */
+  readonly versionId?: string;
   languageCode: string;
   title: string;
   path: string;
@@ -171,6 +174,7 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
       code,
       severity,
       pageId: page.id,
+      versionId: page.versionId,
       languageCode: page.languageCode,
       title: page.title,
       path: page.path,

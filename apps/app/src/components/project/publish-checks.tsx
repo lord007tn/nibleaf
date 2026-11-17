@@ -16,6 +16,9 @@ import { languageName } from '@/lib/language-name';
 
 type CheckCode = PublishCheck['code'];
 
+/** Keeps a version name's own direction inside a translated sentence. */
+const isolate = (value: string) => `\u2068${value}\u2069`;
+
 /** Group order: what breaks the live site first, cosmetic issues last. */
 const CHECK_META: Record<CheckCode, { title: MessageKey; hint: MessageKey; order: number }> = {
   'broken-internal-link': { title: 'publish.checks.brokenLink', hint: 'publish.checks.brokenLinkHint', order: 0 },
@@ -39,6 +42,7 @@ const CHECK_META: Record<CheckCode, { title: MessageKey; hint: MessageKey; order
  *  has its own Fix that opens the editor at it. */
 interface CheckRow {
   pageId: string;
+  versionId: string | undefined;
   title: string;
   path: string;
   languageCode: string;
@@ -67,6 +71,7 @@ const groupChecks = (checks: readonly PublishCheck[]): CheckGroup[] => {
     } else {
       group.rows.push({
         pageId: check.pageId,
+        versionId: check.versionId,
         title: check.title,
         path: check.path,
         languageCode: check.languageCode,
@@ -86,6 +91,9 @@ interface PublishChecksProps {
   loading: boolean;
   /** Closes the publish dialog when a Fix link opens the editor. */
   onFix: () => void;
+  /** Docs version (branch) names by id, to tell apart same-address pages in
+   *  different versions. */
+  versionNames?: ReadonlyMap<string, string>;
 }
 
 /**
@@ -95,7 +103,7 @@ interface PublishChecksProps {
  * disables Publish for them. While an error remains, warning groups start
  * collapsed to their title and count, so the blocking problems lead.
  */
-export function PublishChecks({ projectId, checks, loading, onFix }: PublishChecksProps) {
+export function PublishChecks({ projectId, checks, loading, onFix, versionNames }: PublishChecksProps) {
   const t = useT();
   const { count } = useFormatters();
   const headingId = useId();
@@ -103,6 +111,10 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
   const errors = checks.filter((check) => check.severity === 'error').length;
   const warnings = checks.length - errors;
   const multiLang = new Set(checks.map((check) => check.languageCode)).size > 1;
+  // Name versions only when the checks span more than one known version; an
+  // unknown or missing version is never guessed, so it gets no label.
+  const knownVersions = new Set(checks.flatMap((check) => (check.versionId && versionNames?.has(check.versionId) ? [check.versionId] : [])));
+  const versions = knownVersions.size > 1 ? versionNames : undefined;
 
   const summary = errors
     ? [
@@ -140,6 +152,7 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
                 multiLang={multiLang}
                 onFix={onFix}
                 projectId={projectId}
+                versions={versions}
               />
             ))}
           </div>
@@ -158,6 +171,7 @@ function CheckGroupSection({
   multiLang,
   projectId,
   onFix,
+  versions,
 }: {
   group: CheckGroup;
   headingId: string;
@@ -165,6 +179,7 @@ function CheckGroupSection({
   multiLang: boolean;
   projectId: string;
   onFix: () => void;
+  versions: ReadonlyMap<string, string> | undefined;
 }) {
   const t = useT();
   const { count } = useFormatters();
@@ -210,11 +225,13 @@ function CheckGroupSection({
         {group.rows.map((row) => {
           const title = row.title.trim() || t('editor.untitled');
           const evidence = row.details[0];
+          const versionName = row.versionId ? versions?.get(row.versionId) : undefined;
+          const version = versionName ? t('editor.branch.trigger', { name: isolate(versionName) }) : undefined;
           // Unique per button: the problem, its evidence, and the page's address
-          // (and language), so neither two problems on one page nor two pages
-          // with the same title share a name.
+          // (and language and version), so neither two problems on one page nor
+          // two pages with the same title share a name.
           const where = multiLang && row.languageCode ? `/${row.path} · ${row.languageCode}` : `/${row.path}`;
-          const problem = [t(meta.title), locatable ? evidence : undefined, where].filter(Boolean).join(' · ');
+          const problem = [t(meta.title), locatable ? evidence : undefined, where, version].filter(Boolean).join(' · ');
           return (
             <DataListItem
               badges={
@@ -252,6 +269,11 @@ function CheckGroupSection({
                 >
                   <PenLine aria-hidden />
                   {t('publish.checks.fix')}
+                  {version && (
+                    <bdi className="max-w-36 truncate font-normal" title={version}>
+                      {version}
+                    </bdi>
+                  )}
                 </Button>
               }
             />

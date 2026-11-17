@@ -1,4 +1,5 @@
 import { FileText, Folder, FolderTree } from 'lucide-react';
+import { insertBlockAtFirstItem } from './insert-items';
 import type { SlashItem } from './types';
 
 export const fileTreeSlashItems: SlashItem[] = [
@@ -8,16 +9,12 @@ export const fileTreeSlashItems: SlashItem[] = [
     icon: FolderTree,
     glyph: '⌘',
     keywords: ['file', 'folder', 'tree', 'structure'],
+    // The caret lands in the first file's name, so typing names it (#670); one undo removes the tree.
     command: ({ editor, range }) =>
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertContent({
-          type: 'mdxFileTree',
-          content: [{ type: 'mdxFile', attrs: { name: '', icon: '' } }],
-        })
-        .run(),
+      insertBlockAtFirstItem(editor, range, {
+        type: 'mdxFileTree',
+        content: [{ type: 'mdxFile', attrs: { name: '', icon: '' } }],
+      }),
   },
   {
     titleKey: 'editor.slash.folder.title',

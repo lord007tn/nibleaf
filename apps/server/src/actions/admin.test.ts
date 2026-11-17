@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
     exportJob: { findMany: vi.fn(), groupBy: vi.fn(), count: vi.fn(async () => 0) },
     user: { findUnique: vi.fn() },
     project: { findUnique: vi.fn() },
+    organization: { findUnique: vi.fn(async () => null) },
+    organizationHandle: { findUnique: vi.fn(async () => null) },
     platformEvent: { findMany: vi.fn() },
     gitSyncOperation: { findMany: vi.fn(), count: vi.fn(async () => 0) },
   },
@@ -132,5 +134,12 @@ describe('admin-provisioned site address', () => {
     ['handbook', 'handbook'],
   ])('gives %j the address %s', async (desired, slug) => {
     await expect(uniqueAdminProjectSlug(desired)).resolves.toBe(slug);
+  });
+
+  it('keeps a numbered address within one DNS label after truncation', async () => {
+    mocks.prisma.project.findUnique.mockResolvedValueOnce({ id: 'occupied' });
+    const slug = await uniqueAdminProjectSlug('a'.repeat(80));
+    expect(slug).toBe(`${'a'.repeat(61)}-2`);
+    expect(slug).toHaveLength(63);
   });
 });
