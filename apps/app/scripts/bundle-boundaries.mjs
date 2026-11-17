@@ -4,6 +4,9 @@ import { KNOWN_MARKETING_READER_ICONS } from './reader-icons.ts';
 // bytes that do. `check-bundle-budget.mjs` applies both to the module report
 // that `BUNDLE_ANALYZE=true` builds write; see BUNDLE_BUDGET.md.
 
+// A zod module, in a hoisted or a pnpm-store layout.
+const ZOD_MODULE = /\/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?zod\//;
+
 // Marketing pages, the blog and their copy, and dashboard data code must never
 // reach a published docs page. Route files are the usual leak: anything a route
 // file exports, and its non-split options (head, validateSearch, beforeLoad, and
@@ -39,11 +42,51 @@ const forbiddenPublicModules = [
   // with lib/search-params.ts, the reader's renderers use plain checks, and the
   // reader imports its language and nav helpers apart from @nibleaf/shared/site
   // (whose add-on schemas build zod objects as the module loads).
-  /\/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?zod\//,
+  ZOD_MODULE,
 ];
 
 /** Module ids (forward slashes) that a public profile must not contain. */
 export const forbiddenModuleIds = (moduleIds) => moduleIds.filter((id) => forbiddenPublicModules.some((pattern) => pattern.test(id)));
+
+// Search open (#842): opening the reader's search loads the search dialog's
+// chunk and every chunk it imports statically. Its query hook calls the public
+// API from the browser and checks the input with a plain function
+// (`functions/site-search-input.ts`), so none of those chunks needs zod; #841
+// saved 26 KiB gzip on the first search open by dropping it.
+const SEARCH_DIALOG_MODULE = /\/apps\/app\/src\/components\/site\/site-search-dialog\.tsx$/;
+
+/** The files of the chunks loaded when the reader opens search: the chunk the
+ *  search dialog's dynamic import loads (the one whose facade, or one of whose
+ *  modules, is `site-search-dialog.tsx`) and its static imports, transitively.
+ *  Empty when no chunk holds the dialog, which the caller must treat as a
+ *  failure: a renamed dialog would otherwise pass without being checked.
+ *  `chunks` are the module report's entries, with forward-slash module ids. */
+export function searchOpenFiles(chunks) {
+  const byFile = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
+  const queue = chunks
+    .filter(
+      (chunk) =>
+        SEARCH_DIALOG_MODULE.test(chunk.facadeModuleId?.replaceAll('\\', '/') ?? '') ||
+        chunk.modules.some((module) => SEARCH_DIALOG_MODULE.test(module.id)),
+    )
+    .map((chunk) => chunk.fileName);
+  const files = new Set();
+  for (let file = queue.pop(); file !== undefined; file = queue.pop()) {
+    if (files.has(file)) continue;
+    files.add(file);
+    queue.push(...(byFile.get(file)?.imports ?? []));
+  }
+  return [...files].sort();
+}
+
+/** Zod modules in the chunks loaded when the reader opens search, as
+ *  `{ file, id }` pairs. */
+export function searchOpenZodModules(chunks) {
+  const byFile = new Map(chunks.map((chunk) => [chunk.fileName, chunk]));
+  return searchOpenFiles(chunks).flatMap((file) =>
+    (byFile.get(file)?.modules ?? []).filter((module) => ZOD_MODULE.test(module.id)).map((module) => ({ file, id: module.id })),
+  );
+}
 
 // Rolldown groups shared modules by the set of chunks that import them. When
 // marketing code imports a Lucide icon the reader also uses, the reader's icon

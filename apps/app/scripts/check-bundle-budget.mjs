@@ -8,6 +8,8 @@ import {
   marketingSharedReaderIcons,
   nonReaderRouteBytes,
   preloadTableFiles,
+  searchOpenFiles,
+  searchOpenZodModules,
 } from './bundle-boundaries.mjs';
 
 const appRoot = resolve(import.meta.dirname, '..');
@@ -226,6 +228,16 @@ for (const [profile, report] of Object.entries(reports)) {
   }
 }
 
+// Search open (#842): what the reader's first search open fetches beyond the
+// docs page itself, from the module report.
+const searchOpen = chunkReport ? searchOpenFiles(chunkReport) : [];
+if (searchOpen.length > 0) {
+  const pageFiles = new Set(reports['public-docs']?.assets.map((asset) => asset.url.replace(/^\//, '')) ?? []);
+  const extra = searchOpen.filter((file) => !pageFiles.has(file) && existsSync(join(publicRoot, file)));
+  const gzip = extra.reduce((sum, file) => sum + gzipSync(readFileSync(join(publicRoot, file)), { level: 9 }).byteLength, 0);
+  console.log(`\nsearch open: ${searchOpen.length} chunks, ${extra.length} beyond public-docs (${formatBytes(gzip)} gzip)`);
+}
+
 const shared = Object.values(reports)
   .flatMap((report) => report.assets.map((asset) => asset.url))
   .filter((url, index, all) => all.indexOf(url) === index && all.filter((candidate) => candidate === url).length === Object.keys(reports).length);
@@ -302,6 +314,17 @@ if (process.argv.includes('--check')) {
       console.error(
         `\nBUNDLE BOUNDARY FAILED: marketing code imports the reader's ${icon} icon, which re-splits the reader's icon chunks. Use a copy in components/marketing/site/marketing-icons.ts.`,
       );
+      invalid = true;
+    }
+    // Opening search must not load zod (#841, #842).
+    if (searchOpen.length === 0) {
+      console.error(
+        '\nBUNDLE BOUNDARY FAILED: no chunk holds components/site/site-search-dialog.tsx; update searchOpenFiles in bundle-boundaries.mjs.',
+      );
+      invalid = true;
+    }
+    for (const { file, id } of searchOpenZodModules(chunkReport)) {
+      console.error(`\nBUNDLE BOUNDARY FAILED: search open includes zod module ${id.replace(/^.*?\/node_modules\//, '')} in ${file}.`);
       invalid = true;
     }
   } else if (process.env.CI) {
