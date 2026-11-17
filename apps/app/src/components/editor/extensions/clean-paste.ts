@@ -318,6 +318,12 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
   addProseMirrorPlugins() {
     const editor = this.editor;
     const getUpload = this.options.getUpload;
+    const selectedFileName = () => {
+      const selection = editor.state.selection;
+      return selection instanceof TextSelection && selection.$from.sameParent(selection.$to) && selection.$from.parent.type.name === 'mdxFile'
+        ? editor.state.doc.textBetween(selection.from, selection.to)
+        : null;
+    };
     const base = DOMSerializer.fromSchema(editor.schema);
     const serializer = new DOMSerializer(
       Object.fromEntries(
@@ -452,15 +458,18 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
       new Plugin({
         props: {
           transformCopied: (slice) => {
-            lastCopy = { nonce: randomUUID(), slice, text: '' };
-            return slice;
+            const name = selectedFileName();
+            // A partial name is plain text, not a structural File/tree copy.
+            const copied = name !== null ? new Slice(name ? Fragment.from(editor.schema.text(name)) : Fragment.empty, 0, 0) : slice;
+            lastCopy = { nonce: randomUUID(), slice: copied, text: '' };
+            return copied;
           },
           clipboardSerializer: serializer,
           clipboardTextSerializer: (slice) => {
             // tiptap-markdown exposes this serializer at runtime but omits it
             // from its declarations. Use the same serializer as its clipboard plugin.
             const storage = editor.storage as typeof editor.storage & { markdown: { serializer: { serialize(content: Fragment): string } } };
-            const text = storage.markdown.serializer.serialize(slice.content);
+            const text = selectedFileName() ?? storage.markdown.serializer.serialize(slice.content);
             if (lastCopy) lastCopy = { ...lastCopy, slice, text };
             return text;
           },

@@ -1,6 +1,6 @@
 // Canvas fixture using production editor extensions, node views, Fix bar and
 // design-system styles. Router/page lookup hooks are mocked; no database.
-// Run under the editor/668-670 heavy lock: PR=668|670 PHASE=before|after.
+// Run under the editor/670 heavy lock: PR=670 PHASE=before|after.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
@@ -18,7 +18,7 @@ const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8'
 const { PR, PHASE } = process.env;
 assert.ok(['668', '670'].includes(PR));
 assert.ok(['before', 'after'].includes(PHASE));
-assert.match(await readFile(join(tmpdir(), 'nibleaf-heavy.lock'), 'utf8'), /^editor\/668-670 /);
+assert.match(await readFile(join(tmpdir(), 'nibleaf-heavy.lock'), 'utf8'), /^editor\/670 /);
 assert.ok(freemem() >= 5 * 1024 ** 3, '5 GiB free RAM');
 const baseline = process.env.BASE ?? git('rev-parse', 'origin/main');
 const out = resolve(root, '.github/assets', PR === '668' ? 'fix-668-fix-bar-390' : 'fix-670-file-tree-caret');
@@ -55,12 +55,13 @@ import {createRoot} from 'react-dom/client';
 import {useRef} from 'react';
 import {Editor} from '@tiptap/core';
 import {EditorContent} from '@tiptap/react';
-import {DirectionProvider} from '@nibleaf/design-system/components/ui/direction';
+import {DirectionProvider,useDirection} from '@nibleaf/design-system/components/ui/direction';
 import {setLanguage} from '@nibleaf/i18n/locale-state';
 import {translateFn} from '@nibleaf/i18n';
 import {buildEditorExtensions,getMarkdown,seedMarkdown} from '${path('tiptap-editor')}';
 import {PublishFixBar} from '${path('publish-fix-bar')}';
 const params=new URLSearchParams(location.search),locale=params.get('locale')==='ar'?'ar':'en',scenario=params.get('scenario');
+const direction=locale==='ar'?'rtl':'ltr';
 await setLanguage(locale);
 document.documentElement.classList.add(params.get('theme')==='dark'?'dark':'light');
 const long=Array.from({length:24},(_,i)=>'Paragraph '+(i+1)+' of the upgrade guide, long enough to push what follows well down the page.').join('\\n\\n');
@@ -68,11 +69,12 @@ const content=scenario==='tree'?'':scenario==='landing'?long+'\\n\\nThen read [t
 const editor=new Editor({extensions:buildEditorExtensions({dir:locale==='ar'?'rtl':'ltr'})});
 seedMarkdown(editor,content);
 window.fixtureEditor=editor;window.fixtureTitle=translateFn('editor.slash.fileTree.title',undefined,locale);window.fixtureMarkdown=()=>getMarkdown(editor);
-function Fixture(){const canvas=useRef(null);return <DirectionProvider dir={locale==='ar'?'rtl':'ltr'}><div className="h-dvh flex flex-col bg-background text-foreground">
+window.fixtureDirections=()=>{const root=document.querySelector('[data-fixture-root]'),menu=document.querySelector('[cmdk-root]');return {html:getComputedStyle(document.documentElement).direction,root:root?getComputedStyle(root).direction:null,provider:root?.getAttribute('data-provider-direction'),editor:getComputedStyle(editor.view.dom).direction,menu:menu?getComputedStyle(menu).direction:null};};
+function Fixture(){const canvas=useRef(null),providerDirection=useDirection();return <div className="h-dvh flex flex-col bg-background text-foreground" dir={direction} lang={locale} data-fixture-root="" data-provider-direction={providerDirection}>
 <header className="flex h-14 shrink-0 items-center border-b border-border px-4 font-medium">{locale==='ar'?'محرر المستندات':'Documentation editor'}</header>
 {scenario==='tree'?null:<PublishFixBar arrival={{code:'broken-internal-link',target:'/configuration',pageId:'fixture'}} group={false} canvas={()=>canvas.current} markdown={()=>getMarkdown(editor)} onEditSource={()=>{}} onFocusTitle={()=>{}} onOpenSettings={()=>{}} onHandled={()=>{}} onBackToPublish={()=>{}} onDismiss={()=>{}}/>}
-<div ref={canvas} className="pl-editor pl-editor-document flex-1" dir={locale==='ar'?'rtl':'ltr'} lang={locale}><div className="pl-document-scroll"><div className="pl-document-page"><h1 className="pl-document-title text-3xl font-semibold">{scenario==='tree'?(locale==='ar'?'بنية المشروع':'Project structure'):(locale==='ar'?'دليل الترقية':'Upgrade guide')}</h1><EditorContent editor={editor}/></div></div></div></div></DirectionProvider>}
-createRoot(document.getElementById('root')).render(<Fixture/>);
+<div ref={canvas} className="pl-editor pl-editor-document flex-1" dir={direction} lang={locale}><div className="pl-document-scroll"><div className="pl-document-page"><h1 className="pl-document-title text-3xl font-semibold">{scenario==='tree'?(locale==='ar'?'بنية المشروع':'Project structure'):(locale==='ar'?'دليل الترقية':'Upgrade guide')}</h1><EditorContent editor={editor}/></div></div></div></div>}
+createRoot(document.getElementById('root')).render(<DirectionProvider direction={direction}><Fixture/></DirectionProvider>);
 `,
   );
   const explanations = Object.fromEntries(
@@ -175,7 +177,11 @@ export {translateFn} from '@nibleaf/i18n';
           .filter({ has: page.locator('.font-medium', { hasText: title }) })
           .first();
         await option.waitFor();
-        await page.screenshot({ path: resolve(out, `menu-${name}.png`) });
+        const menuShot = `menu-${name}.png`;
+        const directions = await page.evaluate(() => window.fixtureDirections());
+        for (const key of ['html', 'root', 'provider', 'editor', 'menu']) assert.equal(directions[key], locale === 'ar' ? 'rtl' : 'ltr', key);
+        await page.screenshot({ path: resolve(out, menuShot) });
+        results.push({ ...item, phase: PHASE, shot: menuShot, directions });
         await page.waitForTimeout(500);
         await option.click();
         await page.waitForTimeout(500);
@@ -208,6 +214,7 @@ export {translateFn} from '@nibleaf/i18n';
         const at = window.fixtureEditor.view.domAtPos(window.fixtureEditor.state.selection.from).node;
         const revealed = at instanceof Element ? at : at?.parentElement;
         return {
+          directions: window.fixtureDirections(),
           barHeight: bar?.getBoundingClientRect().height ?? null,
           sourceTop,
           labelBottom: labelTop === null ? null : labelTop + Number.parseFloat(label.height),
@@ -221,6 +228,7 @@ export {translateFn} from '@nibleaf/i18n';
           overflowX: document.documentElement.scrollWidth > innerWidth,
         };
       });
+      for (const key of ['html', 'root', 'provider', 'editor']) assert.equal(state.directions[key], locale === 'ar' ? 'rtl' : 'ltr', key);
       if (PHASE === 'after') {
         assert.equal(state.overflowX, false);
         if (PR === '670') assert.equal(state.caretInFileName, true);

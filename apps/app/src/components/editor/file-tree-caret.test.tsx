@@ -11,7 +11,7 @@ import { type Locale, type MessageKey, type MessageVariables, translateFn } from
 import { Editor, type JSONContent } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { TextSelection } from '@tiptap/pm/state';
+import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 import { EditorContent } from '@tiptap/react';
 import { act, createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
@@ -327,6 +327,102 @@ describe('#670: the keyboard in a file’s name', () => {
  * spaces block tags with blank lines, and keeps each tag as authored (quotes, spacing,
  * expressions, character references, a closing tag).
  */
+/** Exercise the browser copy event, including the production clipboard plugins. */
+const copySelection = (editor: Editor) => {
+  const values: Record<string, string> = {};
+  const event = new Event('copy', { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clipboardData', {
+    value: {
+      clearData: () => undefined,
+      setData: (type: string, value: string) => {
+        values[type] = value;
+      },
+    },
+  });
+  editor.view.dom.dispatchEvent(event);
+  return values;
+};
+
+describe('#846 review blockers', () => {
+  it('copies only selected text within one File name', async () => {
+    const editor = await make('<FileTree>\n\n<File name="index.ts" />\n\n</FileTree>');
+    const file = nodesOf(editor, 'mdxFile')[0];
+    if (!file) throw new Error('No file');
+    await act(async () => {
+      editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, file.pos + 1, file.pos + 6)));
+    });
+    const copied = copySelection(editor);
+    expect(copied['text/plain']).toBe('index');
+    expect(copied['text/html']).not.toContain('FileTree');
+    expect(fileNames(editor)).toEqual([{ text: 'index.ts', name: 'index.ts' }]);
+  });
+
+  it('synchronizes a File name changed by setNodeAttribute', async () => {
+    const editor = await make('<FileTree>\n\n<File name="index.ts" />\n\n</FileTree>');
+    const file = nodesOf(editor, 'mdxFile')[0];
+    if (!file) throw new Error('No file');
+    await act(async () => {
+      editor.view.dispatch(editor.state.tr.setNodeAttribute(file.pos, 'name', 'renamed.ts'));
+    });
+    expect(fileNames(editor)).toEqual([{ text: 'renamed.ts', name: 'renamed.ts' }]);
+    expect(document.querySelector('.pl-file-name')?.textContent).toBe('renamed.ts');
+    expect(getMarkdown(editor)).toContain('<File name="renamed.ts" />');
+    await act(async () => {
+      editor.commands.undo();
+    });
+    expect(fileNames(editor)).toEqual([{ text: 'index.ts', name: 'index.ts' }]);
+    expect(document.querySelector('.pl-file-name')?.textContent).toBe('index.ts');
+  });
+
+  it('hydrates legacy constructor JSON before the first edit', async () => {
+    const content = doc({ type: 'mdxFileTree', content: [{ type: 'mdxFile', attrs: { name: 'from-json.ts' } }] });
+    const original = JSON.stringify(content);
+    const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions(), content });
+    editors.push(editor);
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    roots.push(root);
+    await act(async () => root.render(createElement(EditorContent, { editor })));
+    expect(document.querySelector('.pl-file-name')?.textContent).toBe('from-json.ts');
+    expect(fileNames(editor)).toEqual([{ text: 'from-json.ts', name: 'from-json.ts' }]);
+    const file = nodesOf(editor, 'mdxFile')[0];
+    if (!file) throw new Error('No file');
+    await act(async () => {
+      editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, file.pos + 1)));
+    });
+    await typeText(editor, 'x');
+    expect(fileNames(editor)).toEqual([{ text: 'xfrom-json.ts', name: 'xfrom-json.ts' }]);
+    expect(getMarkdown(editor)).toContain('<File name="xfrom-json.ts" />');
+    expect(JSON.stringify(content)).toBe(original);
+    await act(async () => {
+      editor.commands.undo();
+    });
+    expect(fileNames(editor)).toEqual([{ text: 'from-json.ts', name: 'from-json.ts' }]);
+    expect(getMarkdown(editor)).toContain('<File name="from-json.ts" />');
+  });
+});
+
+describe('#846 structural clipboard controls', () => {
+  it.each(['node', 'cross-node'])('keeps structural Markdown for a %s selection', async (kind) => {
+    const editor = await make('<FileTree>\n\n<File name="index.ts" />\n\n<File name="util.ts" />\n\n</FileTree>');
+    const tree = nodesOf(editor, 'mdxFileTree')[0];
+    const files = nodesOf(editor, 'mdxFile');
+    if (!tree || !files[0] || !files[1]) throw new Error('No tree or files');
+    await act(async () => {
+      const selection =
+        kind === 'node'
+          ? NodeSelection.create(editor.state.doc, tree.pos)
+          : TextSelection.create(editor.state.doc, files[0].pos + 1, files[1].pos + 3);
+      editor.view.dispatch(editor.state.tr.setSelection(selection));
+    });
+    const copied = copySelection(editor);
+    expect(copied['text/plain']).toContain('<FileTree>');
+    expect(copied['text/plain']).toContain('<File name="index.ts" />');
+    expect(copied['text/plain']).toContain('<File name="util.ts" />');
+  });
+});
+
 const SAVED_ON_MAIN: Array<[source: string, saved: string]> = [
   ['<FileTree>\n\nRead me.\n\n</FileTree>', '<FileTree>\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n</FileTree>'],
   ['<FileTree>\n\n</FileTree>', '<FileTree>\n\n<Folder>\n\n</Folder>\n\n</FileTree>'],

@@ -1,7 +1,7 @@
-import { mergeAttributes, Node } from '@tiptap/core';
+import { type JSONContent, mergeAttributes, Node } from '@tiptap/core';
 import { Fragment, type Node as PMNode, type Schema } from '@tiptap/pm/model';
 import { Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state';
-import { Mapping } from '@tiptap/pm/transform';
+import { AttrStep, Mapping } from '@tiptap/pm/transform';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { FileNameView } from '../file-name-view';
@@ -67,12 +67,21 @@ const nameContent = (element: globalThis.Node, schema: Schema): Fragment => {
   return name ? Fragment.from(schema.text(name)) : Fragment.empty;
 };
 
+/** Legacy constructor JSON predates the editable name. Seed it before the
+ * initial document is created, without mutating the caller's JSON or history. */
+const hydrateFileNames = (node: JSONContent): JSONContent => {
+  if (node.type === 'mdxFile' && !node.content?.length && typeof node.attrs?.name === 'string' && node.attrs.name) {
+    return { ...node, content: [{ type: 'text', text: node.attrs.name }] };
+  }
+  return node.content ? { ...node, content: node.content.map(hydrateFileNames) } : node;
+};
+
 /** The ranges of the final document that `transactions` wrote. */
 const changedRanges = (transactions: readonly Transaction[], size: number): Array<[number, number]> => {
   const ranges: Array<[number, number]> = [];
   transactions.forEach((tr, index) => {
     tr.mapping.maps.forEach((map, step) => {
-      map.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+      const add = (newStart: number, newEnd: number) => {
         let from = tr.mapping.slice(step + 1).map(newStart, -1);
         let to = tr.mapping.slice(step + 1).map(newEnd, 1);
         for (const later of transactions.slice(index + 1)) {
@@ -80,7 +89,13 @@ const changedRanges = (transactions: readonly Transaction[], size: number): Arra
           to = later.mapping.map(to, 1);
         }
         ranges.push([Math.max(0, Math.min(from, size)), Math.max(0, Math.min(Math.max(to, from), size))]);
+      };
+      map.forEach((_oldStart, _oldEnd, newStart, newEnd) => {
+        add(newStart, newEnd);
       });
+      const change = tr.steps[step];
+      // AttrStep deliberately has an empty map, but its node still changed.
+      if (change instanceof AttrStep && change.attr === 'name') add(change.pos, change.pos + 1);
     });
   });
   return ranges;
@@ -110,6 +125,12 @@ export const File = Node.create({
   code: true,
   defining: true,
   addAttributes: () => ({ ...registryAttributes('File'), ...sourceMetadataAttributes() }),
+  onBeforeCreate() {
+    const content = this.editor.options.content;
+    if (content && typeof content !== 'string') {
+      this.editor.options.content = Array.isArray(content) ? content.map(hydrateFileNames) : hydrateFileNames(content);
+    }
+  },
   parseHTML: () => [
     { tag: 'file', getContent: nameContent },
     { tag: 'div[data-mdx="File"]', getContent: nameContent },
