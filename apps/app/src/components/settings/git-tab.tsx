@@ -20,7 +20,6 @@ import { useGitSettingsWebhookRotateCommand } from '@/features/site-git/componen
 import { type GitInstantChange, gitInstantPayload } from '@/features/site-git/model/git-instant-write';
 import { useGitWorkflow, useWorkspaceSettings } from '@/hooks/api';
 import { githubRepositoryPath } from '@/lib/git-repository';
-import { copyToClipboard } from '@/lib/invitations';
 import { GitWorkflow, type GitWorkflowPrefill } from './git-workflow';
 import { SettingsSection } from './section';
 
@@ -39,14 +38,14 @@ interface GitConfig {
   autoPublish?: boolean;
   // Server-managed (read-only here): the PATCH schema strips them, and the
   // server carries them over on every save.
-  webhookSecret?: string;
+  webhookConfigured?: boolean;
   lastSyncAt?: string;
   lastSyncStatus?: 'ok' | 'failed';
   lastSyncError?: string;
 }
 
 const DEFAULTS: Required<
-  Omit<GitConfig, 'lastImportedAt' | 'connected' | 'autoPublish' | 'webhookSecret' | 'lastSyncAt' | 'lastSyncStatus' | 'lastSyncError'>
+  Omit<GitConfig, 'lastImportedAt' | 'connected' | 'autoPublish' | 'webhookConfigured' | 'lastSyncAt' | 'lastSyncStatus' | 'lastSyncError'>
 > = {
   provider: 'github',
   repo: '',
@@ -122,23 +121,13 @@ function DeployOnPush({
       toast.success(t('settings.git.webhook.rotated'));
     },
     failed: (_error) => toast.error(t('settings.git.webhook.rotateError')),
+    copied: (ok) => (ok ? toast.success(t('settings.git.webhook.copied')) : toast.error(t('settings.git.webhook.copyError'))),
   });
-  const [copying, setCopying] = useState(false);
+  const { copy, copying, secret } = rotateSecret;
+  const configured = git.webhookConfigured === true || rotateSecret.configured;
   const [webhookOrigin, setWebhookOrigin] = useState('');
   useEffect(() => setWebhookOrigin(window.location.origin), []);
   const webhookUrl = `${webhookOrigin}/api/public/git/webhook/${projectId}`;
-  const secret = git.webhookSecret ?? '';
-
-  const copy = async (text: string) => {
-    setCopying(true);
-    const ok = await copyToClipboard(text);
-    setCopying(false);
-    if (ok) {
-      toast.success(t('settings.git.webhook.copied'));
-    } else {
-      toast.error(t('settings.git.webhook.copyError'));
-    }
-  };
 
   const instructions =
     git.provider === 'gitlab'
@@ -159,7 +148,7 @@ function DeployOnPush({
         </li>
 
         <li className="flex gap-3">
-          <StepBadge done={Boolean(secret)}>2</StepBadge>
+          <StepBadge done={configured}>2</StepBadge>
           <div className="min-w-0 flex-1 pt-0.5 leading-snug">
             <div className="font-medium text-sm">{t('settings.git.webhook.stepWebhook')}</div>
             <div className="text-muted-foreground text-xs">{t('settings.git.webhook.stepWebhookDetail')}</div>
@@ -171,7 +160,7 @@ function DeployOnPush({
                   <Button
                     aria-label={t('settings.git.webhook.copy')}
                     loading={copying}
-                    onClick={() => copy(webhookUrl)}
+                    onClick={() => void copy(webhookUrl)}
                     size="icon"
                     type="button"
                     variant="outline"
@@ -183,8 +172,15 @@ function DeployOnPush({
               <div className="flex flex-col gap-1.5">
                 <Label htmlFor="git-webhook-secret">{t('settings.git.webhook.secret')}</Label>
                 {secret ? (
-                  <div className="flex gap-2">
-                    <SecretInput id="git-webhook-secret" masked={!revealed} name="git-webhook-secret" readOnly value={secret} />
+                  <div className="flex flex-wrap gap-2">
+                    <SecretInput
+                      className="min-w-0 flex-1 basis-40"
+                      id="git-webhook-secret"
+                      masked={!revealed}
+                      name="git-webhook-secret"
+                      readOnly
+                      value={secret}
+                    />
                     <Button
                       aria-label={revealed ? t('settings.git.webhook.hide') : t('settings.git.webhook.reveal')}
                       onClick={() => setRevealed((value) => !value)}
@@ -197,7 +193,7 @@ function DeployOnPush({
                     <Button
                       aria-label={t('settings.git.webhook.copy')}
                       loading={copying}
-                      onClick={() => copy(secret)}
+                      onClick={() => void copy(secret)}
                       size="icon"
                       type="button"
                       variant="outline"
@@ -210,15 +206,22 @@ function DeployOnPush({
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <Button loading={rotateSecret.busy} onClick={() => void rotateSecret.press()} type="button" variant="outline">
                       <RefreshCw className="size-3.5" />
-                      {t('settings.git.webhook.generate')}
+                      {t(configured ? 'settings.git.webhook.rotate' : 'settings.git.webhook.generate')}
                     </Button>
-                    <span className="text-muted-foreground text-xs">{t('settings.git.webhook.noSecret')}</span>
+                    <span className="text-muted-foreground text-xs">
+                      {t(configured ? 'settings.git.webhook.configured' : 'settings.git.webhook.noSecret')}
+                    </span>
                   </div>
                 )}
               </div>
+              {secret ? (
+                <p className="text-muted-foreground text-xs leading-relaxed" role="status">
+                  {t('settings.git.webhook.oneTime')}
+                </p>
+              ) : null}
               <p className="text-muted-foreground text-xs leading-relaxed">{instructions}</p>
             </div>
           </div>

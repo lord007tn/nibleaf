@@ -1,11 +1,16 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { getSessionGeneration } from '@/integrations/tanstack-query/session-generation';
+import { copyToClipboard } from '@/lib/invitations';
+import { onSessionCleared } from '@/lib/session-cleared';
 import { useGitSettingsWebhookRotate } from '../api/git-settings-webhook-rotate';
 
 type Outcome = {
-  /** The new secret is stored and the site's settings read back: reveal it. */
+  /** Rotation succeeded; deliver its one-time answer after the metadata readback attempt. */
   rotated: () => void;
   /** The rotation failed; the error is sanitized (status, a known code and a numeric Retry-After only). */
   failed: (error: unknown) => void;
+  copied: (ok: boolean) => void;
 };
 
 /**
@@ -22,34 +27,64 @@ type Outcome = {
  * The outcome used is the one passed by the latest render (its language, its state).
  */
 export function useGitSettingsWebhookRotateCommand(projectId: string, outcome: Outcome) {
+  const client = useQueryClient();
+  const generation = getSessionGeneration(client);
   const { rotate, pending } = useGitSettingsWebhookRotate(projectId);
+  const [answer, setAnswer] = useState<{ webhookSecret: string | null; owner: object } | null>(null);
+  const [copying, setCopying] = useState(false);
   const latest = useRef(outcome);
   useLayoutEffect(() => {
     latest.current = outcome;
   });
 
   // The card as committed for a site: a new object each time it shows another site or mounts.
-  const owner = useRef<{ projectId: string } | null>(null);
+  const owner = useRef<{ projectId: string; client: typeof client; generation: number } | null>(null);
   useLayoutEffect(() => {
-    const committed = { projectId };
+    const committed = { projectId, client, generation };
     owner.current = committed;
+    setAnswer(null);
+    setCopying(false);
+    // The listener retains only setters/ownership, never a secret value. State belongs to this panel.
+    const unsubscribe = onSessionCleared(() => {
+      owner.current = null;
+      setAnswer(null);
+      setCopying(false);
+    });
     return () => {
+      unsubscribe();
       if (owner.current === committed) owner.current = null;
     };
-  }, [projectId]);
+  }, [projectId, client, generation]);
 
   const press = async () => {
     const pressedBy = owner.current;
     if (pressedBy?.projectId !== projectId) return;
-    let rotated: boolean;
+    if (!pending) setAnswer((previous) => (previous ? { ...previous, webhookSecret: null } : null));
+    const current = () => owner.current === pressedBy && getSessionGeneration(client) === generation;
+    let rotated: { webhookSecret: string | null } | null;
     try {
-      rotated = await rotate(pressedBy.projectId);
+      rotated = await rotate(pressedBy.projectId, current);
     } catch (error) {
-      if (owner.current === pressedBy) latest.current.failed(error);
+      if (current()) latest.current.failed(error);
       return;
     }
-    if (rotated && owner.current === pressedBy) latest.current.rotated();
+    if (rotated && current()) {
+      setAnswer({ webhookSecret: rotated.webhookSecret, owner: pressedBy });
+      latest.current.rotated();
+    }
   };
 
-  return { busy: pending, press };
+  const copy = async (text: string) => {
+    const pressedBy = owner.current;
+    if (pressedBy?.projectId !== projectId) return;
+    setCopying(true);
+    const ok = await copyToClipboard(text);
+    if (owner.current !== pressedBy || getSessionGeneration(client) !== generation) return;
+    setCopying(false);
+    latest.current.copied(ok);
+  };
+
+  const ownsPanel = owner.current?.projectId === projectId && owner.current.client === client && owner.current.generation === generation;
+  const ownsAnswer = ownsPanel && answer !== null && answer.owner === owner.current;
+  return { busy: pending, press, copy, copying, configured: ownsAnswer, secret: ownsAnswer ? answer.webhookSecret : null };
 }
