@@ -47,14 +47,18 @@ export function markTightLists<T extends MarkdownToken>(state: MarkdownCoreState
   const { tokens } = state;
   /** Open lists, innermost last: whether they hold a paragraph with text of their
    *  own items, whether markdown-it hid them all, whether every item's blocks are
-   *  written tight, and the block before in the item open now (null at its start). */
-  const lists: Array<{ token: T; paragraphs: boolean; hidden: boolean; tight: boolean; previous: ItemBlock | null }> = [];
+   *  written tight, whether its items fit the schema (start with a paragraph), and
+   *  the block before in the item open now (null at its start). */
+  const lists: Array<{ token: T; paragraphs: boolean; hidden: boolean; tight: boolean; safe: boolean; previous: ItemBlock | null }> = [];
   for (const [index, token] of tokens.entries()) {
     const list = lists[lists.length - 1];
     if (list && token.level === list.token.level + 1 && token.type === 'list_item_open') list.previous = null;
     if (list && token.level === list.token.level + 2 && token.nesting !== -1) {
       const block = itemBlock(token);
-      if (list.previous === null) list.tight &&= block === 'paragraph';
+      if (list.previous === null) {
+        list.safe &&= block === 'paragraph';
+        list.tight &&= block === 'paragraph';
+      }
       // A fence after a lead paragraph opens on the item's first line (fence-source.ts).
       else
         list.tight &&=
@@ -65,10 +69,17 @@ export function markTightLists<T extends MarkdownToken>(state: MarkdownCoreState
         list.hidden &&= token.hidden;
       }
     }
-    if (LIST_OPEN.has(token.type)) lists.push({ token, paragraphs: false, hidden: true, tight: true, previous: null });
+    if (LIST_OPEN.has(token.type)) lists.push({ token, paragraphs: false, hidden: true, tight: true, safe: true, previous: null });
     if (list && LIST_CLOSE.has(token.type) && list.token.level === token.level) {
       lists.pop();
       if (list.paragraphs && list.hidden && list.tight) list.token.attrSet('data-tight', 'true');
+      const parent = lists[lists.length - 1];
+      if (parent) {
+        // Schema fitting moves a quote-led item out after an empty list marker.
+        // A tight ancestor can join that marker to its text as a setext heading.
+        parent.tight &&= list.safe;
+        parent.safe &&= list.safe;
+      }
     }
   }
 }

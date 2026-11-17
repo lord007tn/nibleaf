@@ -362,8 +362,15 @@ function writtenAfter(parent: PMNode, index: number): PMNode | null {
  * makes the list loose (#649). A fence that ends with an empty line or with code
  * is written unclosed, as before.
  */
-function endsBeforeNext(lines: string): boolean {
-  return !/^[ \t>]+$/.test(lines.slice(lines.lastIndexOf('\n') + 1));
+function endsBeforeNext(lines: string, delim: string): boolean {
+  const lastBreak = lines.lastIndexOf('\n');
+  // With no body lines, the last line is the opener, including its list marker.
+  if (lastBreak === -1) return true;
+  const last = lines.slice(lastBreak + 1);
+  const containers = serializedContainers(delim, '');
+  const rest = containers && withoutContainers(last, 1, containers, true);
+  // Only actual quote containers consume `>`; any left in the code is literal.
+  return last === '' || (rest !== null && /[^ \t]/.test(rest.text));
 }
 
 /**
@@ -389,11 +396,11 @@ function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNo
     if (!('type' in container)) return null;
     const name = container.type.name;
     const next = writtenAfter(container, at);
-    if (next) return quoted || endsBeforeNext(lines) ? 'container' : null;
+    if (next) return quoted || endsBeforeNext(lines, state.delim) ? 'container' : null;
     if (name === 'doc') return 'page';
     if (name === 'blockquote') quoted = true;
     // A component's closing tag follows its last block after a blank line.
-    else if (!FENCE_ENDING_CONTAINERS.has(name) && !LISTS.has(name)) return quoted || endsBeforeNext(lines) ? 'container' : null;
+    else if (!FENCE_ENDING_CONTAINERS.has(name) && !LISTS.has(name)) return quoted || endsBeforeNext(lines, state.delim) ? 'container' : null;
   }
   return null;
 }
