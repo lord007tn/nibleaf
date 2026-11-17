@@ -4611,6 +4611,8 @@
   "people_reason_removeselfsite": "آپ خود کو نہیں ہٹا سکتے۔ کسی اور منتظم سے کہیں۔",
   "people_reason_moreaccess": "ان کی رسائی آپ سے زیادہ ہے۔",
   "people_reason_roleaboveyours": "آپ صرف اپنے کردار تک کے کردار دے سکتے ہیں۔",
+  "people_reason_resendorgaccess": "اسے دوبارہ بھیجنے کے لیے تنظیم کے کسی منتظم سے کہیں: یہ تنظیم تک رسائی دیتا ہے۔",
+  "people_reason_resendotherwebsites": "اسے دوبارہ بھیجنے کے لیے تنظیم کے کسی منتظم سے کہیں: یہ دوسری سائٹس تک ایسی رسائی بھی دیتا ہے جو آپ نہیں دے سکتے۔",
   "people_invite_open": "لوگوں کو مدعو کریں",
   "people_invite_title": "{org} میں لوگوں کو مدعو کریں",
   "people_invite_description": "انہیں ایک ای میل ملے گی جس کا لنک 7 دن کام کرے گا۔",

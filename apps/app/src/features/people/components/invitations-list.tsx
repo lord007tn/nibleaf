@@ -10,6 +10,8 @@ import { useFormatters } from '@/lib/format';
 import { copyToClipboard, inviteAcceptUrl } from '@/lib/invitations';
 import { isAlreadyAccepted } from '../api/mutations';
 import { type InvitationDelivery, invitationTiming } from '../model/invitations';
+import type { Decision } from '../model/permissions';
+import { useReason } from './decision';
 
 export interface InvitationRowModel {
   id: string;
@@ -19,6 +21,8 @@ export interface InvitationRowModel {
   expiresAt: string;
   /** What it grants, already in words (e.g. "Member · Docs (Editor), API (Viewer)"). */
   scope: ReactNode;
+  /** Whether the viewer may resend it; omitted means allowed. */
+  resend?: Decision;
 }
 
 /**
@@ -43,6 +47,7 @@ export function InvitationsList({
   revokeDescription: (email: string) => string;
 }) {
   const t = useT();
+  const reason = useReason();
   const { relativeTime, date } = useFormatters();
   const [revoking, setRevoking] = useState<InvitationRowModel | null>(null);
   const [revokeOpen, setRevokeOpen] = useState(false);
@@ -117,7 +122,7 @@ export function InvitationsList({
                       {t('people.invitations.copyLink')}
                     </RowActionsItem>
                     <RowActionsItem
-                      disabledReason={resending === row.id ? t('people.invitations.resending') : undefined}
+                      disabledReason={resending === row.id ? t('people.invitations.resending') : row.resend && reason(row.resend)}
                       icon={<RefreshCw aria-hidden />}
                       onSelect={() => void resend(row)}
                     >

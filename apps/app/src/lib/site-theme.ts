@@ -262,29 +262,80 @@ const legacyDarkPalette = (brand: string) => {
 const SOLID_CALLOUT_TONES = ['info', 'success', 'warning', 'danger'] as const;
 const SOLID_CALLOUT_TINT = 0.14;
 
+type Fill = RgbChannels | string;
+const readsOnEvery = (fills: Fill[]) => (color: string) => fills.every((fill) => mixReads(channelsContrast(color, fill)));
+const weakestContrast = (color: string, fills: Fill[]) => Math.min(...fills.map((fill) => channelsContrast(color, fill)));
+
+/** The first of `color`'s 40 OKLab steps towards `toward` that `reads`; null when none does. */
+const shadeUntil = (color: string, toward: string, reads: (shade: string) => boolean): string | null => {
+  for (let step = 1; step <= 40; step++) {
+    const shade = mixOklab(color, toward, 1 - step / 40);
+    if (reads(shade)) return shade;
+  }
+  return null;
+};
+
+/** `color` while it reads on every one of `fills`, else its nearest shade that
+ * does, towards whichever of white and black reads better there. On a single
+ * fill that always ends in a pass (black or white reaches about 4.58:1 on any
+ * colour). Fills that are far apart may have no such shade; then the grey that
+ * reads best on the weakest of them. */
+const readableOnFills = (color: string, fills: Fill[]): string => {
+  const reads = readsOnEvery(fills);
+  if (reads(color)) return color;
+  const toward = weakestContrast('#ffffff', fills) >= weakestContrast('#000000', fills) ? '#ffffff' : '#000000';
+  const shade = shadeUntil(color, toward, reads);
+  if (shade) return shade;
+  let best = { grey: color, contrast: weakestContrast(color, fills) };
+  for (let level = 0; level <= 255; level++) {
+    const grey = channelsHex([level, level, level]);
+    const contrast = weakestContrast(grey, fills);
+    if (contrast > best.contrast) best = { grey, contrast };
+  }
+  return best.grey;
+};
+
 /** A solid callout's `--primary` (its links, and the active label of a tab list
- * nested in it). The code accent is shaded for the code surface, but this text
- * sits on lighter fills: the callout's tinted fill, and the muted fill of a boxed
- * or pill tab list. For most accents it reads there too and the rule keeps
+ * nested in it), and, rarely, a separate one for a boxed or pill tab list in it.
+ * The code accent is shaded for the code surface, but this text sits on lighter
+ * fills: the callout's tinted fill, and the muted fill of a boxed or pill tab
+ * list. For most accents it reads there too and the rule keeps
  * `var(--theme-code-accent)`; otherwise it gets the nearest lighter (or darker,
  * on a light code surface) shade that reads on every fill, judged unrounded as
  * the browser draws the mix. #b96a3d on Signal gave #bb6e42: 4.09:1 on the tab
- * list's #1e2230 (#682). */
-const solidCalloutPrimary = (tokens: ThemeColorTokens, authoredAccent: string): string => {
+ * list's #1e2230 (#682).
+ *
+ * The search ends at white (black on a light code surface), so it only runs out
+ * when that endpoint fails on one of the fills: surface overrides that put the
+ * muted fill on the far side of the code surface, such as a light `muted` with a
+ * near-black `code` in the dark palette (#832). No preset and no accent gets
+ * there; only conflicting overrides do. When no searched shade reaches the
+ * required 4.51 margin on every fill, the two get their own colours, each the
+ * nearest shade of the code accent that reads on its own fills. (For a white tab
+ * list in Signal's black callout no colour at all reaches 4.51:1 on all five
+ * fills: the best is about 4.5097:1. Other palettes may have one off the
+ * accent's shades; the split doesn't need it.) The two colours are
+ * `--primary` on the four callout fills, which links and an underline tab list's
+ * labels sit on, and a `tabList` value the CSS sets on boxed and pill tab lists,
+ * which draw the muted fill. Like the rest of the theme, the result depends on
+ * the tokens alone. */
+const solidCalloutPrimary = (tokens: ThemeColorTokens, authoredAccent: string): { primary: string; tabList?: string } => {
   const codeAccent = readableCodeAccent(authoredAccent, tokens.code);
-  const fills: Array<RgbChannels | string> = [tokens.muted];
+  const calloutFills: Fill[] = [];
   for (const tone of SOLID_CALLOUT_TONES) {
     const fill = mixOklabChannels(tokens[tone], tokens.code, SOLID_CALLOUT_TINT);
-    if (fill) fills.push(fill);
+    if (fill) calloutFills.push(fill);
   }
-  const reads = (color: string) => fills.every((fill) => mixReads(channelsContrast(color, fill)));
-  if (reads(codeAccent)) return 'var(--theme-code-accent)';
+  const reads = readsOnEvery([tokens.muted, ...calloutFills]);
+  if (reads(codeAccent)) return { primary: 'var(--theme-code-accent)' };
   const toward = contrastRatio('#ffffff', tokens.code) >= contrastRatio('#000000', tokens.code) ? '#ffffff' : '#000000';
-  for (let step = 1; step <= 40; step++) {
-    const shade = mixOklab(codeAccent, toward, 1 - step / 40);
-    if (reads(shade)) return shade;
-  }
-  return 'var(--theme-code-accent)';
+  const shade = shadeUntil(codeAccent, toward, reads);
+  if (shade) return { primary: shade };
+  const onCallout = readableOnFills(codeAccent, calloutFills);
+  return {
+    primary: onCallout === codeAccent ? 'var(--theme-code-accent)' : onCallout,
+    tabList: readableOnFills(codeAccent, [tokens.muted]),
+  };
 };
 
 const radiusValue = (radius: ResolvedTheme['layout']['radius']): string =>
@@ -307,6 +358,7 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
   const light = safeTokens(theme.colors.light, preset.colors.light);
   const dark = safeTokens(theme.colors.dark, preset.colors.dark);
   const authored = authoredAccents(config, preset);
+  const solidCallout = solidCalloutPrimary(dark, authored.dark);
   const headingFont = safeThemeFontFamily(config?.typography?.headingFont);
   const codeFont = safeThemeFontFamily(config?.typography?.codeFont);
   // Pre-v1 sites draw on the design-system canvas (#fafafa in light). Their
@@ -336,7 +388,13 @@ export const projectThemeCss = (config?: ProjectConfig | null): string => {
         // The outer .typeset derives --typeset-muted and --typeset-rule from the
         // light palette and descendants inherit those values, so they are bound
         // again here (h5/h6 and rules use them).
-        `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:${solidCalloutPrimary(dark, authored.dark)};--typeset-muted:var(--muted-foreground);--typeset-rule:var(--border)}`,
+        `.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{${tokenDeclarations(dark, authored.dark)};--primary:${solidCallout.primary};--typeset-muted:var(--muted-foreground);--typeset-rule:var(--border)}`,
+        // Only when no searched shade reaches the 4.51 margin on both the callout and a muted tab list (#832).
+        ...(solidCallout.tabList
+          ? [
+              `.nibleaf-site-chrome[data-theme-callouts="solid"]:is([data-theme-tabs="boxed"],[data-theme-tabs="pills"]) [data-theme-component="callout"] [data-theme-component="tabs-list"]{--primary:${solidCallout.tabList}}`,
+            ]
+          : []),
         ...drawerAccentRules(light, dark),
       ]
     : [

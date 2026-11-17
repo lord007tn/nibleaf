@@ -4620,6 +4620,8 @@
   "people_reason_removeselfsite": "Sie können sich nicht selbst entfernen. Bitten Sie einen anderen Admin.",
   "people_reason_moreaccess": "Diese Person hat mehr Zugriff als Sie.",
   "people_reason_roleaboveyours": "Sie können Rollen bis zu Ihrer eigenen vergeben.",
+  "people_reason_resendorgaccess": "Bitten Sie einen Admin der Organisation, sie erneut zu senden: Sie gewährt Zugriff auf die Organisation.",
+  "people_reason_resendotherwebsites": "Bitten Sie einen Admin der Organisation, sie erneut zu senden: Sie gewährt auch Zugriff auf andere Websites, den Sie nicht vergeben können.",
   "people_invite_open": "Personen einladen",
   "people_invite_title": "Personen zu {org} einladen",
   "people_invite_description": "Sie erhalten eine E-Mail mit einem Link, der 7 Tage gültig ist.",
