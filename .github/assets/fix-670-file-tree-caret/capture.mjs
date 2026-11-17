@@ -1,12 +1,12 @@
 // Canvas fixture using production editor extensions, node views, Fix bar and
 // design-system styles. Router/page lookup hooks are mocked; no database.
-// Run under the editor/670 heavy lock: PR=670 PHASE=before|after.
+// Run under the configured shared dev-stack lock: PR=670 PHASE=before|after.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { freemem, tmpdir } from 'node:os';
-import { dirname, extname, join, resolve } from 'node:path';
+import { freemem } from 'node:os';
+import { dirname, extname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const root = process.env.CAPTURE_ROOT ?? process.cwd();
@@ -18,7 +18,7 @@ const git = (...args) => execFileSync('git', args, { cwd: root, encoding: 'utf8'
 const { PR, PHASE } = process.env;
 assert.ok(['668', '670'].includes(PR));
 assert.ok(['before', 'after'].includes(PHASE));
-assert.match(await readFile(join(tmpdir(), 'nibleaf-heavy.lock'), 'utf8'), /^editor\/670 /);
+assert.ok(process.env.NIBLEAF_DEVSTACK_LOCK, 'Set NIBLEAF_DEVSTACK_LOCK to the shared dev-stack lock');
 assert.ok(freemem() >= 5 * 1024 ** 3, '5 GiB free RAM');
 const baseline = process.env.BASE ?? git('rev-parse', 'origin/main');
 const out = resolve(root, '.github/assets', PR === '668' ? 'fix-668-fix-bar-390' : 'fix-670-file-tree-caret');
