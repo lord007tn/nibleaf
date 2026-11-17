@@ -12,7 +12,7 @@ import { Link } from '@tanstack/react-router';
 import { ArrowLeft, FileText, type LucideIcon, Minus, Pencil, Plus, Rocket, TriangleAlert } from 'lucide-react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { friendlyErrorMessage, useDomains, usePendingChanges, usePublish } from '@/hooks/api';
+import { friendlyErrorMessage, useBranches, useDomains, usePendingChanges, usePublish } from '@/hooks/api';
 import { pickLiveDomain } from '@/hooks/api/domain-state';
 import type { Deployment, PendingChange, Project, PublishCheck } from '@/hooks/api/types';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
@@ -203,6 +203,9 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
   const count = sorted.length;
   const redirectIssues = pending?.redirectIssues ?? [];
   const checks = pending?.checks ?? [];
+  // Version names for the checks, so same-address pages in two versions stay apart.
+  const { data: branches } = useBranches(open ? project.id : undefined);
+  const versionNames = useMemo(() => new Map((branches ?? []).map((branch) => [branch.id, branch.name])), [branches]);
   const checkingChanges = loadingChanges || refreshingChanges;
   // A check error is something the publish would fail on; warnings never block.
   const checksBlock = !checkingChanges && hasCheckErrors(checks);
@@ -520,7 +523,13 @@ export function PublishModal({ project, open, onOpenChange, onPublished, beforeP
 
               {/* The safety net comes first: what would break, then what will change. */}
               {preflightFailed ? null : (
-                <PublishChecks checks={checks} loading={loadingChanges} onFix={() => handleOpenChange(false)} projectId={project.id} />
+                <PublishChecks
+                  checks={checks}
+                  loading={loadingChanges}
+                  onFix={() => handleOpenChange(false)}
+                  projectId={project.id}
+                  versionNames={versionNames}
+                />
               )}
 
               {/* Changes diff — what this publish will push live. */}
