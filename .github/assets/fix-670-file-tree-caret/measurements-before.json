@@ -1,0 +1,170 @@
+{
+  "baseline": "45a6a3a784beababe8321ff2cddf27e41042fca9",
+  "head": "45822fd8aea00dde3311f12f2ec170ad80b89635",
+  "fixture": "production canvas; mocked router and page lookup hooks",
+  "workspaceOutputs": [],
+  "results": [
+    {
+      "width": 1440,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "tree",
+      "phase": "before",
+      "shot": "menu-before-en-1440-light.png",
+      "directions": {
+        "html": "ltr",
+        "root": "ltr",
+        "provider": "ltr",
+        "editor": "ltr",
+        "menu": "ltr"
+      }
+    },
+    {
+      "width": 1440,
+      "theme": "light",
+      "locale": "en",
+      "scenario": "tree",
+      "phase": "before",
+      "shot": "typed-before-en-1440-light.png",
+      "directions": {
+        "html": "ltr",
+        "root": "ltr",
+        "provider": "ltr",
+        "editor": "ltr",
+        "menu": null
+      },
+      "barHeight": null,
+      "sourceTop": null,
+      "labelBottom": null,
+      "labelPosition": null,
+      "landingGap": null,
+      "revealedGap": 138.375,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "mdxFileTree",
+            "attrs": {
+              "sourceOpen": "",
+              "sourceClose": "",
+              "sourceOriginal": ""
+            },
+            "content": [
+              {
+                "type": "mdxFolder",
+                "attrs": {
+                  "name": "",
+                  "defaultOpen": false,
+                  "sourceOpen": "",
+                  "sourceClose": "",
+                  "sourceOriginal": ""
+                },
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "attrs": {
+                      "sourceParagraph": ""
+                    },
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "index.ts"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            }
+          }
+        ]
+      },
+      "markdown": "<FileTree>\n\n<Folder>\n\nindex.ts\n\n</Folder>\n\n</FileTree>",
+      "overflowX": false
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "ar",
+      "scenario": "tree",
+      "phase": "before",
+      "shot": "menu-before-ar-390-light.png",
+      "directions": {
+        "html": "rtl",
+        "root": "rtl",
+        "provider": "rtl",
+        "editor": "rtl",
+        "menu": "rtl"
+      }
+    },
+    {
+      "width": 390,
+      "theme": "light",
+      "locale": "ar",
+      "scenario": "tree",
+      "phase": "before",
+      "shot": "typed-before-ar-390-light.png",
+      "directions": {
+        "html": "rtl",
+        "root": "rtl",
+        "provider": "rtl",
+        "editor": "rtl",
+        "menu": null
+      },
+      "barHeight": null,
+      "sourceTop": null,
+      "labelBottom": null,
+      "labelPosition": null,
+      "landingGap": null,
+      "revealedGap": 160.75,
+      "revealedTag": "P",
+      "caretInFileName": false,
+      "document": {
+        "type": "doc",
+        "content": [
+          {
+            "type": "mdxFileTree",
+            "attrs": {
+              "sourceOpen": "",
+              "sourceClose": "",
+              "sourceOriginal": ""
+            },
+            "content": [
+              {
+                "type": "mdxFile",
+                "attrs": {
+                  "name": "",
+                  "icon": "",
+                  "sourceOpen": "",
+                  "sourceClose": "",
+                  "sourceOriginal": ""
+                }
+              }
+            ]
+          },
+          {
+            "type": "paragraph",
+            "attrs": {
+              "sourceParagraph": ""
+            },
+            "content": [
+              {
+                "type": "text",
+                "text": "دليل.md"
+              }
+            ]
+          }
+        ]
+      },
+      "markdown": "<FileTree>\n\n<File />\n\n</FileTree>\n\nدليل.md",
+      "overflowX": false
+    }
+  ]
+}

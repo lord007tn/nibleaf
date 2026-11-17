@@ -166,28 +166,6 @@ export const titledNode = (config: { name: string; tag: string; className: strin
     addStorage: () => markdownStorage(config.tag),
   });
 
-/** A self-closing, attribute-only MDX block such as `<File name="…" />`. */
-export const atomNode = (config: { name: string; tag: string; className: string }) =>
-  Node.create({
-    name: config.name,
-    group: 'block',
-    atom: true,
-    selectable: true,
-    defining: true,
-    addAttributes: () => ({ ...registryAttributes(config.tag), ...sourceMetadataAttributes() }),
-    parseHTML: () => [{ tag: config.tag.toLowerCase() }, { tag: `div[data-mdx="${config.tag}"]` }],
-    renderHTML: ({ HTMLAttributes }) => ['div', mergeAttributes(HTMLAttributes, { 'data-mdx': config.tag, class: config.className })],
-    addNodeView: () => ReactNodeViewRenderer(TitledBlockView),
-    addStorage: () => ({
-      markdown: {
-        serialize(state: SerializeState, node: PMNode) {
-          writeBlockTag(state, node, atomTag(node, config.tag));
-        },
-        parse: {},
-      } satisfies MarkdownNodeSpec,
-    }),
-  });
-
 export const inlineWrapperNode = (config: { name: string; tag: string; className: string }) =>
   Node.create({
     name: config.name,
