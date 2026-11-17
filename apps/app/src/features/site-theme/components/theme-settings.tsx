@@ -157,6 +157,10 @@ function ThemeForm({ project }: { project: Project }) {
   // inputs and the save check keep the owner's authored colours (PUB-006).
   const resolved = resolveTheme(shownConfig);
   const authored = resolveTheme(shownConfig, { authoredAccent: true });
+  // The radius control edits the theme; Styling's radius still drives the reader preview.
+  const themeRadius = resolveTheme({ theme: values.theme }).layout.radius;
+  const stylingRadius = config?.styling?.radius;
+  const radiusSourceId = useId();
   const problems = themeProblems(shownConfig);
   const accentAdjustments = accentTextAdjustments(authored, resolved);
   const shownProblems = problems.filter((issue) => submitted || problemTokens(issue).some((key) => left.has(tokenKey(issue.mode, key))));
@@ -398,7 +402,6 @@ function ThemeForm({ project }: { project: Project }) {
               ['header', 'settings.theme.header', ['inline', 'stacked', 'floating']],
               ['sidebar', 'settings.theme.sidebar', ['bordered', 'soft', 'rail']],
               ['navigation', 'settings.theme.navigation', ['tree', 'sectioned', 'compact']],
-              ['radius', 'settings.styling.radius.label', ['sharp', 'rounded', 'pill']],
             ] as const
           ).map(([key, label, options]) => (
             <ThemeOptionSelect
@@ -409,6 +412,22 @@ function ThemeForm({ project }: { project: Project }) {
               value={resolved.layout[key]}
             />
           ))}
+          <fieldset aria-describedby={stylingRadius ? radiusSourceId : undefined} aria-label={t('settings.styling.radius.label')} className="min-w-0">
+            <ThemeOptionSelect
+              label={t('settings.styling.radius.label')}
+              onChange={(next) => change((current) => ({ ...current, theme: withPart(current.theme, config, 'layout', 'radius', next) }))}
+              options={['sharp', 'rounded', 'pill']}
+              value={themeRadius}
+            />
+            {stylingRadius ? (
+              <p className="mt-2 text-muted-foreground text-xs leading-snug" data-radius-override id={radiusSourceId}>
+                <span className="block font-medium">
+                  {t('settings.styling.title')}: {t(`settings.styling.radius.${stylingRadius}`)}
+                </span>
+                {t('settings.styling.radius.override')}
+              </p>
+            ) : null}
+          </fieldset>
         </div>
       </Field>
 
