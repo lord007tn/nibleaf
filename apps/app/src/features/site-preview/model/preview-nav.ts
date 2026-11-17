@@ -4,7 +4,8 @@
  * and the editor's page tree all list pages in the author's order. Rendered by
  * `components/preview-nav.tsx`; tested in `preview-nav.test.ts`.
  */
-import { buildNavTree, type NavNode, type NavSourcePage } from '@nibleaf/shared/site';
+import { buildNavTree, type NavNode, type NavSourcePage, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { resolveSitePage } from '@nibleaf/shared/site-route';
 
 /** The draft page fields the preview's navigation reads (a dashboard `PageNode`). */
 export interface DraftNavPage {
@@ -17,6 +18,8 @@ export interface DraftNavPage {
   icon: string | null;
   position: number;
   hidden: boolean;
+  /** Links the page to its translations in other languages (`isPageTranslation`). */
+  translationKey?: string | null;
   config?: { sidebarTitle?: string; tag?: string; category?: string; categoryIcon?: string; categoryOrder?: number } | null;
 }
 
@@ -51,25 +54,74 @@ const navSourcePage = (page: DraftNavPage, languageCode: string): NavSourcePage 
 export const previewNavTree = (pages: readonly DraftNavPage[] | undefined, languageCode: string | undefined): NavNode[] =>
   languageCode ? buildNavTree((pages ?? []).map((page) => navSourcePage(page, languageCode))) : [];
 
-const firstNavPage = (nodes: readonly NavNode[]): string | undefined => {
-  for (const node of nodes) {
-    if (node.kind === 'PAGE') return node.id;
-    const child = firstNavPage(node.children);
-    if (child) return child;
-  }
-  return undefined;
-};
-
-/**
- * The page the preview opens on, chosen as the reader chooses this language's
- * home (`resolveSitePage` for the root): a visible page with an empty path
- * wins, otherwise the first page in nav order. Not covered: a translated site
- * root that sends readers to the default home's translation.
- */
-export function previewHomeId(pages: readonly DraftNavPage[] | undefined, nodes: readonly NavNode[]): string | undefined {
-  const visible = new Set(navOrderIds(nodes));
-  const root = pages?.find((page) => page.kind === 'PAGE' && page.path === '' && visible.has(page.id));
-  return root?.id ?? firstNavPage(nodes);
+/** The languages a preview home is chosen for. */
+export interface PreviewHomeLanguages {
+  /** The previewed language's code. */
+  code: string;
+  /** The site's default language's code. */
+  defaultCode: string;
 }
 
-const navOrderIds = (nodes: readonly NavNode[]): string[] => nodes.flatMap((node) => [node.id, ...navOrderIds(node.children)]);
+/** The one docs version a draft snapshot holds: the preview lists one version's
+ *  drafts at a time, so every page belongs to it. */
+const DRAFT_VERSION = { id: 'draft', name: 'draft', slug: 'draft', isDefault: true } as const;
+
+const snapshotPage = (page: DraftNavPage, languageCode: string): SnapshotPage => ({
+  ...navSourcePage(page, languageCode),
+  versionId: DRAFT_VERSION.id,
+  updatedAt: '',
+  description: null,
+  content: '',
+  translationKey: page.translationKey ?? null,
+});
+
+/**
+ * The page the preview opens on: the page the reader serves at this language's
+ * site root once the drafts are published. The drafts become a one-version
+ * snapshot and the reader's own `resolveSitePage` picks the root, so the
+ * preview follows every rule of it: a visible page with an empty address wins;
+ * a translated language opens on the translation of the default language's
+ * home; otherwise the first page in nav order.
+ *
+ * `defaultLanguagePages` are the default language's drafts in the same version
+ * (unused when previewing the default language). Undefined when the reader
+ * would serve none of the previewed language's pages: the reader then falls
+ * back to the default language, which the preview lists separately.
+ */
+export function previewHomeId(
+  pages: readonly DraftNavPage[] | undefined,
+  defaultLanguagePages: readonly DraftNavPage[] | undefined,
+  languages: PreviewHomeLanguages | undefined,
+): string | undefined {
+  if (!pages?.length || !languages) return undefined;
+  const { code, defaultCode } = languages;
+  const translated = code !== defaultCode;
+  const language = (languageCode: string, isDefault: boolean) => ({
+    code: languageCode,
+    label: languageCode,
+    direction: 'LTR' as const,
+    isDefault,
+    // Previewed even while disabled: the reader serves it once it is enabled.
+    enabled: true,
+    config: null,
+  });
+  const snapshot: SiteSnapshot = {
+    project: {
+      id: 'draft',
+      name: '',
+      slug: '',
+      description: null,
+      icon: null,
+      config: null,
+      languages: translated ? [language(defaultCode, true), language(code, false)] : [language(code, true)],
+      versions: [DRAFT_VERSION],
+    },
+    pages: [
+      ...pages.map((page) => snapshotPage(page, code)),
+      ...(translated ? (defaultLanguagePages ?? []).map((page) => snapshotPage(page, defaultCode)) : []),
+    ],
+    generatedAt: '',
+  };
+  const home = resolveSitePage(snapshot, '', code)?.page;
+  return home?.languageCode === code ? home.id : undefined;
+}

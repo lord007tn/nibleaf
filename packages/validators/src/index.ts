@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { supportActionUrlSchema, webActionUrlSchema } from './action-urls';
 import { AI_CHAT_LIMITS } from './ai-chat';
 import { isSafeInlineAssetContentType, normalizeAssetContentType } from './assets';
+import { SEARCH_QUERY_MAX_LENGTH } from './search';
 import { themeConfigSchema } from './themes';
 
 export {
@@ -58,6 +59,7 @@ export {
   type VerifyProjectIntegrationBody,
   verifyProjectIntegrationBody,
 } from './integrations';
+export { SEARCH_QUERY_MAX_LENGTH } from './search';
 export {
   parseThemeTemplate,
   type ThemeImportBody,
@@ -951,7 +953,7 @@ export type ConfirmAssetBody = z.infer<typeof confirmAssetBody>;
 // ─── Search & analytics ──────────────────────────────────────────────────────
 
 export const searchQuery = z.object({
-  q: z.string().max(200).default(''),
+  q: z.string().max(SEARCH_QUERY_MAX_LENGTH).default(''),
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 export type SearchQuery = z.infer<typeof searchQuery>;
