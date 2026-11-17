@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { Editor } from '@tiptap/core';
-import { afterAll, describe, expect, it } from 'vitest';
+import { closeHistory } from '@tiptap/pm/history';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MarkdownOutput } from './markdown-output';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
@@ -43,6 +44,111 @@ describe('a page’s line endings across a dry run of setContent (#702)', () => 
     expect(getMarkdown(editor)).toBe(page);
     editor.view.dispatch(editor.state.tr.insertText('Edited ', 1));
     expect(getMarkdown(editor)).toBe('Edited One.\r\n\r\nTwo.\r\n\r\nThree.');
+  });
+});
+
+describe('setContent records line endings only when its transaction is applied (#761)', () => {
+  let editor: Editor;
+  beforeEach(() => {
+    editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
+  });
+  afterEach(() => editor.destroy());
+
+  const endings = ['\r\n', '\r'] as const;
+  const paragraph = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Other.' }] }] };
+  const replacements = [
+    ['LF Markdown', 'Other.\n\nPage.'],
+    ['CRLF Markdown', 'Other.\r\n\r\nPage.'],
+    ['JSON', paragraph],
+  ] as const;
+
+  it.each(endings.flatMap((ending) => replacements.map(([name, content]) => ({ ending, name, content }))))(
+    'an unrun chain setting $name keeps the current $ending page on the next save',
+    ({ ending, content }) => {
+      const page = ['One.', '', 'Two.', '', 'Three.'].join(ending);
+      editor.commands.setContent(page, { emitUpdate: false });
+      const before = editor.getJSON();
+      editor.chain().setContent(content);
+      expect(editor.getJSON()).toEqual(before);
+      expect(getMarkdown(editor)).toBe(page);
+      editor.view.dispatch(editor.state.tr.insertText('Edited ', 1));
+      expect(getMarkdown(editor)).toBe(`Edited ${page}`);
+    },
+  );
+
+  it.each(endings)('a capability check keeps %j endings on the next save', (ending) => {
+    const page = ['One.', '', 'Two.'].join(ending);
+    editor.commands.setContent(page, { emitUpdate: false });
+    expect(editor.can().setContent('Other.')).toBe(true);
+    expect(editor.can().chain().setContent(paragraph).run()).toBe(true);
+    editor.view.dispatch(editor.state.tr.insertText('Edited ', 1));
+    expect(getMarkdown(editor)).toBe(`Edited ${page}`);
+  });
+
+  it.each(['\n', ...endings])('a run chain records the replacement page’s %j endings', (ending) => {
+    editor.commands.setContent('Before.\r\n\r\nPage.');
+    const page = ['After.', '', 'Page.'].join(ending);
+    expect(editor.chain().setContent(page).run()).toBe(true);
+    expect(getMarkdown(editor)).toBe(page);
+    editor.view.dispatch(editor.state.tr.insertText('Edited ', 1));
+    expect(getMarkdown(editor)).toBe(`Edited ${page}`);
+  });
+
+  it('a run chain setting JSON clears the previous source endings', () => {
+    editor.commands.setContent('Before.\r\n\r\nPage.');
+    expect(
+      editor
+        .chain()
+        .setContent({ type: 'doc', content: [...paragraph.content, ...paragraph.content] })
+        .run(),
+    ).toBe(true);
+    expect(getMarkdown(editor)).toBe('Other.\n\nOther.');
+  });
+
+  it.each(endings)('a silent setContent records %j endings even when the document is equal', (ending) => {
+    editor.commands.setContent('One.\n\nTwo.');
+    const page = ['One.', '', 'Two.'].join(ending);
+    let updates = 0;
+    editor.on('update', () => updates++);
+    editor.commands.setContent(page, { emitUpdate: false });
+    expect(updates).toBe(0);
+    expect(getMarkdown(editor)).toBe(page);
+  });
+
+  it.each(endings)('the update listener saves with the applied %j endings', (ending) => {
+    const page = ['One.', '', 'Two.'].join(ending);
+    const saved: string[] = [];
+    editor.on('update', () => saved.push(getMarkdown(editor)));
+    editor.chain().setContent(page).run();
+    expect(saved).toEqual([page]);
+  });
+
+  it.each(endings)('undo/redo across setContent keeps main’s latest-source %j ending behavior', (ending) => {
+    // Main keeps the most recently set source endings across history steps;
+    // undo restores the document, without restoring a previous source snapshot.
+    editor.commands.setContent('Before.\n\nPage.');
+    editor.view.dispatch(closeHistory(editor.state.tr));
+    const page = ['After.', '', 'Page.'].join(ending);
+    editor.chain().setContent(page).run();
+    expect(getMarkdown(editor)).toBe(page);
+    expect(editor.commands.undo()).toBe(true);
+    expect(getMarkdown(editor)).toBe(['Before.', '', 'Page.'].join(ending));
+    expect(editor.commands.redo()).toBe(true);
+    expect(getMarkdown(editor)).toBe(page);
+  });
+
+  it.each([
+    ['CRLF', '# Title\r\n\r\nText.\r\n\r\n```text\r\none\r\ntwo\r\n```'],
+    ['CR', '# Title\r\rText.\r\r```text\rone\rtwo\r```'],
+    ['mixed', '# Title\r\n\nText.\r\r\n```text\none\rtwo\r\n```'],
+  ])('%s pages stay byte-identical over ten load/save cycles with abandoned chains', (_name, page) => {
+    let saved = page;
+    for (let cycle = 0; cycle < 10; cycle++) {
+      editor.commands.setContent(saved, { emitUpdate: false });
+      editor.chain().setContent('Abandoned.');
+      saved = getMarkdown(editor);
+      expect(saved, `cycle ${cycle + 1}`).toBe(page);
+    }
   });
 });
 

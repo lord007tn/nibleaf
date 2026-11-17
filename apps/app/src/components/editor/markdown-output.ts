@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import type { Fragment, Mark, Node as PMNode } from '@tiptap/pm/model';
+import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { MarkdownSerializerState } from 'prosemirror-markdown';
 import { Markdown } from 'tiptap-markdown';
 import { normalizeLineEndings, readLineEndings, restoreLineEndings, type SourceLineEndings } from './line-endings';
@@ -355,6 +356,7 @@ type MarkdownStorageLike = {
 type SetContent = (content: unknown, ...rest: unknown[]) => (props: { editor: Editor }) => boolean;
 
 const markdownStorage = (editor: Editor) => (editor.storage as unknown as { markdown: MarkdownStorageLike }).markdown;
+const lineEndingsKey = new PluginKey('markdownLineEndings');
 
 /** tiptap-markdown, saving with `LinearMarkdownSerializerState`. Its serializer
  *  builds its own state class; this one is the same with the output kept as pieces.
@@ -367,16 +369,33 @@ export const LinearMarkdown = Markdown.extend({
       ...commands,
       // Markdown set as the document (a page load, a re-seed) is read with LF, and
       // its endings are kept for the save. Anything else set has no source to keep.
-      // A dry run (`editor.can().setContent(…)`, no `dispatch`) sets nothing, as
-      // core `setContent` replaces nothing then.
+      // Keep the new source on the transaction: a chain can have `dispatch`
+      // without ever being run, so assembling it must not change the page.
       setContent:
         (content: unknown, ...rest: unknown[]) =>
-        (props: { editor: Editor; dispatch?: unknown }) => {
+        (props: { editor: Editor; dispatch?: unknown; tr: Transaction }) => {
           const markdown = typeof content === 'string';
-          if (props.dispatch) markdownStorage(props.editor).lineEndings = markdown ? readLineEndings(content) : null;
+          if (props.dispatch) props.tr.setMeta(lineEndingsKey, markdown ? readLineEndings(content) : null);
           return setContent(markdown ? normalizeLineEndings(content) : content, ...rest)(props);
         },
     } as never;
+  },
+  addProseMirrorPlugins() {
+    return [
+      ...(this.parent?.() ?? []),
+      new Plugin({
+        key: lineEndingsKey,
+        appendTransaction: (transactions) => {
+          // Runs only for applied transactions, before update listeners save,
+          // including silent setContent and replacements with an equal document.
+          for (const transaction of transactions) {
+            const endings = transaction.getMeta(lineEndingsKey) as SourceLineEndings | null | undefined;
+            if (endings !== undefined) markdownStorage(this.editor).lineEndings = endings;
+          }
+          return null;
+        },
+      }),
+    ];
   },
   onBeforeCreate(event) {
     // The editor's first content, when it is Markdown, is read the same way.
