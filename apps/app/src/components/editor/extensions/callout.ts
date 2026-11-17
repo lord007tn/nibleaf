@@ -2,7 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { liftTarget } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import { preservedClosingTag, sourceMetadataAttributes, writeChildrenCloser, writeChildrenOpener } from './mdx-roundtrip';
+import { preservedClosingTag, sourceMetadataAttributes, sourceOpeningTag, writeChildrenCloser, writeChildrenOpener } from './mdx-roundtrip';
 
 /** Callout variants → emoji + the GitHub admonition keyword used for markdown round-trip. */
 const CALLOUT_VARIANTS = {
@@ -232,7 +232,7 @@ export const Callout = Node.create({
         serialize(state, node) {
           const sourceOpen = String(node.attrs.sourceOpen ?? '');
           if (sourceOpen) {
-            writeChildrenOpener(state, node, sourceOpen);
+            writeChildrenOpener(state, node, sourceOpeningTag(node));
             state.renderContent(node);
             writeChildrenCloser(state, node, preservedClosingTag(node, 'Callout'));
             return;

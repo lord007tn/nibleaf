@@ -130,12 +130,18 @@ describe('component children on the line after the opening tag (#606)', () => {
     expectFourCycles('<CodeGroup>\n\n```js title="a.js"\nconst a = 1;\n```\n</CodeGroup>');
   });
 
-  it('a quote, a table, a fence or another component as the first child, right after the tag', () => {
+  it('a quote or a table as the first child, right after the tag', () => {
     expectFourCycles('<Note>\n> quoted\n</Note>');
     expectFourCycles('<Note>\n| A | B |\n| --- | --- |\n| 1 | 2 |\n</Note>');
-    expectFourCycles('<Tip>\n<Custom value="x" />\n</Tip>');
-    expectFourCycles('<Steps>\n<Step title="One">\n- a\n</Step>\n</Steps>');
-    expectFourCycles(`<Tabs>\n<Tab title="A">\n- ${LANGUAGES.ar.item}\n</Tab>\n</Tabs>`);
+  });
+
+  it('a component right after a tag keeps its Markdown children; the tags between components are laid out as before', () => {
+    // A tag touching another tag (`<Steps>⏎<Step>`) was never lost: it keeps main's
+    // blank-line layout. The Markdown right after `<Step>` is what was lost.
+    const steps = '<Steps>\n<Step title="One">\n- a\n</Step>\n</Steps>';
+    expect(getMarkdown(open(steps))).toBe('<Steps>\n\n<Step title="One">\n- a\n</Step>\n\n</Steps>');
+    expectFourCycles('<Steps>\n\n<Step title="One">\n- a\n</Step>\n\n</Steps>');
+    expectFourCycles(`<Tabs>\n\n<Tab title="A">\n- ${LANGUAGES.ar.item}\n</Tab>\n\n</Tabs>`);
   });
 
   it('a component in a quote, and in a list item', () => {
