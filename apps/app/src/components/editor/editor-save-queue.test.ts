@@ -407,4 +407,22 @@ describe('conflicts the editor found, and resolutions (#789, #790)', () => {
     expect(queue.baseFor({ ...draft('AB'), expectedUpdatedAt: 'r1' })).toBe('r2');
     expect(queue.baseFor({ ...draft('AB'), expectedUpdatedAt: 'foreign' })).toBe('foreign');
   });
+
+  it('sentWrites: the writes of a page at the server, each with the revision it was sent from, and none once settled (#825)', async () => {
+    const first = deferred();
+    const save = vi.fn().mockReturnValueOnce(first.promise).mockResolvedValue('r2');
+    const queue = createEditorSaveQueue(save, (saved: string) => saved);
+    const typed = queue.save({ ...draft('A'), expectedUpdatedAt: 'r0' });
+    void queue.save({ ...draft('AB'), expectedUpdatedAt: 'r0' });
+    await vi.waitFor(() => expect(save).toHaveBeenCalledOnce());
+    // A queued draft is not at the server.
+    expect(queue.sentWrites('page-a')).toEqual([{ title: 'Title', content: 'A', base: 'r0' }]);
+    expect(queue.sentWrites('page-b')).toEqual([]);
+    first.resolve('r1');
+    await typed;
+    await queue.settled();
+    expect(queue.sentWrites('page-a')).toEqual([]);
+    // AB was sent from the revision A stored.
+    expect(save.mock.calls[1]?.[0]).toMatchObject({ content: 'AB', expectedUpdatedAt: 'r1' });
+  });
 });

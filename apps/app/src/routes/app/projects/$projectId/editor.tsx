@@ -58,6 +58,7 @@ import {
   isDirty,
   isEditorRevisionConflict,
   isPageTooLarge,
+  mayBeNormalizedWrite,
   nextHydration,
   normalizedSaveConflict,
   type OwnWrites,
@@ -170,6 +171,17 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
   },
   component: EditorPage,
 });
+
+/**
+ * How long the conflict banner may wait for a write of our own to settle when
+ * the copy that raised it may be that write, stored normalized (#825). A
+ * normalized write is a structural one (the server locks the project and
+ * re-parses every page's links), so its response can trail the refetch by a
+ * moment; 4 s covers that and stays well under the 10 s an autosave may wait
+ * while typing goes on. Saving is paused the whole time, and a real foreign
+ * copy is never hidden for longer than this.
+ */
+const OWN_WRITE_HOLD_MS = 4000;
 
 /** The other docs versions' pages for link resolution, and whether all of them loaded. Stable, so
  *  `useQueries` keeps the same result until a query changes. */
@@ -547,6 +559,15 @@ function EditorPage() {
    * if the copy is one of their stored revisions after all.
    */
   const provisionalRef = useRef<{ id: string; revision: string | undefined; error: unknown } | null>(null);
+  /**
+   * The provisional conflict whose banner waits (#825): its copy may be a write
+   * of ours at the server, stored with its links rewritten. Everything else
+   * about the conflict stands (saving paused, the queue latched, guarded
+   * actions held); only the banner waits until the write settles, a guarded
+   * action is refused, or `OWN_WRITE_HOLD_MS` passes, whichever comes first.
+   */
+  const [heldConflict, setHeldConflict] = useState<unknown>(null);
+  const sentWritesRef = useRef<(id: string) => Array<{ title: string; content: string; base?: string }>>(() => []);
   // The draft as of now, with an edit the editor has not serialized yet, once a fresher copy needs it.
   let currentDraft = { title, content };
   let hydration = nextHydration({ synced, draft: currentDraft, conflicted: conflictedPageId === page?.id }, page, superseded);
@@ -576,6 +597,8 @@ function EditorPage() {
   if (foreign && page) {
     const conflict = foreignCopyConflict(page.id);
     provisionalRef.current = inFlightRef.current(page.id) ? { id: page.id, revision: page.updatedAt, error: conflict } : null;
+    const copy = page;
+    setHeldConflict(provisionalRef.current && sentWritesRef.current(page.id).some((write) => mayBeNormalizedWrite(copy, write)) ? conflict : null);
     setSaveError(conflict);
     setStatus('error');
     setConflictedPageId(page.id);
@@ -591,6 +614,22 @@ function EditorPage() {
   // failure, going offline). A status that read "saved" would hide the review
   // while every save stays held back for it.
   if (page && conflictedPageId === page.id && status !== 'error' && status !== 'offline') setStatus('error');
+  // The banner of a provisional conflict whose copy may be our own write waits for it (#825).
+  const conflictHeld = heldConflict !== null && Boolean(page) && conflictedPageId === page?.id && saveError === heldConflict;
+  useEffect(() => {
+    if (heldConflict === null) return;
+    const timer = setTimeout(() => setHeldConflict((current: unknown) => (current === heldConflict ? null : current)), OWN_WRITE_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [heldConflict]);
+  // Each newer copy while the banner waits is told apart again: one that is not a
+  // write of ours at the server, links aside, shows the banner now. The conflict
+  // is withdrawn when the writes settle only if the latest copy is one they stored.
+  const waiting = provisionalRef.current;
+  if (conflictHeld && page && waiting?.id === page.id && page.updatedAt !== waiting.revision) {
+    const copy = page;
+    provisionalRef.current = { ...waiting, revision: page.updatedAt };
+    if (!sentWritesRef.current(page.id).some((write) => mayBeNormalizedWrite(copy, write))) setHeldConflict(null);
+  }
 
   const navigate = Route.useNavigate();
   // A deep link, so the "Open page" action on a finished draft also works after the editor was closed.
@@ -738,6 +777,7 @@ function EditorPage() {
     mayBeOwn: (copy) => saveQueue.ownRevision(id, copy.updatedAt),
   });
   inFlightRef.current = saveQueue.inFlight;
+  sentWritesRef.current = saveQueue.sentWrites;
   // The signed-in account: unsaved drafts are kept and taken back as its own (#789).
   const owner = session?.user.id;
   const ownerRef = useRef(owner);
@@ -762,6 +802,8 @@ function EditorPage() {
       const provisional = provisionalRef.current;
       if (!provisional || provisional.id !== draft.id || saveQueue.inFlight(draft.id)) return;
       provisionalRef.current = null;
+      // Told apart now: a banner waiting for it shows, unless it is withdrawn below.
+      if (mounted.current) setHeldConflict((current: unknown) => (current === provisional.error ? null : current));
       // The copy was this editor's own write after all: nothing to review. The
       // queue lets the page's writes go on (a draft queued meanwhile is sent)
       // whatever the editor shows: unmounted, or with the review open, it is
@@ -788,6 +830,30 @@ function EditorPage() {
     }
     return result;
   };
+  const saveTrackedRef = useRef(saveTracked);
+  saveTrackedRef.current = saveTracked;
+  const conflictHeldRef = useRef(false);
+  conflictHeldRef.current = conflictHeld;
+  // The session this editor opened in: nothing is kept for it once that session ends (#789).
+  const sessionRef = useRef(unsavedDrafts.generation());
+  // Closing the editor while a conflict's banner waits for our write (#825):
+  // the author was never shown it, so the draft must not go with the editor.
+  // It is queued behind that write, where the conflict still holds it: sent if
+  // the write proves the copy ours (the conflict is withdrawn first), refused
+  // otherwise, and then kept and brought back as a conflict by the next editor (#789).
+  // Any draft but the copy the server holds is kept, even the text this editor
+  // loaded: the server holds that no longer. Not after the session ended.
+  useEffect(
+    () => () => {
+      const held = provisionalRef.current;
+      if (!conflictHeldRef.current || !held || unsavedDrafts.generation() !== sessionRef.current) return;
+      editorDraftRef.current?.flush();
+      const { synced: currentSynced, draft, page: server } = draftRef.current;
+      if (currentSynced?.id !== held.id || (server?.id === held.id && server.title === draft.title && server.content === draft.content)) return;
+      saveTrackedRef.current({ id: held.id, ...draft, expectedUpdatedAt: currentSynced.updatedAt }).catch(() => undefined);
+    },
+    [],
+  );
   // A draft of this page kept after an editor could not save it (#789) comes
   // back here once the page is loaded with no edit of this editor's own and no
   // write of the page is unsettled: as a conflict to review, or as the draft it
@@ -973,6 +1039,8 @@ function EditorPage() {
     // and navigating, publishing or previewing waits for that review, even with
     // a draft that compares clean (the server may hold another copy).
     if (conflictedPageId === current.page.id) {
+      // Refused for it: a banner still waiting for our write shows now.
+      setHeldConflict(null);
       throw isEditorRevisionConflict(saveError) ? saveError : restoredDraftConflict(current.page.id);
     }
     // The author can undo to the original value while an older save is still
@@ -1673,7 +1741,7 @@ function EditorPage() {
           }}
         />
         {view === 'content' && page && !switching ? (
-          <SaveStatus state={status} publishState={pageState} unpublishedCount={pendingChanges?.changes.length ?? 0} />
+          <SaveStatus state={conflictHeld ? 'saving' : status} publishState={pageState} unpublishedCount={pendingChanges?.changes.length ?? 0} />
         ) : null}
         <div className="ms-auto flex items-center gap-1 sm:gap-2">
           {viewOnly ? <ViewOnlyBadge /> : null}
@@ -2225,7 +2293,7 @@ function EditorPage() {
           ) : activeId && page ? (
             /* Main area: page editor */
             <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-              {status === 'error' || status === 'offline' ? (
+              {(status === 'error' || status === 'offline') && !conflictHeld ? (
                 <div
                   role="alert"
                   className="flex flex-wrap items-center gap-3 border-destructive/30 border-b bg-destructive/5 px-4 py-3 text-destructive text-sm"
