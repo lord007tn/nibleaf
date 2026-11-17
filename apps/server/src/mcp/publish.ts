@@ -3,7 +3,7 @@ import { prisma } from '@nibleaf/database';
 import { summarizeRedirectIssues } from '@nibleaf/shared/redirects';
 import type { SiteSnapshot, SnapshotProject } from '@nibleaf/shared/site';
 import { z } from 'zod';
-import { getCurrentSnapshot, getPendingChanges, listDeployments, type PendingChanges } from '@/actions/deployments';
+import { getCurrentDraft, getPendingChanges, listDeployments, type PendingChanges } from '@/actions/deployments';
 import { findLiveDomain } from '@/actions/live-domain';
 import { env } from '@/env';
 import { AppError } from '@/errors';
@@ -111,8 +111,9 @@ export const readPublishState = async (
   // Read the newest version BEFORE the snapshot: a deployment created in
   // between then makes a later recompute differ (fail closed), never match.
   const newestVersion = (await listDeployments(projectId))[0]?.version ?? null;
-  const snapshot = await getCurrentSnapshot(projectId);
-  const pending = await getPendingChanges(projectId, snapshot);
+  const draft = await getCurrentDraft(projectId);
+  const { snapshot } = draft;
+  const pending = await getPendingChanges(projectId, draft);
   const published = await prisma.deployment.findFirst({
     where: { projectId, status: 'READY' },
     orderBy: { version: 'desc' },

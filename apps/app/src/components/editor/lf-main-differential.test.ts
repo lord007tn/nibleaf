@@ -146,7 +146,10 @@ describe('pages with LF only save as on main (#702)', () => {
 
   it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages, but #660’s`, () => {
     const digests = pages.map(({ page, edits }) => digest(page, edits));
-    if (process.env.WRITE_LF_MAIN) writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
+    if (process.env.WRITE_LF_MAIN) {
+      writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
+      return;
+    }
     const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[] };
     expect(main.pages).toBe(pages.length);
     const changed = digests.flatMap((value, index) => (value === main.digests[index] ? [] : [index]));
