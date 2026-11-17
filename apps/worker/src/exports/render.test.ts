@@ -2,8 +2,49 @@ import { normalizePublicMarkdownContent } from '@nibleaf/shared/public-markdown-
 import type { SiteSnapshot } from '@nibleaf/shared/site';
 import { THEME_PRESET_IDS } from '@nibleaf/shared/themes';
 import { unzipSync } from 'fflate';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { renderMarkdownZip, renderPageMarkdown, renderPdfHtml, renderStaticHtml, selectPublishedAssets } from './render';
+
+const log = vi.hoisted(() => ({ info: vi.fn() }));
+vi.mock('@nibleaf/logger', () => ({ logger: log }));
+afterEach(() => vi.clearAllMocks());
+
+describe('content-free export fallback telemetry', () => {
+  const fixture = (content: string): SiteSnapshot => ({
+    ...snapshot,
+    pages: [{ ...required(snapshot.pages[0]), id: 'page_688', title: 'PRIVATE_TITLE', description: 'PRIVATE_SUMMARY', content }],
+  });
+
+  it('logs the page id once when the HTML renderer takes a literal fallback', () => {
+    const data = fixture('<script>PRIVATE_BODY</script>');
+    expect(renderPageMarkdown(data, required(data.pages[0]), [])).toBe('<p>&lt;script&gt;PRIVATE_BODY&lt;/script&gt;</p>\n');
+    expect(log.info.mock.calls).toEqual([[{ pageId: 'page_688' }, 'Export literal-text fallback']]);
+  });
+
+  it('wires the PDF renderer without including content or metadata in its signal', () => {
+    const data = fixture('<script>PRIVATE_BODY</script>');
+    const html = renderPdfHtml(data, []);
+    expect(html).toContain('<p>&lt;script&gt;PRIVATE_BODY&lt;/script&gt;</p>\n');
+    expect(log.info.mock.calls).toEqual([[{ pageId: 'page_688' }, 'Export literal-text fallback']]);
+  });
+
+  it('reports each static HTML, search, Markdown and llms fallback once', () => {
+    const data = fixture('> ~~~\n> PRIVATE_BODY\n  -->\n  > <SCRIPT>\n  > <script>\n</style>');
+    const files = unzipSync(renderStaticHtml(data, []).bytes);
+    expect(Object.keys(files)).toContain('llms-full.txt');
+    // One HTML render, search projection, .md, and two llms-full projections.
+    expect(log.info.mock.calls).toEqual(Array.from({ length: 5 }, () => [{ pageId: 'page_688' }, 'Export literal-text fallback']));
+  });
+
+  it('emits nothing for normal HTML, PDF or static exports, or the source ZIP', () => {
+    const data = fixture('Normal **prose** and `code`.');
+    renderPageMarkdown(data, required(data.pages[0]), []);
+    renderPdfHtml(data, []);
+    renderStaticHtml(data, []);
+    renderMarkdownZip(fixture('<script>PRIVATE_BODY</script>'), []);
+    expect(log.info).not.toHaveBeenCalled();
+  });
+});
 
 const snapshot: SiteSnapshot = {
   project: {

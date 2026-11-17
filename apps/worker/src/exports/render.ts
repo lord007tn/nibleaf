@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { logger } from '@nibleaf/logger';
 import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
 import { pageDescription } from '@nibleaf/shared/markdown-text';
 import { replaceTags } from '@nibleaf/shared/markup-scan';
@@ -26,6 +27,8 @@ import {
 import { strToU8, zipSync } from 'fflate';
 import { Marked, type Tokens } from 'marked';
 import { z } from 'zod';
+
+const onLiteralFallback = ({ pageId }: { pageId: string }) => logger.info({ pageId }, 'Export literal-text fallback');
 
 export interface ExportAsset {
   key: string;
@@ -156,7 +159,7 @@ const rewriteUrl = (
 
 export const renderPageMarkdown = (snapshot: SiteSnapshot, page: SnapshotPage, assets: ExportAsset[]): string => {
   const current = outputPath(snapshot, page);
-  const html = String(marked.parse(portablePublicMdxMarkdown(page.content)));
+  const html = String(marked.parse(portablePublicMdxMarkdown(page.content, { pageId: page.id, onLiteralFallback })));
   return html
     .replace(
       /(<a\b[^>]*\bhref=")([^"]*)(")/gi,
@@ -549,7 +552,7 @@ const llmsFullTxt = (snapshot: SiteSnapshot, pages: SnapshotPage[], fromDirector
     const href = path.posix.relative(fromDirectory || '.', outputMarkdownPath(snapshot, page)) || './';
     const header = [`# ${oneLine(displayTitle(page))}`, '', `Source: ${href}`];
     if (page.description?.trim()) header.push('', `> ${oneLine(page.description)}`);
-    return `${header.join('\n')}\n\n${normalizePublicMarkdownContent(page.content)}\n`;
+    return `${header.join('\n')}\n\n${normalizePublicMarkdownContent(page.content, { pageId: page.id, onLiteralFallback })}\n`;
   });
   return [...llmsHeader(snapshot), '', sections.join('\n---\n\n')].join('\n');
 };
@@ -603,7 +606,7 @@ export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]):
   const searchEntries = pages.map((page) => ({
     title: displayTitle(page),
     path: outputPath(snapshot, page),
-    text: plainText(normalizePublicMarkdownContent(page.content)),
+    text: plainText(normalizePublicMarkdownContent(page.content, { pageId: page.id, onLiteralFallback })),
     versionId: page.versionId,
     languageCode: page.languageCode,
   }));
@@ -614,7 +617,7 @@ export const renderStaticHtml = (snapshot: SiteSnapshot, assets: ExportAsset[]):
     const parts = [
       `# ${oneLine(displayTitle(page))}`,
       ...(description ? [`> ${oneLine(description)}`] : []),
-      normalizePublicMarkdownContent(page.content),
+      normalizePublicMarkdownContent(page.content, { pageId: page.id, onLiteralFallback }),
     ];
     files[outputMarkdownPath(snapshot, page)] = strToU8(`${parts.filter(Boolean).join('\n\n')}\n`);
   }
@@ -677,7 +680,7 @@ export const renderPdfHtml = (
   const content = pages
     .map((page) => {
       const direction = snapshot.project.languages.find((language) => language.code === page.languageCode)?.direction ?? 'LTR';
-      let html = String(marked.parse(portablePublicMdxMarkdown(page.content)));
+      let html = String(marked.parse(portablePublicMdxMarkdown(page.content, { pageId: page.id, onLiteralFallback })));
       html = html
         .replace(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi, (_all, before, url, after) => {
           const asset = assetsByUrl.get(url);
