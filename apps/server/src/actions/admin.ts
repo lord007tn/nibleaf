@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { assignDefaultUsagePlan, type Prisma, prisma } from '@nibleaf/database';
+import { assignDefaultUsagePlan, Prisma, prisma } from '@nibleaf/database';
 import { slugify } from '@nibleaf/shared';
 import { addonDefinitions, defaultProjectAddonProvisioning, projectConfigWithAddons } from '@nibleaf/shared/addons';
 import { isProjectHostnameAllowed, projectSystemHosts } from '@nibleaf/shared/project-hostname';
@@ -29,56 +29,92 @@ type InviteOrganizationInput = {
 export async function uniqueAdminProjectSlug(desired: string): Promise<string> {
   const systemHosts = projectSystemHosts(env);
   const base = (slugify(desired) || 'documentation').slice(0, MAX_PROJECT_SLUG_LENGTH).replace(/-+$/g, '') || 'documentation';
-  for (let index = 0; index < 100; index++) {
-    const suffix = index === 0 ? '' : `-${index + 1}`;
+  // Like starter-site allocation, try short numbered names before random ones.
+  // Every candidate must leave both the site and its organization address free.
+  for (let index = 0; index < 104; index++) {
+    const suffix = index === 0 ? '' : index < 100 ? `-${index + 1}` : `-${randomBytes(4).toString('hex')}`;
     const candidate = `${base.slice(0, MAX_PROJECT_SLUG_LENGTH - suffix.length).replace(/-+$/g, '')}${suffix}`;
     if (!isProjectHostnameAllowed(candidate, systemHosts)) continue;
-    const clash = await prisma.project.findUnique({ where: { slug: candidate }, select: { id: true } });
-    if (!clash) {
+    const [project, organization, handle] = await Promise.all([
+      prisma.project.findUnique({ where: { slug: candidate }, select: { id: true } }),
+      prisma.organization.findUnique({ where: { slug: `org-${candidate}` }, select: { id: true } }),
+      prisma.organizationHandle.findUnique({ where: { slug: `org-${candidate}` }, select: { slug: true } }),
+    ]);
+    if (!project && !organization && !handle) {
       return candidate;
     }
   }
-  let fallback = `${base.slice(0, 50).replace(/-+$/g, '')}-${Date.now().toString(36)}`;
-  while (!isProjectHostnameAllowed(fallback, systemHosts)) fallback = `${fallback.slice(0, 54)}-${randomBytes(4).toString('hex')}`;
-  return fallback;
+  throw new AppError({ code: 'database:conflict', message: 'Could not allocate a free site address.', details: { reason: 'slug_taken' } });
+}
+
+function isAdminAddressCollision(error: unknown): boolean {
+  if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') return false;
+  const model = error.meta?.modelName;
+  const target = error.meta?.target;
+  if (model !== 'Organization' && model !== 'OrganizationHandle' && model !== 'Project') return false;
+  if (target !== undefined) return Array.isArray(target) && target.length === 1 && target[0] === 'slug';
+  // Prisma's PostgreSQL driver adapter reports the exact table/index instead
+  // of `target`, including handle failures nested in organization.create.
+  const adapter = error.meta?.driverAdapterError as
+    | { cause?: { kind?: unknown; originalCode?: unknown; table?: unknown; constraint?: { index?: unknown } } }
+    | undefined;
+  const cause = adapter?.cause;
+  if (cause?.kind !== 'UniqueConstraintViolation' || cause.originalCode !== '23505') return false;
+  if (model === 'Project') return cause.table === 'project' && cause.constraint?.index === 'project_slug_key';
+  return (
+    (model === 'Organization' && cause.table === 'organization' && cause.constraint?.index === 'organization_slug_key') ||
+    (cause.table === 'organization_handle' && cause.constraint?.index === 'organization_handle_pkey')
+  );
 }
 
 /** Create a site's organization boundary and invite its first owner. The admin
  * remains a platform operator, not a hidden workspace member. */
 export async function inviteOrganizationOwner(adminUserId: string, input: InviteOrganizationInput) {
   const ownerEmail = input.ownerEmail.trim().toLowerCase();
-  const slug = await uniqueAdminProjectSlug(input.siteSlug || input.siteName);
-  const created = await prisma.$transaction(async (tx) => {
-    const organization = await tx.organization.create({
-      data: { name: input.organizationName.trim(), slug: `org-${slug}`, handles: { create: { slug: `org-${slug}`, current: true } } },
-    });
-    await assignDefaultUsagePlan(tx, organization.id);
-    // Project.dataTenantId gets an independent cuid from the Prisma default (§3).
-    const project = await tx.project.create({
-      data: {
-        organizationId: organization.id,
-        name: input.siteName.trim(),
-        slug,
-        ...(input.description?.trim() ? { description: input.description.trim() } : {}),
-        config: projectConfigWithAddons(
-          {},
-          addonDefinitions.map((definition) => ({ key: definition.id, enabled: definition.defaultEnabled, config: definition.defaultConfig })),
-        ) as Prisma.InputJsonValue,
-      },
-    });
-    const defaultAddons = defaultProjectAddonProvisioning(project.id, adminUserId);
-    await tx.projectAddon.createMany({
-      data: defaultAddons.addons.map((addon) => ({ ...addon, config: addon.config as Prisma.InputJsonValue })),
-    });
-    await tx.projectAddonAuditEvent.createMany({
-      data: defaultAddons.auditEvents.map((event) => ({ ...event, nextConfig: event.nextConfig as Prisma.InputJsonValue })),
-    });
-    await tx.language.create({
-      data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
-    });
-    await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true }, select: { id: true } });
-    return { organization, project };
-  });
+  const createWithAvailableAddress = async () => {
+    for (let attempt = 0; attempt < 4; attempt++) {
+      const slug = await uniqueAdminProjectSlug(input.siteSlug || input.siteName);
+      try {
+        return await prisma.$transaction(async (tx) => {
+          const organization = await tx.organization.create({
+            data: { name: input.organizationName.trim(), slug: `org-${slug}`, handles: { create: { slug: `org-${slug}`, current: true } } },
+          });
+          await assignDefaultUsagePlan(tx, organization.id);
+          // Project.dataTenantId gets an independent cuid from the Prisma default (§3).
+          const project = await tx.project.create({
+            data: {
+              organizationId: organization.id,
+              name: input.siteName.trim(),
+              slug,
+              ...(input.description?.trim() ? { description: input.description.trim() } : {}),
+              config: projectConfigWithAddons(
+                {},
+                addonDefinitions.map((definition) => ({ key: definition.id, enabled: definition.defaultEnabled, config: definition.defaultConfig })),
+              ) as Prisma.InputJsonValue,
+            },
+          });
+          const defaultAddons = defaultProjectAddonProvisioning(project.id, adminUserId);
+          await tx.projectAddon.createMany({
+            data: defaultAddons.addons.map((addon) => ({ ...addon, config: addon.config as Prisma.InputJsonValue })),
+          });
+          await tx.projectAddonAuditEvent.createMany({
+            data: defaultAddons.auditEvents.map((event) => ({ ...event, nextConfig: event.nextConfig as Prisma.InputJsonValue })),
+          });
+          await tx.language.create({
+            data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
+          });
+          await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true }, select: { id: true } });
+          return { organization, project };
+        });
+      } catch (error) {
+        // The whole creation has rolled back, including the organization that
+        // is written before the site. Never retry another unique constraint.
+        if (!isAdminAddressCollision(error)) throw error;
+      }
+    }
+    throw new AppError({ code: 'database:conflict', message: 'Could not allocate a free site address.', details: { reason: 'slug_taken' } });
+  };
+  const created = await createWithAvailableAddress();
   // The transaction assigned the organization's plan: no website may keep stale add-ons.
   await invalidateOrganizationPublishedConfig(created.organization.id);
 

@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
+
+import { computeAccessibleName } from 'dom-accessibility-api';
 import type { ReactNode } from 'react';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { PublishCheck } from '@/hooks/api/types';
@@ -70,6 +74,107 @@ describe('site structure checks in the publish dialog', () => {
 });
 
 describe('Fix buttons', () => {
+  const versions = new Map([
+    ['v1', 'Stable مستقر'],
+    ['v2', 'Next تجريبي'],
+  ]);
+  const firstVersionCheck = check({
+    code: 'broken-internal-link',
+    severity: 'error',
+    pageId: 'page-v1',
+    versionId: 'v1',
+    title: 'Guide',
+    path: 'guide',
+    detail: '/gone?x=1&y=2#intro',
+  });
+  const secondVersionCheck = { ...firstVersionCheck, pageId: 'page-v2', versionId: 'v2' };
+  const versionChecks = [firstVersionCheck, secondVersionCheck];
+  const renderChecks = (checks: PublishCheck[], versionNames?: ReadonlyMap<string, string>) => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToStaticMarkup(
+      <PublishChecks checks={checks} loading={false} onFix={() => undefined} projectId="project-1" versionNames={versionNames} />,
+    );
+    return container;
+  };
+
+  it('shows each known version inside its Fix link and accessible name, preserving its page and evidence', () => {
+    const container = renderChecks(versionChecks, versions);
+    const links = [...container.querySelectorAll('a')];
+    expect(links.map((link) => link.textContent)).toEqual(['FixVersion: \u2068Stable مستقر\u2069', 'FixVersion: \u2068Next تجريبي\u2069']);
+    expect(links.map((link) => link.querySelector('bdi')?.textContent)).toEqual([
+      'Version: \u2068Stable مستقر\u2069',
+      'Version: \u2068Next تجريبي\u2069',
+    ]);
+    expect(links.map((link) => computeAccessibleName(link))).toEqual([
+      'Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide · Version: \u2068Stable مستقر\u2069',
+      'Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide · Version: \u2068Next تجريبي\u2069',
+    ]);
+    expect(links.map((link) => Object.fromEntries(new URL(link.href, 'https://app.test').searchParams))).toEqual([
+      { page: 'page-v1', fix: 'broken-internal-link', fixTarget: '/gone?x=1&y=2#intro' },
+      { page: 'page-v2', fix: 'broken-internal-link', fixTarget: '/gone?x=1&y=2#intro' },
+    ]);
+  });
+
+  it('keeps single-version markup identical and ignores unknown or absent version metadata', () => {
+    const single = [firstVersionCheck, { ...firstVersionCheck, pageId: 'other' }];
+    expect(renderChecks(single, versions).innerHTML).toBe(renderChecks(single).innerHTML);
+    const mixed = [
+      ...versionChecks,
+      { ...firstVersionCheck, pageId: 'unknown', versionId: 'unknown' },
+      { ...firstVersionCheck, pageId: 'legacy', versionId: undefined },
+    ];
+    const links = [...renderChecks(mixed, versions).querySelectorAll('a')];
+    expect(links.slice(2).map((link) => link.textContent)).toEqual(['Fix', 'Fix']);
+    expect(renderChecks(mixed, new Map([['v1', 'Stable']])).querySelector('a bdi')).toBeNull();
+    expect(renderChecks(mixed).querySelector('a bdi')).toBeNull();
+  });
+
+  it('translates the version label in Arabic and isolates mixed-direction version names', () => {
+    document.documentElement.setAttribute('data-locale', 'ar');
+    try {
+      const links = [...renderChecks(versionChecks, versions).querySelectorAll('a')];
+      expect(links.map((link) => link.querySelector('bdi')?.textContent)).toEqual([
+        'الإصدار: \u2068Stable مستقر\u2069',
+        'الإصدار: \u2068Next تجريبي\u2069',
+      ]);
+      expect(links.map((link) => computeAccessibleName(link))).toEqual([
+        expect.stringContaining('الإصدار: \u2068Stable مستقر\u2069'),
+        expect.stringContaining('الإصدار: \u2068Next تجريبي\u2069'),
+      ]);
+    } finally {
+      document.documentElement.removeAttribute('data-locale');
+    }
+  });
+
+  it('closes on Fix without altering truncated evidence navigation', async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    const onFix = vi.fn();
+    try {
+      await act(async () =>
+        root.render(
+          <PublishChecks
+            checks={[{ ...firstVersionCheck, reason: 'path-too-long' }, secondVersionCheck]}
+            loading={false}
+            onFix={onFix}
+            projectId="project-1"
+            versionNames={versions}
+          />,
+        ),
+      );
+      const link = container.querySelector('a');
+      if (!link) throw new Error('Missing Fix link');
+      link.addEventListener('click', (event) => event.preventDefault());
+      await act(async () => link.click());
+      expect(onFix).toHaveBeenCalledOnce();
+      expect(new URL(link.href, 'https://app.test').searchParams.get('fixTarget')).toBeNull();
+      expect(new URL(link.href, 'https://app.test').searchParams.get('page')).toBe('page-v1');
+    } finally {
+      await act(async () => root.unmount());
+    }
+  });
+
   // P1-ED-002: two problems on one page produced two identical "Fix Get started in the editor".
   it('names each Fix after its page and its problem, so no two buttons share a name', () => {
     const container = document.createElement('div');

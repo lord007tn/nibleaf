@@ -1,0 +1,463 @@
+{
+  "baseline": "45a6a3a784beababe8321ff2cddf27e41042fca9",
+  "nonLocalAttempts": 0,
+  "limits": "Isolated real publish modal and real query/router hooks. Fictional API responses. Editor destination is a URL receipt fixture; no production editor runtime or publish.",
+  "results": [
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "screenshot": "before-en-390-light.png",
+      "links": [
+        {
+          "text": "Fix",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        },
+        {
+          "text": "Fix",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "screenshot": "before-en-390-dark.png",
+      "links": [
+        {
+          "text": "Fix",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        },
+        {
+          "text": "Fix",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "screenshot": "before-en-1440-light.png",
+      "links": [
+        {
+          "text": "Fix",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        },
+        {
+          "text": "Fix",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "screenshot": "before-en-1440-dark.png",
+      "links": [
+        {
+          "text": "Fix",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        },
+        {
+          "text": "Fix",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "screenshot": "before-ar-390-light.png",
+      "links": [
+        {
+          "text": "إصلاح",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        },
+        {
+          "text": "إصلاح",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "screenshot": "before-ar-390-dark.png",
+      "links": [
+        {
+          "text": "إصلاح",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        },
+        {
+          "text": "إصلاح",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "screenshot": "before-ar-1440-light.png",
+      "links": [
+        {
+          "text": "إصلاح",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        },
+        {
+          "text": "إصلاح",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "screenshot": "before-ar-1440-dark.png",
+      "links": [
+        {
+          "text": "إصلاح",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        },
+        {
+          "text": "إصلاح",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "screenshot": "after-en-390-light.png",
+      "links": [
+        {
+          "text": "FixVersion: ⁨Stable مستقر⁩",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide · Version: ⁨Stable مستقر⁩",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "Version: ⁨Stable مستقر⁩"
+        },
+        {
+          "text": "FixVersion: ⁨Next تجريبي⁩",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide · Version: ⁨Next تجريبي⁩",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "Version: ⁨Next تجريبي⁩"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/app/projects/project-1/branches",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "screenshot": "after-en-390-dark.png",
+      "links": [
+        {
+          "text": "FixVersion: ⁨Stable مستقر⁩",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide · Version: ⁨Stable مستقر⁩",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "Version: ⁨Stable مستقر⁩"
+        },
+        {
+          "text": "FixVersion: ⁨Next تجريبي⁩",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide · Version: ⁨Next تجريبي⁩",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "Version: ⁨Next تجريبي⁩"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/app/projects/project-1/branches",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "screenshot": "after-en-1440-light.png",
+      "links": [
+        {
+          "text": "FixVersion: ⁨Stable مستقر⁩",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide · Version: ⁨Stable مستقر⁩",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "Version: ⁨Stable مستقر⁩"
+        },
+        {
+          "text": "FixVersion: ⁨Next تجريبي⁩",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide · Version: ⁨Next تجريبي⁩",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "Version: ⁨Next تجريبي⁩"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/app/projects/project-1/branches",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "screenshot": "after-en-1440-dark.png",
+      "links": [
+        {
+          "text": "FixVersion: ⁨Stable مستقر⁩",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide · Version: ⁨Stable مستقر⁩",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "Version: ⁨Stable مستقر⁩"
+        },
+        {
+          "text": "FixVersion: ⁨Next تجريبي⁩",
+          "name": "Fix “Guide”: Broken links · /gone?x=1&y=2#intro · /guide · Version: ⁨Next تجريبي⁩",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "Version: ⁨Next تجريبي⁩"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/app/projects/project-1/branches",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "screenshot": "after-ar-390-light.png",
+      "links": [
+        {
+          "text": "إصلاحالإصدار: ⁨Stable مستقر⁩",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide · الإصدار: ⁨Stable مستقر⁩",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "الإصدار: ⁨Stable مستقر⁩"
+        },
+        {
+          "text": "إصلاحالإصدار: ⁨Next تجريبي⁩",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide · الإصدار: ⁨Next تجريبي⁩",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "الإصدار: ⁨Next تجريبي⁩"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/app/projects/project-1/branches",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "screenshot": "after-ar-390-dark.png",
+      "links": [
+        {
+          "text": "إصلاحالإصدار: ⁨Stable مستقر⁩",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide · الإصدار: ⁨Stable مستقر⁩",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "الإصدار: ⁨Stable مستقر⁩"
+        },
+        {
+          "text": "إصلاحالإصدار: ⁨Next تجريبي⁩",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide · الإصدار: ⁨Next تجريبي⁩",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "الإصدار: ⁨Next تجريبي⁩"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/app/projects/project-1/branches",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "screenshot": "after-ar-1440-light.png",
+      "links": [
+        {
+          "text": "إصلاحالإصدار: ⁨Stable مستقر⁩",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide · الإصدار: ⁨Stable مستقر⁩",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "الإصدار: ⁨Stable مستقر⁩"
+        },
+        {
+          "text": "إصلاحالإصدار: ⁨Next تجريبي⁩",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide · الإصدار: ⁨Next تجريبي⁩",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "الإصدار: ⁨Next تجريبي⁩"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/app/projects/project-1/branches",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "screenshot": "after-ar-1440-dark.png",
+      "links": [
+        {
+          "text": "إصلاحالإصدار: ⁨Stable مستقر⁩",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide · الإصدار: ⁨Stable مستقر⁩",
+          "href": "/app/projects/project-1/editor?page=page-1&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "الإصدار: ⁨Stable مستقر⁩"
+        },
+        {
+          "text": "إصلاحالإصدار: ⁨Next تجريبي⁩",
+          "name": "إصلاح «Guide»: روابط معطلة · /gone?x=1&y=2#intro · /guide · الإصدار: ⁨Next تجريبي⁩",
+          "href": "/app/projects/project-1/editor?page=page-2&fix=broken-internal-link&fixTarget=%2Fgone%3Fx%3D1%26y%3D2%23intro",
+          "version": "الإصدار: ⁨Next تجريبي⁩"
+        }
+      ],
+      "requests": [
+        "GET /api/app/projects/project-1/domains",
+        "GET /api/app/projects/project-1/members",
+        "GET /api/app/projects/project-1/deployments/changes",
+        "GET /api/app/projects/project-1/branches",
+        "GET /api/auth/get-session"
+      ],
+      "overflow": false,
+      "errors": []
+    }
+  ]
+}
