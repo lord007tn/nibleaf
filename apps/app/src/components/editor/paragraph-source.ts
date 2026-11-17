@@ -223,7 +223,7 @@ const ITEM_CONTENT_NODES = new Set(['paragraph', 'text', 'hardBreak', 'listItem'
  * item with the real schema and keep the lead only when fitting hoists its block. */
 function fitItemLeads(element: HTMLElement, schema: Schema): void {
   const parser = PMDOMParser.fromSchema(schema);
-  const removed: Element[] = [];
+  const affected = new Set<Element>();
   const leads = Array.from(element.querySelectorAll('li > p[data-md-item-lead]'));
   const candidates = new Set(leads.map((lead) => lead.parentElement));
   const simpleContents = new Map<Element, boolean>();
@@ -277,14 +277,14 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
     }
     if (safe && block && ITEM_LEAD_NODES.has(block.type.name) && !stayed) continue;
     lead.remove();
-    removed.push(list);
-  }
-  for (const list of removed) {
     for (let ancestor: Element | null = list; ancestor; ancestor = ancestor.parentElement) {
-      if (ancestor.matches('ul,ol') && !ancestor.querySelector('p[data-md-item-lead]')) {
-        if (ancestor.getAttribute('data-md-item-main-tight') === 'true') ancestor.setAttribute('data-tight', 'true');
-        else ancestor.removeAttribute('data-tight');
-      }
+      if (ancestor.matches('ul,ol')) affected.add(ancestor);
+    }
+  }
+  for (const list of affected) {
+    if (!list.querySelector('p[data-md-item-lead]')) {
+      if (list.getAttribute('data-md-item-main-tight') === 'true') list.setAttribute('data-tight', 'true');
+      else list.removeAttribute('data-tight');
     }
   }
 }
