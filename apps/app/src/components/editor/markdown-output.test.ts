@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { MarkdownOutput } from './markdown-output';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 /*
@@ -42,5 +43,36 @@ describe('a page’s line endings across a dry run of setContent (#702)', () => 
     expect(getMarkdown(editor)).toBe(page);
     editor.view.dispatch(editor.state.tr.insertText('Edited ', 1));
     expect(getMarkdown(editor)).toBe('Edited One.\r\n\r\nTwo.\r\n\r\nThree.');
+  });
+});
+
+// A component's tight layout (#606) reads its children's first and last lines back and
+// puts a blank line in before them: each reads one line only, across the pieces written.
+describe('the output read back next to a component’s tags (#606)', () => {
+  const written = (...pieces: string[]) => {
+    const output = new MarkdownOutput();
+    for (const piece of pieces) output.append(piece);
+    return output;
+  };
+
+  it('`lastLine` is the last line, without a line break that ends it', () => {
+    expect(written('<Note>\n', '| A ', '| B |\n').lastLine()).toBe('| A | B |');
+    expect(written('<Note>\nTe', 'xt').lastLine()).toBe('Text');
+    expect(written('a\n', '\n').lastLine()).toBe('');
+    expect(written().lastLine()).toBe('');
+    const long = written('x'.repeat(10_000), '\n', 'tail');
+    const before = long.charactersRead;
+    expect(long.lastLine()).toBe('tail');
+    expect(long.charactersRead - before).toBeLessThanOrEqual(5);
+  });
+
+  it('`lineFrom` reads to the next line break; `insertAt` puts text in before what follows', () => {
+    const output = written('<Note>\n', '> ', 'quo', 'ted\nTail');
+    expect(output.lineFrom(7)).toBe('> quoted');
+    expect(output.lineFrom(9)).toBe('quoted');
+    output.insertAt(7, '\n');
+    output.insertAt(output.length, '\n');
+    expect(output.length).toBe(22);
+    expect(output.sliceFrom(0)).toBe('<Note>\n\n> quoted\nTail\n');
   });
 });
