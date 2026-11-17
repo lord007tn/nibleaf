@@ -1,5 +1,6 @@
+import { Extension } from '@tiptap/core';
 import Paragraph from '@tiptap/extension-paragraph';
-import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
+import { DOMParser as PMDOMParser, type Fragment, type Node as PMNode, type Schema } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
 import type { MarkdownOutput } from './markdown-output';
@@ -210,8 +211,66 @@ function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: P
 
 const paragraphParsers = new WeakSet<object>();
 
+const ITEM_LEAD_NODES = new Set(['blockquote', 'heading', 'bulletList', 'orderedList']);
+
+/** Validate the staged lead after callout and task-list DOM conversions. A token
+ * called a quote can now be an HTML-backed callout (#871). Probe the unmodified
+ * item with the real schema and keep the lead only when fitting hoists its block. */
+function fitItemLeads(element: HTMLElement, schema: Schema): void {
+  const parser = PMDOMParser.fromSchema(schema);
+  const removed: Element[] = [];
+  for (const lead of Array.from(element.querySelectorAll('li > p[data-md-item-lead]')).reverse()) {
+    const item = lead.parentElement;
+    const list = item?.parentElement;
+    if (!item || !list) continue;
+    const original = item.cloneNode(true) as HTMLElement;
+    for (const staged of original.querySelectorAll('p[data-md-item-lead]')) staged.remove();
+    const first = original.firstElementChild;
+    const blockDOM = document.createElement('div');
+    if (first) blockDOM.appendChild(first.cloneNode(true));
+    const block = parser.parseSlice(blockDOM).content.firstChild;
+    const listDOM = list.cloneNode(false) as HTMLElement;
+    listDOM.appendChild(original);
+    const holder = document.createElement('div');
+    holder.appendChild(listDOM);
+    const fitted = parser.parse(holder).firstChild?.firstChild;
+    let stayed = false;
+    fitted?.forEach((child) => {
+      if (block && child.eq(block)) stayed = true;
+    });
+    if (block && ITEM_LEAD_NODES.has(block.type.name) && !stayed) continue;
+    lead.remove();
+    removed.push(list);
+  }
+  for (const list of removed) {
+    for (let ancestor: Element | null = list; ancestor; ancestor = ancestor.parentElement) {
+      if (ancestor.matches('ul,ol') && !ancestor.querySelector('p[data-md-item-lead]')) ancestor.removeAttribute('data-tight');
+    }
+  }
+}
+
+// Run after every node's DOM conversion without changing paragraph's schema order.
+const ListItemLeadFitting = Extension.create({
+  name: 'listItemLeadFitting',
+  priority: -1,
+  addStorage() {
+    return {
+      markdown: {
+        parse: {
+          updateDOM(element) {
+            fitItemLeads(element, this.editor.schema);
+          },
+        },
+      } satisfies MarkdownNodeSpec,
+    };
+  },
+});
+
 /** StarterKit's paragraph, keeping its source lines (see the note at the top). */
 export const SourceParagraph = Paragraph.extend({
+  addExtensions() {
+    return [ListItemLeadFitting];
+  },
   addAttributes() {
     return {
       ...this.parent?.(),
