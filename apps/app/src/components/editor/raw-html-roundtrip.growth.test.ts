@@ -48,6 +48,15 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
+  // Many components on one long line (#606): a tag in the middle of a line is turned down
+  // at the first character before it that isn't indentation or a quote marker, without
+  // reading back to the line's start.
+  it('prepares one long line of components in one pass (#606)', () => {
+    const line = (n: number) => '<Note>x</Note> '.repeat(n);
+    const [small, large] = growthMs(parse, line(3000), line(12_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
   it('prepares one value holding n blank lines in one pass (#721)', () => {
     const longValue = (n: number) => `<Card title="${'a\n\n'.repeat(n)}">\n\nBody\n\n</Card>\n`;
     const [small, large] = growthMs(parse, longValue(5000), longValue(20_000), { budgetMs: 10_000 });

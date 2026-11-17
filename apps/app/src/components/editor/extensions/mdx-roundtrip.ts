@@ -1861,8 +1861,20 @@ const lineStartOf = (source: string, at: number): number => {
   while (start > 0 && source[start - 1] !== '\n' && source[start - 1] !== '\r') start -= 1;
   return start;
 };
-/** What may come before a tag on its line for it to start that line: indentation and quote markers. */
-const LINE_LEAD = /^[ \t>]*$/;
+/**
+ * Where the line holding `at` starts, when only indentation and quote markers come before
+ * `at` on it (the tag starts its line); -1 otherwise. Reads back only over those, so a tag
+ * in the middle of a long line is turned down at the first character that isn't one.
+ */
+const leadStartOf = (source: string, at: number): number => {
+  let start = at;
+  for (; start > 0; start -= 1) {
+    const char = source[start - 1];
+    if (char === '\n' || char === '\r') break;
+    if (char !== ' ' && char !== '\t' && char !== '>') return -1;
+  }
+  return start;
+};
 /** A line that starts with a tag (after its quote markers): another component's, or HTML. */
 const TAG_LINE = /^[ \t>]*</;
 /** The rest of a tag's line (whitespace only), its line break, and the line after it. */
@@ -1877,8 +1889,9 @@ const NEXT_LINE = /^[ \t]*(\r\n|\r|\n)([^\r\n]*)/;
  * line, and an opener that ends its own.
  */
 function childrenLayout(source: string, open: TagToken, close: TagToken | undefined): { open?: string; close: boolean } | null {
-  const lead = source.slice(lineStartOf(source, open.start), open.start);
-  if (!LINE_LEAD.test(lead)) return null;
+  const leadStart = leadStartOf(source, open.start);
+  if (leadStart < 0) return null;
+  const lead = source.slice(leadStart, open.start);
   // In a quote, an opener over several lines may end at a quote's `>` marker: left as it was.
   if (lead.includes('>') && /[\r\n]/.test(open.raw)) return null;
   const next = NEXT_LINE.exec(source.slice(open.end, open.end + 4096));
@@ -1887,11 +1900,13 @@ function childrenLayout(source: string, open: TagToken, close: TagToken | undefi
   const tightOpen = !blankInContainers(firstLine) && !TAG_LINE.test(firstLine);
   let tightClose = false;
   if (close) {
-    const closeLine = lineStartOf(source, close.start);
-    const previousEnd = source[closeLine - 1] === '\n' && source[closeLine - 2] === '\r' ? closeLine - 2 : closeLine - 1;
-    const previous = source.slice(lineStartOf(source, previousEnd), previousEnd);
-    tightClose =
-      closeLine > open.end && LINE_LEAD.test(source.slice(closeLine, close.start)) && !blankInContainers(previous) && !TAG_LINE.test(previous);
+    // The line before the closing tag is read only once the tag is known to start its line.
+    const closeLine = leadStartOf(source, close.start);
+    if (closeLine > open.end) {
+      const previousEnd = source[closeLine - 1] === '\n' && source[closeLine - 2] === '\r' ? closeLine - 2 : closeLine - 1;
+      const previous = source.slice(lineStartOf(source, previousEnd), previousEnd);
+      tightClose = !blankInContainers(previous) && !TAG_LINE.test(previous);
+    }
   }
   if (!tightOpen && !tightClose) return null;
   // The quotes the tag is in: the children may open a quote of their own.

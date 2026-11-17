@@ -149,23 +149,31 @@ interface ParagraphSerializeState {
   closeBlock: (node: PMNode) => void;
 }
 
-/**
- * Write a paragraph: its source lines when the paragraph still reads the same as
- * they do (see the note at the top), otherwise the serializer's single line.
- */
 /** The containers whose first line their serializer writes before their first child: a
  *  list item's marker, a quote's `>`. */
 const LINE_CONTAINERS: ReadonlySet<string> = new Set(['listItem', 'blockquote']);
 
 /**
- * Whether `node` is an empty paragraph that opens a list item or quote with more after it.
- * Markdown has no empty paragraph there: written (`- `, a blank line, then the rest), it
- * read back as an empty item and a paragraph outside the list, or as nothing, so a page
- * with one never saved to a fixed point. It is left out; what follows opens the item.
+ * Whether `node` is an empty paragraph that opens a list item or quote, with a paragraph
+ * after it. Markdown has no empty paragraph there: written (`- `, a blank line, then the
+ * rest), it read back as an empty item and a paragraph outside the list, so a page with
+ * one never saved to a fixed point. It is left out, and the paragraph after it opens the
+ * item. Before any other block (a nested list, a quote) it is written as before: left
+ * out, that block's own marker would share the item's line (`- - Beta`).
  */
 const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: number | undefined): boolean =>
-  index === 0 && node.content.size === 0 && !!parent && 'type' in parent && LINE_CONTAINERS.has(parent.type.name) && parent.childCount > 1;
+  index === 0 &&
+  node.content.size === 0 &&
+  !!parent &&
+  'type' in parent &&
+  LINE_CONTAINERS.has(parent.type.name) &&
+  parent.childCount > 1 &&
+  parent.child(1).type.name === 'paragraph';
 
+/**
+ * Write a paragraph: its source lines when the paragraph still reads the same as
+ * they do (see the note at the top), otherwise the serializer's single line.
+ */
 function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: PMNode | Fragment, index?: number): void {
   if (emptyLead(node, parent, index)) return;
   const source = String(node.attrs.sourceParagraph ?? '');
