@@ -24,6 +24,7 @@
     "clean": "git clean -xdf .cache .turbo dist node_modules",
     "bench": "vitest bench --run src/arabic.bench.ts",
     "bench:reader": "tsx scripts/benchmark-reader-search.ts --reader",
+    "bench:snippet-index": "node --expose-gc --import tsx scripts/benchmark-snippet-index.ts",
     "eval:rag": "tsx scripts/evaluate-openrouter.ts",
     "eval:embeddings": "tsx scripts/evaluate-embeddings.ts",
     "typecheck": "tsc --noEmit",
