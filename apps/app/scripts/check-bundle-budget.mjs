@@ -8,6 +8,8 @@ import {
   marketingSharedReaderIcons,
   nonReaderRouteBytes,
   preloadTableFiles,
+  searchOpenFiles,
+  searchOpenZodModules,
 } from './bundle-boundaries.mjs';
 
 const appRoot = resolve(import.meta.dirname, '..');
@@ -70,9 +72,16 @@ const profiles = {
 // hands down. Product pages no longer load the reader's SEO, theme, redirect and
 // chrome-copy chunks (about 44 KiB). Measured with #703 on main: 322,990 and
 // 326,001 bytes (CI); the margin is ~1 KiB.
+// public-docs and public-docs-index 345_100 → 274_400 (PUB-017): zod no longer
+// reaches published pages. Eager routes read their search params with
+// lib/search-params.ts, the reader's MDX props use plain checks, its language
+// and nav helpers load apart from @nibleaf/shared/site (and its add-on schemas),
+// and zod-csp sets zod's global config without importing zod. This also takes
+// in READER-05's trims, which kept the old budget. Measured 266.02 and 264.68 KiB
+// (about 272,404 and 271,032 bytes) locally; the margin is ~2 KiB.
 const gzipBudgets = {
-  'public-docs': 345_100,
-  'public-docs-index': 345_100,
+  'public-docs': 274_400,
+  'public-docs-index': 274_400,
   'auth-sign-in': 324_100,
   'auth-sign-up': 327_100,
 };
@@ -219,6 +228,16 @@ for (const [profile, report] of Object.entries(reports)) {
   }
 }
 
+// Search open (#842): what the reader's first search open fetches beyond the
+// docs page itself, from the module report.
+const searchOpen = chunkReport ? searchOpenFiles(chunkReport) : [];
+if (searchOpen.length > 0) {
+  const pageFiles = new Set(reports['public-docs']?.assets.map((asset) => asset.url.replace(/^\//, '')) ?? []);
+  const extra = searchOpen.filter((file) => !pageFiles.has(file) && existsSync(join(publicRoot, file)));
+  const gzip = extra.reduce((sum, file) => sum + gzipSync(readFileSync(join(publicRoot, file)), { level: 9 }).byteLength, 0);
+  console.log(`\nsearch open: ${searchOpen.length} chunks, ${extra.length} beyond public-docs (${formatBytes(gzip)} gzip)`);
+}
+
 const shared = Object.values(reports)
   .flatMap((report) => report.assets.map((asset) => asset.url))
   .filter((url, index, all) => all.indexOf(url) === index && all.filter((candidate) => candidate === url).length === Object.keys(reports).length);
@@ -295,6 +314,17 @@ if (process.argv.includes('--check')) {
       console.error(
         `\nBUNDLE BOUNDARY FAILED: marketing code imports the reader's ${icon} icon, which re-splits the reader's icon chunks. Use a copy in components/marketing/site/marketing-icons.ts.`,
       );
+      invalid = true;
+    }
+    // Opening search must not load zod (#841, #842).
+    if (searchOpen.length === 0) {
+      console.error(
+        '\nBUNDLE BOUNDARY FAILED: no chunk holds components/site/site-search-dialog.tsx; update searchOpenFiles in bundle-boundaries.mjs.',
+      );
+      invalid = true;
+    }
+    for (const { file, id } of searchOpenZodModules(chunkReport)) {
+      console.error(`\nBUNDLE BOUNDARY FAILED: search open includes zod module ${id.replace(/^.*?\/node_modules\//, '')} in ${file}.`);
       invalid = true;
     }
   } else if (process.env.CI) {

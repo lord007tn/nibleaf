@@ -192,6 +192,10 @@ const indentedStepFences = (n: number) => '<Steps>\n<Step title="x">\n\n    ```j
 const openNotesBeforeScript = (n: number) => `${'<Note>\n\nText\n\n'.repeat(n)}<script>x`;
 /** `n` closed components, then a comment that runs to the end of the page. */
 const closedNotesBeforeComment = (n: number) => `${'<Note>\n\nText\n\n</Note>\n\n'.repeat(n)}<!-- x`;
+/** `n` characters of indented code blocks, each opening a comment that never closes:
+ *  each ends with its block, and must not search the rest of the page for `-->` again
+ *  (the #840 review's shape, #624). */
+const indentedUnclosedComments = (n: number) => '    <!--\n\np\n\n'.repeat(Math.ceil(n / 13)).slice(0, n);
 /** `n` Notes nested in one another, each holding a fence the reader reads at four
  *  columns (the #622 review's shape): each is kept whole without walking the Notes
  *  around it again. */
@@ -248,6 +252,14 @@ describe.runIf(growthTestsEnabled)('pages that end in an unclosed block, growth'
 
   it('prepares a page of closed components before an unclosed comment in one pass', () => {
     const [small, large] = growthMs(parse, closedNotesBeforeComment(250), closedNotesBeforeComment(1000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  // Searching the rest of the page for `-->` from each code block: 76,923 searches over
+  // 38.5 billion characters for a 1M-character page.
+  it('prepares a page of indented code blocks opening unclosed comments in one pass', () => {
+    const [small, large] = growthMs(parse, indentedUnclosedComments(25_000), indentedUnclosedComments(100_000), { budgetMs: 10_000 });
+    console.info(`#840 indented unclosed comments: ${small.toFixed(1)} → ${large.toFixed(1)} ms (limit ${linearGrowthLimit(small).toFixed(1)})`);
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 

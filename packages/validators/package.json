@@ -8,7 +8,8 @@
     ".": "./src/index.ts",
     "./addons": "./src/addons.ts",
     "./schema": "./src/index.ts",
-    "./redirects": "./src/redirects.ts"
+    "./redirects": "./src/redirects.ts",
+    "./search": "./src/search.ts"
   },
   "scripts": {
     "clean": "git clean -xdf .cache .turbo dist node_modules",

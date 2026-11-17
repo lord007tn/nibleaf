@@ -54,12 +54,19 @@ let harness;
 try {
   harness = await mkdtemp(resolve(app, '.git-import-capture-'));
   await mkdir(resolve(harness, 'before'), { recursive: true });
-  // Main's Git import as it is on the base (this branch removed it); every other hook is today's.
+  // Main's Git import as it is on the base (this branch removed it) and its webhook rotation (removed later); every
+  // other hook is today's.
+  const mainMutations = git('show', `${BASE}:apps/app/src/hooks/api/mutations.ts`);
   const mainImport =
     /\/\*\* Pull Markdown pages from the configured public Git provider[\s\S]*?\nexport const useImportFromGit = [\s\S]*?\n};\n/.exec(
-      git('show', `${BASE}:apps/app/src/hooks/api/mutations.ts`),
+      mainMutations,
     )?.[0];
   assert.ok(mainImport, "main's useImportFromGit");
+  const mainRotate =
+    /\/\*\* Generate or rotate the push-to-deploy webhook secret[\s\S]*?\nexport const useRotateGitWebhookSecret = [\s\S]*?\n};\n/.exec(
+      mainMutations,
+    )?.[0];
+  assert.ok(mainRotate, "main's useRotateGitWebhookSecret");
   await writeFile(
     resolve(harness, 'before/hooks.ts'),
     `export * from '@/hooks/api';
@@ -67,7 +74,7 @@ import { mutateData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
-${mainImport}`,
+${mainImport}${mainRotate}`,
   );
   // Main's Pipeline card too: this branch changes it, and main's GitTab imports it from features/site-git.
   await writeFile(

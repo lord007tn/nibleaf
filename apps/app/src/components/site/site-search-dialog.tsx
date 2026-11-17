@@ -3,15 +3,19 @@ import { Command, CommandGroup, CommandInput, CommandItem, CommandList } from '@
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { SkeletonListRow } from '@nibleaf/design-system/components/ui/skeleton';
+import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteSearchT } from '@nibleaf/i18n/site-search';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { useRouter } from '@tanstack/react-router';
 import { AlertCircle, Clock, CornerDownLeft, FileText, Hash, Languages, Loader2, RotateCcw, Search, SearchX, Sparkles } from 'lucide-react';
-import { Fragment, type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { type CSSProperties, Fragment, type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { Highlight } from '@/components/site/site-search-highlight';
 import { takeSearchKeystrokes } from '@/components/site/site-search-keystrokes';
+import { useSlashShortcut, writeSlashShortcut } from '@/components/site/site-search-shortcut';
+import { useVisualViewport } from '@/components/site/use-visual-viewport';
+import { capSearchQueryEdit, exceedsSearchQueryLimit, truncateSearchQuery } from '@/functions/site-search-input';
 import { useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
@@ -145,7 +149,8 @@ export default function SiteSearchDialog({
   version?: string;
   /** Configured search prompt (config.search.placeholder); falls back to the localized default. */
   placeholder?: string;
-  /** Which key opens search (config.search.hotkey): ⌘K (default) or a bare '/'. */
+  /** The shortcut the search button shows (config.search.hotkey): ⌘K (default) or a bare '/'.
+   * ⌘K always opens search; '/' does too unless the reader turned it off in the footer. */
   hotkey?: 'cmdk' | 'slash';
   maxResults?: number;
   versions?: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
@@ -169,6 +174,16 @@ export default function SiteSearchDialog({
   const { track } = useSiteAnalytics();
   const router = useRouter();
   const t = siteSearchT(lang);
+  const slashShortcut = useSlashShortcut(projectId);
+  // The phone sheet follows the visual viewport, so its footer and last results
+  // stay above the software keyboard. The size is kept until the sheet has
+  // finished animating out, then dropped. An opening clears `exited` as it
+  // starts, not when its animation completes: Base UI drops that completion
+  // when a close interrupts the opening, and the interrupted sheet must keep its
+  // size through its exit too.
+  const [exited, setExited] = useState(!open);
+  if (open && exited) setExited(false);
+  const viewport = useVisualViewport(open, open || !exited);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   // cmdk re-selects the first row whenever the list changes. Only highlight
@@ -190,10 +205,31 @@ export default function SiteSearchDialog({
   const [keepPrevious, setKeepPrevious] = useState(true);
   // Enter pressed while a keyword search loads opens the best match once it arrives.
   const [pendingEnter, setPendingEnter] = useState(false);
-  const changeQuery = (value: string) => {
+  const applyQuery = (value: string) => {
     setQuery(value);
     setPendingEnter(false);
     if (!value.trim()) setKeepPrevious(false);
+  };
+  // The field holds at most the API's limit in code points, typed or pasted, like
+  // `maxLength` (which would count UTF-16 units and cut emoji queries short): of
+  // an edit that overflows, only what fits is kept, with the caret after it. An
+  // IME composition is left alone until it ends (the transport still cuts what
+  // it sends); `compositionBaseRef` is the value it started from.
+  const composingRef = useRef(false);
+  const compositionBaseRef = useRef('');
+  const capEdit = (input: HTMLInputElement, previous: string) => {
+    const { value, caret } = capSearchQueryEdit(previous, input.value, input.selectionEnd);
+    // Set the field now with the caret in place; the controlled value then
+    // renders the same string and leaves the caret where it is.
+    input.value = value;
+    input.setSelectionRange(caret, caret);
+    applyQuery(value);
+  };
+  const changeQuery = (raw: string) => {
+    const input = inputRef.current;
+    if (composingRef.current || !exceedsSearchQueryLimit(raw)) applyQuery(raw);
+    else if (input?.value === raw) capEdit(input, query);
+    else applyQuery(truncateSearchQuery(raw));
   };
   // Every key typed since search was asked for (while the code loaded and the
   // field mounted) becomes the query, caret at the end. With nothing typed, a
@@ -219,7 +255,7 @@ export default function SiteSearchDialog({
       if (typed?.edited) {
         // What the reader typed replaces the old query, even when they deleted
         // it all again: an edited, now empty buffer stays empty.
-        const seeded = typed.text.slice(0, 300);
+        const seeded = truncateSearchQuery(typed.text);
         // Set the field now so the caret lands after the text; the controlled
         // value then renders the same string and leaves the caret in place.
         input.value = seeded;
@@ -503,15 +539,18 @@ export default function SiteSearchDialog({
     ) : null;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange} onOpenChangeComplete={(isOpen) => setExited(!isOpen)}>
       <DialogContent
         className={cn(
-          // Phones: a full-screen sheet so the keyboard never covers results.
-          'inset-0 top-0 start-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none p-0 ring-0 rtl:translate-x-0',
+          // Phones: a full-screen sheet sized to the visual viewport, so the keyboard
+          // never covers the results or the footer. Without one (older browsers, or
+          // before the first reading) it fills the dynamic viewport.
+          'inset-x-0 start-0 top-[var(--search-top,0px)] bottom-auto flex h-[var(--search-height,100dvh)] max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none p-0 ring-0 rtl:translate-x-0',
           // Larger screens: a panel anchored near the top, so it grows downward
           // as results arrive instead of jumping around the center.
           'sm:inset-auto sm:start-1/2 sm:top-[12vh] sm:h-auto sm:max-h-[min(76vh,680px)] sm:max-w-2xl sm:-translate-x-1/2 sm:rounded-xl sm:shadow-2xl sm:ring-1 sm:rtl:translate-x-1/2',
         )}
+        style={viewport ? ({ '--search-height': `${viewport.height}px`, '--search-top': `${viewport.top}px` } as CSSProperties) : undefined}
         data-theme-surface="search"
         dir={rtl ? 'rtl' : 'ltr'}
         showCloseButton={false}
@@ -563,7 +602,14 @@ export default function SiteSearchDialog({
               placeholder={placeholder?.trim() || t('searchPlaceholder')}
               value={query}
               onValueChange={changeQuery}
-              maxLength={300}
+              onCompositionStart={() => {
+                composingRef.current = true;
+                compositionBaseRef.current = query;
+              }}
+              onCompositionEnd={(event) => {
+                composingRef.current = false;
+                if (exceedsSearchQueryLimit(event.currentTarget.value)) capEdit(event.currentTarget, compositionBaseRef.current);
+              }}
               enterKeyHint="search"
               className="h-14 px-2 text-base placeholder:text-muted-foreground/80 sm:text-[15px]"
               onKeyDown={(event) => {
@@ -664,7 +710,7 @@ export default function SiteSearchDialog({
                           key={item}
                           value={`recent-${index}`}
                           onSelect={() => {
-                            setQuery(item);
+                            setQuery(truncateSearchQuery(item));
                             inputRef.current?.focus();
                           }}
                           className={ROW}
@@ -778,11 +824,11 @@ export default function SiteSearchDialog({
 
           <div
             className={cn(
-              'shrink-0 items-center gap-4 border-border/70 border-t px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-muted-foreground text-xs',
-              // Key hints mean nothing on touch screens; keep the bar only for the filters there.
-              showFilters ? 'flex' : 'hidden sm:flex pointer-coarse:hidden!',
+              'flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-border/70 border-t px-4 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-muted-foreground text-xs',
             )}
           >
+            {/* Key hints are for mouse and keyboard users on wider screens. The bar itself
+                shows at every width: it holds the '/' switch, and '/' works everywhere. */}
             <div className="hidden items-center gap-4 sm:flex pointer-coarse:hidden!">
               <span className="inline-flex items-center gap-1.5">
                 <Key>↑</Key>
@@ -800,6 +846,13 @@ export default function SiteSearchDialog({
                 {t('searchKeysClose')}
               </span>
             </div>
+            {/* WCAG 2.1.4: readers can turn the single-key '/' shortcut off (site-search-shortcut.ts). */}
+            {/* biome-ignore lint/a11y/noLabelWithoutControl: the switch inside is the labelled control. */}
+            <label className="inline-flex h-8 cursor-pointer items-center gap-1.5 pointer-coarse:h-11">
+              <Switch size="sm" checked={slashShortcut} onCheckedChange={(on) => writeSlashShortcut(projectId, on)} />
+              <Key>/</Key>
+              {t('searchKeysSlash')}
+            </label>
             {showFilters ? (
               <div className="ms-auto flex min-w-0 flex-wrap items-center justify-end gap-2">
                 {showLanguageFilter ? (

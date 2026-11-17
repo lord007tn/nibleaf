@@ -278,7 +278,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
                 ) : (
                   <a
                     href={siteHref(projectId, crumb.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
-                    className="transition-opacity hover:opacity-80"
+                    className="underline-offset-4 hover:underline"
                     dir={blockDirection(crumb.title)}
                     lang={contentLanguage.lang}
                   >

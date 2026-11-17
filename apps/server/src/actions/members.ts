@@ -1,8 +1,8 @@
-import { revokeJoinLinksBeyondRole } from '@nibleaf/auth/join-links';
+import { ISSUER_SELECT, revokeJoinLinksBeyondRole, usableIssuer } from '@nibleaf/auth/join-links';
 import { type Prisma, prisma } from '@nibleaf/database';
 import type { EmailLanguage } from '@nibleaf/email';
 import type { MemberRole } from '@nibleaf/shared/constants';
-import { canAdminister, canAssignRole, effectiveSiteRole } from '@nibleaf/shared/rbac';
+import { canAdminister, canAssignRole, effectiveSiteRole, type InvitationResend, issuerRefusal } from '@nibleaf/shared/rbac';
 import { conflict, forbidden, notFound } from '@/errors';
 import { assertUsableAccount } from '@/lib/access';
 import { lockOrganization } from './admissions';
@@ -56,9 +56,15 @@ export const getInvitationInfo = async (id: string) => {
     expired: invitation.expiresAt <= new Date(),
   };
 };
-export const listMembers = async (organizationId: string, siteId?: string) => {
+/**
+ * A website's members and the pending invitations that grant it. With a
+ * `viewerId`, each invitation also says whether that viewer may resend it
+ * (`resend`), decided by the same issuer policy the resend runs; the invitation's
+ * org role and its other websites never leave the server.
+ */
+export const listMembers = async (organizationId: string, siteId?: string, viewerId?: string) => {
   const projectId = await singleProject(organizationId, siteId);
-  const [members, invitations] = await Promise.all([
+  const [members, invitations, viewer] = await Promise.all([
     prisma.member.findMany({
       where: { organizationId, OR: [{ orgRole: { in: ['owner', 'admin'] } }, { projectGrants: { some: { projectId } } }] },
       select: {
@@ -81,18 +87,27 @@ export const listMembers = async (organizationId: string, siteId?: string) => {
         expiresAt: true,
         inviterId: true,
         inviter: { select: { name: true, email: true } },
-        grants: { where: { projectId }, select: { role: true } },
+        orgRole: true,
+        grants: { select: { projectId: true, role: true } },
       },
       orderBy: { createdAt: 'desc' },
     }),
+    viewerId ? prisma.member.findUnique({ where: { organizationId_userId: { organizationId, userId: viewerId } }, select: ISSUER_SELECT }) : null,
   ]);
+  // An unusable account issues nothing (its resend is refused too); it never reaches this page signed in.
+  const resend = (orgRole: string, grants: Array<{ projectId: string; role: string }>): InvitationResend =>
+    usableIssuer(viewer) ? (issuerRefusal(viewer, orgRole, grants) ?? 'allowed') : 'orgAccess';
   return {
     members: members.map(({ projectGrants, ...member }) => ({
       ...member,
       role: effectiveSiteRole(member.orgRole, projectGrants[0]?.role ?? null) ?? 'viewer',
       viaOrganization: member.orgRole !== 'member',
     })),
-    invitations: invitations.map(({ grants, ...invitation }) => ({ ...invitation, role: grants[0]?.role ?? 'viewer' })),
+    invitations: invitations.map(({ grants, orgRole, ...invitation }) => ({
+      ...invitation,
+      role: grants.find((grant) => grant.projectId === projectId)?.role ?? 'viewer',
+      ...(viewerId ? { resend: resend(orgRole, grants) } : {}),
+    })),
   };
 };
 export const inviteMember = async (

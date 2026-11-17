@@ -13,6 +13,7 @@ import { site_searching } from './paraglide/messages/site_searching.js';
 import { site_searchkeysclose } from './paraglide/messages/site_searchkeysclose.js';
 import { site_searchkeysnavigate } from './paraglide/messages/site_searchkeysnavigate.js';
 import { site_searchkeysopen } from './paraglide/messages/site_searchkeysopen.js';
+import { site_searchkeysslash } from './paraglide/messages/site_searchkeysslash.js';
 import { site_searchnoresultsfor } from './paraglide/messages/site_searchnoresultsfor.js';
 import { site_searchnoresultshint } from './paraglide/messages/site_searchnoresultshint.js';
 import { site_searchpages } from './paraglide/messages/site_searchpages.js';
@@ -50,6 +51,7 @@ const searchMessages = {
   searchKeysClose: site_searchkeysclose,
   searchKeysNavigate: site_searchkeysnavigate,
   searchKeysOpen: site_searchkeysopen,
+  searchKeysSlash: site_searchkeysslash,
   searchNoResultsHint: site_searchnoresultshint,
   searchPages: site_searchpages,
   searchPrompt: site_searchprompt,
