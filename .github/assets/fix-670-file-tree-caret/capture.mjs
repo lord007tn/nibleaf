@@ -10,7 +10,7 @@ import { dirname, extname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const root = process.env.CAPTURE_ROOT ?? process.cwd();
-const { withLocalOnlyBrowser } = await import(pathToFileURL(resolve(root, 'tests/integration/lib/capture-env.mjs')));
+const { acquireDevstackLock, withLocalOnlyBrowser } = await import(pathToFileURL(resolve(root, 'tests/integration/lib/capture-env.mjs')));
 const app = resolve(root, 'apps/app');
 const require = createRequire(resolve(app, 'package.json'));
 const fromApp = async (name) => import(pathToFileURL(require.resolve(name)).href);
@@ -22,11 +22,13 @@ assert.match(await readFile(join(tmpdir(), 'nibleaf-heavy.lock'), 'utf8'), /^edi
 assert.ok(freemem() >= 5 * 1024 ** 3, '5 GiB free RAM');
 const baseline = process.env.BASE ?? git('rev-parse', 'origin/main');
 const out = resolve(root, '.github/assets', PR === '668' ? 'fix-668-fix-bar-390' : 'fix-670-file-tree-caret');
-const harness = await mkdtemp(resolve(app, '.editor-capture-'));
 const origin = 'http://editor-canvas.fixture.test';
 const results = [];
 let workspaceOutputs = [];
+const devstack = await acquireDevstackLock('editor/670');
+let harness;
 try {
+  harness = await mkdtemp(resolve(app, '.editor-capture-'));
   const source = PHASE === 'before' ? resolve(harness, 'editor') : resolve(app, 'src/components/editor');
   if (PHASE === 'before') {
     for (const file of git('ls-tree', '-r', '--name-only', baseline, 'apps/app/src/components/editor').split('\n')) {
@@ -252,5 +254,9 @@ export {translateFn} from '@nibleaf/i18n';
   );
   console.log(results.map(({ shot, barHeight, landingGap, caretInFileName }) => ({ shot, barHeight, landingGap, caretInFileName })));
 } finally {
-  await rm(harness, { recursive: true, force: true });
+  try {
+    if (harness) await rm(harness, { recursive: true, force: true });
+  } finally {
+    await devstack.release();
+  }
 }
