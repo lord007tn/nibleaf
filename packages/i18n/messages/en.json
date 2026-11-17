@@ -2305,6 +2305,7 @@
   "site_searchdescription": "Full-text and fuzzy search across this site.",
   "site_searchempty": "No results.",
   "site_searchprompt": "Type to search…",
+  "site_searchquerylimit": "Search is limited to {limit} characters.",
   "site_results": "Results",
   "site_loading": "Loading…",
   "site_articleloadfailed": "This page couldn't load. Try again",

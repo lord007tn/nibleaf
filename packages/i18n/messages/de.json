@@ -2265,6 +2265,7 @@
   "site_searchdescription": "Volltext- und Fuzzy-Suche auf dieser Website.",
   "site_searchempty": "Keine Ergebnisse.",
   "site_searchprompt": "Geben Sie Folgendes ein, um zu suchen …",
+  "site_searchquerylimit": "Die Suche ist auf {limit} Zeichen begrenzt.",
   "site_results": "Ergebnisse",
   "site_loading": "Laden…",
   "site_articleloadfailed": "Diese Seite konnte nicht geladen werden. Erneut versuchen",

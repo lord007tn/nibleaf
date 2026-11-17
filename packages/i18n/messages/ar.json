@@ -2337,6 +2337,7 @@
   "site_searchdescription": "بحث نصي كامل وتقريبي عبر هذا الموقع.",
   "site_searchempty": "لا توجد نتائج.",
   "site_searchprompt": "اكتب للبحث…",
+  "site_searchquerylimit": "الحد الأقصى للبحث هو {limit} حرفًا.",
   "site_results": "النتائج",
   "site_loading": "جارٍ التحميل…",
   "site_articleloadfailed": "تعذّر تحميل هذه الصفحة. حاول مرة أخرى",

@@ -2201,6 +2201,7 @@
   "site_searchdescription": "本网站的全文搜索和模糊搜索。",
   "site_searchempty": "没有结果。",
   "site_searchprompt": "输入搜索…",
+  "site_searchquerylimit": "搜索内容最多为 {limit} 个字符。",
   "site_results": "结果",
   "site_loading": "加载中…",
   "site_articleloadfailed": "无法加载此页面。重试",
