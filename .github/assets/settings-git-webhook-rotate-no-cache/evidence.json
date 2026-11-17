@@ -1,0 +1,1068 @@
+{
+  "environment": "Component fixture: main's GitTab, features/site-git and useRotateGitWebhookSecret at 84d80dc993663e8c84557dc03f1a5f2d5abb02cf and this branch's, with the real design system, EN/AR catalogs, the app's QueryClient and the settings query; rotation requests answered by interception (stored with the next fictional secret, or refused), optionally held; offline by the browser's own emulation; fictional sites and secrets written as <id#n> and <credential#n> labels; not the signed-in dashboard, production or the server; no real key or secret rotated",
+  "base": "84d80dc993663e8c84557dc03f1a5f2d5abb02cf",
+  "head": "b219f832623d6d78e5bc63d90042676ab6fc82a7",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "states": {
+        "en-held-before": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-held-after": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-rotated-before": {
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#2>", "revealed": true },
+          "toasts": [
+            "Webhook secret rotated — update it in your repository settings."
+          ],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": ["<credential#2>"],
+            "bySettingsRead": ["<credential#2>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-rotated-after": {
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#2>", "revealed": true },
+          "toasts": [
+            "Webhook secret rotated — update it in your repository settings."
+          ],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#2>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-refused-before": {
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": ["Could not rotate the webhook secret"],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": ["<credential#4>", "server text"],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-refused-after": {
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": ["Could not rotate the webhook secret"],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-keyed-before": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 2,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "pressableOnReturn": true
+        },
+        "en-keyed-after": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "pressableOnReturn": false
+        },
+        "en-offline-before": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 1,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [],
+          "postsAtPress": 0,
+          "afterLeavingAndReconnecting": {
+            "posts": [
+              {
+                "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+                "body": null
+              }
+            ],
+            "toasts": [],
+            "retained": {
+              "mutations": 1,
+              "pausedInDefaultDehydrate": 0,
+              "byMutations": ["<credential#2>"],
+              "bySettingsRead": ["<credential#1>"]
+            }
+          }
+        },
+        "en-offline-after": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "postsAtPress": 1,
+          "afterLeavingAndReconnecting": {
+            "posts": [
+              {
+                "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+                "body": null
+              }
+            ],
+            "toasts": [],
+            "retained": {
+              "mutations": 0,
+              "pausedInDefaultDehydrate": 0,
+              "byMutations": [],
+              "bySettingsRead": ["<credential#1>"]
+            }
+          }
+        },
+        "ar-held-before": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-held-after": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-rotated-before": {
+          "dir": "rtl",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#2>", "revealed": true },
+          "toasts": ["تم تدوير سر الـ webhook — حدثه في إعدادات مستودعك."],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": ["<credential#2>"],
+            "bySettingsRead": ["<credential#2>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-rotated-after": {
+          "dir": "rtl",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#2>", "revealed": true },
+          "toasts": ["تم تدوير سر الـ webhook — حدثه في إعدادات مستودعك."],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#2>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-refused-before": {
+          "dir": "rtl",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": ["تعذر تدوير سر الـ webhook"],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": ["<credential#4>", "server text"],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-refused-after": {
+          "dir": "rtl",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": ["تعذر تدوير سر الـ webhook"],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-keyed-before": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 2,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "pressableOnReturn": true
+        },
+        "ar-keyed-after": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "pressableOnReturn": false
+        },
+        "ar-offline-before": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 1,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [],
+          "postsAtPress": 0,
+          "afterLeavingAndReconnecting": {
+            "posts": [
+              {
+                "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+                "body": null
+              }
+            ],
+            "toasts": [],
+            "retained": {
+              "mutations": 1,
+              "pausedInDefaultDehydrate": 0,
+              "byMutations": ["<credential#2>"],
+              "bySettingsRead": ["<credential#1>"]
+            }
+          }
+        },
+        "ar-offline-after": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "postsAtPress": 1,
+          "afterLeavingAndReconnecting": {
+            "posts": [
+              {
+                "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+                "body": null
+              }
+            ],
+            "toasts": [],
+            "retained": {
+              "mutations": 0,
+              "pausedInDefaultDehydrate": 0,
+              "byMutations": [],
+              "bySettingsRead": ["<credential#1>"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "states": {
+        "en-held-before": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-held-after": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-rotated-before": {
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#2>", "revealed": true },
+          "toasts": [
+            "Webhook secret rotated — update it in your repository settings."
+          ],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": ["<credential#2>"],
+            "bySettingsRead": ["<credential#2>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-rotated-after": {
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#2>", "revealed": true },
+          "toasts": [
+            "Webhook secret rotated — update it in your repository settings."
+          ],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#2>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-refused-before": {
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": ["Could not rotate the webhook secret"],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": ["<credential#4>", "server text"],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-refused-after": {
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": ["Could not rotate the webhook secret"],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "en-keyed-before": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 2,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "pressableOnReturn": true
+        },
+        "en-keyed-after": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "pressableOnReturn": false
+        },
+        "en-offline-before": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 1,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [],
+          "postsAtPress": 0,
+          "afterLeavingAndReconnecting": {
+            "posts": [
+              {
+                "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+                "body": null
+              }
+            ],
+            "toasts": [],
+            "retained": {
+              "mutations": 1,
+              "pausedInDefaultDehydrate": 0,
+              "byMutations": ["<credential#2>"],
+              "bySettingsRead": ["<credential#1>"]
+            }
+          }
+        },
+        "en-offline-after": {
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "postsAtPress": 1,
+          "afterLeavingAndReconnecting": {
+            "posts": [
+              {
+                "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+                "body": null
+              }
+            ],
+            "toasts": [],
+            "retained": {
+              "mutations": 0,
+              "pausedInDefaultDehydrate": 0,
+              "byMutations": [],
+              "bySettingsRead": ["<credential#1>"]
+            }
+          }
+        },
+        "ar-held-before": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-held-after": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-rotated-before": {
+          "dir": "rtl",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#2>", "revealed": true },
+          "toasts": ["تم تدوير سر الـ webhook — حدثه في إعدادات مستودعك."],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": ["<credential#2>"],
+            "bySettingsRead": ["<credential#2>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-rotated-after": {
+          "dir": "rtl",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#2>", "revealed": true },
+          "toasts": ["تم تدوير سر الـ webhook — حدثه في إعدادات مستودعك."],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#2>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-refused-before": {
+          "dir": "rtl",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": ["تعذر تدوير سر الـ webhook"],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": ["<credential#4>", "server text"],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-refused-after": {
+          "dir": "rtl",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": ["تعذر تدوير سر الـ webhook"],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        "ar-keyed-before": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 2,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "pressableOnReturn": true
+        },
+        "ar-keyed-after": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "pressableOnReturn": false
+        },
+        "ar-offline-before": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 1,
+            "pausedInDefaultDehydrate": 1,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [],
+          "postsAtPress": 0,
+          "afterLeavingAndReconnecting": {
+            "posts": [
+              {
+                "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+                "body": null
+              }
+            ],
+            "toasts": [],
+            "retained": {
+              "mutations": 1,
+              "pausedInDefaultDehydrate": 0,
+              "byMutations": ["<credential#2>"],
+              "bySettingsRead": ["<credential#1>"]
+            }
+          }
+        },
+        "ar-offline-after": {
+          "dir": "rtl",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ],
+          "postsAtPress": 1,
+          "afterLeavingAndReconnecting": {
+            "posts": [
+              {
+                "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+                "body": null
+              }
+            ],
+            "toasts": [],
+            "retained": {
+              "mutations": 0,
+              "pausedInDefaultDehydrate": 0,
+              "byMutations": [],
+              "bySettingsRead": ["<credential#1>"]
+            }
+          }
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-after-en-1440.webm",
+      "version": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "ready: a stored secret, masked",
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": []
+        },
+        {
+          "step": "Rotate pressed: held, busy",
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        {
+          "step": "refused: one toast, ready",
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": ["Could not rotate the webhook secret"],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        {
+          "step": "Rotate pressed, the tab left and reopened: still busy, so it cannot be pressed again",
+          "dir": "ltr",
+          "rotate": { "busy": true },
+          "secret": { "value": "<credential#1>", "revealed": false },
+          "toasts": ["Could not rotate the webhook secret"],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        {
+          "step": "stored and read back: no reveal or toast in the reopened tab",
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#2>", "revealed": false },
+          "toasts": [],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>", "<credential#2>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        },
+        {
+          "step": "pressed again: stored, read back, revealed with one toast",
+          "dir": "ltr",
+          "rotate": { "busy": false },
+          "secret": { "value": "<credential#3>", "revealed": true },
+          "toasts": [
+            "Webhook secret rotated — update it in your repository settings."
+          ],
+          "overflow": false,
+          "retained": {
+            "mutations": 0,
+            "pausedInDefaultDehydrate": 0,
+            "byMutations": [],
+            "bySettingsRead": ["<credential#1>", "<credential#3>"]
+          },
+          "posts": [
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            },
+            {
+              "call": "POST /api/app/projects/<id#1>/settings/git/webhook-secret",
+              "body": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
