@@ -225,7 +225,27 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
   const parser = PMDOMParser.fromSchema(schema);
   const affected = new Set<Element>();
   const leads = Array.from(element.querySelectorAll('li > p[data-md-item-lead]'));
-  const candidates = new Set(leads.map((lead) => lead.parentElement));
+  const candidates = new Set<Element | null>(leads.map((lead) => lead.parentElement));
+  const tails = new Map<Element, boolean>();
+  // Leads are visited backwards, so following items have their final lead state.
+  const followingLeads = (item: Element): boolean => {
+    const pending: Element[] = [];
+    let result = true;
+    for (let next = item.nextElementSibling; next; next = next.nextElementSibling) {
+      const cached = tails.get(next);
+      if (cached !== undefined) {
+        result = cached;
+        break;
+      }
+      pending.push(next);
+      if (next.tagName === 'LI' && !next.firstElementChild?.matches('p[data-md-item-lead]')) {
+        result = false;
+        break;
+      }
+    }
+    for (const next of pending) tails.set(next, result);
+    return result;
+  };
   const simpleContents = new Map<Element, boolean>();
   const simpleContent = (item: Element): boolean => {
     const cached = simpleContents.get(item);
@@ -264,9 +284,7 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
     // list. Keeping those items byte-identical to main needs a serializer fix.
     // A marker-only item after an edit is a different source shape (#858).
     if (list.tagName === 'OL' && lead.getAttribute('data-md-item-lead') === 'inline') {
-      for (let next = item.nextElementSibling; next; next = next.nextElementSibling) {
-        if (next.tagName === 'LI' && !next.firstElementChild?.matches('p[data-md-item-lead]')) safe = false;
-      }
+      safe &&= followingLeads(item);
     }
     for (let ancestor: Element | null = item; ancestor; ancestor = ancestor.parentElement) {
       if (candidates.has(ancestor) && !simpleContent(ancestor)) safe = false;

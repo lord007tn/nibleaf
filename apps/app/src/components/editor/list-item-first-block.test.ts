@@ -369,6 +369,10 @@ describe('list items led by a block (#604, #865)', () => {
     expect(shape(reloaded.state.doc)).toEqual(shape(open(source).state.doc));
     stable(saved);
   });
+
+  it('keeps every heading in a longer ordered list', () => {
+    stable('1. # A\n2. # B\n3. # C\n4. # D');
+  });
 });
 
 // The actual parked-branch swallowing case is attribute-blank-line differential #27.
