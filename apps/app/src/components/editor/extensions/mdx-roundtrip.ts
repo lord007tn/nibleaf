@@ -20,7 +20,23 @@ type SerializeState = {
  * unclosed for the Markdown parser.
  */
 const separateBlock = (state: SerializeState, node: PMNode): void => {
-  if (state.atBlank?.() === false) state.closeBlock(node);
+  if (state.atBlank?.() === false && !atItemLead(state)) state.closeBlock(node);
+};
+
+/** Where each serializer's output stood when a list item's lead paragraph was left
+ *  out, right after the item's marker (#604, paragraph-source.ts). */
+const itemLeads = new WeakMap<object, number>();
+
+/** Record that a list item's lead paragraph was left out with the output at `at`. */
+export const markItemLead = (state: object, at: number): void => {
+  itemLeads.set(state, at);
+};
+
+/** Whether nothing was written since a list item's marker, its lead paragraph left
+ *  out: a block tag goes on that line, as the author wrote it (`- <Note>`). */
+const atItemLead = (state: object): boolean => {
+  const at = itemLeads.get(state);
+  return at !== undefined && at === (state as { output?: { length: number } }).output?.length;
 };
 
 /** Write a block-level MDX tag on its own blank-line-separated line. */
