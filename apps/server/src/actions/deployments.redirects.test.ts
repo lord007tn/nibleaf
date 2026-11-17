@@ -1,3 +1,4 @@
+import { starterBodyHash } from '@nibleaf/auth/starter-body.server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -44,7 +45,7 @@ vi.mock('@nibleaf/database', () => {
 
 import { Prisma } from '@nibleaf/database';
 import { reviewedSnapshotDigest } from '@/lib/reviewed-snapshot';
-import { createDeployment, getCurrentSnapshot, getPendingChanges, rollbackDeployment } from './deployments';
+import { createDeployment, getCurrentDraft, getCurrentSnapshot, getPendingChanges, rollbackDeployment } from './deployments';
 
 const project = (redirects: Array<{ from: string; to: string }>) => ({
   id: 'project-1',
@@ -54,6 +55,7 @@ const project = (redirects: Array<{ from: string; to: string }>) => ({
   description: null,
   icon: null,
   config: { redirects },
+  starterBaselines: [] as { bodyHash: string }[],
   takedownAt: null,
   addons: [{ key: 'feedback', enabled: true, config: { placement: 'after-content', presentation: 'compact' } }],
   organization: {
@@ -402,5 +404,49 @@ describe('pending changes: up to date', () => {
     mocks.pageFindMany.mockResolvedValue([{ ...page, content: 'Edited' }]);
     const [edited] = (await getPendingChanges('project-1')).changes;
     expect(edited?.published).toBeUndefined();
+  });
+});
+
+describe('pending and overview starter content contract', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.deploymentFindFirst.mockResolvedValue(null);
+  });
+
+  it('carries the project baseline relation and raw bodies through one existing draft read', async () => {
+    const raw = 'Original {{ product }} starter.';
+    const value = project([]);
+    Object.assign(value.config, { variables: [{ key: 'product', value: 'Resolved product name' }] });
+    value.starterBaselines = [{ bodyHash: starterBodyHash(raw) }];
+    mocks.projectFindUnique.mockResolvedValue(value);
+    mocks.pageFindMany.mockResolvedValue([
+      { ...page, content: raw },
+      { ...page, id: 'page-copy', path: 'renamed/copy', content: raw },
+    ]);
+    const draft = await getCurrentDraft('project-1');
+    expect(draft.snapshot.pages[0]?.content).toBe('Original Resolved product name starter.');
+    const serialized = JSON.stringify(draft.snapshot);
+    expect(serialized).not.toContain('bodyHash');
+    expect(serialized).not.toContain('starterBaselines');
+    expect(serialized).not.toContain('rawBodies');
+    const pending = await getPendingChanges('project-1', draft);
+    expect(pending.hasRealContent).toBe(false);
+    expect(pending).not.toHaveProperty('baselines');
+    expect(pending).not.toHaveProperty('rawBodies');
+    expect(mocks.projectFindUnique).toHaveBeenCalledTimes(1);
+    expect(mocks.projectFindUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ include: expect.objectContaining({ starterBaselines: { select: { bodyHash: true } } }) }),
+    );
+    expect(mocks.pageFindMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('flips for one real edit, without a separate baseline or page read', async () => {
+    const value = project([]);
+    value.starterBaselines = [{ bodyHash: starterBodyHash('Original starter.') }];
+    mocks.projectFindUnique.mockResolvedValue(value);
+    mocks.pageFindMany.mockResolvedValue([{ ...page, content: 'Original starter. A real addition.' }]);
+    expect((await getPendingChanges('project-1')).hasRealContent).toBe(true);
+    expect(mocks.projectFindUnique).toHaveBeenCalledTimes(1);
+    expect(mocks.pageFindMany).toHaveBeenCalledTimes(1);
   });
 });
