@@ -1664,7 +1664,7 @@
   "settings_git_webhook_title": "Implementar al presionar",
   "settings_git_webhook_description": "Actualiza tus documentos automáticamente con cada envío a la rama de despliegue.",
   "settings_git_webhook_stepconnect": "Conectar repositorio",
-  "settings_git_webhook_stepconnectdone": "Conectado: presionar a {branch} puede desencadenar una sincronización.",
+  "settings_git_webhook_stepconnectdone": "Conectado: un push a {branch} puede desencadenar una sincronización.",
   "settings_git_webhook_stepwebhook": "Agregar el webhook",
   "settings_git_webhook_stepwebhookdetail": "Apunte su repositorio a esta URL de carga útil y firme las entregas con el secreto.",
   "settings_git_webhook_url": "URL de carga útil",

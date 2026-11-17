@@ -4,10 +4,9 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
-import { freemem, tmpdir } from 'node:os';
+import { freemem } from 'node:os';
 import { extname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { acquireDevstackLock, hostKey, withLocalOnlyBrowser } from '../../../tests/integration/lib/capture-env.mjs';
@@ -26,10 +25,7 @@ const catalogs = Object.fromEntries(
   ),
 );
 const message = (locale, id) => catalogs[locale][id.replaceAll('.', '_').toLowerCase()];
-process.env.NIBLEAF_DEVSTACK_LOCK = resolve(tmpdir(), 'editor-devstack.lock');
 assert.ok(freemem() >= 5 * 1024 ** 3, '5 GiB free RAM required before capture');
-if (!process.env.CHROME_PATH && existsSync('C:/Program Files/Google/Chrome/Application/chrome.exe'))
-  process.env.CHROME_PATH = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
 const devstack = await acquireDevstackLock('ui/855-builder component-only #855');
 let harness;
 try {
