@@ -4651,6 +4651,8 @@ export const MESSAGE_IDS = {
   'people.reason.removeSelfSite': 'people_reason_removeselfsite',
   'people.reason.moreAccess': 'people_reason_moreaccess',
   'people.reason.roleAboveYours': 'people_reason_roleaboveyours',
+  'people.reason.resendOrgAccess': 'people_reason_resendorgaccess',
+  'people.reason.resendOtherWebsites': 'people_reason_resendotherwebsites',
   'people.invite.open': 'people_invite_open',
   'people.invite.title': 'people_invite_title',
   'people.invite.description': 'people_invite_description',
