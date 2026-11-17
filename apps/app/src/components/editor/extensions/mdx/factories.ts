@@ -4,7 +4,15 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import { preservedClosingTag, preservedOpeningTag, SUPPORTED_MDX_COMPONENTS, sourceMetadataAttributes, writeBlockTag } from '../mdx-roundtrip';
+import {
+  preservedClosingTag,
+  preservedOpeningTag,
+  SUPPORTED_MDX_COMPONENTS,
+  sourceMetadataAttributes,
+  writeBlockTag,
+  writeChildrenCloser,
+  writeChildrenOpener,
+} from '../mdx-roundtrip';
 import { TitledBlockView } from '../titled-block-view';
 
 /**
@@ -52,9 +60,9 @@ const mdxBlockSerializer =
       writeBlockTag(state, node, opening);
       return;
     }
-    writeBlockTag(state, node, opening.replace(SELF_CLOSING_OPENER, '>'));
+    writeChildrenOpener(state, node, opening.replace(SELF_CLOSING_OPENER, '>'));
     state.renderContent(node);
-    writeBlockTag(state, node, preservedClosingTag(node, tag));
+    writeChildrenCloser(state, node, preservedClosingTag(node, tag));
   };
 
 const markdownStorage = (tag: string) => ({
