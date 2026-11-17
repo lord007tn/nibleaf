@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { Editor } from '@tiptap/core';
+import { type Content, Editor, Extension } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
+import { Plugin } from '@tiptap/pm/state';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { MarkdownOutput } from './markdown-output';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
@@ -149,6 +150,141 @@ describe('setContent records line endings only when its transaction is applied (
       saved = getMarkdown(editor);
       expect(saved, `cycle ${cycle + 1}`).toBe(page);
     }
+  });
+});
+
+describe('setContent source endings through dispatch and step replay (#872)', () => {
+  let editor: Editor;
+  afterEach(() => editor.destroy());
+
+  const make = (replacement: Content, viaChain = false) => {
+    const shortcut = Extension.create({
+      name: 'replacePageShortcut',
+      addKeyboardShortcuts() {
+        return {
+          'Mod-Alt-r': () =>
+            viaChain
+              ? this.editor
+                  .chain()
+                  .command(({ chain }) => chain().setContent(replacement).run())
+                  .run()
+              : this.editor.commands.setContent(replacement),
+        };
+      },
+    });
+    editor = new Editor({ element: document.createElement('div'), extensions: [...buildEditorExtensions(), shortcut] });
+    return editor;
+  };
+
+  it.each(['\r\n', '\r'])('keyboardShortcut replays setContent with its %j source endings', (ending) => {
+    const page = ['After.', '', 'Page.'].join(ending);
+    make(page).commands.setContent('Before.\n\nPage.');
+    expect(editor.commands.keyboardShortcut('Mod-Alt-r')).toBe(true);
+    expect(editor.state.doc.textContent).toBe('After.Page.');
+    expect(getMarkdown(editor)).toBe(page);
+    editor.view.dispatch(editor.state.tr.insertText('Edited ', 1));
+    expect(getMarkdown(editor)).toBe(`Edited ${page}`);
+  });
+
+  it('a replayed JSON replacement clears the previous CRLF source', () => {
+    make({
+      type: 'doc',
+      content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'After.' }] },
+        { type: 'paragraph', content: [{ type: 'text', text: 'Page.' }] },
+      ],
+    });
+    editor.commands.setContent('Before.\r\n\r\nPage.');
+    expect(editor.commands.keyboardShortcut('Mod-Alt-r')).toBe(true);
+    expect(getMarkdown(editor)).toBe('After.\n\nPage.');
+  });
+
+  it('a captured chain inside a chain keeps the replacement source', () => {
+    const page = 'After.\r\n\r\nPage.';
+    make(page, true).commands.setContent('Before.\n\nPage.');
+    expect(editor.chain().keyboardShortcut('Mod-Alt-r').insertContentAt(1, 'Edited ').run()).toBe(true);
+    expect(getMarkdown(editor)).toBe(`Edited ${page}`);
+  });
+
+  it('an unrun shortcut chain and its capability check keep the current source', () => {
+    make('After.\r\n\r\nPage.').commands.setContent('Before.\r\rPage.');
+    editor.chain().keyboardShortcut('Mod-Alt-r');
+    expect(editor.can().keyboardShortcut('Mod-Alt-r')).toBe(true);
+    editor.view.dispatch(editor.state.tr.insertText('Edited ', 1));
+    expect(getMarkdown(editor)).toBe('Edited Before.\r\rPage.');
+  });
+
+  it.each([false, true])('the last replacement wins across direct and replayed steps (shortcut last: %s)', (shortcutLast) => {
+    make('Shortcut.\r\n\r\nPage.').commands.setContent('Before.\n\nPage.');
+    const chain = editor.chain();
+    if (shortcutLast) chain.setContent('Direct.\r\rPage.').keyboardShortcut('Mod-Alt-r');
+    else chain.keyboardShortcut('Mod-Alt-r').setContent('Direct.\r\rPage.');
+    expect(chain.run()).toBe(true);
+    expect(getMarkdown(editor)).toBe(shortcutLast ? 'Shortcut.\r\n\r\nPage.' : 'Direct.\r\rPage.');
+  });
+
+  it.each(['\r\n', '\r'])('commands.first and a nested chain record %j endings', (ending) => {
+    const page = ['After.', '', 'Page.'].join(ending);
+    make(page).commands.setContent('Before.\n\nPage.');
+    expect(editor.commands.first([() => false, ({ commands }) => commands.setContent(page)])).toBe(true);
+    expect(getMarkdown(editor)).toBe(page);
+    editor.commands.setContent('Before.\n\nPage.');
+    expect(
+      editor
+        .chain()
+        .command(({ chain }) => chain().setContent(page).insertContentAt(1, 'Edited ').run())
+        .run(),
+    ).toBe(true);
+    expect(getMarkdown(editor)).toBe(`Edited ${page}`);
+  });
+
+  it('whole-document insertContentAt retains the page source, as it does on main', () => {
+    make('Unused.').commands.setContent('Before.\r\rPage.');
+    expect(editor.commands.insertContentAt({ from: 0, to: editor.state.doc.content.size }, 'After.\n\nPage.')).toBe(true);
+    expect(getMarkdown(editor)).toBe('After.\r\rPage.');
+  });
+
+  it('a plugin-dispatched setContent records its source before saving', () => {
+    const page = 'After.\r\n\r\nPage.';
+    let pending = false;
+    const replace = Extension.create({
+      name: 'replacePagePlugin',
+      addProseMirrorPlugins() {
+        return [
+          new Plugin({
+            view: () => ({
+              update: () => {
+                if (pending) {
+                  pending = false;
+                  this.editor.commands.setContent(page);
+                }
+              },
+            }),
+          }),
+        ];
+      },
+    });
+    editor = new Editor({ element: document.createElement('div'), extensions: [...buildEditorExtensions(), replace] });
+    editor.commands.setContent('Before.\n\nPage.');
+    pending = true;
+    editor.view.dispatch(editor.state.tr.setMeta('replaceFromPlugin', true));
+    expect(getMarkdown(editor)).toBe(page);
+  });
+
+  it('undo/redo of a replayed replacement keeps the latest source across subsequent setContent', () => {
+    make('After.\r\n\r\nPage.').commands.setContent('Before.\n\nPage.');
+    editor.view.dispatch(closeHistory(editor.state.tr));
+    editor.commands.keyboardShortcut('Mod-Alt-r');
+    expect(editor.commands.undo()).toBe(true);
+    expect(getMarkdown(editor)).toBe('Before.\r\n\r\nPage.');
+    expect(editor.commands.redo()).toBe(true);
+    expect(getMarkdown(editor)).toBe('After.\r\n\r\nPage.');
+    editor.view.dispatch(closeHistory(editor.state.tr));
+    editor.commands.setContent('After.\r\rPage.', { emitUpdate: false });
+    expect(editor.commands.undo()).toBe(true);
+    expect(getMarkdown(editor)).toBe('After.\r\rPage.');
+    expect(editor.commands.redo()).toBe(true);
+    expect(getMarkdown(editor)).toBe('After.\r\rPage.');
   });
 });
 

@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core';
 import type { Fragment, Mark, Node as PMNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
+import { type Mappable, ReplaceStep } from '@tiptap/pm/transform';
 import { MarkdownSerializerState } from 'prosemirror-markdown';
 import { Markdown } from 'tiptap-markdown';
 import { normalizeLineEndings, readLineEndings, restoreLineEndings, type SourceLineEndings } from './line-endings';
@@ -358,6 +359,23 @@ type SetContent = (content: unknown, ...rest: unknown[]) => (props: { editor: Ed
 const markdownStorage = (editor: Editor) => (editor.storage as unknown as { markdown: MarkdownStorageLike }).markdown;
 const lineEndingsKey = new PluginKey('markdownLineEndings');
 
+// keyboardShortcut() replays mapped steps, without transaction metadata. Keep
+// the source on the replacement too. Inversion/merging and JSON serialization
+// remain ordinary ReplaceSteps, so undo/redo keep the latest setContent source.
+class LineEndingsReplaceStep extends ReplaceStep {
+  readonly lineEndings: SourceLineEndings | null;
+
+  constructor(step: ReplaceStep, lineEndings: SourceLineEndings | null) {
+    super(step.from, step.to, step.slice);
+    this.lineEndings = lineEndings;
+  }
+
+  override map(mapping: Mappable): ReplaceStep | null {
+    const mapped = super.map(mapping);
+    return mapped && new LineEndingsReplaceStep(mapped, this.lineEndings);
+  }
+}
+
 /** tiptap-markdown, saving with `LinearMarkdownSerializerState`. Its serializer
  *  builds its own state class; this one is the same with the output kept as pieces.
  *  A page is read with LF line endings and saved with its own (line-endings.ts). */
@@ -375,8 +393,17 @@ export const LinearMarkdown = Markdown.extend({
         (content: unknown, ...rest: unknown[]) =>
         (props: { editor: Editor; dispatch?: unknown; tr: Transaction }) => {
           const markdown = typeof content === 'string';
-          if (props.dispatch) props.tr.setMeta(lineEndingsKey, markdown ? readLineEndings(content) : null);
-          return setContent(markdown ? normalizeLineEndings(content) : content, ...rest)(props);
+          const start = props.tr.steps.length;
+          const result = setContent(markdown ? normalizeLineEndings(content) : content, ...rest)(props);
+          if (result && props.dispatch) {
+            const endings = markdown ? readLineEndings(content) : null;
+            props.tr.setMeta(lineEndingsKey, endings);
+            for (let index = start; index < props.tr.steps.length; index++) {
+              const step = props.tr.steps[index];
+              if (step instanceof ReplaceStep) props.tr.steps[index] = new LineEndingsReplaceStep(step, endings);
+            }
+          }
+          return result;
         },
     } as never;
   },
@@ -391,6 +418,9 @@ export const LinearMarkdown = Markdown.extend({
           for (const transaction of transactions) {
             const endings = transaction.getMeta(lineEndingsKey) as SourceLineEndings | null | undefined;
             if (endings !== undefined) markdownStorage(this.editor).lineEndings = endings;
+            for (const step of transaction.steps) {
+              if (step instanceof LineEndingsReplaceStep) markdownStorage(this.editor).lineEndings = step.lineEndings;
+            }
           }
           return null;
         },
