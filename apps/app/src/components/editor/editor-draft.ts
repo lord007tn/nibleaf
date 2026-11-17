@@ -141,6 +141,72 @@ export function foreignCopyWhileDirty(
 }
 
 /**
+ * Where a link destination may start: after `](` or a definition's `[label]:`,
+ * and any whitespace, line endings included, then `<` for the bracketed form.
+ * The openings the server's `rewrite-page-links.ts` matches at a parsed link or
+ * definition, found here wherever they occur (a label is at most 999
+ * characters, as in CommonMark).
+ */
+const DESTINATION_OPENING = /\]\(\s*(<?)|\[(?:\\.|[^\]\\]){0,999}\]:\s*(<?)/g;
+
+/**
+ * `content` with every link destination the server may rewrite taken out. The
+ * destination is scanned as `rewrite-page-links.ts` scans it: a bracketed one up
+ * to `>` (it holds no line ending), any other up to whitespace or an unbalanced
+ * `)`, skipping escaped characters. It also takes out destinations the server
+ * leaves (in code, HTML or images), so two texts it calls equal may differ there:
+ * wider than the server, never narrower.
+ */
+function withoutLinkDestinations(content: string): string {
+  let out = '';
+  let from = 0;
+  DESTINATION_OPENING.lastIndex = 0;
+  for (let opening = DESTINATION_OPENING.exec(content); opening; opening = DESTINATION_OPENING.exec(content)) {
+    const bracketed = (opening[1] ?? opening[2]) === '<';
+    const start = opening.index + opening[0].length;
+    let end = start;
+    let depth = 0;
+    for (; end < content.length; end++) {
+      const char = content[end] as string;
+      if (char === '\\') {
+        end++;
+        continue;
+      }
+      if (bracketed) {
+        if (char === '>' || char === '\n') break;
+      } else {
+        if ((char === ')' && depth === 0) || /\s/.test(char)) break;
+        if (char === '(') depth++;
+        if (char === ')') depth--;
+      }
+    }
+    end = Math.min(end, content.length);
+    out += content.slice(from, start);
+    from = end;
+    DESTINATION_OPENING.lastIndex = Math.max(end, opening.index + 1);
+  }
+  return out + content.slice(from);
+}
+
+/**
+ * Whether `copy`, a newer revision of the page that arrived while `write` was
+ * at the server, may be that write as the server stored it (#825). The server
+ * changes a page's text only by rewriting its link destinations to moved
+ * addresses (`rewrite-page-links.ts` on the server), so the copy must be newer
+ * than the revision the write was sent from and hold the write's title and
+ * content, link destinations aside (`withoutLinkDestinations`).
+ */
+export function mayBeNormalizedWrite(copy: ServerSnapshot, write: DraftSnapshot & { base?: string }): boolean {
+  if (copy.title !== write.title || copy.updatedAt === undefined) return false;
+  if (write.base !== undefined) {
+    const next = Date.parse(copy.updatedAt);
+    const base = Date.parse(write.base);
+    if (Number.isNaN(next) || Number.isNaN(base) || next <= base) return false;
+  }
+  return withoutLinkDestinations(copy.content) === withoutLinkDestinations(write.content);
+}
+
+/**
  * Decide whether the draft should be automatically saved to `page`.
  * The draft is only ever saved to the page it was hydrated from.
  */
@@ -294,6 +360,8 @@ export function createUnsavedDrafts() {
       }
       changed();
     },
+    /** The session the store is in: it moves on each time the session ends or changes (`clear`). */
+    generation: (): number => generation,
     /** Whether a write of page `id` by `owner` has not settled yet. */
     pending: (owner: string | null | undefined, id: string): boolean => Boolean(owner) && unsettled.has(keyOf(owner as string, id)),
     peek(owner: string | null | undefined, id: string): UnsavedDraft | undefined {
