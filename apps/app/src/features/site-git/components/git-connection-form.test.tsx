@@ -13,8 +13,8 @@ import { queryKeys } from '@/hooks/api/query-keys';
  * mutations. Behind `fetch`, a stand-in settings API runs the real body
  * validator, then stores what main's server stores: the PATCH replaces `git`
  * wholesale with the validated object, carries the import and push-sync
- * bookkeeping over, and keeps the webhook secret apart (the GET returns it to
- * an admin). apps/server/src/actions/workspace.git-connection.test.ts runs
+ * bookkeeping over, and keeps the webhook secret apart (GET returns configured
+ * status only). apps/server/src/actions/workspace.git-connection.test.ts runs
  * these payloads through the server's own merge and read.
  */
 type Site = 'site-a' | 'site-b';
@@ -24,7 +24,7 @@ const readSettings = (site: string) => ({
   plan: 'free',
   notifications: {},
   integrations: {},
-  git: { ...db.git[site], ...(db.secrets[site] ? { webhookSecret: db.secrets[site] } : {}) },
+  git: { ...db.git[site], webhookConfigured: Boolean(db.secrets[site]) },
   name: 'Acme',
   slug: 'acme',
   projectCount: 2,
