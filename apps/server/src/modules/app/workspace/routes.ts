@@ -14,7 +14,7 @@ const workspaceRoutes = {
   }),
   settings: createRouteConfig({
     // Every role down to Viewer may read; getScopedWorkspaceSettings strips the
-    // admin-only sections (webhook secret, integrations) below Admin.
+    // integration section below Admin. Webhook secrets never appear in settings.
     guard: [isAuthenticated, requireLegacyProjectRole(MemberRole.VIEWER)],
     tags: ['workspace'],
     description: 'Get workspace settings.',

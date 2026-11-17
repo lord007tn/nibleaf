@@ -1,5 +1,10 @@
 # Settings → Git → Deploy on push → Rotate: the new secret stays out of the MutationCache
 
+Historical #854 evidence. After #855, the capture shim pins its after-side GitTab, feature slice and settings query
+to merged #854 (`fe435f969657fb965370423b23c2a0b86b618193`); it does not restore removed application exports.
+The existing images/manifests below were inspected, not rerun for #855. See `../settings-webhook-secret-once/` for
+the new secret-free settings and one-time panel evidence.
+
 **These are component-fixture captures only. They are not the dashboard and not production.** They show the legacy
 import's Deploy on push card on Settings → Git, with main's `GitTab` and `useRotateGitWebhookSecret` beside this
 branch's. Each state is shown in English and Arabic at 390 px and 1440 px (light theme), and there is one recording of

@@ -1,9 +1,8 @@
 import type { UpdateWorkspaceSettingsBody } from '@nibleaf/validators';
 import { type MutationKey, useIsMutating } from '@tanstack/react-query';
-import type { WorkspaceSettings } from '@/hooks/api';
-import { mutateData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
 import { workspaceSettingsQueryOptions } from '@/hooks/api/query-options';
+import { readWorkspaceSettings } from '@/hooks/api/workspace-settings-response';
 import { useSessionMutation as useMutation, useSessionQueryClient as useQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { api } from '@/services/api';
 import { type GitConnectionValues, gitConnectionPayload } from '../model/git-connection';
@@ -38,10 +37,7 @@ function useGitSettingsPending(projectId: string) {
 }
 
 const patchGit = async (projectId: string, git: GitSettingsGit) =>
-  mutateData<WorkspaceSettings>(
-    await api.app.projects[':projectId'].settings.$patch({ param: { projectId }, json: { git } }),
-    'Could not update settings.',
-  );
+  readWorkspaceSettings(api.app.projects[':projectId'].settings.$patch({ param: { projectId }, json: { git } }), 'Could not update settings.');
 
 /**
  * Saves a site's repository connection (the legacy import's Repository
