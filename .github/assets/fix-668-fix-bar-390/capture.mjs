@@ -60,17 +60,18 @@ import {translateFn} from '@nibleaf/i18n';
 import {buildEditorExtensions,getMarkdown,seedMarkdown} from '${path('tiptap-editor')}';
 import {PublishFixBar} from '${path('publish-fix-bar')}';
 const params=new URLSearchParams(location.search),locale=params.get('locale')==='ar'?'ar':'en',scenario=params.get('scenario');
+const dir=locale==='ar'?'rtl':'ltr';
 await setLanguage(locale);
 document.documentElement.classList.add(params.get('theme')==='dark'?'dark':'light');
 const long=Array.from({length:24},(_,i)=>'Paragraph '+(i+1)+' of the upgrade guide, long enough to push what follows well down the page.').join('\\n\\n');
 const content=scenario==='tree'?'':scenario==='landing'?long+'\\n\\nThen read [the settings](/configuration) and continue.\\n\\n'+long:long+'\\n\\n<LegacyNotice>\\n\\nRead [the old guide](/configuration) before you upgrade.\\n\\n</LegacyNotice>\\n\\nThe rest of the page.\\n\\n'+long;
-const editor=new Editor({extensions:buildEditorExtensions({dir:locale==='ar'?'rtl':'ltr'})});
+const editor=new Editor({extensions:buildEditorExtensions({dir})});
 seedMarkdown(editor,content);
 window.fixtureEditor=editor;window.fixtureTitle=translateFn('editor.slash.fileTree.title',undefined,locale);window.fixtureMarkdown=()=>getMarkdown(editor);
-function Fixture(){const canvas=useRef(null);return <DirectionProvider dir={locale==='ar'?'rtl':'ltr'}><div className="h-dvh flex flex-col bg-background text-foreground">
+function Fixture(){const canvas=useRef(null);return <DirectionProvider direction={dir}><div className="h-dvh flex flex-col bg-background text-foreground" dir={dir} lang={locale}>
 <header className="flex h-14 shrink-0 items-center border-b border-border px-4 font-medium">{locale==='ar'?'محرر المستندات':'Documentation editor'}</header>
 {scenario==='tree'?null:<PublishFixBar arrival={{code:'broken-internal-link',target:'/configuration',pageId:'fixture'}} group={false} canvas={()=>canvas.current} markdown={()=>getMarkdown(editor)} onEditSource={()=>{}} onFocusTitle={()=>{}} onOpenSettings={()=>{}} onHandled={()=>{}} onBackToPublish={()=>{}} onDismiss={()=>{}}/>}
-<div ref={canvas} className="pl-editor pl-editor-document flex-1" dir={locale==='ar'?'rtl':'ltr'} lang={locale}><div className="pl-document-scroll"><div className="pl-document-page"><h1 className="pl-document-title text-3xl font-semibold">{scenario==='tree'?(locale==='ar'?'بنية المشروع':'Project structure'):(locale==='ar'?'دليل الترقية':'Upgrade guide')}</h1><EditorContent editor={editor}/></div></div></div></div></DirectionProvider>}
+<div ref={canvas} className="pl-editor pl-editor-document flex-1" dir={dir} lang={locale}><div className="pl-document-scroll"><div className="pl-document-page"><h1 className="pl-document-title text-3xl font-semibold">{scenario==='tree'?(locale==='ar'?'بنية المشروع':'Project structure'):(locale==='ar'?'دليل الترقية':'Upgrade guide')}</h1><EditorContent editor={editor}/></div></div></div></div></DirectionProvider>}
 createRoot(document.getElementById('root')).render(<Fixture/>);
 `,
   );
@@ -124,7 +125,7 @@ export {translateFn} from '@nibleaf/i18n';
       PR === '668'
         ? [
             ...[390, 1440].flatMap((width) => ['light', 'dark'].map((theme) => ({ width, theme, locale: 'en', scenario: 'opaque' }))),
-            { width: 390, theme: 'light', locale: 'ar', scenario: 'opaque' },
+            ...[390, 1440].map((width) => ({ width, theme: 'light', locale: 'ar', scenario: 'opaque' })),
             ...[390, 1440].map((width) => ({ width, theme: 'light', locale: 'en', scenario: 'landing' })),
           ]
         : [
@@ -195,6 +196,7 @@ export {translateFn} from '@nibleaf/i18n';
         const at = window.fixtureEditor.view.domAtPos(window.fixtureEditor.state.selection.from).node;
         const revealed = at instanceof Element ? at : at?.parentElement;
         return {
+          barDirection: bar ? getComputedStyle(bar).direction : null,
           barHeight: bar?.getBoundingClientRect().height ?? null,
           sourceTop,
           labelBottom: labelTop === null ? null : labelTop + Number.parseFloat(label.height),
@@ -208,6 +210,7 @@ export {translateFn} from '@nibleaf/i18n';
           overflowX: document.documentElement.scrollWidth > innerWidth,
         };
       });
+      if (locale === 'ar' && PR === '668') assert.equal(state.barDirection, 'rtl');
       if (PHASE === 'after') {
         assert.equal(state.overflowX, false);
         if (PR === '670') assert.equal(state.caretInFileName, true);
