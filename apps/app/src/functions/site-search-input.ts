@@ -74,34 +74,31 @@ const codePointLength = (value: string) => {
   return count;
 };
 
-/** The first `max` code points of `value`. */
-const firstCodePoints = (value: string, max: number): string => {
+const graphemes = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+
+/** The longest whole-grapheme prefix within `max` code points. */
+const firstGraphemes = (value: string, max: number): string => {
   // Each code point takes at least one UTF-16 unit, so a short string fits as is.
   if (value.length <= max) return value;
   let out = '';
   let count = 0;
-  for (const codePoint of value) {
-    if (count === max) break;
-    out += codePoint;
-    count++;
+  for (const { segment } of graphemes.segment(value)) {
+    const size = codePointLength(segment);
+    if (count + size > max) break;
+    out += segment;
+    count += size;
   }
   return out;
 };
 
-/** The first `SEARCH_QUERY_MAX_LENGTH` code points of `value`. A longer query is
- * cut, never rejected, so search shows results for what fits; the cut falls
- * between code points, so it never splits a surrogate pair. */
-export const truncateSearchQuery = (value: string): string => firstCodePoints(value, SEARCH_QUERY_MAX_LENGTH);
+/** Fit whole graphemes within the API's code-point budget. */
+export const truncateSearchQuery = (value: string): string => firstGraphemes(value, SEARCH_QUERY_MAX_LENGTH);
 
 /** Whether `value` is longer than the API accepts, in code points. */
 export const exceedsSearchQueryLimit = (value: string): boolean =>
   value.length > SEARCH_QUERY_MAX_LENGTH && codePointLength(value) > SEARCH_QUERY_MAX_LENGTH;
 
-const isHighSurrogate = (unit: number) => unit >= 0xd8_00 && unit <= 0xdb_ff;
-const isLowSurrogate = (unit: number) => unit >= 0xdc_00 && unit <= 0xdf_ff;
-/** `at`, moved back one unit if it falls between the halves of a surrogate pair. */
-const codePointBoundary = (value: string, at: number) =>
-  at > 0 && at < value.length && isHighSurrogate(value.charCodeAt(at - 1)) && isLowSurrogate(value.charCodeAt(at)) ? at - 1 : at;
+const graphemeBoundary = (value: string, at: number): number => (at === value.length ? at : (graphemes.segment(value).containing(at)?.index ?? 0));
 
 /**
  * Fits an edit of the search field into the API's limit the way `maxLength`
@@ -113,23 +110,38 @@ const codePointBoundary = (value: string, at: number) =>
  * value loses its end instead and the caret stays put, clamped to the new value.
  */
 export function capSearchQueryEdit(previous: string, next: string, caret: number | null): { value: string; caret: number } {
-  const end = Math.min(Math.max(caret ?? next.length, 0), next.length);
+  const position = Math.min(Math.max(caret ?? next.length, 0), next.length);
+  // A combining mark or ZWJ can join text on either side of the edit. Include
+  // that entire grapheme before deciding what fits.
+  const containing = graphemes.segment(next).containing(position);
+  const end = containing && containing.index < position ? containing.index + containing.segment.length : position;
   const tail = next.slice(end);
   if (tail.length <= previous.length && previous.endsWith(tail)) {
     // The edit replaced previous[start, previous.length - tail.length) with next[start, end).
     const limit = Math.min(end, previous.length - tail.length);
     let start = 0;
     while (start < limit && next.charCodeAt(start) === previous.charCodeAt(start)) start++;
-    start = codePointBoundary(next, start);
+    const commonStart = start;
+    while (true) {
+      const boundary = Math.min(graphemeBoundary(next, start), graphemeBoundary(previous, start));
+      if (boundary === start) break;
+      start = boundary;
+    }
     const prefix = next.slice(0, start);
     const room = SEARCH_QUERY_MAX_LENGTH - codePointLength(prefix) - codePointLength(tail);
     if (room >= 0) {
-      const kept = firstCodePoints(next.slice(start, end), room);
-      return { value: prefix + kept + tail, caret: start + kept.length };
+      const kept = firstGraphemes(next.slice(start, end), room);
+      // Reject an edit that would take its unchanged base or following marks
+      // with it. The previously accepted grapheme stays intact.
+      if (((!kept && start < commonStart) || (end > position && kept.length < end - start)) && !exceedsSearchQueryLimit(previous)) {
+        return { value: previous, caret: graphemeBoundary(previous, commonStart) };
+      }
+      const value = prefix + kept + tail;
+      return { value, caret: graphemeBoundary(value, start + kept.length) };
     }
   }
   const value = truncateSearchQuery(next);
-  return { value, caret: codePointBoundary(value, Math.min(end, value.length)) };
+  return { value, caret: graphemeBoundary(value, Math.min(position, value.length)) };
 }
 
 const lengthIn = (value: unknown, min: number, max: number): value is string => {

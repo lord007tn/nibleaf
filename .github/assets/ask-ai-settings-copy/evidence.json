@@ -1,0 +1,264 @@
+{
+  "base": "55f31d0a6e45180f106897e582875b127bd4f671",
+  "fixture": "Real AiAnswersPage and design system; fictional hooks; nav label from sectionLabelKey, not the full dashboard shell",
+  "nonLocalAttempts": 0,
+  "pageErrors": [],
+  "results": [
+    {
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "state": "unavailable",
+      "screenshot": "en-390-light-unavailable.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "state": "off",
+      "screenshot": "en-390-light-off.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "state": "ready",
+      "screenshot": "en-390-light-ready.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "state": "error",
+      "screenshot": "en-390-light-error.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "state": "unavailable",
+      "screenshot": "en-390-dark-unavailable.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "state": "off",
+      "screenshot": "en-390-dark-off.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "state": "ready",
+      "screenshot": "en-390-dark-ready.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "state": "error",
+      "screenshot": "en-390-dark-error.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "state": "unavailable",
+      "screenshot": "en-1440-light-unavailable.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "state": "off",
+      "screenshot": "en-1440-light-off.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "state": "ready",
+      "screenshot": "en-1440-light-ready.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "state": "error",
+      "screenshot": "en-1440-light-error.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "state": "unavailable",
+      "screenshot": "en-1440-dark-unavailable.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "state": "off",
+      "screenshot": "en-1440-dark-off.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "state": "ready",
+      "screenshot": "en-1440-dark-ready.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "state": "error",
+      "screenshot": "en-1440-dark-error.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "state": "unavailable",
+      "screenshot": "ar-390-light-unavailable.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "state": "off",
+      "screenshot": "ar-390-light-off.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "state": "ready",
+      "screenshot": "ar-390-light-ready.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "state": "error",
+      "screenshot": "ar-390-light-error.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "state": "unavailable",
+      "screenshot": "ar-390-dark-unavailable.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "state": "off",
+      "screenshot": "ar-390-dark-off.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "state": "ready",
+      "screenshot": "ar-390-dark-ready.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "state": "error",
+      "screenshot": "ar-390-dark-error.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "state": "unavailable",
+      "screenshot": "ar-1440-light-unavailable.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "state": "off",
+      "screenshot": "ar-1440-light-off.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "state": "ready",
+      "screenshot": "ar-1440-light-ready.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "state": "error",
+      "screenshot": "ar-1440-light-error.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "state": "unavailable",
+      "screenshot": "ar-1440-dark-unavailable.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "state": "off",
+      "screenshot": "ar-1440-dark-off.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "state": "ready",
+      "screenshot": "ar-1440-dark-ready.png",
+      "horizontalOverflow": false
+    },
+    {
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "state": "error",
+      "screenshot": "ar-1440-dark-error.png",
+      "horizontalOverflow": false
+    }
+  ]
+}

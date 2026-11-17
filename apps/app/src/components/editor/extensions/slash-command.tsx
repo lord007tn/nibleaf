@@ -238,6 +238,8 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
     // can no longer match any block.
     allowSpaces: true,
     allow: ({ state, range }) => {
+      // A file's name is plain text where a slash is part of a path (`src/index.ts`), never a command (#670).
+      if (state.doc.resolve(range.from).parent.type.name === 'mdxFile') return false;
       const query = state.doc.textBetween(range.from + 1, range.to);
       // Cheap checks first (length, slashes, spaces), so a long paste is rejected before any folding.
       // Text with a character no block name has ("/?", "/code\block", "/(code)") is not a command.
