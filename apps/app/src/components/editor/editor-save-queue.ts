@@ -40,8 +40,8 @@ export function createEditorSaveQueue<T>(
   let tail: Promise<unknown> = Promise.resolve();
   let latest: { draft: PageDraft; result: Promise<T> } | undefined;
   let pending = 0;
-  /** Drafts sent to the server whose response has not come back: what it may hold already. */
-  const sent = new Set<PageDraft>();
+  /** Drafts sent to the server whose response has not come back, with the revision each was sent from: what it may hold already. */
+  const sent = new Map<PageDraft, string | undefined>();
   const revisions = new Map<string, { revision: string; bases: Set<string> }>();
   const conflicts = new Map<string, unknown>();
   /** Per page, how many times its conflict was resolved: a write queued before a resolution is stale. */
@@ -89,7 +89,7 @@ export function createEditorSaveQueue<T>(
         }
         const expectedUpdatedAt = baseFor(draft);
         try {
-          sent.add(draft);
+          sent.set(draft, expectedUpdatedAt);
           const saved = await save({ ...draft, ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}) }, { stale }).finally(() => {
             sent.delete(draft);
           });
@@ -155,13 +155,17 @@ export function createEditorSaveQueue<T>(
     /** Whether a write of page `id` is at the server, its response not back: a
      *  newer copy of the page may be that write's, stored as other text (#790). */
     inFlight: (id: string): boolean => {
-      for (const draft of sent) if (draft.id === id) return true;
+      for (const draft of sent.keys()) if (draft.id === id) return true;
       return false;
     },
+    /** The writes of page `id` at the server, their responses not back, each
+     *  with the revision it was sent from (#825). */
+    sentWrites: (id: string): Array<Omit<StoredPage, 'id'> & { base?: string }> =>
+      [...sent].filter(([draft]) => draft.id === id).map(([draft, base]) => ({ title: draft.title, content: draft.content, base })),
     /** Whether a write of page `id` sent to the server carries this title and
      *  content. A draft only queued is not on the server: it carries nothing. */
     carries: (id: string, text: Omit<StoredPage, 'id'>): boolean => {
-      for (const draft of sent) if (sameStoredText(draft, { id, ...text })) return true;
+      for (const draft of sent.keys()) if (sameStoredText(draft, { id, ...text })) return true;
       return false;
     },
     /** Whether `revision` of page `id` is one this queue's own writes stored. */
