@@ -62,6 +62,13 @@ for (const body of bodies) {
 }
 
 describe('list items led by a block (#604, #865)', () => {
+  it('keeps HTML and component-led items exactly as main saves them', () => {
+    expect([
+      '- <Note>\n\n  Text\n\n  </Note>\n\n- next',
+      '- <Custom>\n\n  stuff\n\n  </Custom>\n\n- next',
+      '- <div class="note">\n  <b>Bold</b>\n  </div>\n\nOutro.',
+    ].map((source) => ({ source, saved: getMarkdown(open(source)) }))).toMatchInlineSnapshot();
+  });
   it.each(acceptance)('#858 interaction case $index stays nested after deleting its first textblock, EN and AR', ({ source }) => {
     for (const page of [source, source.replace(/Alpha|Beta|Charlie|Delta|Top|Gamma|Tail|Item|Next/g, (word) => `عربي${word}`)]) {
       const editor = open(page);

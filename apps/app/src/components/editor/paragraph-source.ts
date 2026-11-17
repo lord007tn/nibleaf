@@ -176,6 +176,11 @@ const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: n
  */
 function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: PMNode | Fragment, index?: number): void {
   if (emptyLead(node, parent, index)) return;
+  if (
+    index === 0 && node.content.size === 0 && node.attrs.sourceItemLead === 'inline' &&
+    parent && 'type' in parent && parent.type.name === 'listItem' && parent.childCount > 1 &&
+    ['blockquote', 'heading', 'bulletList', 'orderedList'].includes(parent.child(1).type.name)
+  ) return;
   const source = String(node.attrs.sourceParagraph ?? '');
   const joined = source ? joinedSourceLines(source) : null;
   if (joined === null) {
@@ -204,6 +209,13 @@ export const SourceParagraph = Paragraph.extend({
   addAttributes() {
     return {
       ...this.parent?.(),
+      sourceItemLead: {
+        // Undefined keeps ordinary paragraphs' serialized JSON unchanged.
+        default: undefined,
+        keepOnSplit: false,
+        parseHTML: (element) => element.getAttribute('data-md-item-lead') ?? undefined,
+        rendered: false,
+      },
       sourceParagraph: {
         default: '',
         // A new paragraph after Enter starts without a source. (A split mid-paragraph

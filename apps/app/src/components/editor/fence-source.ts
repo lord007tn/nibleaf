@@ -119,6 +119,9 @@ interface MarkdownCoreState<T extends MarkdownToken> {
 const LIST_OPEN = new Set(['bullet_list_open', 'ordered_list_open']);
 const LIST_CLOSE = new Set(['bullet_list_close', 'ordered_list_close']);
 
+// HTML/component-led items are intentionally left to their own serializers (#604).
+const ITEM_LEAD_BLOCKS = new Set(['blockquote_open', 'heading_open', 'bullet_list_open', 'ordered_list_open']);
+
 /**
  * A markdown-it core rule, run after the block rules. Each fence gets its source:
  * the opening and closing lines without their containers' prefixes (a quote's `>`,
@@ -146,6 +149,13 @@ export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState
   for (const token of state.tokens) {
     const after = previous;
     previous = token;
+    if (after?.type === 'list_item_open' && ITEM_LEAD_BLOCKS.has(token.type)) {
+      const lead = leadParagraph(state, token);
+      // Keep whether the block shared the marker's line. An item emptied by an edit
+      // writes its empty marker before the nested list, and reloads that way too.
+      lead[0]?.attrSet('data-md-item-lead', token.map?.[0] === after.map?.[0] ? 'inline' : 'block');
+      tokens.push(...lead);
+    }
     if (token.type === 'blockquote_open') containers.push({ quote: true });
     if (token.type === 'list_item_open') {
       const line = token.map?.[0] ?? -1;
