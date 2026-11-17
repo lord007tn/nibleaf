@@ -12,4 +12,10 @@ describe('disableZodJitForCsp', () => {
     disableZodJitForCsp();
     expect(config().jitless).toBe(true);
   });
+
+  it("writes zod's own config object, which zod keeps on globalThis for every copy", () => {
+    // zod adopts this object when it loads (`globalThis.__zod_globalConfig ??= {}`),
+    // so the flag holds whether zod loads before this module or after it.
+    expect(config()).toBe((globalThis as { __zod_globalConfig?: object }).__zod_globalConfig);
+  });
 });

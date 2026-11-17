@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   team: vi.fn(),
   invite: vi.fn(),
+  resend: vi.fn(),
   mutation: () => ({ mutate: vi.fn(), mutateAsync: vi.fn(), isPending: false }),
 }));
 
@@ -29,7 +30,7 @@ vi.mock('../api/mutations', () => {
     useChangeSiteRole: mutation,
     useRemoveFromSite: mutation,
     useRevokeSiteInvitation: mutation,
-    useResendSiteInvitation: mutation,
+    useResendSiteInvitation: () => ({ mutateAsync: mocks.resend, isPending: false }),
     useInviteToSite: () => ({ mutateAsync: mocks.invite, isPending: false }),
     useCreateJoinLink: mutation,
     useRegenerateJoinLink: mutation,
@@ -42,6 +43,7 @@ vi.mock('@/hooks/api/people', () => ({ useInviteSuggestions: () => ({ data: [], 
 vi.mock('@tanstack/react-router', () => ({ Link: ({ children }: { children: ReactNode }) => <a href="/members">{children}</a> }));
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
+import { toast } from 'sonner';
 import { SiteTeamPage } from './site-team-page';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -163,5 +165,88 @@ describe('website Team page', () => {
     await act(async () => submit?.click());
     expect(document.querySelector('[role="dialog"]')?.textContent).toContain('people.invite.error.emailRequired');
     expect(mocks.invite).not.toHaveBeenCalled();
+  });
+});
+
+describe('Resend on a pending invitation (#460)', () => {
+  // Low-entropy fictional ids: <id#1>…<id#4>.
+  const invitation = (n: number, email: string, resend?: string) => ({
+    id: `00000000-0000-4000-8000-00000000000${n}`,
+    email,
+    role: 'member',
+    createdAt: '2026-11-08T00:00:00Z',
+    expiresAt: '2099-01-01T00:00:00Z',
+    inviter: { name: 'Sara', email: 's@example.test' },
+    ...(resend ? { resend } : {}),
+  });
+  const rows = [
+    invitation(1, 'here@example.test', 'allowed'),
+    invitation(2, 'org-admin@example.test', 'orgAccess'),
+    invitation(3, 'two-sites@example.test', 'otherWebsites'),
+    invitation(4, 'older-server@example.test'),
+  ];
+  const openMenu = async (email: string) => {
+    const trigger = host.querySelector(`button[aria-label="people.invitations.actionsFor(${email})"]`) as HTMLButtonElement;
+    await act(async () => trigger.click());
+    return [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+  };
+  const resendItem = (items: HTMLElement[]) => items.find((item) => item.textContent?.startsWith('people.invitations.resend')) as HTMLElement;
+  const press = (el: HTMLElement, key: string) =>
+    act(async () => {
+      el.focus();
+      el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      el.dispatchEvent(new KeyboardEvent('keyup', { key, bubbles: true, cancelable: true }));
+    });
+
+  beforeEach(() => {
+    // A site-only Admin of this website.
+    mocks.team.mockReturnValue(team([person('owner', 'owner', true), person('me', 'admin')], rows));
+  });
+
+  it.each([
+    ['org-admin@example.test', 'people.reason.resendOrgAccess'],
+    ['two-sites@example.test', 'people.reason.resendOtherWebsites'],
+  ])('disables Resend on %s with the reason as visible text; click and Enter do nothing', async (email, reason) => {
+    await render();
+    const items = await openMenu(email);
+    const item = resendItem(items);
+    expect(item.getAttribute('aria-disabled')).toBe('true');
+    expect(item.querySelector('[data-slot="row-actions-item-reason"]')?.textContent).toBe(reason);
+    await act(async () => item.click());
+    await press(item, 'Enter');
+    await press(item, ' ');
+    expect(mocks.resend).not.toHaveBeenCalled();
+    // Copy link and Revoke stay available.
+    const others = items.filter((other) => other !== item);
+    expect(others.map((other) => other.textContent)).toEqual(['people.invitations.copyLink', 'people.site.revoke']);
+    expect(others.every((other) => other.getAttribute('aria-disabled') !== 'true')).toBe(true);
+  });
+
+  it.each(['here@example.test', 'older-server@example.test'])('keeps Resend enabled on %s and resends with Enter', async (email) => {
+    mocks.resend.mockResolvedValue({ delivery: 'queued' });
+    await render();
+    const item = resendItem(await openMenu(email));
+    expect(item.getAttribute('aria-disabled')).toBeNull();
+    await press(item, 'Enter');
+    const id = rows.find((row) => row.email === email)?.id;
+    expect(mocks.resend).toHaveBeenCalledWith(id);
+    expect(toast.success).toHaveBeenCalledWith(`people.invitations.resent(${email})`);
+  });
+
+  it('shows "Sending…" while a resend is pending, then says it renewed the link when no email went out', async () => {
+    let finish: (value: { delivery: string }) => void = () => undefined;
+    mocks.resend.mockReturnValue(
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+    );
+    await render();
+    await act(async () => resendItem(await openMenu('here@example.test')).click());
+    const pending = resendItem(await openMenu('here@example.test'));
+    expect(pending.getAttribute('aria-disabled')).toBe('true');
+    expect(pending.querySelector('[data-slot="row-actions-item-reason"]')?.textContent).toBe('people.invitations.resending');
+    await act(async () => finish({ delivery: 'disabled' }));
+    expect(toast.success).toHaveBeenCalledWith('people.invitations.renewed(here@example.test)');
+    expect(mocks.resend).toHaveBeenCalledTimes(1);
   });
 });

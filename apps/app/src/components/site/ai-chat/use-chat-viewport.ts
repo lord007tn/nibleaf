@@ -1,18 +1,8 @@
-import { type CSSProperties, useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
+import { useVisualViewport } from '@/components/site/use-visual-viewport';
+
 /** Keep the composer within the visual viewport when a mobile keyboard opens. */
 export function useChatViewport(open: boolean): CSSProperties {
-  const [viewport, setViewport] = useState<CSSProperties>({});
-  useEffect(() => {
-    const visual = window.visualViewport;
-    if (!open || !visual) return;
-    const update = () => setViewport({ '--chat-height': `${visual.height}px`, '--chat-top': `${visual.offsetTop}px` } as CSSProperties);
-    update();
-    visual.addEventListener('resize', update);
-    visual.addEventListener('scroll', update);
-    return () => {
-      visual.removeEventListener('resize', update);
-      visual.removeEventListener('scroll', update);
-    };
-  }, [open]);
-  return viewport;
+  const box = useVisualViewport(open);
+  return box ? ({ '--chat-height': `${box.height}px`, '--chat-top': `${box.top}px` } as CSSProperties) : {};
 }

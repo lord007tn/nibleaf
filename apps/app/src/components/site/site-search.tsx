@@ -1,7 +1,8 @@
 import { siteT } from '@nibleaf/i18n/site';
 import { Search } from 'lucide-react';
 import { type ComponentProps, type KeyboardEvent, lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { beginSearchKeystrokes, cancelSearchKeystrokes, holdSearchKeystrokes } from '@/components/site/site-search-keystrokes';
+import { beginSearchKeystrokes, cancelSearchKeystrokes, holdSearchKeystrokes, isTypingEvent } from '@/components/site/site-search-keystrokes';
+import { readSlashShortcut } from '@/components/site/site-search-shortcut';
 import { isShortcutKey } from '@/lib/site-keyboard';
 import { resolveReaderDirection } from '@/lib/text-direction';
 
@@ -118,7 +119,7 @@ export function SearchShell({
 }
 
 export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 'returnFocus' | 'onFieldReady'>) {
-  const { open, onOpenChange, hotkey, lang, direction, placeholder } = props;
+  const { open, onOpenChange, projectId, lang, direction, placeholder } = props;
   const [activated, setActivated] = useState(open);
   // The loading shell shows from the moment search opens until the dialog's
   // field has taken the text and focus. It is a sibling of the dialog, not its
@@ -159,12 +160,6 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
   }, [open]);
 
   useEffect(() => {
-    const isTypingTarget = (el: EventTarget | null): boolean => {
-      const node = el as HTMLElement | null;
-      if (!node) return false;
-      const tag = node.tagName;
-      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || node.isContentEditable;
-    };
     // Keys typed right after the shortcut go into a hidden field focused within
     // this same key press, until search's own field takes them over.
     const startSearch = () => {
@@ -179,7 +174,18 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
       onOpenChange(true);
     };
     const onKey = (event: globalThis.KeyboardEvent) => {
-      if (hotkey === 'slash' && isShortcutKey(event, '/', 'Slash') && !event.metaKey && !event.ctrlKey && !isTypingTarget(event.target)) {
+      // A bare '/' opens search on every site unless this reader turned it off
+      // (site-search-shortcut.ts), and never while they type in a field or
+      // after another handler took the key. isShortcutKey rules out IME
+      // composition, dead keys and AltGr.
+      if (
+        isShortcutKey(event, '/', 'Slash') &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.defaultPrevented &&
+        !isTypingEvent(event) &&
+        readSlashShortcut(projectId)
+      ) {
         event.preventDefault();
         if (!open) startSearch();
         return;
@@ -193,7 +199,7 @@ export function SiteSearch(props: Omit<ComponentProps<typeof SiteSearchDialog>, 
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onOpenChange, hotkey, lang]);
+  }, [open, onOpenChange, projectId, lang]);
 
   const t = siteT(lang);
   const shell =

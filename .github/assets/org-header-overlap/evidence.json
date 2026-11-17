@@ -1,0 +1,3643 @@
+{
+  "environment": "Headless Chromium; the real dashboard shell, organization route and Billing page built with Vite; fictional API answers by request interception; no server, database or production request",
+  "base": "5e3fd880217bce138ec997c8c00195f33ab0d627",
+  "head": "34cc575627fe811307ed176497aa4ca0aed2291a",
+  "uncommitted": "?? .github/assets/org-header-overlap/after-ar-1440.png\n?? .github/assets/org-header-overlap/after-ar-320.png\n?? .github/assets/org-header-overlap/after-ar-390.png\n?? .github/assets/org-header-overlap/after-en-1440.png\n?? .github/assets/org-header-overlap/after-en-390.png\n?? .github/assets/org-header-overlap/before-ar-1440.png\n?? .github/assets/org-header-overlap/before-ar-320.png\n?? .github/assets/org-header-overlap/before-ar-390.png\n?? .github/assets/org-header-overlap/before-en-1440.png\n?? .github/assets/org-header-overlap/before-en-390.png\n?? apps/app/.org-header-capture-mUk28o/",
+  "before": "apps/app/src/components/app/org-switcher/organization-switcher.tsx at 5e3fd880217bce138ec997c8c00195f33ab0d627",
+  "after": "apps/app/src/components/app/org-switcher/organization-switcher.tsx in the working tree",
+  "attempted": 0,
+  "summary": {
+    "captures": 48,
+    "beforeWithOverlap": [
+      "en-320-latin",
+      "en-320-arabic",
+      "en-320-mixed",
+      "en-390-latin",
+      "en-390-arabic",
+      "en-390-mixed",
+      "ar-320-latin",
+      "ar-320-arabic",
+      "ar-320-mixed",
+      "ar-390-latin",
+      "ar-390-arabic",
+      "ar-390-mixed"
+    ],
+    "afterWithOverlap": [],
+    "afterTriggerOutsideItem": 0,
+    "beforeNameStartHidden": [
+      "en-320-arabic",
+      "en-390-arabic",
+      "en-768-arabic",
+      "en-1440-arabic",
+      "ar-320-latin",
+      "ar-320-mixed",
+      "ar-390-latin",
+      "ar-390-mixed",
+      "ar-768-latin",
+      "ar-768-mixed",
+      "ar-1440-latin",
+      "ar-1440-mixed"
+    ],
+    "afterNameStartHidden": [],
+    "hitTargetsUnchanged": true,
+    "triggerNameHasFullName": true,
+    "pageErrors": 0,
+    "pageOverflow": 0
+  },
+  "interactions": [
+    {
+      "locale": "en",
+      "width": 390,
+      "expanded": "true",
+      "dialogs": 1,
+      "focusBack": true
+    },
+    {
+      "locale": "en",
+      "width": 1440,
+      "expanded": "true",
+      "dialogs": 1,
+      "focusBack": true
+    },
+    {
+      "locale": "ar",
+      "width": 390,
+      "expanded": "true",
+      "dialogs": 1,
+      "focusBack": true
+    },
+    {
+      "locale": "ar",
+      "width": 1440,
+      "expanded": "true",
+      "dialogs": 1,
+      "focusBack": true
+    }
+  ],
+  "captures": [
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 320,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 284,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 154.7,
+          "right": 168.7,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 172.7,
+          "right": 212,
+          "top": 14,
+          "bottom": 34,
+          "width": 39.3,
+          "height": 20
+        },
+        "search": {
+          "left": 220,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 268,
+          "right": 308,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 39.3 },
+        { "a": "trigger", "b": "search", "px": 40 },
+        { "a": "trigger", "b": "bell", "px": 16 }
+      ],
+      "triggerOutsideItem": 133.3,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: Layla Haddad's documentation workspace. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 320,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 284,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 154.7,
+          "right": 168.7,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 172.7,
+          "right": 212,
+          "top": 14,
+          "bottom": 34,
+          "width": 39.3,
+          "height": 20
+        },
+        "search": {
+          "left": 220,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 268,
+          "right": 308,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 39.3 },
+        { "a": "trigger", "b": "search", "px": 40 },
+        { "a": "trigger", "b": "bell", "px": 16 }
+      ],
+      "triggerOutsideItem": 133.3,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "Organization: مساحة عمل ليلى حداد للتوثيق والمراجعة. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 320,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 284,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 154.7,
+          "right": 168.7,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 172.7,
+          "right": 212,
+          "top": 14,
+          "bottom": 34,
+          "width": 39.3,
+          "height": 20
+        },
+        "search": {
+          "left": 220,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 268,
+          "right": 308,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 39.3 },
+        { "a": "trigger", "b": "search", "px": 40 },
+        { "a": "trigger", "b": "bell", "px": 16 }
+      ],
+      "triggerOutsideItem": 133.3,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": true,
+      "triggerName": "Organization: Acme Docs — مساحة توثيق ليلى 2026. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": "before-en-390.png",
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 284,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 203.5,
+          "right": 217.5,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 221.5,
+          "right": 282,
+          "top": 14,
+          "bottom": 34,
+          "width": 60.5,
+          "height": 20
+        },
+        "search": {
+          "left": 290,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 338,
+          "right": 378,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 60.5 }
+      ],
+      "triggerOutsideItem": 84.5,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: Layla Haddad's documentation workspace. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 284,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 203.5,
+          "right": 217.5,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 221.5,
+          "right": 282,
+          "top": 14,
+          "bottom": 34,
+          "width": 60.5,
+          "height": 20
+        },
+        "search": {
+          "left": 290,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 338,
+          "right": 378,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 60.5 }
+      ],
+      "triggerOutsideItem": 84.5,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "Organization: مساحة عمل ليلى حداد للتوثيق والمراجعة. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 284,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 203.5,
+          "right": 217.5,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 221.5,
+          "right": 282,
+          "top": 14,
+          "bottom": 34,
+          "width": 60.5,
+          "height": 20
+        },
+        "search": {
+          "left": 290,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 338,
+          "right": 378,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 60.5 }
+      ],
+      "triggerOutsideItem": 84.5,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": true,
+      "triggerName": "Organization: Acme Docs — مساحة توثيق ليلى 2026. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 768,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 344,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 352,
+          "right": 576,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 580,
+          "right": 594,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 598,
+          "right": 695,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 703,
+          "right": 863,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 871,
+          "right": 911,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: Layla Haddad's documentation workspace. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 768,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 344,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 352,
+          "right": 576,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 580,
+          "right": 594,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 598,
+          "right": 695,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 703,
+          "right": 863,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 871,
+          "right": 911,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "Organization: مساحة عمل ليلى حداد للتوثيق والمراجعة. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 768,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 344,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 352,
+          "right": 576,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 580,
+          "right": 594,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 598,
+          "right": 695,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 703,
+          "right": 863,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 871,
+          "right": 911,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": true,
+      "triggerName": "Organization: Acme Docs — مساحة توثيق ليلى 2026. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": "before-en-1440.png",
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 332,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 340,
+          "right": 564,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 568,
+          "right": 582,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 586,
+          "right": 683,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 1152,
+          "right": 1376,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 1384,
+          "right": 1416,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: Layla Haddad's documentation workspace. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 332,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 340,
+          "right": 564,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 568,
+          "right": 582,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 586,
+          "right": 683,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 1152,
+          "right": 1376,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 1384,
+          "right": 1416,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "Organization: مساحة عمل ليلى حداد للتوثيق والمراجعة. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 332,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 340,
+          "right": 564,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 568,
+          "right": 582,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 586,
+          "right": 683,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 1152,
+          "right": 1376,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 1384,
+          "right": 1416,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": true,
+      "triggerName": "Organization: Acme Docs — مساحة توثيق ليلى 2026. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 320,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": "before-ar-320.png",
+      "boxes": {
+        "sidebar": {
+          "left": 268,
+          "right": 312,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 36,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 152.9,
+          "right": 166.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 148.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 40.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 40.9 },
+        { "a": "trigger", "b": "search", "px": 40 },
+        { "a": "trigger", "b": "bell", "px": 16 }
+      ],
+      "triggerOutsideItem": 134.9,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "المؤسسة: Layla Haddad's documentation workspace. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 320,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 268,
+          "right": 312,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 36,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 152.9,
+          "right": 166.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 148.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 40.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 40.9 },
+        { "a": "trigger", "b": "search", "px": 40 },
+        { "a": "trigger", "b": "bell", "px": 16 }
+      ],
+      "triggerOutsideItem": 134.9,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: مساحة عمل ليلى حداد للتوثيق والمراجعة. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 320,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 268,
+          "right": 312,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 36,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 152.9,
+          "right": 166.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 148.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 40.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 40.9 },
+        { "a": "trigger", "b": "search", "px": 40 },
+        { "a": "trigger", "b": "bell", "px": 16 }
+      ],
+      "triggerOutsideItem": 134.9,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "المؤسسة: Acme Docs — مساحة توثيق ليلى 2026. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": "before-ar-390.png",
+      "boxes": {
+        "sidebar": {
+          "left": 338,
+          "right": 382,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 106,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 174.9,
+          "right": 188.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 170.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 62.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 62.9 }
+      ],
+      "triggerOutsideItem": 86.9,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "المؤسسة: Layla Haddad's documentation workspace. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 338,
+          "right": 382,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 106,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 174.9,
+          "right": 188.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 170.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 62.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 62.9 }
+      ],
+      "triggerOutsideItem": 86.9,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: مساحة عمل ليلى حداد للتوثيق والمراجعة. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 338,
+          "right": 382,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 106,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 174.9,
+          "right": 188.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 170.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 62.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [
+        { "a": "trigger", "b": "separator", "px": 14 },
+        { "a": "trigger", "b": "section", "px": 62.9 }
+      ],
+      "triggerOutsideItem": 86.9,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "المؤسسة: Acme Docs — مساحة توثيق ليلى 2026. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 768,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 588,
+          "right": 632,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 356,
+          "right": 580,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 338,
+          "right": 352,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 231.2,
+          "right": 334,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 63.2,
+          "right": 223.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 15.2,
+          "right": 55.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "المؤسسة: Layla Haddad's documentation workspace. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 768,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 588,
+          "right": 632,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 356,
+          "right": 580,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 338,
+          "right": 352,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 231.2,
+          "right": 334,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 63.2,
+          "right": 223.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 15.2,
+          "right": 55.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: مساحة عمل ليلى حداد للتوثيق والمراجعة. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 768,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 588,
+          "right": 632,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 356,
+          "right": 580,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 338,
+          "right": 352,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 231.2,
+          "right": 334,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 63.2,
+          "right": 223.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 15.2,
+          "right": 55.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "المؤسسة: Acme Docs — مساحة توثيق ليلى 2026. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": "before-ar-1440.png",
+      "boxes": {
+        "sidebar": {
+          "left": 1108,
+          "right": 1140,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 876,
+          "right": 1100,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 858,
+          "right": 872,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 751.2,
+          "right": 854,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 64,
+          "right": 288,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 24,
+          "right": 56,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "المؤسسة: Layla Haddad's documentation workspace. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 1108,
+          "right": 1140,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 876,
+          "right": 1100,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 858,
+          "right": 872,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 751.2,
+          "right": 854,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 64,
+          "right": 288,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 24,
+          "right": 56,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: مساحة عمل ليلى حداد للتوثيق والمراجعة. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 1108,
+          "right": 1140,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 876,
+          "right": 1100,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 858,
+          "right": 872,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 751.2,
+          "right": 854,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 64,
+          "right": 288,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 24,
+          "right": 56,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": false,
+      "nameLastCharVisible": true,
+      "triggerName": "المؤسسة: Acme Docs — مساحة توثيق ليلى 2026. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": null,
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 320,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 150.7,
+          "top": 4,
+          "bottom": 44,
+          "width": 90.7,
+          "height": 40
+        },
+        "separator": {
+          "left": 154.7,
+          "right": 168.7,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 172.7,
+          "right": 212,
+          "top": 14,
+          "bottom": 34,
+          "width": 39.3,
+          "height": 20
+        },
+        "search": {
+          "left": 220,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 268,
+          "right": 308,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: Layla Haddad's documentation workspace. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 320,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 150.7,
+          "top": 4,
+          "bottom": 44,
+          "width": 90.7,
+          "height": 40
+        },
+        "separator": {
+          "left": 154.7,
+          "right": 168.7,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 172.7,
+          "right": 212,
+          "top": 14,
+          "bottom": 34,
+          "width": 39.3,
+          "height": 20
+        },
+        "search": {
+          "left": 220,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 268,
+          "right": 308,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: مساحة عمل ليلى حداد للتوثيق والمراجعة. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 320,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 150.7,
+          "top": 4,
+          "bottom": 44,
+          "width": 90.7,
+          "height": 40
+        },
+        "separator": {
+          "left": 154.7,
+          "right": 168.7,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 172.7,
+          "right": 212,
+          "top": 14,
+          "bottom": 34,
+          "width": 39.3,
+          "height": 20
+        },
+        "search": {
+          "left": 220,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 268,
+          "right": 308,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: Acme Docs — مساحة توثيق ليلى 2026. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": "after-en-390.png",
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 199.5,
+          "top": 4,
+          "bottom": 44,
+          "width": 139.5,
+          "height": 40
+        },
+        "separator": {
+          "left": 203.5,
+          "right": 217.5,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 221.5,
+          "right": 282,
+          "top": 14,
+          "bottom": 34,
+          "width": 60.5,
+          "height": 20
+        },
+        "search": {
+          "left": 290,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 338,
+          "right": 378,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: Layla Haddad's documentation workspace. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": [
+        "GET /api/app/projects",
+        "GET /api/app/organizations/00000000-0000-4000-8000-000000000001/projects"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 199.5,
+          "top": 4,
+          "bottom": 44,
+          "width": 139.5,
+          "height": 40
+        },
+        "separator": {
+          "left": 203.5,
+          "right": 217.5,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 221.5,
+          "right": 282,
+          "top": 14,
+          "bottom": 34,
+          "width": 60.5,
+          "height": 20
+        },
+        "search": {
+          "left": 290,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 338,
+          "right": 378,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: مساحة عمل ليلى حداد للتوثيق والمراجعة. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 8,
+          "right": 52,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 60,
+          "right": 199.5,
+          "top": 4,
+          "bottom": 44,
+          "width": 139.5,
+          "height": 40
+        },
+        "separator": {
+          "left": 203.5,
+          "right": 217.5,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 221.5,
+          "right": 282,
+          "top": 14,
+          "bottom": 34,
+          "width": 60.5,
+          "height": 20
+        },
+        "search": {
+          "left": 290,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 338,
+          "right": 378,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: Acme Docs — مساحة توثيق ليلى 2026. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 768,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 344,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 352,
+          "right": 576,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 580,
+          "right": 594,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 598,
+          "right": 695,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 703,
+          "right": 863,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 871,
+          "right": 911,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: Layla Haddad's documentation workspace. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 768,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 344,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 352,
+          "right": 576,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 580,
+          "right": 594,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 598,
+          "right": 695,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 703,
+          "right": 863,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 871,
+          "right": 911,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: مساحة عمل ليلى حداد للتوثيق والمراجعة. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 768,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 344,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 352,
+          "right": 576,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 580,
+          "right": 594,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 598,
+          "right": 695,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 703,
+          "right": 863,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 871,
+          "right": 911,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": true,
+      "triggerName": "Organization: Acme Docs — مساحة توثيق ليلى 2026. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": "after-en-1440.png",
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 332,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 340,
+          "right": 564,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 568,
+          "right": 582,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 586,
+          "right": 683,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 1152,
+          "right": 1376,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 1384,
+          "right": 1416,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: Layla Haddad's documentation workspace. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": [
+        "GET /api/app/projects",
+        "GET /api/app/organizations/00000000-0000-4000-8000-000000000001/projects"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 332,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 340,
+          "right": 564,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 568,
+          "right": 582,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 586,
+          "right": 683,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 1152,
+          "right": 1376,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 1384,
+          "right": 1416,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "Organization: مساحة عمل ليلى حداد للتوثيق والمراجعة. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 300,
+          "right": 332,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 340,
+          "right": 564,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 568,
+          "right": 582,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 586,
+          "right": 683,
+          "top": 22,
+          "bottom": 42,
+          "width": 97,
+          "height": 20
+        },
+        "search": {
+          "left": 1152,
+          "right": 1376,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 1384,
+          "right": 1416,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": true,
+      "triggerName": "Organization: Acme Docs — مساحة توثيق ليلى 2026. Switch organization or website",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "Usage & billing",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "ltr",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 320,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": "after-ar-320.png",
+      "boxes": {
+        "sidebar": {
+          "left": 268,
+          "right": 312,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 170.9,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 89.1,
+          "height": 40
+        },
+        "separator": {
+          "left": 152.9,
+          "right": 166.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 148.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 40.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: Layla Haddad's documentation workspace. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 320,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 268,
+          "right": 312,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 170.9,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 89.1,
+          "height": 40
+        },
+        "separator": {
+          "left": 152.9,
+          "right": 166.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 148.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 40.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: مساحة عمل ليلى حداد للتوثيق والمراجعة. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 320,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 268,
+          "right": 312,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 170.9,
+          "right": 260,
+          "top": 4,
+          "bottom": 44,
+          "width": 89.1,
+          "height": 40
+        },
+        "separator": {
+          "left": 152.9,
+          "right": 166.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 148.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 40.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: Acme Docs — مساحة توثيق ليلى 2026. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": "after-ar-390.png",
+      "boxes": {
+        "sidebar": {
+          "left": 338,
+          "right": 382,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 192.9,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 137.1,
+          "height": 40
+        },
+        "separator": {
+          "left": 174.9,
+          "right": 188.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 170.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 62.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: Layla Haddad's documentation workspace. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": [
+        "GET /api/app/projects",
+        "GET /api/app/organizations/00000000-0000-4000-8000-000000000001/projects"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 338,
+          "right": 382,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 192.9,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 137.1,
+          "height": 40
+        },
+        "separator": {
+          "left": 174.9,
+          "right": 188.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 170.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 62.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: مساحة عمل ليلى حداد للتوثيق والمراجعة. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 338,
+          "right": 382,
+          "top": 2,
+          "bottom": 46,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 192.9,
+          "right": 330,
+          "top": 4,
+          "bottom": 44,
+          "width": 137.1,
+          "height": 40
+        },
+        "separator": {
+          "left": 174.9,
+          "right": 188.9,
+          "top": 17,
+          "bottom": 31,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 108,
+          "right": 170.9,
+          "top": 14,
+          "bottom": 34,
+          "width": 62.9,
+          "height": 20
+        },
+        "search": {
+          "left": 60,
+          "right": 100,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        },
+        "bell": {
+          "left": 12,
+          "right": 52,
+          "top": 4,
+          "bottom": 44,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: Acme Docs — مساحة توثيق ليلى 2026. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": true,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 768,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 588,
+          "right": 632,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 356,
+          "right": 580,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 338,
+          "right": 352,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 231.2,
+          "right": 334,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 63.2,
+          "right": 223.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 15.2,
+          "right": 55.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: Layla Haddad's documentation workspace. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 768,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 588,
+          "right": 632,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 356,
+          "right": 580,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 338,
+          "right": 352,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 231.2,
+          "right": 334,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 63.2,
+          "right": 223.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 15.2,
+          "right": 55.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: مساحة عمل ليلى حداد للتوثيق والمراجعة. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 768,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 588,
+          "right": 632,
+          "top": 10,
+          "bottom": 54,
+          "width": 44,
+          "height": 44
+        },
+        "trigger": {
+          "left": 356,
+          "right": 580,
+          "top": 12,
+          "bottom": 52,
+          "width": 224,
+          "height": 40
+        },
+        "separator": {
+          "left": 338,
+          "right": 352,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 231.2,
+          "right": 334,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 63.2,
+          "right": 223.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 160,
+          "height": 40
+        },
+        "bell": {
+          "left": 15.2,
+          "right": 55.2,
+          "top": 12,
+          "bottom": 52,
+          "width": 40,
+          "height": 40
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": true,
+      "triggerName": "المؤسسة: Acme Docs — مساحة توثيق ليلى 2026. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "organization": "<id#1>",
+      "nameKind": "latin",
+      "file": "after-ar-1440.png",
+      "boxes": {
+        "sidebar": {
+          "left": 1108,
+          "right": 1140,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 876,
+          "right": 1100,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 858,
+          "right": 872,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 751.2,
+          "right": 854,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 64,
+          "right": 288,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 24,
+          "right": 56,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: Layla Haddad's documentation workspace. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": [
+        "GET /api/app/projects",
+        "GET /api/app/organizations/00000000-0000-4000-8000-000000000001/projects"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "organization": "<id#2>",
+      "nameKind": "arabic",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 1108,
+          "right": 1140,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 876,
+          "right": 1100,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 858,
+          "right": 872,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 751.2,
+          "right": 854,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 64,
+          "right": 288,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 24,
+          "right": 56,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": false,
+      "triggerName": "المؤسسة: مساحة عمل ليلى حداد للتوثيق والمراجعة. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "organization": "<id#3>",
+      "nameKind": "mixed",
+      "file": null,
+      "boxes": {
+        "sidebar": {
+          "left": 1108,
+          "right": 1140,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        },
+        "trigger": {
+          "left": 876,
+          "right": 1100,
+          "top": 14,
+          "bottom": 50,
+          "width": 224,
+          "height": 36
+        },
+        "separator": {
+          "left": 858,
+          "right": 872,
+          "top": 25,
+          "bottom": 39,
+          "width": 14,
+          "height": 14
+        },
+        "section": {
+          "left": 751.2,
+          "right": 854,
+          "top": 22,
+          "bottom": 42,
+          "width": 102.8,
+          "height": 20
+        },
+        "search": {
+          "left": 64,
+          "right": 288,
+          "top": 16,
+          "bottom": 48,
+          "width": 224,
+          "height": 32
+        },
+        "bell": {
+          "left": 24,
+          "right": 56,
+          "top": 16,
+          "bottom": 48,
+          "width": 32,
+          "height": 32
+        }
+      },
+      "overlaps": [],
+      "triggerOutsideItem": 0,
+      "nameTruncated": true,
+      "nameFirstCharVisible": true,
+      "nameLastCharVisible": true,
+      "triggerName": "المؤسسة: Acme Docs — مساحة توثيق ليلى 2026. تبديل المؤسسة أو الموقع",
+      "triggerNameHasFullName": true,
+      "nameDir": "auto",
+      "sectionText": "الاستخدام والفوترة",
+      "sectionTruncated": false,
+      "headerOverflow": false,
+      "pageOverflow": false,
+      "htmlDir": "rtl",
+      "pageErrors": [],
+      "unexpected": ["GET /api/app/projects"]
+    }
+  ]
+}

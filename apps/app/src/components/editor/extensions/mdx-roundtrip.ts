@@ -103,6 +103,11 @@ const EDITOR_HTML_CONTENT: ReadonlySet<string> = new Set(['br', 'hr', 's', 'del'
 /** Elements whose content is raw text in HTML: a `<` in a script is not a tag. */
 const RAW_TEXT_HTML: ReadonlySet<string> = new Set(['script', 'style', 'textarea', 'title']);
 
+/** A raw-text element's complete closing tag (`</title>`, `</title >`), searched in
+ *  lowercased source. A `</title` with no `>`, or `</titles>`, doesn't close it. */
+const RAW_TEXT_CLOSERS = new Map([...RAW_TEXT_HTML].map((name) => [name, new RegExp(`</${name}[ \\t\\r\\n\\f]*>`, 'g')]));
+const rawTextCloser = (name: string): RegExp => RAW_TEXT_CLOSERS.get(name) ?? new RegExp(`</${name}[ \\t\\r\\n\\f]*>`, 'g');
+
 /** The block tokens of the editor's own Markdown parser (markdown-it). */
 type MarkdownBlockTokens = (source: string) => ReadonlyArray<{ type: string; map: [number, number] | null; content: string }>;
 
@@ -480,12 +485,34 @@ interface AttributeToken {
   value: string | boolean;
 }
 
-export const encodeMdxSource = (value: string): string => encodeURIComponent(value);
+/** A UTF-16 surrogate with no partner: encodeURIComponent throws on it. */
+const LONE_SURROGATE = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g;
+/** How the encoding writes a lone surrogate: `%%` and its four hex digits. Plain
+ *  encodeURIComponent output never holds `%%`, since its every `%` starts a `%XX`. */
+const ENCODED_SURROGATE = /%%([0-9A-F]{4})/;
+
+/**
+ * Source text as an HTML attribute value, the way the editor carries it. A lone
+ * surrogate is kept as the code unit it is (#805), so a page holding one loads
+ * and saves byte for byte rather than throwing.
+ */
+export const encodeMdxSource = (value: string): string => {
+  let encoded = '';
+  let from = 0;
+  for (const match of value.matchAll(LONE_SURROGATE)) {
+    encoded += `${encodeURIComponent(value.slice(from, match.index))}%%${match[0].charCodeAt(0).toString(16).toUpperCase()}`;
+    from = match.index + 1;
+  }
+  return encoded + encodeURIComponent(value.slice(from));
+};
 
 export const decodeMdxSource = (value: string | null | undefined): string => {
   if (!value) return '';
   try {
-    return decodeURIComponent(value);
+    return value
+      .split(ENCODED_SURROGATE)
+      .map((part, index) => (index % 2 === 1 ? String.fromCharCode(Number.parseInt(part, 16)) : decodeURIComponent(part)))
+      .join('');
   } catch {
     return value;
   }
@@ -1088,12 +1115,29 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
   };
   // The first `</name` at or after the last search for it, or -1 for none.
   const closers = new Map<string, number>();
+  // Where the indented code block holding the last position asked about ends.
+  let codeEnd = -1;
+  // The first `-->` at or after the last search for it, or -1 for none (-2: not searched).
+  // A `<!--` in indented code ends with its block, so later ones search again: one
+  // search per block over the rest of the page grew with the square of the page.
+  let commentClose = -2;
   for (let i = 0; i < source.length; i++) {
     if (source[i] !== '<' || mask[i]) continue;
     if (comments && source.startsWith('<!--', i)) {
-      const close = source.indexOf('-->', i + 4);
-      const end = close < 0 ? source.length : close + 3;
-      comments.push({ start: i, end, runsToEnd: close < 0 });
+      if (commentClose === -2 || (commentClose >= 0 && commentClose < i + 4)) commentClose = source.indexOf('-->', i + 4);
+      const close = commentClose;
+      let end = close < 0 ? source.length : close + 3;
+      // In indented code a `<!--` is code, not a comment opener: it ends with the code
+      // block, and the tags after that block are read (#624). Unclosed, it hid every
+      // component after it, which then saved in another form (`<Note>` as `> [!NOTE]`).
+      if (indented?.[i] === 1) {
+        if (codeEnd <= i) {
+          codeEnd = i;
+          while (indented[codeEnd] === 1) codeEnd++;
+        }
+        if (codeEnd < end) end = codeEnd;
+      }
+      comments.push({ start: i, end, runsToEnd: close < 0 && end === source.length });
       i = end - 1;
       continue;
     }
@@ -1134,12 +1178,16 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
     // In indented code a `<script>` is code, and after an odd run of backslashes
     // (`\<title>`) its `<` is an escaped, literal character: neither starts raw text.
     if (isHtml && !closing && !selfClosing && RAW_TEXT_HTML.has(name) && indented?.[token.start] !== 1 && !escapedAt(source, token.start)) {
-      // A script's or style's content is text up to its closing tag.
-      // A search that found no closer means none after any later tag either.
+      // A script's or style's content is text up to its closing tag, and only a
+      // complete one (`</title>`) ends it: a malformed `</title` with no `>` is
+      // part of that text (#628). A search that found no closer means none after
+      // any later tag either.
       lower ??= source.toLowerCase();
       let close = closers.get(name);
       if (close === undefined || (close !== -1 && close <= i)) {
-        close = lower.indexOf(`</${name}`, i + 1);
+        const closer = rawTextCloser(name);
+        closer.lastIndex = i + 1;
+        close = closer.exec(lower)?.index ?? -1;
         closers.set(name, close);
       }
       if (close > i) i = close - 1;
@@ -1494,6 +1542,53 @@ function openComponentsRange(
   return opener ? sourceRange(source, layout, { start, end: source.length }, opener.name) : null;
 }
 
+/** Structured HTML the editor writes with a prefix on every line: a quote, a list. */
+const LINE_PREFIXED_HTML: ReadonlySet<string> = new Set(['blockquote', 'ul', 'ol', 'li']);
+
+/** The editor's own `<div data-callout>`, which it writes as a quote (`> [!NOTE]`). */
+const isCalloutMarkup = (token: TagToken): boolean =>
+  Boolean(token.editorMarkup) && token.name === 'div' && parseAttributes(token.raw, token.name).some((attr) => attr.name === 'data-callout');
+
+/**
+ * A range kept byte for byte over several lines is written back as its source, and a
+ * quote or list item around it prefixes only its first line: the source of one inside
+ * a Markdown quote carries its own `>` markers. Inside HTML the editor writes as a quote
+ * or list (a `<div data-callout>` saved as `> [!NOTE]`, a `<blockquote>`), it carries
+ * none, so the next load read its later lines as other blocks and the second save
+ * changed the page again (#806). The outermost such container is kept whole instead,
+ * byte for byte, as raw HTML inside structured HTML is (rawHtmlRange). One forward pass.
+ */
+function linePrefixedRanges(
+  source: string,
+  layout: MarkdownLayout,
+  containers: Container[],
+  prefixed: ReadonlySet<number>,
+  opaque: readonly SourceRange[],
+): SourceRange[] {
+  if (prefixed.size === 0) return [];
+  const multiLine = opaque.filter((range) => /[\r\n]/.test(range.source)).sort((a, b) => a.start - b.start);
+  if (multiLine.length === 0) return [];
+  // For each container, the outermost line-prefixed container at or around it, or -1
+  // (a parent comes before its children).
+  const outer = new Int32Array(containers.length).fill(-1);
+  for (const [index, container] of containers.entries()) {
+    const above = container.parent >= 0 ? (outer[container.parent] ?? -1) : -1;
+    outer[index] = above >= 0 ? above : prefixed.has(container.start) ? index : -1;
+  }
+  const innermost = innermostContainers(containers, multiLine);
+  const kept = new Set<number>();
+  const ranges: SourceRange[] = [];
+  for (const index of multiLine.keys()) {
+    const around = innermost[index] ?? -1;
+    const target = around >= 0 ? (outer[around] ?? -1) : -1;
+    const container = containers[target];
+    if (!container || kept.has(target)) continue;
+    kept.add(target);
+    ranges.push(sourceRange(source, layout, container, container.name));
+  }
+  return ranges;
+}
+
 /** Add raw HTML (comments, and HTML read as indented code inside a component) to
  *  the opaque ranges, widening any raw HTML range to what keeps it byte for byte
  *  (see rawHtmlRange). Ranges inside a wider one are dropped. */
@@ -1502,19 +1597,29 @@ function keepRawHtml(
   layout: MarkdownLayout,
   tokens: TagToken[],
   pairs: Map<number, number>,
-  opaque: SourceRange[],
+  authored: SourceRange[],
   extra: Array<Span & { inCode: boolean; name: string }>,
 ): SourceRange[] {
   const list: Array<Omit<Container, 'parent'>> = [];
+  // For linePrefixedRanges: the containers the editor structures (a broken opener is
+  // kept, not structured, and its closing tag may lie outside the tags around it), and
+  // which of them it writes with a prefix on every line.
+  const structured: Array<Omit<Container, 'parent'>> = [];
+  const prefixed = new Set<number>();
   for (const [openIndex, closeIndex] of pairs) {
     const open = tokens[openIndex];
     const close = tokens[closeIndex];
     if (!open || !close) continue;
     // Structured HTML elements, and supported components.
     const html = open.html && !open.rawHtml && !open.editorMarkup && !COMPONENT_HTML.has(open.name);
-    if (html || isComponentTag(open)) list.push({ start: open.start, end: close.end, name: open.name, html });
+    if (!html && !isComponentTag(open)) continue;
+    list.push({ start: open.start, end: close.end, name: open.name, html });
+    if (open.broken) continue;
+    structured.push({ start: open.start, end: close.end, name: open.name, html });
+    if (html ? LINE_PREFIXED_HTML.has(open.name) : isCalloutMarkup(open)) prefixed.add(open.start);
   }
   const containers = containerTree(list);
+  const opaque = outermostRanges([...authored, ...linePrefixedRanges(source, layout, containerTree(structured), prefixed, authored)]);
   const covered = spanIndex(opaque);
   const candidates = [
     ...opaque.filter((range) => /^[a-z]/.test(range.name)).map((range) => ({ ...range, inCode: false })),

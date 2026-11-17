@@ -240,9 +240,36 @@ it.each([
     },
   ],
   [
+    'touches non-focusable content',
+    async () => {
+      document.querySelector('main p')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
+      (document.activeElement as HTMLElement | null)?.blur();
+    },
+  ],
+  [
     'presses a key',
     async () => {
       document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    },
+  ],
+  [
+    'switches to another window and back',
+    async () => {
+      // The heading stays the document's active element while the window is in the background.
+      window.dispatchEvent(new FocusEvent('blur'));
+      window.dispatchEvent(new FocusEvent('focus'));
+    },
+  ],
+  [
+    'hides the tab and comes back to it',
+    async () => {
+      const setVisibility = (state: DocumentVisibilityState) => {
+        Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+        document.dispatchEvent(new Event('visibilitychange'));
+      };
+      setVisibility('hidden');
+      setVisibility('visible');
+      Reflect.deleteProperty(document, 'visibilityState');
     },
   ],
 ])('never takes focus back once the reader %s, even when the heading is re-rendered', async (_, move) => {
@@ -308,6 +335,52 @@ it('leaves nothing running when the reader unmounts mid-navigation', async () =>
   expect(document.activeElement).toBe(document.body);
 });
 
+it('stops following, with no timer or listener left, when the reader unmounts after landing', async () => {
+  const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
+  const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
+  const added: Array<[EventTarget, string, unknown]> = [];
+  const removed: Array<[EventTarget, string, unknown]> = [];
+  for (const target of [window, document] as EventTarget[]) {
+    const add = target.addEventListener.bind(target);
+    const remove = target.removeEventListener.bind(target);
+    vi.spyOn(target, 'addEventListener').mockImplementation((type, listener, options) => {
+      added.push([target, type, listener]);
+      add(type, listener, options);
+    });
+    vi.spyOn(target, 'removeEventListener').mockImplementation((type, listener, options) => {
+      removed.push([target, type, listener]);
+      remove(type, listener, options);
+    });
+  }
+  try {
+    await landOnRefunds();
+    const deadlines = setTimeoutSpy.mock.calls.flatMap((call, index) => (call[1] === 2000 ? [setTimeoutSpy.mock.results[index]?.value] : []));
+    expect(deadlines).toHaveLength(1);
+    const followListeners = new Set(['focusin', 'pointerdown', 'keydown', 'blur', 'visibilitychange']);
+    const landedAt = added.length;
+    await act(async () => root?.unmount());
+    root = undefined;
+    // The 2 s deadline is cleared, and every listener the reader added is removed again.
+    expect(clearTimeoutSpy).toHaveBeenCalledWith(deadlines[0]);
+    const leaked = added
+      .slice(0, landedAt)
+      .filter(
+        ([target, type, listener]) => followListeners.has(type) && !removed.some(([t, ty, l]) => t === target && ty === type && l === listener),
+      );
+    expect(leaked).toEqual([]);
+  } finally {
+    vi.restoreAllMocks();
+  }
+  // A heading that appears later is left alone.
+  const leftover = document.createElement('main');
+  leftover.innerHTML = '<h2 id="refunds">Refunds</h2>';
+  document.body.append(leftover);
+  await settle();
+  leftover.innerHTML = '<h2 id="refunds">Refunds</h2>';
+  await settle();
+  expect(document.activeElement).toBe(document.body);
+});
+
 it('lands focus on the section heading for a #section result on the page already open', async () => {
   results.data = [section];
   await openSearchOn('/sites/docs/billing');
@@ -341,5 +414,22 @@ it('returns focus to the search trigger when search closes without opening a pag
   expect(document.activeElement).toBe(field());
   await press('Escape');
   await settle();
+  expect(document.activeElement).toBe(trigger);
+});
+
+it('returns focus to the search trigger when the reader closes search with Cancel', async () => {
+  results.data = [page];
+  const trigger = await openSearchOn('/sites/docs/start');
+  await type('setup');
+  const cancel = Array.from(document.querySelectorAll<HTMLButtonElement>('[role="dialog"] button')).find((button) => button.textContent === 'Cancel');
+  if (!cancel) throw new Error('Missing Cancel button');
+  // A press focuses the button before its click, as in a browser.
+  await act(async () => {
+    cancel.focus();
+    cancel.click();
+  });
+  await settle();
+  expect(router.navigate).not.toHaveBeenCalled();
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
   expect(document.activeElement).toBe(trigger);
 });
