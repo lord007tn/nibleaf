@@ -82,4 +82,89 @@ describe('plain search snippets', () => {
     expect(cleanSearchText('Name | Purpose\n:--- | ---:\nDomain | Site address')).toBe('Name · Purpose Domain · Site address');
     expect(cleanSearchText('Cost $5 and $10. Use `$energy$` or \\$amount.')).toBe('Cost $5 and $10. Use $energy$ or \\$amount.');
   });
+
+  const tableEdges = [
+    ['list item resembling an alignment row', 'Intro\n\n- | --- | ---', 'Intro | --- | ---', 'Intro'],
+    ['table on a bullet opening line', '- | Name | Symbol |\n  | --- | --- |\n  | mode | value |', 'Name · Symbol mode · value', 'mode'],
+    ['table on an ordered list opening line', '1. | Name | Symbol |\n   | --- | --- |\n   | mode | value |', 'Name · Symbol mode · value', 'mode'],
+    [
+      'table in a list continuation',
+      '- Settings\n\n  | Name | Symbol |\n  | --- | --- |\n  | mode | value |\n\n- Save',
+      'Settings Name · Symbol mode · value Save',
+      'mode',
+    ],
+    [
+      'nested list table',
+      '1. Settings\n   - Values\n\n     Name | Symbol\n     --- | ---\n     mode | value',
+      'Settings Values Name · Symbol mode · value',
+      'mode',
+    ],
+    ['mixed Arabic and English', '| Name | الإعداد |\n| --- | --- |\n| mode | نطاق آمن |', 'Name · الإعداد mode · نطاق آمن', 'نطاق'],
+    ['no outer borders', 'Name | Symbol\n--- | ---\nmode | value', 'Name · Symbol mode · value', 'mode'],
+    ['only leading borders', '| Name | Symbol\n| --- | ---\n| mode | value', 'Name · Symbol mode · value', 'mode'],
+    ['only trailing borders', 'Name | Symbol |\n--- | --- |\nmode | value |', 'Name · Symbol mode · value', 'mode'],
+    [
+      'leading escaped pipe',
+      String.raw`\| a | b
+--- | ---
+mode | value`,
+      '| a · b mode · value',
+      'mode',
+    ],
+    [
+      'two backslashes before a border',
+      String.raw`Name | Symbol
+--- | ---
+mode \\| value`,
+      String.raw`Name · Symbol mode \\ · value`,
+      'mode',
+    ],
+    [
+      'three backslashes before a literal pipe',
+      String.raw`Name | Symbol
+--- | ---
+mode | left \\\| right`,
+      String.raw`Name · Symbol mode · left \\| right`,
+      'mode',
+    ],
+    [
+      'four backslashes before a border',
+      String.raw`Name | Symbol
+--- | ---
+mode \\\\| value`,
+      String.raw`Name · Symbol mode \\\\ · value`,
+      'mode',
+    ],
+    ['empty edge cells', '| Left | Center | Right |\n| --- | --- | --- |\n| | mode | |', 'Left · Center · Right · mode ·', 'mode'],
+    ['pipe-only row', '| Name | Symbol |\n| --- | --- |\n|||\n| mode | value |', 'Name · Symbol · mode · value', 'mode'],
+    ['pipe-only cells', '| Name | Symbol |\n| --- | --- |\n| mode | \\| |\n| `|` | \\| |', 'Name · Symbol mode · | | · |', 'mode'],
+    ['stored table fragment without a header', '| mode | نطاق |', 'mode · نطاق', 'نطاق'],
+    [
+      'whitespace and CRLF Arabic rows',
+      ' \t| الاسم \t| Symbol | \r\n | :--- | ---: |\r\n \t| نطاق \t| mode | \r\n',
+      'الاسم · Symbol نطاق · mode',
+      'نطاق',
+    ],
+  ] as const;
+
+  for (const path of ['keyword', 'reader-keyword', 'stored-chunk'] as const) {
+    it.each(tableEdges)(`cleans %s through the ${path} path`, async (_name, content, expected, query) => {
+      expect(cleanSearchText(content)).toBe(expected);
+      if (path === 'stored-chunk') {
+        const [chunk] = chunkSearchDocument(
+          { projectId: 'site', deploymentId: 'published', versionSlug: 'main' },
+          { ...doc(content), headings: [], language: 'ar', visible: true },
+        );
+        if (!chunk) throw new Error('missing table chunk');
+        expect(chunk.content).toBe(content.replace(/\r\n/g, '\n').trim());
+        // Persisted chunks may predate the chunker's newline normalization.
+        expect(searchChunkSnippet({ ...chunk, content }, query)).toBe(expected);
+      } else {
+        const index = await createDocIndex([doc(content)], query === 'نطاق' ? 'arabic' : 'english');
+        const [hit] = await searchDocs(index, query, path === 'reader-keyword' ? { relevance: 'reader' } : {});
+        expect(hit?.id).toBe('page');
+        expect(hit?.snippet).toBe(expected);
+      }
+    });
+  }
 });
