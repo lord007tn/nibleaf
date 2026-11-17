@@ -6,11 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { useCreateProjectSearchReindex } from './project-search';
 import { queryKeys } from './query-keys';
-import { useSaveWorkspaceAiConnection, useSelectWorkspaceAi, useWorkspaceAiModels } from './workspace-ai';
+import { useSelectWorkspaceAi } from './workspace-ai';
 
 const mocks = vi.hoisted(() => ({
-  models: vi.fn(),
-  connection: vi.fn(),
   select: vi.fn(),
   reindex: vi.fn(),
   toastError: vi.fn(),
@@ -21,7 +19,7 @@ vi.mock('@/services/api', () => ({
       projects: {
         ':projectId': {
           settings: {
-            ai: { $patch: mocks.select, models: { $post: mocks.models }, connection: { $put: mocks.connection } },
+            ai: { $patch: mocks.select },
             search: { reindex: { $post: mocks.reindex } },
           },
         },
@@ -72,25 +70,13 @@ const settle = async (run: () => Promise<unknown>) => {
   await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
 };
 
+// The key check and save are direct requests in features/site-ai (provider-key-form.credentials.test.tsx).
 describe('Smart AI requests report failures once, in plain words', () => {
-  it('says a key was refused, never what the provider answered', async () => {
-    mocks.models.mockResolvedValue(failure(400, 'integration:credentials_invalid'));
-    const models = await mountHook(() => useWorkspaceAiModels('project'));
-    await settle(() => models.current.mutateAsync({ providerId: 'openrouter', apiKey: 'sk-or-v1-secret' }));
-    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('settings.smartAi.invalidKey');
-  });
-
-  it('says the settings changed elsewhere on a conflict, and words other failures generally', async () => {
+  it('says the settings changed elsewhere on a conflict', async () => {
     mocks.select.mockResolvedValue(failure(409));
     const select = await mountHook(() => useSelectWorkspaceAi('project'));
     await settle(() => select.current.mutateAsync({ providerId: 'openrouter', answersEnabled: true }));
     expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('settings.smartAi.conflict');
-
-    mocks.toastError.mockClear();
-    mocks.connection.mockResolvedValue(failure(500));
-    const save = await mountHook(() => useSaveWorkspaceAiConnection('project'));
-    await settle(() => save.current.mutateAsync({ providerId: 'openrouter', answerModel: 'model', expectedRevision: 1 }));
-    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('settings.smartAi.error');
   });
 });
 
@@ -116,43 +102,5 @@ describe('reindexing', () => {
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.projectSearch.allIndex('project') });
     expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.workspaceAi.detail('project') });
     expect(mocks.toastError).not.toHaveBeenCalled();
-  });
-});
-
-describe('checking the saved key (CodeRabbit on #566)', () => {
-  it('reads the AI status again once the check settles, even after the form is gone, and either way', async () => {
-    const invalidate = vi.spyOn(client, 'invalidateQueries');
-    const models = await mountHook(() => useWorkspaceAiModels('project'));
-    // The form unmounts while the check is still out.
-    let answer: (response: Response) => void = () => undefined;
-    mocks.models.mockReturnValue(
-      new Promise<Response>((done) => {
-        answer = done;
-      }),
-    );
-    const pending = models.current.mutateAsync({ providerId: 'openai' });
-    await act(async () => root.unmount());
-    answer(Response.json({ data: { models: [{ id: 'gpt-6-luna' }] } }));
-    await pending;
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.workspaceAi.detail('project') });
-    // A failed check of the saved key refreshes too.
-    root = createRoot(document.body.appendChild(document.createElement('div')));
-    invalidate.mockClear();
-    mocks.models.mockResolvedValue(failure(422, 'integration:credentials_invalid'));
-    const again = await mountHook(() => useWorkspaceAiModels('project'));
-    await act(async () => {
-      await again.current.mutateAsync({ providerId: 'openai' }).catch(() => undefined);
-    });
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.workspaceAi.detail('project') });
-  });
-
-  it('leaves the status alone while a new key is only being tried', async () => {
-    const invalidate = vi.spyOn(client, 'invalidateQueries');
-    mocks.models.mockResolvedValue(Response.json({ data: { models: [] } }));
-    const models = await mountHook(() => useWorkspaceAiModels('project'));
-    await act(async () => {
-      await models.current.mutateAsync({ providerId: 'openai', apiKey: 'new-key-being-tried' });
-    });
-    expect(invalidate).not.toHaveBeenCalledWith({ queryKey: queryKeys.workspaceAi.detail('project') });
   });
 });

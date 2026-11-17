@@ -308,6 +308,62 @@ describe.skipIf(process.env.ORG_PEOPLE_INTEGRATION !== '1')('organization people
     });
   });
 
+  it('says up front which invitations the viewer may resend from a website, exactly as the resend decides (#460)', async () => {
+    const f = await fixture();
+    const memberWith = async (name: string, orgRole: 'admin' | 'member', grants: Array<[string, string]>) => {
+      const user = await person(name);
+      await db.prisma.member.create({ data: { organizationId: f.org.id, userId: user.id, orgRole, role: 'viewer' } });
+      for (const [projectId, role] of grants)
+        await db.prisma.projectMember.create({ data: { organizationId: f.org.id, projectId, userId: user.id, role } });
+      return user;
+    };
+    const viewers = {
+      orgOwner: f.owner,
+      orgAdmin: await memberWith('Org admin', 'admin', []),
+      docsAdmin: await memberWith('Docs admin', 'member', [[f.docs.id, 'admin']]),
+      bothAdmin: await memberWith('Both admin', 'member', [
+        [f.docs.id, 'admin'],
+        [f.api.id, 'admin'],
+      ]),
+    };
+    const invite = async (email: string, orgRole: 'admin' | 'member', grants: Array<{ projectId: string; role: string }>) =>
+      (await organizations.inviteOrganizationMembers(f.org.id, f.owner.id, { emails: [email], orgRole, grants }, { sendEmail: false })).invitations[0]
+        ?.id ?? '';
+    const invitations = {
+      docsOnly: await invite('docs-only@example.test', 'member', [{ projectId: f.docs.id, role: 'member' }]),
+      docsAndApi: await invite('docs-and-api@example.test', 'member', [
+        { projectId: f.docs.id, role: 'viewer' },
+        { projectId: f.api.id, role: 'member' },
+      ]),
+      orgAdmin: await invite('org-admin@example.test', 'admin', [{ projectId: f.docs.id, role: 'admin' }]),
+    };
+    const expected = {
+      orgOwner: { docsOnly: 'allowed', docsAndApi: 'allowed', orgAdmin: 'allowed' },
+      orgAdmin: { docsOnly: 'allowed', docsAndApi: 'allowed', orgAdmin: 'allowed' },
+      docsAdmin: { docsOnly: 'allowed', docsAndApi: 'otherWebsites', orgAdmin: 'orgAccess' },
+      bothAdmin: { docsOnly: 'allowed', docsAndApi: 'allowed', orgAdmin: 'orgAccess' },
+    } as const;
+    for (const [viewerName, viewer] of Object.entries(viewers) as Array<[keyof typeof viewers, { id: string }]>) {
+      const listed = await members.listMembers(f.org.id, f.docs.id, viewer.id);
+      for (const [name, id] of Object.entries(invitations) as Array<[keyof typeof invitations, string]>) {
+        const row = listed.invitations.find((invitation) => invitation.id === id);
+        const want = expected[viewerName][name];
+        expect({ viewerName, name, resend: row?.resend }).toEqual({ viewerName, name, resend: want });
+        // The invitation's org role and other websites stay on the server; the role is this website's.
+        expect(row && Object.keys(row)).not.toContain('orgRole');
+        expect(row && Object.keys(row)).not.toContain('grants');
+        // The resend itself stays the authority and agrees.
+        const resent = members.resendInvitation(f.org.id, id, viewer.id, f.docs.id);
+        if (want === 'allowed') await expect(resent).resolves.toMatchObject({ id });
+        else await expect(resent).rejects.toMatchObject({ status: 403 });
+      }
+    }
+    const asOwner = await members.listMembers(f.org.id, f.docs.id, f.owner.id);
+    expect(asOwner.invitations.find((invitation) => invitation.id === invitations.docsAndApi)?.role).toBe('viewer');
+    // Without a viewer (older callers) the field is absent: read as "allowed", as before.
+    expect((await members.listMembers(f.org.id, f.docs.id)).invitations.every((invitation) => !('resend' in invitation))).toBe(true);
+  });
+
   it('reports last activity from the newest session', async () => {
     const f = await fixture();
     const at = new Date('2026-11-01T10:00:00.000Z');

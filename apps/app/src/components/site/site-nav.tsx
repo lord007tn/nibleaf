@@ -1,6 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { blockDirection } from '@nibleaf/shared/script-direction';
-import { startsUngroupedBlock } from '@nibleaf/shared/site';
+import { startsUngroupedBlock } from '@nibleaf/shared/site-nav';
 import { ChevronRight } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { PageIcon } from '@/components/site/page-icon';

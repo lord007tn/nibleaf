@@ -1,0 +1,36 @@
+{
+  "phase": "before",
+  "project": "<id#project>",
+  "results": [
+    {
+      "shot": "before-ar-1440-light.png",
+      "language": "ar",
+      "width": 1440,
+      "theme": "light",
+      "url": "http://localhost:4310/app/projects/<id#project>/preview?languageId=<id#lang-ar>",
+      "heading": "التثبيت",
+      "address": "/tathbit",
+      "navCurrent": "التثبيت",
+      "navOrder": ["التثبيت", "الأدلة", "الإعداد", "مرحبًا بك في لانترن"],
+      "dir": "rtl",
+      "horizontalOverflow": false,
+      "readerHome": "مرحبًا بك في لانترن",
+      "matchesReader": false
+    },
+    {
+      "shot": "before-ar-390-light.png",
+      "language": "ar",
+      "width": 390,
+      "theme": "light",
+      "url": "http://localhost:4310/app/projects/<id#project>/preview?languageId=<id#lang-ar>",
+      "heading": "التثبيت",
+      "address": "/tathbit",
+      "navCurrent": "التثبيت",
+      "navOrder": ["التثبيت", "الأدلة", "الإعداد", "مرحبًا بك في لانترن"],
+      "dir": "rtl",
+      "horizontalOverflow": false,
+      "readerHome": "مرحبًا بك في لانترن",
+      "matchesReader": false
+    }
+  ]
+}

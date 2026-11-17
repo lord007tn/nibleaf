@@ -1,11 +1,22 @@
 import { type Prisma, prisma } from '@nibleaf/database';
 import { hashJoinLinkToken } from '@nibleaf/shared/crypto';
 import { emailInDomain, isJoinLinkToken, JOIN_LINK_COOKIE, joinLinkStatus } from '@nibleaf/shared/join-links';
-import { canAssignRole, effectiveSiteRole } from '@nibleaf/shared/rbac';
+import { issuerRefusal } from '@nibleaf/shared/rbac';
 
 type Db = typeof prisma | Prisma.TransactionClient;
 
 export type AdmissionGrant = { projectId: string; role: string };
+
+/** What the issuer policy reads about an issuer (a `Member` select). */
+export const ISSUER_SELECT = {
+  orgRole: true,
+  projectGrants: { select: { projectId: true, role: true } },
+  user: { select: { banned: true, suspendedAt: true } },
+} as const;
+
+/** A banned or suspended account issues nothing. */
+export const usableIssuer = <T extends { user: { banned: boolean; suspendedAt: Date | null } }>(issuer: T | null): issuer is T =>
+  !!issuer && !issuer.user.banned && !issuer.user.suspendedAt;
 
 /** Shared issuer policy for email invitations, link previews and revocation. */
 export async function issuerAuthorizes(
@@ -15,21 +26,12 @@ export async function issuerAuthorizes(
   orgRole: string,
   grants: AdmissionGrant[],
 ): Promise<boolean> {
-  if (!userId || !['admin', 'member'].includes(orgRole)) return false;
+  if (!userId) return false;
   const issuer = await db.member.findUnique({
     where: { organizationId_userId: { organizationId, userId } },
-    select: { orgRole: true, projectGrants: { select: { projectId: true, role: true } }, user: { select: { banned: true, suspendedAt: true } } },
+    select: ISSUER_SELECT,
   });
-  if (!issuer || issuer.user.banned || issuer.user.suspendedAt) return false;
-  const orgAdmin = issuer.orgRole === 'owner' || issuer.orgRole === 'admin';
-  if (orgRole === 'admin' && !orgAdmin) return false;
-  // A site administrator cannot invite a grantless organization member.
-  if (!orgAdmin && grants.length === 0) return false;
-  return grants.every((grant) => {
-    if (!['admin', 'member', 'viewer'].includes(grant.role)) return false;
-    const role = effectiveSiteRole(issuer.orgRole, issuer.projectGrants.find((g) => g.projectId === grant.projectId)?.role ?? null);
-    return role !== null && canAssignRole(role, grant.role);
-  });
+  return usableIssuer(issuer) && issuerRefusal(issuer, orgRole, grants) === null;
 }
 
 export async function joinLinkCreatorAuthorizes(

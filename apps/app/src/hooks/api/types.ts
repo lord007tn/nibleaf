@@ -255,6 +255,8 @@ export interface PublishCheck {
   code: PublishCheckCode;
   severity: 'error' | 'warning';
   pageId: string;
+  /** The docs version (branch) of the page; absent from an older server. */
+  versionId?: string;
   languageCode: string;
   title: string;
   path: string;

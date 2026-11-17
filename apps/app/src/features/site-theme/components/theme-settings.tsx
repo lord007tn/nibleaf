@@ -77,6 +77,10 @@ function ThemeForm({ project }: { project: Project }) {
   const activeSave = useRef<number | undefined>(undefined);
   const saveIds = useRef(0);
   const [mark, setMark] = useState<SaveMark>();
+  // The site's write turn a Save took (see `submit`), for its request to take
+  // over: a site switch ends `submit()` while the request runs on (#816), so the
+  // request gives the turn back once it and its readback settle (#824).
+  const handover = useRef<{ owned: Operation; taken: boolean } | undefined>(undefined);
 
   const { form, ...draft } = useServerDraftForm<ThemeValues>({
     identity,
@@ -91,6 +95,9 @@ function ThemeForm({ project }: { project: Project }) {
       saveIds.current += 1;
       const id = saveIds.current;
       const sent = sentThemeValues(value, save.baseline);
+      const turn = handover.current;
+      handover.current = undefined;
+      if (turn) turn.taken = true;
       activeSave.current = id;
       setMark({ id, submitted: value, reached: [sent] });
       try {
@@ -107,6 +114,7 @@ function ThemeForm({ project }: { project: Project }) {
         return 'failed';
       } finally {
         if (activeSave.current === id) activeSave.current = undefined;
+        if (turn) releaseWrite(turn.owned);
       }
     },
   });
@@ -213,6 +221,8 @@ function ThemeForm({ project }: { project: Project }) {
     // An import being applied is a write too: the save waits its turn.
     const owned = acquire('save');
     if (!owned) return 'failed' as const;
+    const turn = { owned, taken: false };
+    handover.current = turn;
     try {
       settled.current = true;
       setSubmitted(true);
@@ -231,7 +241,9 @@ function ThemeForm({ project }: { project: Project }) {
       if (outcome === 'saved' && settled.current) retire();
       return outcome === 'busy' ? 'failed' : outcome;
     } finally {
-      releaseWrite(owned);
+      if (handover.current === turn) handover.current = undefined;
+      // A save that sent its request gives the turn back when that settles; any other exit gives it back now.
+      if (!turn.taken) releaseWrite(owned);
     }
   }, [acquire, config, form, retire, submitDraft]);
   const discard = useCallback(() => {

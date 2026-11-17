@@ -1,0 +1,447 @@
+{
+  "environment": "Component fixture: the real Redirects section (before: main at the merge base; after: this branch) with the real design system, EN/AR catalogs, project query, config mutation and the design-system Sonner Toaster placed as the dashboard places it; fictional sites and public rules; project GET and config PATCH answered by interception; headless Chromium with Element.computedName for accessible names; not the signed-in dashboard or production",
+  "baseline": "fe435f969657fb965370423b23c2a0b86b618193",
+  "head": "fe435f969657fb965370423b23c2a0b86b618193",
+  "uncommitted": [
+    "M apps/app/src/features/site-redirects/components/redirects-settings.test.tsx",
+    "?? apps/app/src/features/site-redirects/components/redirects-settings.undo-focus.test.tsx"
+  ],
+  "swappedForBefore": [
+    "apps/app/src/features/site-redirects/components/redirects-settings.tsx"
+  ],
+  "synthetic": [
+    "\"Undo without a focus move\" dispatches element.click() on the real Undo button, as a screen reader activation or a focus-less tap does"
+  ],
+  "attempted": 0,
+  "names": [
+    {
+      "locale": "en",
+      "phase": "before",
+      "dir": "ltr",
+      "remove": [
+        { "role": "button", "name": "Remove redirect /guides/install" },
+        { "role": "button", "name": "Remove redirect /legacy" },
+        { "role": "button", "name": "Remove redirect /دليل" },
+        { "role": "button", "name": "Remove redirect /api/v1" }
+      ],
+      "afterTypingRow3": {
+        "role": "button",
+        "name": "Remove redirect /api/v2"
+      },
+      "pageErrors": []
+    },
+    {
+      "locale": "ar",
+      "phase": "before",
+      "dir": "rtl",
+      "remove": [
+        { "role": "button", "name": "إزالة إعادة التوجيه /guides/install" },
+        { "role": "button", "name": "إزالة إعادة التوجيه /legacy" },
+        { "role": "button", "name": "إزالة إعادة التوجيه /دليل" },
+        { "role": "button", "name": "إزالة إعادة التوجيه /api/v1" }
+      ],
+      "afterTypingRow3": {
+        "role": "button",
+        "name": "إزالة إعادة التوجيه /api/v2"
+      },
+      "pageErrors": []
+    }
+  ],
+  "flows": [
+    {
+      "phase": "before",
+      "device": "keyboard-en-1440",
+      "locale": "en",
+      "viewport": { "width": 1440, "height": 900 },
+      "file": "repro-before-keyboard-en-1440.webm",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": {
+            "config": {
+              "redirects": [
+                {
+                  "from": "/guides/install",
+                  "to": "/get-started/install",
+                  "generated": true
+                },
+                {
+                  "from": "/legacy3",
+                  "to": "https://archive.example.com/docs?ref=handbook#top",
+                  "generated": false
+                },
+                {
+                  "from": "/دليل",
+                  "to": "/ar/guide?lang=ar&v=2",
+                  "generated": false
+                },
+                {
+                  "from": "/api/v1",
+                  "to": "/reference/api#v1",
+                  "generated": false
+                }
+              ]
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-2" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": { "at": "body" },
+          "toasts": [],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Enter on Remove /legacy",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "remove",
+            "row": 1,
+            "role": "button",
+            "name": "Remove redirect /دليل"
+          },
+          "toasts": [{ "text": "Removed\nUndo", "removed": false }],
+          "saveBar": true,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Alt+T, Tab: Undo has focus",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": { "at": "toast", "role": "button", "name": "Undo" },
+          "toasts": [{ "text": "Removed\nUndo", "removed": false }],
+          "saveBar": true,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Enter on Undo",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "remove",
+            "row": 1,
+            "role": "button",
+            "name": "Remove redirect /legacy"
+          },
+          "toasts": [{ "text": "Removed\nUndo", "removed": true }],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "toast gone (its own lifecycle)",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "remove",
+            "row": 1,
+            "role": "button",
+            "name": "Remove redirect /legacy"
+          },
+          "toasts": [],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Remove /legacy again, then Alt+T, Tab to Undo",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": { "at": "toast", "role": "button", "name": "Undo" },
+          "toasts": [{ "text": "Removed\nUndo", "removed": false }],
+          "saveBar": true,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Escape, then the toast times out: dismissed without Undo",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "remove",
+            "row": 1,
+            "role": "button",
+            "name": "Remove redirect /دليل"
+          },
+          "toasts": [],
+          "saveBar": true,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Discard (back to the saved rules)",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": { "at": "body" },
+          "toasts": [],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "click Remove /دليل, click Undo",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "remove",
+            "row": 2,
+            "role": "button",
+            "name": "Remove redirect /دليل"
+          },
+          "toasts": [{ "text": "Removed\nUndo", "removed": true }],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "toast gone (its own lifecycle)",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "remove",
+            "row": 2,
+            "role": "button",
+            "name": "Remove redirect /دليل"
+          },
+          "toasts": [],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Remove /legacy, then typing in the next rule (/دليل) destination, two characters selected",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/دليل", "/ar/guide?lang=ar&v=2"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "to",
+            "row": 1,
+            "role": "textbox",
+            "name": "Redirect to path",
+            "value": "/ar/guide?lang=ar&v=2",
+            "selection": [19, 21]
+          },
+          "toasts": [{ "text": "Removed\nUndo", "removed": false }],
+          "saveBar": true,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Undo without a focus move (synthetic click)",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar&v=2"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "from",
+            "row": 1,
+            "role": "textbox",
+            "name": "Redirect from path",
+            "value": "/legacy",
+            "selection": [7, 7]
+          },
+          "toasts": [{ "text": "Removed\nUndo", "removed": true }],
+          "saveBar": true,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "the next key lands in the same rule",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy3", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar&v=2"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "from",
+            "row": 1,
+            "role": "textbox",
+            "name": "Redirect from path",
+            "value": "/legacy3",
+            "selection": [8, 8]
+          },
+          "toasts": [{ "text": "Removed\nUndo", "removed": true }],
+          "saveBar": true,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Ctrl+S: saved, refetched, clean",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy3", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar&v=2"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "from",
+            "row": 1,
+            "role": "textbox",
+            "name": "Redirect from path",
+            "value": "/legacy3",
+            "selection": [8, 8]
+          },
+          "toasts": [],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Remove /guides/install, then Leave and click the exiting toast's Undo",
+          "rows": [],
+          "focused": { "at": "fixture nav", "role": "button", "name": "Leave" },
+          "toasts": [],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "Remove /guides/install, then switch to Atlas and click the exiting toast's Undo",
+          "rows": [["/team", "/people"]],
+          "focused": { "at": "fixture nav", "role": "button", "name": "Atlas" },
+          "toasts": [],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        }
+      ]
+    },
+    {
+      "phase": "before",
+      "device": "phone-ar-390",
+      "locale": "ar",
+      "viewport": { "width": 390, "height": 844 },
+      "file": "repro-before-phone-ar-390.webm",
+      "requests": [{ "call": "GET /api/app/projects/site-1" }],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": { "at": "body" },
+          "toasts": [],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "tap Remove /legacy",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "remove",
+            "row": 1,
+            "role": "button",
+            "name": "إزالة إعادة التوجيه /دليل"
+          },
+          "toasts": [{ "text": "محذوف\nتراجع", "removed": false }],
+          "saveBar": true,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "tap Undo",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "remove",
+            "row": 1,
+            "role": "button",
+            "name": "إزالة إعادة التوجيه /legacy"
+          },
+          "toasts": [{ "text": "محذوف\nتراجع", "removed": true }],
+          "saveBar": true,
+          "conflict": false,
+          "problems": []
+        },
+        {
+          "step": "toast gone (its own lifecycle)",
+          "rows": [
+            ["/guides/install", "/get-started/install"],
+            ["/legacy", "https://archive.example.com/docs?ref=handbook#top"],
+            ["/دليل", "/ar/guide?lang=ar"],
+            ["/api/v1", "/reference/api#v1"]
+          ],
+          "focused": {
+            "at": "remove",
+            "row": 1,
+            "role": "button",
+            "name": "إزالة إعادة التوجيه /legacy"
+          },
+          "toasts": [],
+          "saveBar": false,
+          "conflict": false,
+          "problems": []
+        }
+      ]
+    }
+  ],
+  "shots": []
+}

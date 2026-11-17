@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   aiAssistState,
+  createUnsavedDrafts,
   type DraftState,
   draftUnsavable,
+  foreignCopyWhileDirty,
   isDirty,
   isEditorRevisionConflict,
+  mayBeNormalizedWrite,
   nextHydration,
   normalizedSaveConflict,
+  restoreUnsavedDraft,
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
@@ -221,6 +225,107 @@ more`,
   });
 });
 
+describe('foreignCopyWhileDirty (#790)', () => {
+  const theirs: ServerSnapshot = { ...pageA, content: 'Their newer copy.', updatedAt: '2026-09-01T10:05:00.000Z' };
+  const edited: DraftState = { ...cleanState(pageA), draft: { title: pageA.title, content: 'My unsent change.' } };
+
+  it("is a conflict: another client's newer copy over unsent changes", () => {
+    expect(foreignCopyWhileDirty(edited, theirs)).toBe(true);
+  });
+
+  it('is not one over a clean draft (it is loaded), or once already in conflict', () => {
+    expect(foreignCopyWhileDirty(cleanState(pageA), theirs)).toBe(false);
+    expect(foreignCopyWhileDirty({ ...edited, conflicted: true }, theirs)).toBe(false);
+  });
+
+  it("is not one for the editor's own text: the draft's, the mirrored copy's, or a pending write's", () => {
+    expect(foreignCopyWhileDirty(edited, { ...theirs, content: 'My unsent change.' })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, { ...theirs, content: pageA.content })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, theirs, undefined, { carries: (text) => text.content === 'Their newer copy.' })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, theirs, undefined, { carries: (text) => text.content === 'My unsent change.' })).toBe(false);
+    // A write still at the server may have stored the copy (normalized): told apart once it settles.
+    expect(foreignCopyWhileDirty(edited, theirs, undefined, { mayBeOwn: () => true })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, theirs, undefined, { carries: () => false, mayBeOwn: () => false })).toBe(true);
+  });
+
+  it('is not one for an older, superseded, unstamped or other page copy', () => {
+    expect(foreignCopyWhileDirty(edited, { ...theirs, updatedAt: '2026-09-01T09:00:00.000Z' })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, theirs, (revision) => revision === theirs.updatedAt)).toBe(false);
+    expect(foreignCopyWhileDirty(edited, { ...theirs, updatedAt: undefined })).toBe(false);
+    expect(foreignCopyWhileDirty(edited, { ...pageB })).toBe(false);
+  });
+});
+
+describe('mayBeNormalizedWrite (#825)', () => {
+  const page = (label: string, inline: string, definition: string, title = 'API') =>
+    [`See [${label}](${inline}) and [api][ref].`, '', `[ref]: ${definition} "${title}"`, ''].join('\n');
+  const write = { title: 'Guide', content: page('setup', '/installation', '/api'), base: '2026-09-01T10:00:00.000Z' };
+  const copy = (content: string, updatedAt = '2026-09-01T10:00:01.000Z'): ServerSnapshot => ({ id: 'a', title: 'Guide', content, updatedAt });
+
+  it('is the write with its link destinations rewritten, inline or as definitions, at a newer revision', () => {
+    expect(mayBeNormalizedWrite(copy(page('setup', '/en/installation', '/en/api')), write)).toBe(true);
+    expect(mayBeNormalizedWrite(copy(page('setup', '/a/(b)', '/en/api?v=(2)')), write)).toBe(true);
+    // The server rewrites inside the brackets only: an unbracketed destination never becomes a bracketed one.
+    expect(mayBeNormalizedWrite(copy(page('setup', '/installation', '<./en api>')), write)).toBe(false);
+    expect(mayBeNormalizedWrite(copy(write.content), { ...write, base: undefined })).toBe(true);
+  });
+
+  it('is not a copy with other text, another title, or no newer revision than the one the write was sent from', () => {
+    expect(mayBeNormalizedWrite(copy(page('set up', '/en/installation', '/en/api')), write)).toBe(false);
+    expect(mayBeNormalizedWrite(copy(page('setup', '/installation', '/api', 'Docs')), write)).toBe(false);
+    expect(mayBeNormalizedWrite(copy(`${write.content}Their line.`), write)).toBe(false);
+    expect(mayBeNormalizedWrite({ ...copy(write.content), title: 'Other' }, write)).toBe(false);
+    expect(mayBeNormalizedWrite(copy(write.content, write.base), write)).toBe(false);
+    expect(mayBeNormalizedWrite(copy(write.content, '2026-09-01T09:00:00.000Z'), write)).toBe(false);
+    expect(mayBeNormalizedWrite({ ...copy(write.content), updatedAt: undefined }, write)).toBe(false);
+  });
+
+  // #849 review: the matcher is never narrower than the server's rewrite. Every
+  // text below goes through the server's own `rewritePageLinks`; whatever it
+  // rewrites, the rewritten copy is the write, links aside.
+  const SERVER_CASES = [
+    // rewrite-page-links.test.ts
+    '{true && "[expression](/old)"}\n\n<Card\n  title="[prop](/old)"\n>\n\n[real](/old)\n\n</Card>\n\n<div>[html](/old)</div>',
+    '# العربية 🧭\r\n\r\n[ابدأ 🚀](/old#تثبيت)\r\n\r\n```md\r\n[مثال](/old)\r\n```\r\n',
+    '<Card title="[literal](/old)">\n\n[**Guide**](</old#heading> "Read this") and [](/old?x=(1)).\n\n![image](/old) [external](https://example.com/old)\n\n</Card>',
+    '[guide](/old)\n\n`[inline](/old)`\n\n    [indent](/old)\n\n> ~~~md\n> [quote](/old)\n> ~~~\n\n- ```md\n  [list](/old)\n  ```\n\n````md\n[code](/old)\n```\n[still code](/old)',
+    '\\[literal](/old) [real](/old)',
+    // The review's repro: a definition's destination on the next line.
+    'See [setup][ref].\n\n[ref]:\n  /old\n',
+    // Definitions: bracketed, titled, indented, in a quote or a list item, a label over two lines.
+    '[a][one] [b][two] [c][three]\n\n[one]: </old/one> "One"\n  [two]: /old/two \'Two\'\n[three]:\t/old/three (Three)\n',
+    '> See [q][quoted].\n>\n> [quoted]: /old/quote\n\n- [l][listed]\n\n  [listed]:\n    </old/list>\n',
+    '[x][long label]\n\n[long\nlabel]: /old/long\n',
+    // Inline: a destination on the next line, escapes, parentheses, an image inside the label, two links on one line.
+    '[next](\n/old/next "Next") [esc](/old/a\\)b) [paren](/old/(a)(b)) [![logo](/old/logo.png)](/old/home) [one](/old/1)[two](/old/2)',
+    // Wrapped paragraphs and Markdown around the links.
+    'Every **bold [link](/old/bold)** and _[em](/old/em "t")_\nwrap onto [a second](/old/second)\nline.\n',
+  ];
+  const moved = (href: string) => (href.startsWith('/old') ? href.replace('/old', '/en/moved') : href);
+  const withParens = (href: string) => (href.startsWith('/old') ? `${href}?v=(2)` : href);
+
+  it.each(SERVER_CASES)('is the write as the server rewrites its links: %j', async (content) => {
+    const { rewritePageLinks } = await import('../../../../server/src/lib/rewrite-page-links');
+    for (const rewrite of [moved, withParens]) {
+      const stored = rewritePageLinks(content, rewrite);
+      if (stored.content === content) continue;
+      expect(stored.documentsSkipped).toBe(0);
+      expect(mayBeNormalizedWrite(copy(stored.content), { ...write, content })).toBe(true);
+      // Other text changed besides is not.
+      expect(mayBeNormalizedWrite(copy(`${stored.content}\n\nTheir line.`), { ...write, content })).toBe(false);
+    }
+  });
+
+  it('the review repro and the server agree: a definition with its destination on the next line is rewritten, and matched', async () => {
+    const { rewritePageLinks } = await import('../../../../server/src/lib/rewrite-page-links');
+    const content = 'See [setup][ref].\n\n[ref]:\n  /installation\n';
+    const stored = rewritePageLinks(content, (href) => (href === '/installation' ? '/en/installation' : href));
+    expect(stored.linksUpdated).toBe(1);
+    // 3fc0609f: false.
+    expect(mayBeNormalizedWrite(copy(stored.content), { ...write, content })).toBe(true);
+  });
+});
+
 describe('aiAssistState', () => {
   it('council: a conflicted draft never hydrates from a refreshed server copy or autosaves', () => {
     const state = { synced: snapshotOf(pageA), draft: { title: pageA.title, content: pageA.content }, conflicted: true };
@@ -244,5 +349,113 @@ describe('aiAssistState', () => {
     expect(aiAssistState(false, { isPending: false, isError: true, error: { status: 403 } })).toBe('hidden');
     expect(aiAssistState(false, { isPending: false, isError: true, error: { status: 503 } })).toBe('shown');
     expect(aiAssistState(false, { isPending: false, isError: true, error: new TypeError('Failed to fetch') })).toBe('shown');
+  });
+});
+
+describe('unsaved drafts kept after the editor unmounted (#789)', () => {
+  const kept = { id: pageA.id, title: pageA.title, content: 'My final draft.', base: pageA.updatedAt, error: new Error('Network error') };
+
+  it("keeps a page's draft for its account only, until it is taken, and tells subscribers", () => {
+    const drafts = createUnsavedDrafts();
+    let calls = 0;
+    const stop = drafts.subscribe(() => {
+      calls += 1;
+    });
+    const ticket = drafts.issue('user-1', pageA.id);
+    if (!ticket) throw new Error('No ticket');
+    expect(drafts.pending('user-1', pageA.id)).toBe(true);
+    drafts.failed(ticket, kept);
+    expect(drafts.pending('user-1', pageA.id)).toBe(false);
+    expect(drafts.peek('user-1', pageA.id)).toMatchObject(kept);
+    expect(drafts.peek('user-2', pageA.id)).toBeUndefined();
+    expect(drafts.peek('user-1', pageB.id)).toBeUndefined();
+    expect(drafts.take('user-2', pageA.id)).toBeUndefined();
+    expect(drafts.take('user-1', pageA.id)).toMatchObject(kept);
+    expect(drafts.take('user-1', pageA.id)).toBeUndefined();
+    stop();
+    expect(calls).toBe(2);
+    expect(drafts.issue(null, pageA.id)).toBeNull();
+  });
+
+  it('keeps the latest write only: an older failure never replaces a later one, nor survives a later stored write', () => {
+    const drafts = createUnsavedDrafts();
+    const older = drafts.issue('user-1', pageA.id);
+    const newer = drafts.issue('user-1', pageA.id);
+    if (!older || !newer) throw new Error('No ticket');
+    drafts.failed(newer, { ...kept, content: 'Newer.' });
+    drafts.failed(older, { ...kept, content: 'Older.' });
+    expect(drafts.peek('user-1', pageA.id)?.content).toBe('Newer.');
+    const later = drafts.issue('user-1', pageA.id);
+    if (!later) throw new Error('No ticket');
+    drafts.stored(later);
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    // A write queued before that stored one, failing after it, is out of date too.
+    const stale = drafts.issue('user-1', pageB.id);
+    const saved = drafts.issue('user-1', pageB.id);
+    if (!stale || !saved) throw new Error('No ticket');
+    drafts.stored(saved);
+    drafts.failed(stale, { ...kept, id: pageB.id });
+    expect(drafts.peek('user-1', pageB.id)).toBeUndefined();
+  });
+
+  it('a draft never stored is kept, even after its editor showed an earlier failure of the same text', () => {
+    const drafts = createUnsavedDrafts();
+    const shown = drafts.issue('user-1', pageA.id);
+    const retried = drafts.issue('user-1', pageA.id);
+    if (!shown || !retried) throw new Error('No ticket');
+    drafts.settled(shown, true);
+    drafts.failed(retried, kept);
+    expect(drafts.peek('user-1', pageA.id)).toMatchObject(kept);
+  });
+
+  it('a later failure shown on screen outranks an earlier one: the earlier is neither kept after it nor left kept', () => {
+    const drafts = createUnsavedDrafts();
+    const keptEarlier = drafts.issue('user-1', pageA.id);
+    const older = drafts.issue('user-1', pageA.id);
+    const shown = drafts.issue('user-1', pageA.id);
+    if (!keptEarlier || !older || !shown) throw new Error('No ticket');
+    drafts.failed(keptEarlier, { ...kept, content: 'Kept before.' });
+    drafts.settled(shown, true);
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    drafts.failed(older, { ...kept, content: 'A' });
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+  });
+
+  it('revises a kept draft with the text its editor holds, and nothing when none is kept', () => {
+    const drafts = createUnsavedDrafts();
+    drafts.revise('user-1', pageA.id, { title: 'T', content: 'Nothing kept.' });
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    const ticket = drafts.issue('user-1', pageA.id);
+    if (!ticket) throw new Error('No ticket');
+    drafts.failed(ticket, kept);
+    drafts.revise('user-1', pageA.id, { title: kept.title, content: 'Edited under the conflict.' });
+    expect(drafts.peek('user-1', pageA.id)).toMatchObject({ content: 'Edited under the conflict.', error: kept.error });
+  });
+
+  it('drops everything when the session ends, and ignores writes queued before', () => {
+    const drafts = createUnsavedDrafts();
+    const kept1 = drafts.issue('user-1', pageA.id);
+    const late = drafts.issue('user-1', pageB.id);
+    if (!kept1 || !late) throw new Error('No ticket');
+    drafts.failed(kept1, kept);
+    drafts.clear();
+    expect(drafts.peek('user-1', pageA.id)).toBeUndefined();
+    drafts.failed(late, { ...kept, id: pageB.id });
+    expect(drafts.peek('user-1', pageB.id)).toBeUndefined();
+    expect(drafts.pending('user-1', pageB.id)).toBe(false);
+  });
+
+  it('comes back as the draft over the revision it was meant for', () => {
+    expect(restoreUnsavedDraft(kept, snapshotOf(pageA))).toBe('draft');
+  });
+
+  it('comes back as a conflict when its save raised one, or the server moved on since', () => {
+    expect(restoreUnsavedDraft({ ...kept, error: normalizedSaveConflict(pageA.id) }, snapshotOf(pageA))).toBe('conflict');
+    expect(restoreUnsavedDraft(kept, { ...snapshotOf(pageA), content: 'Another client.', updatedAt: '2026-09-01T10:05:00.000Z' })).toBe('conflict');
+  });
+
+  it('does not come back when the server holds it already, or on another page', () => {
+    expect(restoreUnsavedDraft(kept, { ...snapshotOf(pageA), content: kept.content, updatedAt: '2026-09-01T10:05:00.000Z' })).toBeNull();
+    expect(restoreUnsavedDraft(kept, snapshotOf(pageB))).toBeNull();
   });
 });

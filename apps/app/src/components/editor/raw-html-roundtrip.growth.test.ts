@@ -40,6 +40,23 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
+  // Each component's children right after its tag (#606), on a page with LF line breaks
+  // only: finding where each tag's line starts must not search the page before it.
+  it('prepares a page of components whose children touch their tags, on LF lines, in one pass (#606)', () => {
+    const tight = (n: number) => '<Note>\nx\n</Note>\n\n'.repeat(n);
+    const [small, large] = growthMs(parse, tight(3000), tight(12_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  // Many components on one long line (#606): a tag in the middle of a line is turned down
+  // at the first character before it that isn't indentation or a quote marker, without
+  // reading back to the line's start.
+  it('prepares one long line of components in one pass (#606)', () => {
+    const line = (n: number) => '<Note>x</Note> '.repeat(n);
+    const [small, large] = growthMs(parse, line(3000), line(12_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
   it('prepares one value holding n blank lines in one pass (#721)', () => {
     const longValue = (n: number) => `<Card title="${'a\n\n'.repeat(n)}">\n\nBody\n\n</Card>\n`;
     const [small, large] = growthMs(parse, longValue(5000), longValue(20_000), { budgetMs: 10_000 });
@@ -61,6 +78,30 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
     ['<iframe <Card title=" <span {', '<iframe <Card title=" <span { '],
   ])('prepares a page of unclosed %s in one pass', (_name, tag) => {
     const [small, large] = growthMs(parse, tag.repeat(1000), tag.repeat(4000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  // Every `{` after the first opens inside an unclosed comment: each must not search the
+  // rest of the page for its `*/` again (#714).
+  // An unreadable opener, then `\r\n\r…` line breaks, then its own `>` on a line: where the
+  // opener ends is read in one forward pass, with no backtracking over the breaks (#714).
+  it('prepares an unclosed opener whose `>` follows a run of mixed line breaks in one pass', () => {
+    const breaks = (n: number) => `<Card title={x\r${'\n\r'.repeat(n)}>`;
+    const [small, large] = growthMs(parse, breaks(10_000), breaks(40_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  // One tag, n attributes whose expressions open a comment that never closes: its
+  // attributes are read with one reader, not one search to the end of the tag each (#714).
+  it('prepares a tag of many attributes opening unclosed comments in one pass', () => {
+    const attributes = (n: number) => `<Card ${'a={/*} '.repeat(n)}/>\n\nAfter.`;
+    const [small, large] = growthMs(parse, attributes(5000), attributes(20_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  it('prepares a page of expressions opening unclosed comments in one pass', () => {
+    const comments = (n: number) => `{${'{/*'.repeat(n)}`;
+    const [small, large] = growthMs(parse, comments(10_000), comments(40_000), { budgetMs: 10_000 });
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 });
@@ -168,6 +209,10 @@ const indentedStepFences = (n: number) => '<Steps>\n<Step title="x">\n\n    ```j
 const openNotesBeforeScript = (n: number) => `${'<Note>\n\nText\n\n'.repeat(n)}<script>x`;
 /** `n` closed components, then a comment that runs to the end of the page. */
 const closedNotesBeforeComment = (n: number) => `${'<Note>\n\nText\n\n</Note>\n\n'.repeat(n)}<!-- x`;
+/** `n` characters of indented code blocks, each opening a comment that never closes:
+ *  each ends with its block, and must not search the rest of the page for `-->` again
+ *  (the #840 review's shape, #624). */
+const indentedUnclosedComments = (n: number) => '    <!--\n\np\n\n'.repeat(Math.ceil(n / 13)).slice(0, n);
 /** `n` Notes nested in one another, each holding a fence the reader reads at four
  *  columns (the #622 review's shape): each is kept whole without walking the Notes
  *  around it again. */
@@ -224,6 +269,14 @@ describe.runIf(growthTestsEnabled)('pages that end in an unclosed block, growth'
 
   it('prepares a page of closed components before an unclosed comment in one pass', () => {
     const [small, large] = growthMs(parse, closedNotesBeforeComment(250), closedNotesBeforeComment(1000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
+  // Searching the rest of the page for `-->` from each code block: 76,923 searches over
+  // 38.5 billion characters for a 1M-character page.
+  it('prepares a page of indented code blocks opening unclosed comments in one pass', () => {
+    const [small, large] = growthMs(parse, indentedUnclosedComments(25_000), indentedUnclosedComments(100_000), { budgetMs: 10_000 });
+    console.info(`#840 indented unclosed comments: ${small.toFixed(1)} → ${large.toFixed(1)} ms (limit ${linearGrowthLimit(small).toFixed(1)})`);
     expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
   });
 
