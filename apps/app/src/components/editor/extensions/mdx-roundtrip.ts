@@ -1155,15 +1155,18 @@ function scanTags(source: string, mask = codeMask(source), comments?: Array<Span
     const kind = isHtml ? 'html' : name === 'Frame' && !closing ? 'frame' : 'jsx';
     const attributesStart = cursor;
     cursor = readTag(attributesStart, kind);
+    const supported = !isHtml && !closing && SUPPORTED_MDX_COMPONENTS[name.toLowerCase()] && !HTML_ELEMENT_ALIASES.has(name);
+    // Where main's reading, with backslash escapes in quoted values, finds no end, MDX's
+    // reading, with none (`title="Old\"` is the title `Old\`), as a Frame's (#579), finds
+    // the tag the reader reads (#814). Main read such a tag as HTML and lost bytes; a tag
+    // main's reading finds is still read as main read it, so its edits are main's.
+    if (cursor < 0 && supported && kind === 'jsx') cursor = readTag(attributesStart, 'frame');
     if (cursor < 0) {
       // A supported component's opening tag that can't be read to its `>` (an
       // unterminated quote or `{`, an expression the scan can't read) is still
       // that component's tag: it pairs with its closing tag, and the editor keeps
-      // the two and what is between them byte for byte (brokenRanges, #714). One
-      // that reads with quoted values that have no backslash escapes, as a Frame's
-      // (`title="Old\">`), is left as before: Markdown reads it as HTML.
-      const supported = !isHtml && !closing && SUPPORTED_MDX_COMPONENTS[name.toLowerCase()] && !HTML_ELEMENT_ALIASES.has(name);
-      if (supported && (kind === 'frame' || readTag(attributesStart, 'frame') < 0)) {
+      // the two and what is between them byte for byte (brokenRanges, #714).
+      if (supported) {
         // Only its `<Name` is known; brokenRanges finds how far it is kept.
         const end = i + 1 + name.length;
         tokens.push({ start: i, end, name, raw: source.slice(i, end), closing, selfClosing: false, html: false, broken: true });
@@ -1639,14 +1642,42 @@ function keepRawHtml(
   return outermostRanges(kept);
 }
 
+/**
+ * Whether main's reading of a tag, with backslash escapes in its quoted values, ends
+ * where the tag does: at its last `>`. A tag only MDX's reading finds (scanTags, #814)
+ * runs past its end read that way, so its values are read with no escapes too.
+ */
+function endsWithEscapes(raw: string, from: number, expressionEnd: (start: number) => number | null): boolean {
+  let quote = '';
+  let escaped = false;
+  for (let cursor = from; cursor < raw.length; cursor++) {
+    const char = raw[cursor] ?? '';
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === quote) quote = '';
+      continue;
+    }
+    if (char === '"' || char === "'" || char === '`') quote = char;
+    else if (char === '{') {
+      const end = expressionEnd(cursor);
+      if (end === null) return false;
+      cursor = end - 1;
+    } else if (char === '>') return cursor === raw.length - 1;
+  }
+  return false;
+}
+
 function parseAttributes(raw: string, componentName: string): AttributeToken[] {
   const attrs: AttributeToken[] = [];
-  // A Frame's quoted values have no backslash escapes (see scanTags, #579).
-  const escapes = componentName !== 'Frame';
   let cursor = raw.indexOf(componentName) + componentName.length;
   const limit = raw.length - (raw.endsWith('/>') ? 2 : 1);
   // One reader for the whole tag: its searches are shared, not repeated per attribute.
   const expressionEnd = expressionEnds(raw);
+  // A Frame's quoted values have no backslash escapes (see scanTags, #579), nor do those
+  // of a tag only MDX's reading finds (#814).
+  const escapes =
+    componentName !== 'Frame' && (!/^[A-Z]/.test(componentName) || !raw.includes('\\') || endsWithEscapes(raw, cursor, expressionEnd));
   while (cursor < limit) {
     while (/\s/.test(raw[cursor] ?? '')) cursor++;
     if (cursor >= limit) break;
