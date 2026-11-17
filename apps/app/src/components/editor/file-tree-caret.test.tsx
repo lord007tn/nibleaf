@@ -402,13 +402,11 @@ describe('#846 structural clipboard controls', () => {
   it.each(['node', 'cross-node'])('keeps structural Markdown for a %s selection', async (kind) => {
     const editor = await make('<FileTree>\n\n<File name="index.ts" />\n\n<File name="util.ts" />\n\n</FileTree>');
     const tree = nodesOf(editor, 'mdxFileTree')[0];
-    const files = nodesOf(editor, 'mdxFile');
-    if (!tree || !files[0] || !files[1]) throw new Error('No tree or files');
+    const [first, second] = nodesOf(editor, 'mdxFile');
+    if (!tree || !first || !second) throw new Error('No tree or files');
     await act(async () => {
       const selection =
-        kind === 'node'
-          ? NodeSelection.create(editor.state.doc, tree.pos)
-          : TextSelection.create(editor.state.doc, files[0].pos + 1, files[1].pos + 3);
+        kind === 'node' ? NodeSelection.create(editor.state.doc, tree.pos) : TextSelection.create(editor.state.doc, first.pos + 1, second.pos + 3);
       editor.view.dispatch(editor.state.tr.setSelection(selection));
     });
     const copied = copySelection(editor);
