@@ -301,6 +301,118 @@ const onStackedTint = (color: string, background: string, weight: number, layers
   return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 };
 
+// #832: the shade search for a solid callout's --primary (#682) walks 40 steps
+// from the code accent towards white (black on a light code surface). Surface
+// overrides that put the tab list's muted fill on the far side of the code
+// surface leave no step that reads on every fill, and main then kept the code
+// accent. No single colour reads on both sides there, so the callout and a
+// boxed or pill tab list (the ones that draw the muted fill) get one each.
+describe("a solid callout's --primary when no shade of the code accent reads on every fill (#832)", () => {
+  const ISLAND = '.nibleaf-site-chrome[data-theme-callouts="solid"] [data-theme-component="callout"]{';
+  const TAB_LIST =
+    '.nibleaf-site-chrome[data-theme-callouts="solid"]:is([data-theme-tabs="boxed"],[data-theme-tabs="pills"]) [data-theme-component="callout"] [data-theme-component="tabs-list"]{';
+  const ruleBody = (css: string, opener: string) => {
+    const start = css.indexOf(opener);
+    return start < 0 ? undefined : css.slice(start + opener.length, css.indexOf('}', start + opener.length));
+  };
+  /** A rule's declarations; later ones win, as in the browser. */
+  const declarations = (body: string) =>
+    new Map(body.split(';').map((declaration) => [declaration.slice(0, declaration.indexOf(':')), declaration.slice(declaration.indexOf(':') + 1)]));
+  const calloutOf = (config: unknown) => {
+    const css = projectThemeCss(config as never);
+    const island = declarations(ruleBody(css, ISLAND) ?? '');
+    const resolve = (value: string) => (value.startsWith('var(') ? (island.get(value.slice('var('.length, -1)) ?? '') : value);
+    const tabListRule = ruleBody(css, TAB_LIST);
+    const code = hoverRgb(island.get('--theme-code') ?? '');
+    const calloutFills = (['info', 'success', 'warning', 'danger'] as const).map(
+      (tone) => [`${tone} callout`, hoverMixOklab(hoverRgb(island.get(`--theme-${tone}`) ?? ''), code, 0.14)] as const,
+    );
+    const primary = resolve(island.get('--primary') ?? '');
+    return {
+      raw: island.get('--primary') ?? '',
+      primary,
+      // A boxed or pill tab list takes its own --primary where the CSS sets one.
+      tabList: tabListRule === undefined ? primary : resolve(declarations(tabListRule).get('--primary') ?? ''),
+      tabListRule,
+      codeAccent: island.get('--theme-code-accent') ?? '',
+      muted: hoverRgb(island.get('--theme-muted') ?? ''),
+      calloutFills,
+    };
+  };
+  const toHex = (channels: number[]) => `#${channels.map((value) => Math.round(value).toString(16).padStart(2, '0')).join('')}`;
+  /** Links and an underline tab list's labels sit on the callout fills; a boxed or pill
+   * tab list's labels sit on its muted fill. */
+  const shortfalls = (config: unknown) => {
+    const { primary, tabList, muted, calloutFills } = calloutOf(config);
+    const label = JSON.stringify(config);
+    const found: string[] = [];
+    for (const [name, fill] of calloutFills) {
+      const ratio = hoverContrast(hoverRgb(primary), [...fill]);
+      if (ratio < 4.5) found.push(`${label}: --primary ${primary} on the ${name} ${ratio.toFixed(2)}:1`);
+    }
+    const ratio = hoverContrast(hoverRgb(tabList), muted);
+    if (ratio < 4.5) found.push(`${label}: the boxed or pill tab list's --primary ${tabList} on its muted fill ${ratio.toFixed(2)}:1`);
+    return found;
+  };
+  // A white tab list in a black callout: Signal's dark palette with two surfaces overridden.
+  const conflicting = { theme: { preset: 'signal', components: { callouts: 'solid' }, colors: { dark: { code: '#000000', muted: '#ffffff' } } } };
+
+  it('runs out of shades with a white tab list in a black callout, where no one colour reads on both', () => {
+    const { codeAccent, muted, calloutFills } = calloutOf(conflicting);
+    const fills = [muted, ...calloutFills.map(([, fill]) => [...fill])];
+    const weakest = (hex: string) => Math.min(...fills.map((fill) => hoverContrast(hoverRgb(hex), fill)));
+    // The code accent reads on the callout fills, not on the white tab list.
+    expect(codeAccent).toBe('#ab99ff');
+    expect(hoverContrast(hoverRgb(codeAccent), muted)).toBeLessThan(2.5);
+    // Each of the 40 steps towards white is lighter still, so none reads on the tab list.
+    const steps = Array.from({ length: 40 }, (_, index) => toHex(hoverMixOklab(hoverRgb(codeAccent), [255, 255, 255], 1 - (index + 1) / 40)));
+    expect(steps.filter((shade) => weakest(shade) >= 4.5)).toEqual([]);
+    // Nor does any colour: contrast depends only on luminance, and the best grey falls short.
+    const greys = Array.from({ length: 256 }, (_, level) => toHex([level, level, level]));
+    expect(Math.max(...greys.map(weakest))).toBeLessThan(4.5);
+  });
+
+  it('gives the callout and a boxed or pill tab list each a shade of the code accent that reads there', () => {
+    const { raw, tabListRule } = calloutOf(conflicting);
+    // main kept var(--theme-code-accent) for both, with no tab list rule: #ab99ff on the white tab list.
+    expect(raw).toBe('var(--theme-code-accent)');
+    expect(tabListRule).toBe('--primary:#796bb6');
+    expect(shortfalls(conflicting)).toEqual([]);
+  });
+
+  it('keeps every fill at 4.5:1 or more for conflicting surfaces, and adds the tab list rule only where the search runs out', () => {
+    // A light tab list on a dark code surface, and the mirror: a dark one on a light code surface.
+    const surfaces = [
+      ...['#ffffff', '#f5f5f5', '#e2e8f0', '#d4d4d4', '#bfbfbf', '#a3a3a3', '#8a8a8a', '#fde68a', '#bae6fd'].flatMap((muted) =>
+        ['#000000', '#050609', '#0d1117', '#1e293b'].map((code) => ({ code, muted })),
+      ),
+      ...['#000000', '#1e2230', '#334155', '#5b5b5b'].flatMap((muted) => ['#ffffff', '#f8fafc', '#fef3c7'].map((code) => ({ code, muted }))),
+    ];
+    const conflictingConfigs = (['harbor', 'manuscript', 'signal'] as const).flatMap((preset) =>
+      surfaces.flatMap(({ code, muted }) =>
+        [undefined, '#b96a3d', '#5546e8'].map((brand) => ({
+          theme: { preset, components: { callouts: 'solid' }, colors: { dark: { code, muted } } },
+          ...(brand ? { styling: { primaryColor: brand } } : {}),
+        })),
+      ),
+    );
+    expect(conflictingConfigs.flatMap(shortfalls)).toEqual([]);
+    expect(conflictingConfigs.filter((config) => calloutOf(config).tabListRule !== undefined).length).toBeGreaterThan(0);
+    // The presets, as shipped and with a brand, never run out: one --primary and no extra rule.
+    const shipped = (['harbor', 'manuscript', 'signal'] as const).flatMap((preset) =>
+      [undefined, '#b96a3d', '#5546e8', '#2d25e3', '#3a1408', '#000000', '#0b7a55', '#ffcc00', '#e11d48'].map((brand) => ({
+        theme: { preset, components: { callouts: 'solid' } },
+        ...(brand ? { styling: { primaryColor: brand } } : {}),
+      })),
+    );
+    expect(shipped.filter((config) => calloutOf(config).tabListRule !== undefined)).toEqual([]);
+  });
+
+  it('gives the same CSS for the same overrides', () => {
+    expect(projectThemeCss(conflicting as never)).toBe(projectThemeCss(structuredClone(conflicting) as never));
+  });
+});
+
 // #678: an active nav row draws `bg-primary/10`, and a tag inside it used to add
 // its own, so the tag's 10px accent text sat on a stacked tint of about 19% while
 // the accent shade is chosen to read on one 10% tint. The tag now drops its own
@@ -670,6 +782,27 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
         .digest('hex'),
     ]);
     expect(now).toEqual(main);
+  });
+
+  it("pins the shipped presets' CSS as emitted, without putting a solid callout's --primary back (#832)", () => {
+    // sha256 of projectThemeCss for the three presets at their default accents,
+    // with no normalisation. The sheet carries the light rules, the dark rules
+    // and the solid callout's island with its --primary, so a change to any of
+    // them for a shipped preset fails here even where the check above, which
+    // puts --primary back for brand accents, would pass. These equal main's
+    // hashes before #682 (and before #744): the shade search left them byte-identical.
+    const shipped = [
+      ['harbor', '01b3c913ed3809b0fec552a43a54fd1e643f86547c80ffe487069adfb08b1562'],
+      ['manuscript', '31ba0290105a814d1d8ee0182958980d31cf0ef80cc293594941153132471fcf'],
+      ['signal', '186e52215a81de2834fea748b2262fd4fe4e18f854ae3d605b43cfe45c37c0f0'],
+    ];
+    const now = shipped.map(([preset]) => [
+      preset,
+      createHash('sha256')
+        .update(projectThemeCss({ theme: { preset } } as never))
+        .digest('hex'),
+    ]);
+    expect(now).toEqual(shipped);
   });
 });
 
