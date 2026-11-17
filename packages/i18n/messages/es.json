@@ -5127,5 +5127,5 @@
   "editor_fix_explain_blogrootgroup": "Los lectores ven este nombre en la parte superior de la barra lateral. Cambia el nombre de la sección por lo que contienen sus páginas, como Guías.",
   "editor_fix_placed": "Resaltados {placed} de {total}",
   "editor_fix_previous": "Anterior",
-  "editor_fix_insideblock": "Este está dentro de un bloque que el editor visual conserva tal como se escribió. Edita la página como Markdown para corregirlo."
+  "editor_fix_insideblock": "Dentro de un bloque que se conserva tal como se escribió. Corrígelo en Markdown."
 }
