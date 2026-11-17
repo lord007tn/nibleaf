@@ -322,11 +322,6 @@ describe('#670: the keyboard in a file’s name', () => {
   });
 });
 
-/**
- * Each source, and the Markdown main writes for it (read from main at bc5e35d70): the editor
- * spaces block tags with blank lines, and keeps each tag as authored (quotes, spacing,
- * expressions, character references, a closing tag).
- */
 /** Exercise the browser copy event, including the production clipboard plugins. */
 const copySelection = (editor: Editor) => {
   const values: Record<string, string> = {};
@@ -423,6 +418,11 @@ describe('#846 structural clipboard controls', () => {
   });
 });
 
+/**
+ * Each source, and the Markdown main writes for it (read from main at bc5e35d70): the editor
+ * spaces block tags with blank lines, and keeps each tag as authored (quotes, spacing,
+ * expressions, character references, a closing tag).
+ */
 const SAVED_ON_MAIN: Array<[source: string, saved: string]> = [
   ['<FileTree>\n\nRead me.\n\n</FileTree>', '<FileTree>\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n</FileTree>'],
   ['<FileTree>\n\n</FileTree>', '<FileTree>\n\n<Folder>\n\n</Folder>\n\n</FileTree>'],
