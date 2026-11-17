@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
 import { contextStorage } from 'hono/context-storage';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AppError } from '@/errors';
+import { AppError, conflict } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 
 const mocks = vi.hoisted(() => ({
   role: 'member' as string,
   authorizeGitHub: vi.fn(async () => ({ login: 'octocat', name: 'The Octocat' })),
+  connectGitHub: vi.fn(),
 }));
 
 vi.mock('@/actions/projects', () => ({
@@ -27,7 +28,7 @@ vi.mock('@nibleaf/database', () => ({
 
 vi.mock('@/actions/git/workflow', () => ({
   authorizeGitHub: mocks.authorizeGitHub,
-  connectGitHub: vi.fn(),
+  connectGitHub: mocks.connectGitHub,
   getGitWorkspaceStatus: vi.fn(),
   queueGitOperation: vi.fn(),
   resolveGitConflict: vi.fn(),
@@ -88,5 +89,26 @@ describe('Git provider authorization permissions', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({ data: { login: 'octocat', name: 'The Octocat' } });
     expect(mocks.authorizeGitHub).toHaveBeenCalledWith('github_pat_12345678901234567890');
+  });
+});
+
+describe('Git connection save conflicts', () => {
+  it('returns an ordinary safe 409 to an authorized admin', async () => {
+    mocks.role = 'admin';
+    mocks.connectGitHub.mockRejectedValueOnce(conflict('The repository connection changed. Refresh and save again.'));
+    const response = await appFor(true).request('/projects/project-1/git/connection', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repository: 'fictional/docs', baseBranch: 'main', headBranch: 'nibleaf/docs' }),
+    });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toEqual({
+      error: { code: 'database:conflict', message: 'The repository connection changed. Refresh and save again.' },
+    });
+    expect(mocks.connectGitHub).toHaveBeenCalledWith('project-1', 'user', {
+      repository: 'fictional/docs',
+      baseBranch: 'main',
+      headBranch: 'nibleaf/docs',
+    });
   });
 });

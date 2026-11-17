@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { createJob, QUEUE_CONFIGS, QueueNames } from '@nibleaf/bullmq';
-import { type Prisma, prisma } from '@nibleaf/database';
+import { type GitConnection, type Prisma, prisma } from '@nibleaf/database';
 import {
   buildThemeRepository,
   type ThemeRepositoryOwnership,
@@ -11,7 +11,7 @@ import {
 } from '@nibleaf/shared/theme-repository';
 import { z } from 'zod';
 import { env } from '@/env';
-import { badRequest, notFound } from '@/errors';
+import { badRequest, conflict, notFound } from '@/errors';
 import { getDefaultBranch } from '../branches';
 import { getCurrentSnapshot } from '../deployments';
 import { serializeGitPage } from '../importers/content';
@@ -105,9 +105,10 @@ const audit = async (
   actorUserId: string | null,
   action: string,
   metadata: Record<string, unknown> = {},
+  db: Prisma.TransactionClient = prisma,
 ): Promise<void> => {
   const safe = Object.fromEntries(Object.entries(metadata).slice(0, MAX_AUDIT_METADATA));
-  await prisma.gitAuditEvent.create({
+  await db.gitAuditEvent.create({
     data: { connectionId: connection.id, projectId: connection.projectId, actorUserId, action, metadata: safe as Prisma.InputJsonValue },
   });
 };
@@ -124,14 +125,17 @@ const providerFor = (connection: { provider: string; credentialEncrypted: string
 
 type AuthoringPage = ObservedPage & { path: string };
 
-const authoringContext = async (connection: { projectId: string; importBranchId: string | null; importLanguageId: string | null }) => {
+const authoringContext = async (
+  connection: { projectId: string; importBranchId: string | null; importLanguageId: string | null },
+  db: Prisma.TransactionClient = prisma,
+) => {
   const [branch, language] = await Promise.all([
     connection.importBranchId
-      ? prisma.branch.findFirst({ where: { id: connection.importBranchId, projectId: connection.projectId }, omit: { forkBaseline: true } })
-      : getDefaultBranch(connection.projectId),
+      ? db.branch.findFirst({ where: { id: connection.importBranchId, projectId: connection.projectId }, omit: { forkBaseline: true } })
+      : getDefaultBranch(connection.projectId, db),
     connection.importLanguageId
-      ? prisma.language.findFirst({ where: { id: connection.importLanguageId, projectId: connection.projectId } })
-      : getDefaultLanguage(connection.projectId),
+      ? db.language.findFirst({ where: { id: connection.importLanguageId, projectId: connection.projectId } })
+      : getDefaultLanguage(connection.projectId, db),
   ]);
   if (!(branch && language)) throw badRequest('The configured Nibleaf branch or language no longer exists.');
   return { branch, language };
@@ -139,16 +143,19 @@ const authoringContext = async (connection: { projectId: string; importBranchId:
 
 type LocalRepositoryFile = { page: AuthoringPage | null; content: string; ownership: ThemeRepositoryOwnership };
 
-const localFiles = async (connection: { projectId: string; contentPath: string; importBranchId: string | null; importLanguageId: string | null }) => {
-  const { branch, language } = await authoringContext(connection);
+const localFiles = async (
+  connection: { projectId: string; contentPath: string; importBranchId: string | null; importLanguageId: string | null },
+  db: Prisma.TransactionClient = prisma,
+) => {
+  const { branch, language } = await authoringContext(connection, db);
   // Every page of the authoring scope, groups included: apply checks a
   // deletion's whole subtree against these revisions.
-  const pages: AuthoringPage[] = await prisma.page.findMany({
+  const pages: AuthoringPage[] = await db.page.findMany({
     where: { projectId: connection.projectId, branchId: branch.id, languageId: language.id },
     orderBy: { path: 'asc' },
     select: { id: true, parentId: true, kind: true, title: true, path: true, content: true, description: true, icon: true, updatedAt: true },
   });
-  const snapshot = await getCurrentSnapshot(connection.projectId);
+  const snapshot = await getCurrentSnapshot(connection.projectId, db);
   const pageById = new Map(pages.map((page) => [page.id, page]));
   const contentMap = themeContentMap(snapshot, connection.contentPath);
   const pageIdByPath = new Map(Object.entries(contentMap).map(([pageId, path]) => [path, pageId]));
@@ -172,29 +179,28 @@ const initializeFileStates = async (
     importLanguageId: string | null;
   },
   files: RemoteFile[],
+  db: Prisma.TransactionClient,
 ): Promise<void> => {
-  const { files: ours } = await localFiles(connection);
-  const { branch, language } = await authoringContext(connection);
-  await prisma.$transaction(
-    files.map((file) =>
-      prisma.gitFileState.upsert({
-        where: { connectionId_path: { connectionId: connection.id, path: file.path } },
-        create: {
-          connectionId: connection.id,
-          path: file.path,
-          ownership: themeRepositoryOwnershipForPath(file.path, connection.contentPath) ?? 'SHARED',
-          pageId: ours.get(file.path)?.page?.id,
-          branchId: branch.id,
-          languageId: language.id,
-          baseContent: file.content,
-          baseExists: true,
-          baseBlobSha: file.sha,
-          remoteBlobSha: file.sha,
-        },
-        update: {},
-      }),
-    ),
-  );
+  const { files: ours } = await localFiles(connection, db);
+  const { branch, language } = await authoringContext(connection, db);
+  for (const file of files) {
+    await db.gitFileState.upsert({
+      where: { connectionId_path: { connectionId: connection.id, path: file.path } },
+      create: {
+        connectionId: connection.id,
+        path: file.path,
+        ownership: themeRepositoryOwnershipForPath(file.path, connection.contentPath) ?? 'SHARED',
+        pageId: ours.get(file.path)?.page?.id,
+        branchId: branch.id,
+        languageId: language.id,
+        baseContent: file.content,
+        baseExists: true,
+        baseBlobSha: file.sha,
+        remoteBlobSha: file.sha,
+      },
+      update: {},
+    });
+  }
 };
 
 const remoteThemeRepositoryIssues = (files: RemoteFile[], snapshot: Awaited<ReturnType<typeof getCurrentSnapshot>>, contentPath: string) => {
@@ -213,7 +219,11 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
   const headBranch = normalizeGitBranch(input.headBranch, 'Authoring branch');
   if (headBranch === baseBranch) throw badRequest('Use a dedicated authoring branch distinct from the base branch.');
   const contentPath = normalizeGitPath(input.contentPath);
-  const existing = await prisma.gitConnection.findUnique({ where: { projectId } });
+  // The row and its PostgreSQL version must come from the same statement.
+  // xmin is request-local: never return or persist it as a client revision.
+  const [observed] = await prisma.$queryRaw<Array<GitConnection & { saveVersion: string }>>`
+    SELECT *, xmin::text AS "saveVersion" FROM "git_connection" WHERE "projectId" = ${projectId}`;
+  const existing = observed ?? null;
   if (!input.token && !existing?.credentialEncrypted) throw badRequest('A fine-grained GitHub token is required for the first connection.');
   const provider = input.token
     ? new GitHubProvider(input.token)
@@ -245,32 +255,8 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
     remoteBaseSha: baseSha,
     remoteHeadSha: headSha,
     ...(input.token ? { credentialEncrypted: encryptGitSecret(input.token), credentialFingerprint: gitCredentialFingerprint(input.token) } : {}),
+    ...(generatedSecret ? { webhookSecretEncrypted: encryptGitSecret(generatedSecret) } : {}),
   };
-  // Create values exist only for a first connection, which always has a token
-  // (checked above) and a generated webhook secret. An existing connection
-  // keeps its stored credential and webhook secret, so it must not build them.
-  const connection = existing
-    ? await prisma.gitConnection.update({ where: { projectId }, data: update })
-    : await prisma.gitConnection.upsert({
-        where: { projectId },
-        create: {
-          projectId,
-          provider: 'github',
-          repository,
-          baseBranch,
-          headBranch,
-          contentPath,
-          importBranchId: input.importBranchId || null,
-          importLanguageId: input.importLanguageId || null,
-          credentialEncrypted: encryptGitSecret(input.token as string),
-          credentialFingerprint: gitCredentialFingerprint(input.token as string),
-          webhookSecretEncrypted: encryptGitSecret(generatedSecret as string),
-          remoteBaseSha: baseSha,
-          remoteHeadSha: headSha,
-          createdById: actorUserId,
-        },
-        update,
-      });
   const topologyChanged = Boolean(
     existing &&
       (existing.repository !== repository ||
@@ -280,15 +266,60 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
         existing.importBranchId !== (input.importBranchId || null) ||
         existing.importLanguageId !== (input.importLanguageId || null)),
   );
-  if (topologyChanged) await prisma.gitFileState.deleteMany({ where: { connectionId: connection.id } });
-  await initializeFileStates(connection, files);
-  await audit(connection, actorUserId, existing ? 'connection.updated' : 'connection.created', {
-    provider: 'github',
-    repository,
-    baseBranch,
-    headBranch,
-    credentialRotated: Boolean(input.token && existing),
-  });
+  const changed = () => conflict('The repository connection changed. Refresh and save again.');
+  // Provider reads finish before opening this transaction. Hold the row lock
+  // through ledger initialization and audit, so success is one atomic commit.
+  const connection = await prisma.$transaction(
+    async (tx) => {
+      let saved: GitConnection;
+      if (existing) {
+        // READ COMMITTED rechecks xmin after a competing writer releases its lock.
+        // Timestamps can be equal; PostgreSQL row versions still differ.
+        const locked = await tx.$queryRaw<Array<{ id: string }>>`
+        SELECT "id" FROM "git_connection"
+        WHERE "id" = ${existing.id} AND "projectId" = ${projectId} AND xmin::text = ${existing.saveVersion}
+        FOR UPDATE`;
+        if (locked.length === 0) throw changed();
+        saved = await tx.gitConnection.update({ where: { id: existing.id, projectId }, data: update });
+      } else {
+        try {
+          saved = await tx.gitConnection.create({
+            data: {
+              ...update,
+              projectId,
+              provider: 'github',
+              credentialEncrypted: update.credentialEncrypted as string,
+              credentialFingerprint: update.credentialFingerprint as string,
+              webhookSecretEncrypted: update.webhookSecretEncrypted as string,
+              createdById: actorUserId,
+            },
+          });
+        } catch (error) {
+          // This create supplies no id; projectId is its only caller-provided
+          // unique key. A simultaneous first connection must never update it.
+          if (z.object({ code: z.literal('P2002') }).safeParse(error).success) throw changed();
+          throw error;
+        }
+      }
+      if (topologyChanged) await tx.gitFileState.deleteMany({ where: { connectionId: saved.id } });
+      await initializeFileStates(saved, files, tx);
+      await audit(
+        saved,
+        actorUserId,
+        existing ? 'connection.updated' : 'connection.created',
+        {
+          provider: 'github',
+          repository,
+          baseBranch,
+          headBranch,
+          credentialRotated: Boolean(input.token && existing),
+        },
+        tx,
+      );
+      return saved;
+    },
+    { ...GIT_APPLY_TRANSACTION, isolationLevel: 'ReadCommitted' },
+  );
   return { connection: redactConnection(connection), webhookSecret: generatedSecret };
 };
 
