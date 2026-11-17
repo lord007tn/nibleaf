@@ -357,7 +357,32 @@ describe("a solid callout's --primary when no shade of the code accent reads on 
   // A white tab list in a black callout: Signal's dark palette with two surfaces overridden.
   const conflicting = { theme: { preset: 'signal', components: { callouts: 'solid' }, colors: { dark: { code: '#000000', muted: '#ffffff' } } } };
 
-  it('runs out of shades with a white tab list in a black callout, where no one colour reads on both', () => {
+  /** WCAG relative luminance of unrounded sRGB channels. */
+  const luminanceOf = (channels: number[]) => {
+    const linear = (value: number) => {
+      const n = value / 255;
+      return n <= 0.040_45 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+    };
+    const [r = 0, g = 0, b = 0] = channels;
+    return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  };
+  /** The text luminances in [0, 1] that reach `ratio` on every fill: a fill of luminance f
+   * allows text at or below (f + 0.05) / ratio - 0.05, or at or above ratio * (f + 0.05) - 0.05. */
+  const readableLuminances = (fills: number[][], ratio: number) =>
+    fills
+      .map(luminanceOf)
+      .reduce<Array<readonly [number, number]>>(
+        (allowed, f) =>
+          allowed
+            .flatMap(([low, high]) => [
+              [low, Math.min(high, (f + 0.05) / ratio - 0.05)] as const,
+              [Math.max(low, ratio * (f + 0.05) - 0.05), high] as const,
+            ])
+            .filter(([low, high]) => low <= high),
+        [[0, 1]],
+      );
+
+  it('runs out of shades with a white tab list in a black callout, where no colour reads on all five fills with the margin', () => {
     const { codeAccent, muted, calloutFills } = calloutOf(conflicting);
     const fills = [muted, ...calloutFills.map(([, fill]) => [...fill])];
     const weakest = (hex: string) => Math.min(...fills.map((fill) => hoverContrast(hoverRgb(hex), fill)));
@@ -367,9 +392,19 @@ describe("a solid callout's --primary when no shade of the code accent reads on 
     // Each of the 40 steps towards white is lighter still, so none reads on the tab list.
     const steps = Array.from({ length: 40 }, (_, index) => toHex(hoverMixOklab(hoverRgb(codeAccent), [255, 255, 255], 1 - (index + 1) / 40)));
     expect(steps.filter((shade) => weakest(shade) >= 4.5)).toEqual([]);
-    // Nor does any colour: contrast depends only on luminance, and the best grey falls short.
-    const greys = Array.from({ length: 256 }, (_, level) => toHex([level, level, level]));
-    expect(Math.max(...greys.map(weakest))).toBeLessThan(4.5);
+    // Nor does any other colour, at the 4.51 the search requires (4.5 plus #744's 0.01
+    // margin). Contrast depends only on luminance, and every sRGB colour's luminance is
+    // in [0, 1], so an empty window of luminances rules out every colour, not just greys.
+    expect(readableLuminances(fills, 4.51)).toEqual([]);
+    // At exactly 4.5:1 a sliver remains: #757776 reads 4.5096:1 on its weakest fill, and
+    // the best any colour can do is the geometric mean of the lightest dark fill and the
+    // white tab list, about 4.5097:1. Both are below the margin.
+    expect(readableLuminances(fills, 4.5)).not.toEqual([]);
+    expect(weakest('#757776')).toBeCloseTo(4.5096, 4);
+    const lightestCalloutFill = Math.max(...calloutFills.map(([, fill]) => luminanceOf([...fill])));
+    const optimum = Math.sqrt((luminanceOf(muted) + 0.05) / (lightestCalloutFill + 0.05));
+    expect(optimum).toBeCloseTo(4.5097, 4);
+    expect(optimum).toBeLessThan(4.51);
   });
 
   it('gives the callout and a boxed or pill tab list each a shade of the code accent that reads there', () => {
@@ -406,6 +441,27 @@ describe("a solid callout's --primary when no shade of the code accent reads on 
       })),
     );
     expect(shipped.filter((config) => calloutOf(config).tabListRule !== undefined)).toEqual([]);
+  });
+
+  it('adds no tab list rule where a shade reads on every fill, even with overridden surfaces', () => {
+    const config = {
+      theme: { preset: 'signal', components: { callouts: 'solid' }, colors: { dark: { muted: '#2b3145' } } },
+      styling: { primaryColor: '#b96a3d' },
+    };
+    const { raw, tabListRule } = calloutOf(config);
+    // The #682 search found a shade, so there is one --primary and nothing else.
+    expect(raw).toMatch(/^#[0-9a-f]{6}$/);
+    expect(tabListRule).toBeUndefined();
+    expect(projectThemeCss(config as never)).not.toContain('tabs-list');
+  });
+
+  it('scopes the tab list rule to boxed and pill tab lists inside a solid callout', () => {
+    const css = projectThemeCss(conflicting as never);
+    // One rule names the tab list, and it is the scoped one: not underline tab lists,
+    // not tab lists outside a callout, not the drawer.
+    expect(css.split('[data-theme-component="tabs-list"]').length - 1).toBe(1);
+    expect(css).toContain(TAB_LIST);
+    expect(TAB_LIST).not.toMatch(/underline|data-site-drawer/);
   });
 
   it('gives the same CSS for the same overrides', () => {

@@ -309,13 +309,15 @@ const readableOnFills = (color: string, fills: Fill[]): string => {
  * when that endpoint fails on one of the fills: surface overrides that put the
  * muted fill on the far side of the code surface, such as a light `muted` with a
  * near-black `code` in the dark palette (#832). No preset and no accent gets
- * there; only conflicting overrides do. No single colour can then reach 4.5:1 on
- * both sides (a white tab list in a black callout leaves #777777 at 4.48:1 on
- * the best of them), so the two get their own colours, each the nearest shade of
- * the code accent that reads on its fills: `--primary` on the four callout fills,
- * which links and an underline tab list's labels sit on, and a `tabList` value
- * the CSS sets on boxed and pill tab lists, which draw the muted fill. Like the
- * rest of the theme, the result depends on the tokens alone. */
+ * there; only conflicting overrides do. There may then be no colour at all that
+ * reads on both sides with the margin: with a white tab list in Signal's black
+ * callout, no luminance reaches 4.51:1 on all five fills (the best any colour
+ * can do is about 4.5097:1; #757776 reads 4.5096:1). So the two get their own
+ * colours, each the nearest shade of the code accent that reads on its fills:
+ * `--primary` on the four callout fills, which links and an underline tab list's
+ * labels sit on, and a `tabList` value the CSS sets on boxed and pill tab lists,
+ * which draw the muted fill. Like the rest of the theme, the result depends on
+ * the tokens alone. */
 const solidCalloutPrimary = (tokens: ThemeColorTokens, authoredAccent: string): { primary: string; tabList?: string } => {
   const codeAccent = readableCodeAccent(authoredAccent, tokens.code);
   const calloutFills: Fill[] = [];
