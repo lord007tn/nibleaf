@@ -1,0 +1,395 @@
+{
+  "baseline": "c3285e6c2de544aa251b627924f513758be0815d",
+  "head": "c3285e6c2de544aa251b627924f513758be0815d",
+  "sourceSha256": {
+    "apps/app/src/components/settings/git-tab.tsx": "49625335888c85a2d95d289cd53d9fad457c5e4c85bdfb65ae4b93e20329e762",
+    "apps/app/src/features/site-git/api/git-settings-webhook-rotate.ts": "b90bb6b49d30f1b79207c3474f7dcf457ccca5b8a4a4a6b9f0cd9a3b6ce93c00",
+    "apps/app/src/features/site-git/components/use-git-settings-webhook-rotate-command.ts": "132667816b5d2f41fbb4ce36079ff23e317d2ba76c06d6967ac88f3bda240c63",
+    "apps/app/src/hooks/api/query-options.ts": "f976612e64623f29b3c403481a4194d0076fb617b4271e0f03369fba846eac45",
+    "apps/app/src/hooks/api/workspace-settings-response.ts": "34fcacacba2b97fca5e1ec079d73954187ecd52b92a4e550805517af8b09d2bc",
+    "packages/i18n/messages/en.json": "913dee35451a6344baa885528fd3e20b60e34e34a979b8b9cd4bfeddeaa2f155",
+    "packages/i18n/messages/ar.json": "f6542bf3253aae31ed668b31d067e3de9ed179123cc72527ff4e6fe9f740a099"
+  },
+  "dirtySource": "M apps/app/src/components/settings/git-tab.instant-writes.test.tsx\n M apps/app/src/components/settings/git-tab.tsx\n M apps/app/src/features/site-git/api/git-connection.ts\n M apps/app/src/features/site-git/api/git-settings-webhook-rotate.test.tsx\n M apps/app/src/features/site-git/api/git-settings-webhook-rotate.ts\n M apps/app/src/features/site-git/components/git-connection-form.test.tsx\n M apps/app/src/features/site-git/components/git-settings-webhook-rotate.test.tsx\n M apps/app/src/features/site-git/components/use-git-settings-webhook-rotate-command.ts\n M apps/app/src/hooks/api/query-options.ts\n M apps/app/src/hooks/api/types.ts\n M packages/i18n/messages/ar.json\n M packages/i18n/messages/bn.json\n M packages/i18n/messages/de.json\n M packages/i18n/messages/en.json\n M packages/i18n/messages/es.json\n M packages/i18n/messages/fr.json\n M packages/i18n/messages/hi.json\n M packages/i18n/messages/id.json\n M packages/i18n/messages/pt-BR.json\n M packages/i18n/messages/ru.json\n M packages/i18n/messages/ur.json\n M packages/i18n/messages/zh-CN.json\n M packages/i18n/src/message-ids.ts\n?? apps/app/src/hooks/api/workspace-settings-response.ts\n?? apps/app/src/hooks/api/workspace-settings.test.tsx",
+  "environment": "Local-only component harness; real product components/query/command; intercepted fictional HTTP; no server/DB/provider/production acceptance",
+  "attemptedNonlocal": 0,
+  "recordings": ["one-time-reveal-copy-reload.webm"],
+  "evidence": [
+    {
+      "file": "en-390-light.png",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "keyboardCopy": true,
+      "focusPreserved": true,
+      "pageErrors": [],
+      "states": [
+        {
+          "name": "Configured: Rotate, with no reveal path",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 0
+        },
+        {
+          "name": "Rotation request held",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "One-time answer after original-site settings readback",
+          "secretField": 1,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "Reload: configured, no secret or persistent reveal",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        }
+      ]
+    },
+    {
+      "file": "en-390-dark.png",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "keyboardCopy": true,
+      "focusPreserved": true,
+      "pageErrors": [],
+      "states": [
+        {
+          "name": "Configured: Rotate, with no reveal path",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 0
+        },
+        {
+          "name": "Rotation request held",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "One-time answer after original-site settings readback",
+          "secretField": 1,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "Reload: configured, no secret or persistent reveal",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        }
+      ]
+    },
+    {
+      "file": "ar-390-light.png",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "keyboardCopy": true,
+      "focusPreserved": true,
+      "pageErrors": [],
+      "states": [
+        {
+          "name": "Configured: Rotate, with no reveal path",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 0
+        },
+        {
+          "name": "Rotation request held",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "One-time answer after original-site settings readback",
+          "secretField": 1,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "Reload: configured, no secret or persistent reveal",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        }
+      ]
+    },
+    {
+      "file": "ar-390-dark.png",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "keyboardCopy": true,
+      "focusPreserved": true,
+      "pageErrors": [],
+      "states": [
+        {
+          "name": "Configured: Rotate, with no reveal path",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 0
+        },
+        {
+          "name": "Rotation request held",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "One-time answer after original-site settings readback",
+          "secretField": 1,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "Reload: configured, no secret or persistent reveal",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        }
+      ]
+    },
+    {
+      "file": "en-1440-light.png",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "keyboardCopy": true,
+      "focusPreserved": true,
+      "pageErrors": [],
+      "states": [
+        {
+          "name": "Configured: Rotate, with no reveal path",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 0
+        },
+        {
+          "name": "Rotation request held",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "One-time answer after original-site settings readback",
+          "secretField": 1,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "Reload: configured, no secret or persistent reveal",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        }
+      ]
+    },
+    {
+      "file": "en-1440-dark.png",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "keyboardCopy": true,
+      "focusPreserved": true,
+      "pageErrors": [],
+      "states": [
+        {
+          "name": "Configured: Rotate, with no reveal path",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 0
+        },
+        {
+          "name": "Rotation request held",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "One-time answer after original-site settings readback",
+          "secretField": 1,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "Reload: configured, no secret or persistent reveal",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        }
+      ]
+    },
+    {
+      "file": "ar-1440-light.png",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "keyboardCopy": true,
+      "focusPreserved": true,
+      "pageErrors": [],
+      "states": [
+        {
+          "name": "Configured: Rotate, with no reveal path",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 0
+        },
+        {
+          "name": "Rotation request held",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "One-time answer after original-site settings readback",
+          "secretField": 1,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "Reload: configured, no secret or persistent reveal",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        }
+      ]
+    },
+    {
+      "file": "ar-1440-dark.png",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "keyboardCopy": true,
+      "focusPreserved": true,
+      "pageErrors": [],
+      "states": [
+        {
+          "name": "Configured: Rotate, with no reveal path",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 0
+        },
+        {
+          "name": "Rotation request held",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "One-time answer after original-site settings readback",
+          "secretField": 1,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        },
+        {
+          "name": "Reload: configured, no secret or persistent reveal",
+          "secretField": 0,
+          "retained": {
+            "mutations": 0,
+            "containsCredential": false
+          },
+          "posts": 1
+        }
+      ]
+    }
+  ]
+}

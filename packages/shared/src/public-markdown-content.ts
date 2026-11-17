@@ -1,4 +1,4 @@
-import { escapeDisallowedExportHtml } from './export-html';
+import { type ExportFallbackContext, escapeDisallowedExportHtml } from './export-html';
 import { markdownCodeSpans } from './markup-scan';
 import { buildMdxTree, type MdxNode, tokenizeMdx } from './mdx-tokens';
 
@@ -303,16 +303,17 @@ const projectMdx = (source: string, target: Target): Segment[] => renderNodes(bu
 
 /** Convert supported authored MDX to inert Markdown for the HTML and PDF exports, with the same
  *  tokenizer and projection as `.md`. Code is never rewritten; `marked` escapes raw HTML. */
-export const portablePublicMdxMarkdown = (source: string): string =>
+export const portablePublicMdxMarkdown = (source: string, context?: ExportFallbackContext): string =>
   escapeDisallowedExportHtml(
     projectMdx(source, 'export')
       .map((segment) => segment.value)
       .join(''),
+    context,
   );
 
 /** Authored MDX as public Markdown (`.md`, llms files): projected, with active markup, MDX
  *  expressions and ESM removed and prose escaped once. Code stays exactly as written. */
-export const normalizePublicMarkdownContent = (markdown: string): string => {
+export const normalizePublicMarkdownContent = (markdown: string, context?: ExportFallbackContext): string => {
   const parts: string[] = [];
   // Whether the current output line holds only spaces and quote markers so far, so prose that
   // follows starts the line. (Unambiguous patterns: nothing backtracks on long lines.)
@@ -341,5 +342,5 @@ export const normalizePublicMarkdownContent = (markdown: string): string => {
         .join('\n'),
     );
   }
-  return escapeDisallowedExportHtml(parts.join('').trim());
+  return escapeDisallowedExportHtml(parts.join('').trim(), context);
 };

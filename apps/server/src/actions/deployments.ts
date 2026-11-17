@@ -110,11 +110,18 @@ export interface DeploymentPageDiff {
   published?: { path: string; languageCode: string };
 }
 
-/** Read the complete effective publish input once and compose the same snapshot
+/** Server-only companion: never persist or serialize alongside the public snapshot. */
+interface CurrentDraft {
+  snapshot: SiteSnapshot;
+  rawBodies: { kind: string; content: string }[];
+  baselines: { bodyHash: string }[];
+}
+
+/** Load the complete effective publish input through one read path and compose the snapshot
  * shape the worker will validate. Keeping preflight and worker inputs aligned
  * prevents the dashboard from approving a different route graph. A publish
  * passes its transaction, so the read happens under the project lock. */
-export const getCurrentSnapshot = async (projectId: string, db: Prisma.TransactionClient = prisma): Promise<SiteSnapshot> => {
+export const getCurrentDraft = async (projectId: string, db: Prisma.TransactionClient = prisma): Promise<CurrentDraft> => {
   const project = await db.project.findUnique({
     where: { id: projectId },
     include: {
@@ -122,6 +129,9 @@ export const getCurrentSnapshot = async (projectId: string, db: Prisma.Transacti
       branches: { orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }], omit: { forkBaseline: true } },
       openApiDocument: true,
       addons: { select: { key: true, enabled: true, config: true } },
+      // Query-based relation loading adds one small SELECT, indexed by the
+      // (projectId, bodyHash) primary key. It is not joined into the project SQL.
+      starterBaselines: { select: { bodyHash: true } },
       organization: {
         select: {
           usagePlan: {
@@ -151,12 +161,16 @@ export const getCurrentSnapshot = async (projectId: string, db: Prisma.Transacti
     createdAt: createdAt.toISOString(),
     updatedAt: updatedAt.toISOString(),
   }));
-  return buildSnapshot(
+  const snapshot = buildSnapshot(
     { ...project, addons: projectAddonRowsForDelivery(project.addons, project.organization.usagePlan, await loadDefaultDeliveryPlan(db)) },
     pageRows,
     new Date().toISOString(),
   );
+  return { snapshot, rawBodies: pages.map(({ kind, content }) => ({ kind, content })), baselines: project.starterBaselines };
 };
+
+export const getCurrentSnapshot = async (projectId: string, db: Prisma.TransactionClient = prisma): Promise<SiteSnapshot> =>
+  (await getCurrentDraft(projectId, db)).snapshot;
 
 /** Stable JSON compare (key-order independent) for the page `config` blob. */
 function stableEqual(a: unknown, b: unknown): boolean {
@@ -390,14 +404,15 @@ export const getDeploymentDiff = async (projectId: string, id: string) => {
  * Diff every current docs version against the last published snapshot, so the
  * publish dialog can show exactly which pages will change (Mintlify-style).
  * A caller that must bind a decision to the exact state it summarized (the MCP
- * publish preview) passes the `draftSnapshot` it already read.
+ * publish preview) passes the server-only draft companion it already read.
  */
-export const getPendingChanges = async (projectId: string, draftSnapshot?: SiteSnapshot): Promise<PendingChanges> => {
+export const getPendingChanges = async (projectId: string, draft?: CurrentDraft): Promise<PendingChanges> => {
   const latest = await getLatestReadyDeployment(projectId);
-  const validation = validateSnapshotRedirects(draftSnapshot ?? (await getCurrentSnapshot(projectId)));
+  const input = draft ?? (await getCurrentDraft(projectId));
+  const validation = validateSnapshotRedirects(input.snapshot);
   const currentSnapshot = validation.snapshot;
   const current = currentSnapshot.pages.filter((page) => page.kind === 'PAGE');
-  const hasRealContent = hasRealPageContent(currentSnapshot.pages);
+  const hasRealContent = hasRealPageContent(input.rawBodies, input.baselines);
 
   // No baseline → first publish: every page is new.
   if (!latest?.snapshot) {
