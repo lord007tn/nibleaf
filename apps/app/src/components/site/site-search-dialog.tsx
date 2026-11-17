@@ -9,13 +9,24 @@ import { siteSearchT } from '@nibleaf/i18n/site-search';
 import { useDebouncedValue } from '@tanstack/react-pacer';
 import { useRouter } from '@tanstack/react-router';
 import { AlertCircle, Clock, CornerDownLeft, FileText, Hash, Languages, Loader2, RotateCcw, Search, SearchX, Sparkles } from 'lucide-react';
-import { type CSSProperties, Fragment, type ReactNode, type RefObject, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  Fragment,
+  type ReactNode,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
 import { Highlight } from '@/components/site/site-search-highlight';
 import { takeSearchKeystrokes } from '@/components/site/site-search-keystrokes';
 import { useSlashShortcut, writeSlashShortcut } from '@/components/site/site-search-shortcut';
 import { useVisualViewport } from '@/components/site/use-visual-viewport';
-import { capSearchQueryEdit, exceedsSearchQueryLimit, truncateSearchQuery } from '@/functions/site-search-input';
+import { capSearchQueryEdit, exceedsSearchQueryLimit, SEARCH_QUERY_MAX_LENGTH, truncateSearchQuery } from '@/functions/site-search-input';
 import { useSiteSearch } from '@/hooks/api/site-search';
 import type { SiteSearchHit } from '@/hooks/api/types';
 import { LANGUAGE_CATALOG } from '@/lib/languages';
@@ -200,16 +211,21 @@ export default function SiteSearchDialog({
   // heading (lib/site-link-navigation.ts) instead of going back to the trigger.
   const openingPageRef = useRef(false);
   const [query, setQuery] = useState('');
+  const [queryLimited, setQueryLimited] = useState(false);
+  const queryLimitId = useId();
+  useEffect(() => {
+    if (!open) setQueryLimited(false);
+  }, [open]);
   // Results from before the field was emptied don't stand in for a new search:
   // until fresh results arrive, a new search after clearing shows skeletons.
   const [keepPrevious, setKeepPrevious] = useState(true);
   // Enter pressed while a keyword search loads opens the best match once it arrives.
   const [pendingEnter, setPendingEnter] = useState(false);
-  const applyQuery = (value: string) => {
+  const applyQuery = useCallback((value: string) => {
     setQuery(value);
     setPendingEnter(false);
     if (!value.trim()) setKeepPrevious(false);
-  };
+  }, []);
   // The field holds at most the API's limit in code points, typed or pasted, like
   // `maxLength` (which would count UTF-16 units and cut emoji queries short): of
   // an edit that overflows, only what fits is kept, with the caret after it. An
@@ -217,20 +233,63 @@ export default function SiteSearchDialog({
   // it sends); `compositionBaseRef` is the value it started from.
   const composingRef = useRef(false);
   const compositionBaseRef = useRef('');
+  const pastedTextRef = useRef<string | null>(null);
+  // Composition commits and edits without a cancelable beforeinput reconcile
+  // here; ordinary typing and paste use the native undo-preserving path below.
   const capEdit = (input: HTMLInputElement, previous: string) => {
     const { value, caret } = capSearchQueryEdit(previous, input.value, input.selectionEnd);
     // Set the field now with the caret in place; the controlled value then
     // renders the same string and leaves the caret where it is.
     input.value = value;
     input.setSelectionRange(caret, caret);
+    setQueryLimited(true);
     applyQuery(value);
   };
   const changeQuery = (raw: string) => {
     const input = inputRef.current;
-    if (composingRef.current || !exceedsSearchQueryLimit(raw)) applyQuery(raw);
-    else if (input?.value === raw) capEdit(input, query);
-    else applyQuery(truncateSearchQuery(raw));
+    if (composingRef.current) applyQuery(raw);
+    else if (!exceedsSearchQueryLimit(raw)) {
+      setQueryLimited(false);
+      applyQuery(raw);
+    } else if (input?.value === raw) capEdit(input, query);
+    else {
+      setQueryLimited(true);
+      applyQuery(truncateSearchQuery(raw));
+    }
   };
+  const beforeInput = useCallback(
+    (event: InputEvent) => {
+      const input = event.currentTarget;
+      const pasted = pastedTextRef.current;
+      pastedTextRef.current = null;
+      if (!(input instanceof HTMLInputElement) || !event.cancelable || event.isComposing || composingRef.current) return;
+      // Chromium's plain-input paste event has no `data`; the preceding paste
+      // event supplies it. Single-line inputs discard CR/LF before insertion.
+      const text = event.inputType === 'insertFromPaste' ? (pasted ?? event.dataTransfer?.getData('text/plain'))?.replace(/[\r\n]/g, '') : event.data;
+      if ((event.inputType !== 'insertText' && event.inputType !== 'insertFromPaste') || text == null) return;
+      const previous = input.value;
+      const start = input.selectionStart ?? previous.length;
+      const end = input.selectionEnd ?? start;
+      const next = previous.slice(0, start) + text + previous.slice(end);
+      if (!exceedsSearchQueryLimit(next)) return;
+      event.preventDefault();
+      const capped = capSearchQueryEdit(previous, next, start + text.length);
+      if (capped.value !== previous) {
+        // A native edit retains the browser's undo entry. Assigning `value`
+        // after the paste instead clears that history. Replace the field as
+        // one edit so Ctrl+Z restores the exact pre-paste text.
+        input.select();
+        const document = input.ownerDocument;
+        if (typeof document.execCommand !== 'function' || !document.execCommand('insertText', false, capped.value)) {
+          input.setRangeText(capped.value, 0, input.value.length, 'end');
+        }
+        applyQuery(input.value);
+      }
+      input.setSelectionRange(capped.caret, capped.caret);
+      setQueryLimited(true);
+    },
+    [applyQuery],
+  );
   // Every key typed since search was asked for (while the code loaded and the
   // field mounted) becomes the query, caret at the end. With nothing typed, a
   // reopened dialog selects its old query so typing starts a new search. This
@@ -256,6 +315,7 @@ export default function SiteSearchDialog({
         // What the reader typed replaces the old query, even when they deleted
         // it all again: an edited, now empty buffer stays empty.
         const seeded = truncateSearchQuery(typed.text);
+        setQueryLimited(seeded !== typed.text);
         // Set the field now so the caret lands after the text; the controlled
         // value then renders the same string and leaves the caret in place.
         input.value = seeded;
@@ -274,10 +334,14 @@ export default function SiteSearchDialog({
   }, []);
   const attachInput = useCallback(
     (node: HTMLInputElement | null) => {
+      inputRef.current?.removeEventListener('beforeinput', beforeInput);
       inputRef.current = node;
-      if (node) placeInput(node);
+      if (node) {
+        node.addEventListener('beforeinput', beforeInput);
+        placeInput(node);
+      }
     },
-    [placeInput],
+    [placeInput, beforeInput],
   );
   useLayoutEffect(() => {
     if (!open) {
@@ -601,14 +665,20 @@ export default function SiteSearchDialog({
               ref={attachInput}
               placeholder={placeholder?.trim() || t('searchPlaceholder')}
               value={query}
+              aria-describedby={queryLimited ? queryLimitId : undefined}
               onValueChange={changeQuery}
+              onPaste={(event) => {
+                pastedTextRef.current = event.clipboardData.getData('text/plain');
+              }}
               onCompositionStart={() => {
                 composingRef.current = true;
                 compositionBaseRef.current = query;
+                setQueryLimited(false);
               }}
               onCompositionEnd={(event) => {
                 composingRef.current = false;
                 if (exceedsSearchQueryLimit(event.currentTarget.value)) capEdit(event.currentTarget, compositionBaseRef.current);
+                else applyQuery(event.currentTarget.value);
               }}
               enterKeyHint="search"
               className="h-14 px-2 text-base placeholder:text-muted-foreground/80 sm:text-[15px]"
@@ -645,8 +715,14 @@ export default function SiteSearchDialog({
             </button>
           </div>
 
-          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-            {statusMessage}
+          <div
+            id={queryLimitId}
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            className={queryLimited ? 'border-border border-b px-5 py-2 text-muted-foreground text-sm' : 'sr-only'}
+          >
+            {queryLimited ? t('searchQueryLimit', { limit: SEARCH_QUERY_MAX_LENGTH }) : statusMessage}
           </div>
 
           <div aria-busy={queryPending} className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
@@ -710,7 +786,9 @@ export default function SiteSearchDialog({
                           key={item}
                           value={`recent-${index}`}
                           onSelect={() => {
-                            setQuery(truncateSearchQuery(item));
+                            const value = truncateSearchQuery(item);
+                            setQueryLimited(value !== item);
+                            applyQuery(value);
                             inputRef.current?.focus();
                           }}
                           className={ROW}

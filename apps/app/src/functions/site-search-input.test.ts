@@ -321,6 +321,38 @@ describe('reader search query limit, against the public API', () => {
 describe('fitting an edit of the search field into the limit', () => {
   const a = (n: number) => 'a'.repeat(n);
 
+  it.each(['👩🏽‍💻', '👨‍👩‍👧‍👦', 'بَ', 'e\u0301', '🇸🇦', '\r\n'])('cuts before the whole grapheme %j when it cannot fit', (cluster) => {
+    const prefix = a(199);
+    expect(truncateSearchQuery(`${prefix}${cluster}z`)).toBe(prefix);
+    const room = 200 - [...cluster].length;
+    expect(truncateSearchQuery(`${a(room)}${cluster}z`)).toBe(`${a(room)}${cluster}`);
+    expect(capSearchQueryEdit(prefix, `b${cluster}${prefix}`, 1 + cluster.length)).toEqual({ value: `b${prefix}`, caret: 1 });
+  });
+
+  it('does not retain part of a single grapheme larger than the entire budget', () => {
+    expect(truncateSearchQuery(`ب${'َ'.repeat(200)}`)).toBe('');
+    const oversized = `${a(199)}بَ`;
+    expect(capSearchQueryEdit(oversized, `${oversized}َ`, 202)).toEqual({ value: a(199), caret: 199 });
+  });
+
+  it('preserves a full existing grapheme when a new combining mark is rejected', () => {
+    const full = `${a(199)}ب`;
+    expect(capSearchQueryEdit(full, `${full}َ`, 201)).toEqual({ value: full, caret: 200 });
+    const joined = `${a(199)}e`;
+    expect(capSearchQueryEdit(joined, `${joined}\u0301`, 201)).toEqual({ value: joined, caret: 200 });
+    const combiningTail = `${a(198)}بَ`;
+    // An insertion between an existing base and mark must not swallow the mark.
+    expect(capSearchQueryEdit(combiningTail, `${a(198)}بxَ`, 200)).toEqual({ value: combiningTail, caret: 198 });
+    const emojiTail = `${a(198)}😀z`;
+    // A common high surrogate is not a safe caret position after rejection.
+    expect(capSearchQueryEdit(emojiTail, `${a(198)}😁‍💻z`, 203)).toEqual({ value: emojiTail, caret: 198 });
+  });
+
+  it('keeps the suffix and selection replacement when a ZWJ emoji cannot fit', () => {
+    const before = `${a(190)}zzzzzzzzzz`;
+    expect(capSearchQueryEdit(before, `${a(190)}👩🏽‍💻zzzzzzzz`, 197)).toEqual({ value: `${a(190)}zzzzzzzz`, caret: 190 });
+  });
+
   it('tells an over-long value apart in code points', () => {
     expect(exceedsSearchQueryLimit(a(200))).toBe(false);
     expect(exceedsSearchQueryLimit(a(201))).toBe(true);

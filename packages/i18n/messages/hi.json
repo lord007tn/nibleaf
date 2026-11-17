@@ -2202,6 +2202,7 @@
   "site_searchdescription": "इस साइट पर पूर्ण-पाठ और अस्पष्ट खोज।",
   "site_searchempty": "कोई परिणाम नहीं।",
   "site_searchprompt": "खोजने के लिए टाइप करें…",
+  "site_searchquerylimit": "खोज {limit} अक्षरों तक सीमित है।",
   "site_results": "परिणाम",
   "site_loading": "लोड हो रहा है…",
   "site_articleloadfailed": "यह पेज लोड नहीं हो सका। फिर से कोशिश करें",

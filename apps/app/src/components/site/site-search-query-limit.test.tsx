@@ -69,14 +69,16 @@ const until = async (ready: () => boolean) => {
   for (let attempt = 0; attempt < 100 && !ready(); attempt += 1) await settle();
 };
 
-async function render(lang = 'en') {
-  const container = document.createElement('div');
-  document.body.append(container);
-  root = createRoot(container);
+async function render(lang = 'en', open = true) {
+  if (!root) {
+    const container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+  }
   await act(async () =>
     root?.render(
       <QueryClientProvider client={client}>
-        <SiteSearchDialog projectId="docs" open onOpenChange={vi.fn()} lang={lang} />
+        <SiteSearchDialog projectId="docs" open={open} onOpenChange={vi.fn()} lang={lang} />
       </QueryClientProvider>,
     ),
   );
@@ -111,6 +113,7 @@ const compose = (type: 'compositionstart' | 'compositionend', data = '') =>
   });
 
 const caret = () => [input()?.selectionStart, input()?.selectionEnd];
+const limitHint = () => document.getElementById(input()?.getAttribute('aria-describedby') ?? '');
 
 /** Types `text` one code point at a time at the end of the field. */
 const typeText = async (text: string) => {
@@ -132,6 +135,105 @@ const expectSearchWithinLimit = async () => {
 };
 
 describe('reader search query length', () => {
+  it('rejects overflow in beforeinput, preserving the field and its selection', async () => {
+    await render();
+    const full = 'a'.repeat(200);
+    await setField(full, 'insertText');
+    input()?.setSelectionRange(50, 50);
+    const event = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: 'b' });
+    await act(async () => input()?.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+    expect(input()?.value).toBe(full);
+    expect(caret()).toEqual([50, 50]);
+    expect(limitHint()?.textContent).toContain('200');
+  });
+
+  it('fits a cancelable edit before insertion and preserves its selected suffix', async () => {
+    await render();
+    await setField('a'.repeat(200), 'insertText');
+    input()?.setSelectionRange(50, 60);
+    const event = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: `👩🏽‍💻${'b'.repeat(20)}` });
+    await act(async () => input()?.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+    expect(input()?.value).toBe(`${'a'.repeat(50)}👩🏽‍💻${'b'.repeat(6)}${'a'.repeat(140)}`);
+    expect(caret()).toEqual([63, 63]);
+    await expectSearchWithinLimit();
+  });
+
+  it('collapses an identical selection replacement after the retained text', async () => {
+    await render();
+    await setField('a'.repeat(200), 'insertText');
+    input()?.setSelectionRange(50, 60);
+    const event = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: 'a'.repeat(20) });
+    await act(async () => input()?.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+    expect(input()?.value).toBe('a'.repeat(200));
+    expect(caret()).toEqual([60, 60]);
+  });
+
+  it('leaves active Latin composition beforeinput alone even when it overflows', async () => {
+    await render();
+    await setField('a'.repeat(200), 'insertText');
+    await compose('compositionstart');
+    const event = new InputEvent('beforeinput', { bubbles: true, cancelable: true, inputType: 'insertText', data: 'e' });
+    await act(async () => input()?.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(false);
+    expect(limitHint()).toBeNull();
+  });
+
+  it('clears a stale limit announcement on close and reopen', async () => {
+    await render();
+    await setField('x'.repeat(201), 'insertFromPaste');
+    expect(limitHint()?.textContent).toContain('200');
+    await render('en', false);
+    await render();
+    expect(limitHint()).toBeNull();
+    expect(input()?.value).toBe('x'.repeat(200));
+  });
+
+  it.each([
+    ['en', 'Search is limited to 200 characters.'],
+    ['ar', 'الحد الأقصى للبحث هو 200 حرفًا.'],
+  ])('shows and politely announces a cut in %s, without repeating held keystrokes', async (lang, message) => {
+    await render(lang);
+    await setField('a'.repeat(200), 'insertText');
+    expect(limitHint()).toBeNull();
+    await editField(`${'a'.repeat(200)}b`, 201, 'insertText');
+    const hint = limitHint();
+    expect(hint?.textContent).toBe(message);
+    expect(hint?.getAttribute('aria-live')).toBe('polite');
+    expect(hint?.getAttribute('role')).toBe('status');
+    expect(hint?.className).not.toContain('sr-only');
+    const mutations: MutationRecord[] = [];
+    const observer = new MutationObserver((records) => mutations.push(...records));
+    if (hint) observer.observe(hint, { subtree: true, childList: true, characterData: true });
+    await typeText('bbbb');
+    observer.disconnect();
+    expect(mutations).toHaveLength(0);
+    await setField('short', 'deleteContentBackward');
+    expect(limitHint()).toBeNull();
+    expect(hint?.textContent).not.toBe(message);
+    await setField('z'.repeat(201), 'insertFromPaste');
+    expect(limitHint()?.textContent).toBe(message);
+  });
+
+  it.each(['👩🏽‍💻', 'بَ', '🇸🇦'])('keeps whole graphemes through paste and the real transport: %s', async (cluster) => {
+    await render();
+    await setField(`${'x'.repeat(199)}${cluster}extra`, 'insertFromPaste');
+    expect(input()?.value).toBe('x'.repeat(199));
+    expect(limitHint()?.textContent).toContain('200');
+    await expectSearchWithinLimit();
+    expect(sentQueries().at(-1)).toBe('x'.repeat(199));
+  });
+
+  it('caps a pre-filled field on input without keeping part of a huge grapheme', async () => {
+    await render();
+    await setField(`ب${'َ'.repeat(200)}`, 'insertReplacementText');
+    expect(input()?.value).toBe('');
+    expect(limitHint()?.textContent).toContain('200');
+    expect(sentQueries()).toEqual([]);
+  });
+
   it('stops typing at 200 characters and never sends a longer query', async () => {
     await render();
     await setField('x'.repeat(198), 'insertText');
@@ -169,21 +271,67 @@ describe('reader search query length', () => {
     await expectSearchWithinLimit();
     // The old UTF-16 cut (300 units) also left half an emoji at the end.
     expect(input()?.value).toBe(`${ARABIC.repeat(199)}${EMOJI}`);
+    expect(limitHint()?.textContent).toContain('200');
+  });
+
+  it('cuts held keystrokes before a ZWJ grapheme and announces the cut', async () => {
+    beginSearchKeystrokes();
+    const held = document.activeElement as HTMLInputElement;
+    held.value = `${'x'.repeat(199)}👨‍👩‍👧‍👦`;
+    await render();
+    expect(input()?.value).toBe('x'.repeat(199));
+    expect(limitHint()?.textContent).toContain('200');
+    await expectSearchWithinLimit();
   });
 
   it('keeps a recent search longer than the limit from reaching the API whole', async () => {
     // Stored by an older reader, or edited by hand.
-    window.localStorage.setItem('nibleaf:site-search:recent:docs', JSON.stringify(['y'.repeat(260)]));
+    const stored = JSON.stringify([`${'y'.repeat(199)}👩🏽‍💻`]);
+    window.localStorage.setItem('nibleaf:site-search:recent:docs', stored);
     await render();
     const recent = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((item) => item.textContent?.includes('yyyy'));
     expect(recent).toBeDefined();
     await act(async () => recent?.click());
     await expectSearchWithinLimit();
-    expect(input()?.value).toBe('y'.repeat(200));
+    expect(input()?.value).toBe('y'.repeat(199));
+    expect(limitHint()?.textContent).toContain('200');
+    expect(window.localStorage.getItem('nibleaf:site-search:recent:docs')).toBe(stored);
   });
 
   describe('editing inside a full field (#851 review)', () => {
     const full = `${'a'.repeat(199)}z`;
+
+    it.each(['input-first', 'compositionend-first'])('reconciles Latin composition in %s order without cutting while active', async (order) => {
+      await render();
+      const prefix = 'a'.repeat(198);
+      await setField(prefix, 'insertText');
+      await compose('compositionstart');
+      const composed = `${prefix}e\u0301xy`;
+      await editField(composed, composed.length, 'insertCompositionText');
+      expect(input()?.value).toBe(composed);
+      expect(limitHint()).toBeNull();
+      if (order === 'input-first') await editField(composed, composed.length, 'insertText');
+      expect(input()?.value).toBe(composed);
+      await compose('compositionend', 'e\u0301xy');
+      if (order === 'compositionend-first') await editField(composed, composed.length, 'insertText');
+      expect(input()?.value).toBe(`${prefix}e\u0301`);
+      expect(caret()).toEqual([200, 200]);
+      expect(limitHint()?.textContent).toContain('200');
+      await expectSearchWithinLimit();
+      expect(sentQueries().at(-1)).toBe(`${prefix}e\u0301`);
+    });
+
+    it('accepts an under-limit compositionend value before its final input event', async () => {
+      await render();
+      await setField('a'.repeat(198), 'insertText');
+      await compose('compositionstart');
+      await editField(`${'a'.repeat(198)}e`, 199, 'insertCompositionText');
+      await compose('compositionend', 'é');
+      await editField(`${'a'.repeat(198)}é`, 199, 'insertText');
+      expect(input()?.value).toBe(`${'a'.repeat(198)}é`);
+      expect(limitHint()).toBeNull();
+      await expectSearchWithinLimit();
+    });
 
     it('drops a character typed mid-string at the limit and keeps the caret where it was typed', async () => {
       await render();

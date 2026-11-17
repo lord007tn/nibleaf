@@ -2265,6 +2265,7 @@
   "site_searchdescription": "Búsqueda de texto completo y difusa en este sitio.",
   "site_searchempty": "Sin resultados.",
   "site_searchprompt": "Escribe para buscar…",
+  "site_searchquerylimit": "La búsqueda está limitada a {limit} caracteres.",
   "site_results": "Resultados",
   "site_loading": "Cargando…",
   "site_articleloadfailed": "No se pudo cargar esta página. Reintentar",

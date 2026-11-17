@@ -2281,6 +2281,7 @@
   "site_searchdescription": "Полнотекстовый и нечеткий поиск по этому сайту.",
   "site_searchempty": "Никаких результатов.",
   "site_searchprompt": "Введите для поиска…",
+  "site_searchquerylimit": "Поисковый запрос ограничен {limit} символами.",
   "site_results": "Результаты",
   "site_loading": "Загрузка…",
   "site_articleloadfailed": "Не удалось загрузить страницу. Повторить",

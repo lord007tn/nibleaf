@@ -2201,6 +2201,7 @@
   "site_searchdescription": "Pencarian teks lengkap dan fuzzy di situs ini.",
   "site_searchempty": "Tidak ada hasil.",
   "site_searchprompt": "Ketik untuk mencari…",
+  "site_searchquerylimit": "Pencarian dibatasi hingga {limit} karakter.",
   "site_results": "Hasil",
   "site_loading": "Memuat…",
   "site_articleloadfailed": "Halaman ini tidak dapat dimuat. Coba lagi",

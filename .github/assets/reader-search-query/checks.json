@@ -1,0 +1,24 @@
+{
+  "checks": [
+    "en/desktop: native paste, whole grapheme, visible localized hint, direction and no horizontal overflow",
+    "en/mobile: native paste, whole grapheme, visible localized hint, direction and no horizontal overflow",
+    "ar/desktop: native paste, whole grapheme, visible localized hint, direction and no horizontal overflow",
+    "ar/mobile: native paste, whole grapheme, visible localized hint, direction and no horizontal overflow",
+    "en: native Ctrl+Z restores exact pre-paste text \"Search guide \"",
+    "ar: native Ctrl+Z restores exact pre-paste text \"دليل البحث \"",
+    "native selection replacement keeps surrounding text and caret",
+    "identical capped selection replacement collapses the caret after retained text",
+    "repeated rejected keys do not mutate the announcement",
+    "accepted edit clears the stale hint",
+    "synthetic Latin composition in real Chromium: input-first, uncut until compositionend",
+    "synthetic Latin composition in real Chromium: compositionend-first, uncut until compositionend",
+    "Chromium protocol Latin composition stays uncut while active and reconciles its native commit event sequence",
+    "all 8 observed API queries are <=200 code points"
+  ],
+  "nonLocalAttempts": [],
+  "browser": "Chromium",
+  "limitations": [
+    "Synthetic composition ordering is covered by component tests and browser events; no OS IME, Safari or Gboard device acceptance.",
+    "Mobile screenshots use a desktop Chromium viewport; no software keyboard or screen-reader speech acceptance."
+  ]
+}

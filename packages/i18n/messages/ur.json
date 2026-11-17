@@ -2256,6 +2256,7 @@
   "site_searchdescription": "اس سائٹ پر مکمل متن اور مبہم تلاش۔",
   "site_searchempty": "کوئی نتیجہ نہیں نکلا۔",
   "site_searchprompt": "تلاش کرنے کے لیے ٹائپ کریں…",
+  "site_searchquerylimit": "تلاش کی حد {limit} حروف ہے۔",
   "site_results": "نتائج",
   "site_loading": "لوڈ ہو رہا ہے…",
   "site_articleloadfailed": "یہ صفحہ لوڈ نہیں ہو سکا۔ دوبارہ کوشش کریں",
