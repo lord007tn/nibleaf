@@ -74,8 +74,13 @@ describe('list items led by a block (#604, #865)', () => {
     expect([
       '- <Note>\n\n  Text\n\n  </Note>\n\n- next',
       '- <Custom>\n\n  stuff\n\n  </Custom>\n\n- next',
+      '- <Accordion title="A">\n\n  Text\n\n  </Accordion>\n\n- next',
       '- <div class="note">\n  <b>Bold</b>\n  </div>\n\nOutro.',
-    ].map((source) => ({ source, saved: getMarkdown(open(source)) }))).toMatchInlineSnapshot();
+    ].flatMap((source) => [
+      source,
+      source.split('\n').map((line) => `> ${line}`).join('\n'),
+      `1. Item\n\n${source.split('\n').map((line) => `   ${line}`).join('\n')}\n\n2. Next`,
+    ]).map((source) => ({ source, saved: getMarkdown(open(source)) }))).toMatchInlineSnapshot();
   });
   it.each(acceptance)('#858 interaction case $index stays nested after deleting its first textblock, EN and AR', ({ source }) => {
     for (const page of [source, source.replace(/Alpha|Beta|Charlie|Delta|Top|Gamma|Tail|Item|Next/g, (word) => arabic[word] ?? word)]) {
