@@ -5127,5 +5127,5 @@
   "editor_fix_explain_blogrootgroup": "Les lecteurs voient ce nom en haut de la barre latérale. Renommez la section d’après le contenu de ses pages, par exemple Guides.",
   "editor_fix_placed": "{placed} sur {total} mis en évidence",
   "editor_fix_previous": "Précédent",
-  "editor_fix_insideblock": "Celui-ci se trouve dans un bloc que l’éditeur visuel conserve tel qu’il a été écrit. Modifiez la page en Markdown pour le corriger."
+  "editor_fix_insideblock": "Dans un bloc conservé tel qu’il a été écrit. Corrigez-le en Markdown."
 }

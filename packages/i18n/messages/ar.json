@@ -5196,5 +5196,5 @@
   "editor_fix_explain_blogrootgroup": "يرى القرّاء هذا الاسم أعلى الشريط الجانبي. أعد تسمية القسم بما تحتويه صفحاته، مثل «الأدلة».",
   "editor_fix_placed": "تم تمييز {placed} من {total}",
   "editor_fix_previous": "السابق",
-  "editor_fix_insideblock": "هذه داخل كتلة يحتفظ بها المحرر المرئي كما كُتبت. حرّر الصفحة بصيغة Markdown لإصلاحها."
+  "editor_fix_insideblock": "داخل كتلة محفوظة كما كُتبت. أصلحها بصيغة Markdown."
 }
