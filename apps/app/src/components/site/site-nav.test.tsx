@@ -45,6 +45,36 @@ describe('isVersionIndependentNavNode', () => {
 });
 
 describe('SiteNav page subtrees', () => {
+  it('omits empty groups, including nested empty groups, without grouping the following page', () => {
+    const group = (id: string, children: NavNode[] = []): NavNode => ({ ...page(id, children), kind: 'GROUP' });
+    const nodes = [group('Guides', [group('Empty nested group')]), page('Quickstart'), group('Reference', [page('API')])];
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<SiteNav nodes={nodes} projectId="docs" currentPath="Quickstart" toggleLabel="Toggle" />);
+    expect(container.textContent).not.toContain('Guides');
+    expect(container.textContent).not.toContain('Empty nested group');
+    expect(container.textContent).toContain('Reference');
+    const quickstart = container.querySelector('a');
+    expect(quickstart?.textContent).toBe('Quickstart');
+    expect(quickstart?.closest('ul')?.parentElement?.tagName).toBe('NAV');
+  });
+
+  it('names the list each section toggle controls, while it is shown (P3-PUB-029)', async () => {
+    const section = (id: string, children: NavNode[]): NavNode => ({ id, kind: 'GROUP', title: id, path: '', icon: null, tag: null, children });
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const tree = [section('Guides', [page('start'), section('Advanced', [page('tuning')])])];
+    await act(async () => root.render(<SiteNav nodes={tree} projectId="docs" currentPath="start" toggleLabel="Toggle subpages" />));
+    const toggles = Array.from(container.querySelectorAll<HTMLButtonElement>('li > button[aria-expanded="true"]'));
+    expect(toggles.length).toBeGreaterThan(0);
+    for (const toggle of toggles) {
+      const controlled = toggle.getAttribute('aria-controls');
+      expect(controlled).toBeTruthy();
+      expect(container.querySelector(`[id="${controlled}"]`)).not.toBeNull();
+    }
+  });
+
   it('collapses pages with subpages unless the current page is inside them', async () => {
     const { container } = await renderNav('faq');
     expect(visibleTitles(container)).toEqual(['guide', 'faq']);
@@ -147,6 +177,17 @@ describe('SiteNav sections', () => {
     expect(basics?.getAttribute('aria-expanded')).toBe('false');
   });
 
+  // P1-DASH-002: groups and pages now keep the author's order, so a page can
+  // follow a section; it must not read as that section's last page.
+  it('starts an unlabelled block for top-level pages after a section, and only there', () => {
+    const nodes = [page('intro'), group('Basics', [page('setup')]), page('faq'), page('changelog'), group('Empty', []), page('about')];
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<SiteNav nodes={nodes} projectId="docs" currentPath="intro" toggleLabel="Toggle" />);
+    const blockStarts = [...container.querySelectorAll('[data-nav-block-start]')].map((item) => item.querySelector('a')?.textContent);
+    expect(blockStarts).toEqual(['faq']);
+    expect(container.querySelector('[data-nav-block-start]')?.className).toContain('mt-7');
+  });
+
   it('names the page list so it is distinct from the header links', () => {
     const html = renderToString(
       <SiteNav nodes={sections} projectId="docs" currentPath="intro" toggleLabel="Toggle subpages" label="Documentation pages" />,
@@ -237,4 +278,75 @@ describe('SiteNav long titles', () => {
     }
     expect(container.querySelector('.truncate')).toBeNull();
   });
+
+  it('puts a tag on its own line under the title, so the title keeps the whole row (#537)', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToString(<SiteNav nodes={tree} projectId="docs" currentPath="ai" toggleLabel="Toggle subpages" />);
+    const tag = container.querySelector<HTMLElement>('[data-nav-tag]');
+    expect(tag?.textContent).toBe('New');
+    // Directly under the title in one column, not a fixed column beside it.
+    expect(tag?.previousElementSibling?.hasAttribute('data-nav-label')).toBe(true);
+    expect(tag?.parentElement?.className).toContain('flex-col');
+    expect(tag?.parentElement?.className).toContain('flex-1');
+    expect(tag?.className).not.toMatch(/\b(shrink-0|ms-auto)\b/);
+  });
+
+  it('drops the tag tint on an active row, which already draws it, and keeps it elsewhere (#678)', () => {
+    const tagIn = (currentPath: string) => {
+      const container = document.createElement('div');
+      container.innerHTML = renderToString(<SiteNav nodes={tree} projectId="docs" currentPath={currentPath} toggleLabel="Toggle subpages" />);
+      return container.querySelector<HTMLElement>('[data-nav-tag]');
+    };
+    // Active: the row's own bg-primary/10 is the only tint; a ring keeps the tag distinct.
+    const active = tagIn('ai');
+    expect(active?.closest('a')?.getAttribute('aria-current')).toBe('page');
+    expect(active?.closest('a')?.className).toContain('bg-primary/10');
+    expect(active?.className).not.toContain('bg-primary/10');
+    expect(active?.className).toMatch(/\bring-1\b/);
+    expect(active?.className).toContain('text-primary');
+    // Inactive: unchanged, the tag carries its own tint and no ring.
+    const inactive = tagIn('leaf');
+    expect(inactive?.closest('a')?.hasAttribute('aria-current')).toBe(false);
+    expect(inactive?.className).toContain('bg-primary/10');
+    expect(inactive?.className).not.toMatch(/\bring-/);
+  });
+
+  it('shows the whole title on hover or focus only when two lines are not enough', async () => {
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    await act(async () => root.render(<SiteNav nodes={tree} projectId="docs" currentPath="ai" toggleLabel="Toggle subpages" />));
+    const labelFor = (prefix: string) =>
+      [...container.querySelectorAll<HTMLElement>('[data-nav-label]')].find((span) => span.textContent === `${prefix}: ${long}`);
+    // No tooltips until the reader points at a label: the server HTML has none.
+    expect(container.querySelector('[data-nav-label][title]')).toBeNull();
+    for (const prefix of ['Section', 'Group', 'Page']) {
+      const label = labelFor(prefix);
+      if (!label) throw new Error(`Missing ${prefix} label`);
+      const control = label.closest('a, button') as HTMLElement;
+      const name = control.textContent;
+      // Clamped (jsdom has no layout, so the sizes are given): the whole title.
+      Object.defineProperties(label, { scrollHeight: { configurable: true, value: 60 }, clientHeight: { configurable: true, value: 40 } });
+      act(() => control.focus());
+      expect(label.getAttribute('title'), prefix).toBe(`${prefix}: ${long}`);
+      // Fits: no tooltip repeating what's on screen.
+      act(() => control.blur());
+      Object.defineProperties(label, { scrollHeight: { configurable: true, value: 40 } });
+      act(() => control.focus());
+      expect(label.hasAttribute('title'), prefix).toBe(false);
+      // Keyboard focus shows no native tooltip, so the focused control's label unclamps instead.
+      expect(label.className).toContain('in-focus-visible:line-clamp-none');
+      expect(control.contains(label)).toBe(true);
+      // The control's accessible name (its text) is unchanged.
+      expect(control.textContent).toBe(name);
+      expect(control.hasAttribute('title')).toBe(false);
+    }
+  });
+});
+
+it('keeps a raw navigation page named v2 inside version v2', () => {
+  window.history.replaceState(null, '', '/sites/docs/ar/v2/start');
+  const html = renderToString(<SiteNav nodes={[page('v2')]} projectId="docs" currentPath="start" lang="ar" version="v2" toggleLabel="Toggle" />);
+  expect(html).toContain('href="/sites/docs/ar/v2/v2"');
 });

@@ -1,0 +1,2266 @@
+{
+  "environment": "Isolated component fixture: the real Banner settings form and reader SiteBanner (before: merge base with main; after: this PR) with the real design system, EN/AR catalogs, Query cache and mutations. API answered by interception with fictional data; a project PATCH merges config.banner one level deep like the server mergeConfig. Not the dashboard, the server or production. The real server merge is covered by apps/server/src/actions/projects.test.ts.",
+  "baseline": "3d8f4cb5ddcd06bf6a94cbba76e3ea90d13f0617",
+  "head": "746559cbc6f70c37429afaaaccf8492f0a91416b",
+  "attempted": 0,
+  "sheets": [
+    "sheet-en-1440-light.png",
+    "sheet-en-1440-dark.png",
+    "sheet-en-390-light.png",
+    "sheet-en-390-dark.png",
+    "sheet-ar-1440-light.png",
+    "sheet-ar-1440-dark.png",
+    "sheet-ar-390-light.png",
+    "sheet-ar-390-dark.png"
+  ],
+  "captures": [
+    {
+      "scene": "clear-message",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "linkLabel": "See plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "",
+            "linkLabel": "See plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": null
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": {
+          "href": "https://example.com/pricing",
+          "name": "View details"
+        }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "See plans"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "See plans",
+            "linkUrl": ""
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": ""
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": ""
+      },
+      "saveVisible": false,
+      "reader": { "message": "Spring sale: 20% off annual plans", "link": null }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "linkLabel": "See plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "",
+            "linkLabel": "See plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": null
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": {
+          "href": "https://example.com/pricing",
+          "name": "View details"
+        }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "See plans"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "See plans",
+            "linkUrl": ""
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": ""
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": ""
+      },
+      "saveVisible": false,
+      "reader": { "message": "Spring sale: 20% off annual plans", "link": null }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "linkLabel": "See plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "",
+            "linkLabel": "See plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": null
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": {
+          "href": "https://example.com/pricing",
+          "name": "View details"
+        }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "See plans"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "See plans",
+            "linkUrl": ""
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": ""
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": ""
+      },
+      "saveVisible": false,
+      "reader": { "message": "Spring sale: 20% off annual plans", "link": null }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "linkLabel": "See plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "",
+            "linkLabel": "See plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": null
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": {
+          "href": "https://example.com/pricing",
+          "name": "View details"
+        }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "See plans"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "Spring sale: 20% off annual plans",
+        "link": { "href": "https://example.com/pricing", "name": "See plans" }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "dir": "ltr",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "Spring sale: 20% off annual plans",
+            "linkLabel": "See plans",
+            "linkUrl": ""
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": ""
+        }
+      },
+      "fields": {
+        "message": "Spring sale: 20% off annual plans",
+        "linkLabel": "See plans",
+        "linkUrl": ""
+      },
+      "saveVisible": false,
+      "reader": { "message": "Spring sale: 20% off annual plans", "link": null }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "linkLabel": "عرض الخطط",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "",
+            "linkLabel": "عرض الخطط",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": null
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": {
+          "href": "https://example.com/pricing",
+          "name": "عرض التفاصيل"
+        }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "عرض الخطط"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "عرض الخطط",
+            "linkUrl": ""
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": ""
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": ""
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": null
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "linkLabel": "عرض الخطط",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "",
+            "linkLabel": "عرض الخطط",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": null
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": {
+          "href": "https://example.com/pricing",
+          "name": "عرض التفاصيل"
+        }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "عرض الخطط"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "عرض الخطط",
+            "linkUrl": ""
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": ""
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": ""
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": null
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "linkLabel": "عرض الخطط",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "",
+            "linkLabel": "عرض الخطط",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": null
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": {
+          "href": "https://example.com/pricing",
+          "name": "عرض التفاصيل"
+        }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "عرض الخطط"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "عرض الخطط",
+            "linkUrl": ""
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": ""
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": ""
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": null
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "linkLabel": "عرض الخطط",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-message",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "",
+            "linkLabel": "عرض الخطط",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": null
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-linkLabel",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "",
+            "linkUrl": "https://example.com/pricing"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": {
+          "href": "https://example.com/pricing",
+          "name": "عرض التفاصيل"
+        }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "عرض الخطط"
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": "https://example.com/pricing"
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": "https://example.com/pricing"
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": { "href": "https://example.com/pricing", "name": "عرض الخطط" }
+      }
+    },
+    {
+      "scene": "clear-linkUrl",
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "dir": "rtl",
+      "overflow": false,
+      "errors": [],
+      "request": {
+        "config": {
+          "banner": {
+            "enabled": true,
+            "dismissible": true,
+            "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+            "linkLabel": "عرض الخطط",
+            "linkUrl": ""
+          }
+        }
+      },
+      "readback": {
+        "navbar": { "ctaLabel": "Start" },
+        "seo": { "metaTitle": "Fixture docs" },
+        "banner": {
+          "enabled": true,
+          "dismissible": true,
+          "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+          "linkLabel": "عرض الخطط",
+          "linkUrl": ""
+        }
+      },
+      "fields": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "linkLabel": "عرض الخطط",
+        "linkUrl": ""
+      },
+      "saveVisible": false,
+      "reader": {
+        "message": "تخفيضات الربيع: خصم ٢٠٪ على الخطط السنوية",
+        "link": null
+      }
+    }
+  ],
+  "recording": {
+    "file": "flow-after-en-1440.webm",
+    "locale": "en",
+    "width": 1440,
+    "theme": "light",
+    "requests": [
+      { "method": "GET", "path": "/api/app/projects/site-1/languages" },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/site-1",
+        "answer": {
+          "id": "site-1",
+          "config": {
+            "navbar": { "ctaLabel": "Start" },
+            "seo": { "metaTitle": "Fixture docs" },
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "Spring sale: 20% off annual plans",
+              "linkLabel": "See plans",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        }
+      },
+      { "method": "GET", "path": "/api/app/projects/site-1/languages" },
+      {
+        "method": "PATCH",
+        "path": "/api/app/projects/site-1",
+        "body": {
+          "config": {
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "Spring sale: 20% off annual plans",
+              "linkLabel": "",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        },
+        "answer": {
+          "id": "site-1",
+          "config": {
+            "navbar": { "ctaLabel": "Start" },
+            "seo": { "metaTitle": "Fixture docs" },
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "Spring sale: 20% off annual plans",
+              "linkLabel": "",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/site-1",
+        "answer": {
+          "id": "site-1",
+          "config": {
+            "navbar": { "ctaLabel": "Start" },
+            "seo": { "metaTitle": "Fixture docs" },
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "Spring sale: 20% off annual plans",
+              "linkLabel": "",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/site-1",
+        "answer": {
+          "id": "site-1",
+          "config": {
+            "navbar": { "ctaLabel": "Start" },
+            "seo": { "metaTitle": "Fixture docs" },
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "Spring sale: 20% off annual plans",
+              "linkLabel": "",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        }
+      },
+      { "method": "GET", "path": "/api/app/projects/site-1/languages" },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/site-1",
+        "answer": {
+          "id": "site-1",
+          "config": {
+            "navbar": { "ctaLabel": "Start" },
+            "seo": { "metaTitle": "Fixture docs" },
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "Spring sale: 20% off annual plans",
+              "linkLabel": "",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        }
+      },
+      { "method": "GET", "path": "/api/app/projects/site-1/languages" },
+      {
+        "method": "PATCH",
+        "path": "/api/app/projects/site-1",
+        "body": {
+          "config": {
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "",
+              "linkLabel": "",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        },
+        "answer": {
+          "id": "site-1",
+          "config": {
+            "navbar": { "ctaLabel": "Start" },
+            "seo": { "metaTitle": "Fixture docs" },
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "",
+              "linkLabel": "",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/site-1",
+        "answer": {
+          "id": "site-1",
+          "config": {
+            "navbar": { "ctaLabel": "Start" },
+            "seo": { "metaTitle": "Fixture docs" },
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "",
+              "linkLabel": "",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        }
+      },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/site-1",
+        "answer": {
+          "id": "site-1",
+          "config": {
+            "navbar": { "ctaLabel": "Start" },
+            "seo": { "metaTitle": "Fixture docs" },
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "",
+              "linkLabel": "",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        }
+      },
+      { "method": "GET", "path": "/api/app/projects/site-1/languages" },
+      {
+        "method": "GET",
+        "path": "/api/app/projects/site-1",
+        "answer": {
+          "id": "site-1",
+          "config": {
+            "navbar": { "ctaLabel": "Start" },
+            "seo": { "metaTitle": "Fixture docs" },
+            "banner": {
+              "enabled": true,
+              "dismissible": true,
+              "message": "",
+              "linkLabel": "",
+              "linkUrl": "https://example.com/pricing"
+            }
+          }
+        }
+      },
+      { "method": "GET", "path": "/api/app/projects/site-1/languages" }
+    ],
+    "steps": [
+      {
+        "step": "Saved banner: message, label and address",
+        "fields": {
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "See plans",
+          "linkUrl": "https://example.com/pricing"
+        },
+        "saveVisible": false,
+        "reader": {
+          "message": "Spring sale: 20% off annual plans",
+          "link": { "href": "https://example.com/pricing", "name": "See plans" }
+        }
+      },
+      {
+        "step": "Cleared the link label",
+        "fields": {
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        },
+        "saveVisible": false,
+        "reader": {
+          "message": "Spring sale: 20% off annual plans",
+          "link": { "href": "https://example.com/pricing", "name": "See plans" }
+        }
+      },
+      {
+        "step": "Saved: the bar closes, the label stays empty",
+        "fields": {
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        },
+        "saveVisible": false,
+        "reader": {
+          "message": "Spring sale: 20% off annual plans",
+          "link": {
+            "href": "https://example.com/pricing",
+            "name": "View details"
+          }
+        }
+      },
+      {
+        "step": "Reopened: the label is still empty; the reader link reads \"View details\"",
+        "fields": {
+          "message": "Spring sale: 20% off annual plans",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        },
+        "saveVisible": false,
+        "reader": {
+          "message": "Spring sale: 20% off annual plans",
+          "link": {
+            "href": "https://example.com/pricing",
+            "name": "View details"
+          }
+        }
+      },
+      {
+        "step": "Cleared the message, saved and reopened: the message stays empty and the reader shows no banner",
+        "fields": {
+          "message": "",
+          "linkLabel": "",
+          "linkUrl": "https://example.com/pricing"
+        },
+        "saveVisible": false,
+        "reader": null
+      }
+    ]
+  }
+}

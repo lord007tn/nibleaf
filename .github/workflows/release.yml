@@ -13,7 +13,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  rollback-floor:
+    uses: ./.github/workflows/rollback-floor.yml
+
   release:
+    needs: rollback-floor
     name: Publish GitHub release
     runs-on: ubuntu-latest
     steps:

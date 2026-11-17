@@ -5,6 +5,22 @@ const ephemeral = new WeakMap<Document, Map<string, Choice>>();
 const storageKey = (projectId: string) => `nibleaf.analytics.consent.${projectId}`;
 /** Fired on this window when a choice is written here; other tabs hear the `storage` event. */
 const CHANGE_EVENT = 'nibleaf:site-consent';
+/** Fired when the reader asks to change their choice (the footer's "Privacy choices"). */
+const MANAGE_EVENT = 'nibleaf:site-consent-manage';
+
+/** Reopen this site's consent banner, so the reader can change their choice. */
+export const openSiteConsentChoices = (projectId: string) => {
+  window.dispatchEvent(new CustomEvent(MANAGE_EVENT, { detail: projectId }));
+};
+
+/** Calls `onManage` when the reader asks to change this site's choice. */
+export const subscribeSiteConsentManage = (projectId: string, onManage: () => void): (() => void) => {
+  const listener = (event: Event) => {
+    if (event instanceof CustomEvent && event.detail === projectId) onManage();
+  };
+  window.addEventListener(MANAGE_EVENT, listener);
+  return () => window.removeEventListener(MANAGE_EVENT, listener);
+};
 
 export const readSiteConsent = (projectId: string): Choice => {
   if (typeof document === 'undefined') return 'pending';

@@ -1,0 +1,413 @@
+{
+  "environment": "Component fixture: main's Styling section (origin/main) and this branch's (features/site-styling, through its compatibility re-export) with the real design system, EN/AR catalogs, project query and save mutation, in an editor-canvas frame; fictional site; GETs and PATCHes answered by interception; not the signed-in dashboard or production",
+  "base": "27b4003d100504b4eb4a7226fe89de7ccb3033df",
+  "head": "3bc9d68fcd3ef45be7462af2a605ea521322c1ae",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "invalid-hex-en-1440.png",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "hex": "#12",
+        "hexDir": "ltr",
+        "invalid": false,
+        "describedBy": null,
+        "hsl": ["246", "78", "59"],
+        "radius": "Pill",
+        "toasts": [],
+        "saveButtonVisible": true,
+        "status": "",
+        "focusedIsHex": false,
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "hex": "#12",
+        "hexDir": "ltr",
+        "invalid": true,
+        "describedBy": "Enter a valid hex colour like #5546E8",
+        "hsl": ["246", "78", "59"],
+        "radius": "Pill",
+        "toasts": [],
+        "saveButtonVisible": true,
+        "status": "",
+        "focusedIsHex": false,
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "invalid-hex-en-390.png",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "hex": "#12",
+        "hexDir": "ltr",
+        "invalid": false,
+        "describedBy": null,
+        "hsl": ["246", "78", "59"],
+        "radius": "Pill",
+        "toasts": [],
+        "saveButtonVisible": true,
+        "status": "",
+        "focusedIsHex": false,
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "hex": "#12",
+        "hexDir": "ltr",
+        "invalid": true,
+        "describedBy": "Enter a valid hex colour like #5546E8",
+        "hsl": ["246", "78", "59"],
+        "radius": "Pill",
+        "toasts": [],
+        "saveButtonVisible": true,
+        "status": "",
+        "focusedIsHex": false,
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "invalid-hex-ar-1440.png",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "hex": "#12",
+        "hexDir": "ltr",
+        "invalid": false,
+        "describedBy": null,
+        "hsl": ["246", "78", "59"],
+        "radius": "كبسولة",
+        "toasts": [],
+        "saveButtonVisible": true,
+        "status": "",
+        "focusedIsHex": false,
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "hex": "#12",
+        "hexDir": "ltr",
+        "invalid": true,
+        "describedBy": "أدخل لونا سداسيا صالحا مثل �#5546E8",
+        "hsl": ["246", "78", "59"],
+        "radius": "كبسولة",
+        "toasts": [],
+        "saveButtonVisible": true,
+        "status": "",
+        "focusedIsHex": false,
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "invalid-hex-ar-390.png",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "hex": "#12",
+        "hexDir": "ltr",
+        "invalid": false,
+        "describedBy": null,
+        "hsl": ["246", "78", "59"],
+        "radius": "كبسولة",
+        "toasts": [],
+        "saveButtonVisible": true,
+        "status": "",
+        "focusedIsHex": false,
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "hex": "#12",
+        "hexDir": "ltr",
+        "invalid": true,
+        "describedBy": "أدخل لونا سداسيا صالحا مثل �#5546E8",
+        "hsl": ["246", "78", "59"],
+        "radius": "كبسولة",
+        "toasts": [],
+        "saveButtonVisible": true,
+        "status": "",
+        "focusedIsHex": false,
+        "overflow": false,
+        "requests": ["GET /api/app/projects/site-1"],
+        "pageErrors": []
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": { "config": { "styling": { "primaryColor": "#00eeaa" } } }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": { "config": { "styling": { "primaryColor": "#db2777" } } }
+        }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened: pristine, no save bar",
+          "dir": "ltr",
+          "hex": "#5546E8",
+          "hexDir": "ltr",
+          "invalid": false,
+          "describedBy": null,
+          "hsl": ["246", "78", "59"],
+          "radius": "Rounded",
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "focusedIsHex": false,
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "picked the green preset: the sliders follow it",
+          "dir": "ltr",
+          "hex": "#16A34A",
+          "hexDir": "ltr",
+          "invalid": false,
+          "describedBy": null,
+          "hsl": ["142", "76", "36"],
+          "radius": "Rounded",
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "",
+          "focusedIsHex": false,
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "moved the hue slider 20 steps with the keyboard",
+          "dir": "ltr",
+          "hex": "#16A278",
+          "hexDir": "ltr",
+          "invalid": false,
+          "describedBy": null,
+          "hsl": ["162", "76", "36"],
+          "radius": "Rounded",
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "",
+          "focusedIsHex": false,
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "typed a partial \"#12\": nothing shown while typing",
+          "dir": "ltr",
+          "hex": "#12",
+          "hexDir": "ltr",
+          "invalid": false,
+          "describedBy": null,
+          "hsl": ["162", "76", "36"],
+          "radius": "Rounded",
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "",
+          "focusedIsHex": true,
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "left the field: the problem shows on it",
+          "dir": "ltr",
+          "hex": "#12",
+          "hexDir": "ltr",
+          "invalid": true,
+          "describedBy": "Enter a valid hex colour like #5546E8",
+          "hsl": ["162", "76", "36"],
+          "radius": "Rounded",
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "",
+          "focusedIsHex": false,
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "Save: refused, the field focused, nothing sent",
+          "dir": "ltr",
+          "hex": "#12",
+          "hexDir": "ltr",
+          "invalid": true,
+          "describedBy": "Enter a valid hex colour like #5546E8",
+          "hsl": ["162", "76", "36"],
+          "radius": "Rounded",
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "Fix the highlighted fields to save.",
+          "focusedIsHex": true,
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "typed the short \"#0ea\": the problem clears",
+          "dir": "ltr",
+          "hex": "#0EA",
+          "hexDir": "ltr",
+          "invalid": false,
+          "describedBy": null,
+          "hsl": ["163", "100", "47"],
+          "radius": "Rounded",
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "Fix the highlighted fields to save.",
+          "focusedIsHex": true,
+          "overflow": false,
+          "requestsSoFar": 1,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "Save pressed: saving",
+          "dir": "ltr",
+          "hex": "#00EEAA",
+          "hexDir": "ltr",
+          "invalid": false,
+          "describedBy": null,
+          "hsl": ["163", "100", "47"],
+          "radius": "Rounded",
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "focusedIsHex": false,
+          "overflow": false,
+          "requestsSoFar": 2,
+          "server": {
+            "styling": { "primaryColor": "#5546e8", "theme": "dark" }
+          }
+        },
+        {
+          "step": "saved and refetched: \"#00eeaa\" alone was sent; the appearance kept",
+          "dir": "ltr",
+          "hex": "#00EEAA",
+          "hexDir": "ltr",
+          "invalid": false,
+          "describedBy": null,
+          "hsl": ["163", "100", "47"],
+          "radius": "Rounded",
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "Saved",
+          "focusedIsHex": false,
+          "overflow": false,
+          "requestsSoFar": 4,
+          "server": {
+            "styling": { "primaryColor": "#00eeaa", "theme": "dark" }
+          }
+        },
+        {
+          "step": "chose Pill",
+          "dir": "ltr",
+          "hex": "#00EEAA",
+          "hexDir": "ltr",
+          "invalid": false,
+          "describedBy": null,
+          "hsl": ["163", "100", "47"],
+          "radius": "Pill",
+          "toasts": [],
+          "saveButtonVisible": true,
+          "status": "Saved",
+          "focusedIsHex": false,
+          "overflow": false,
+          "requestsSoFar": 4,
+          "server": {
+            "styling": { "primaryColor": "#00eeaa", "theme": "dark" }
+          }
+        },
+        {
+          "step": "Discard: back to the stored radius (unset, shown as Rounded)",
+          "dir": "ltr",
+          "hex": "#00EEAA",
+          "hexDir": "ltr",
+          "invalid": false,
+          "describedBy": null,
+          "hsl": ["163", "100", "47"],
+          "radius": "Rounded",
+          "toasts": [],
+          "saveButtonVisible": false,
+          "status": "",
+          "focusedIsHex": false,
+          "overflow": false,
+          "requestsSoFar": 4,
+          "server": {
+            "styling": { "primaryColor": "#00eeaa", "theme": "dark" }
+          }
+        },
+        {
+          "step": "a save the server refuses: one error, the edit kept",
+          "dir": "ltr",
+          "hex": "#DB2777",
+          "hexDir": "ltr",
+          "invalid": false,
+          "describedBy": null,
+          "hsl": ["333", "71", "51"],
+          "radius": "Rounded",
+          "toasts": ["Could not save"],
+          "saveButtonVisible": true,
+          "status": "",
+          "focusedIsHex": false,
+          "overflow": false,
+          "requestsSoFar": 5,
+          "server": {
+            "styling": { "primaryColor": "#00eeaa", "theme": "dark" }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -3,7 +3,10 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ edit: 'pending' as 'pending' | 'edit' | 'viewOnly' | 'unknown' }));
+const state = vi.hoisted(() => ({
+  edit: 'pending' as 'pending' | 'edit' | 'viewOnly' | 'unknown',
+  pending: { changes: [] } as { changes: unknown[]; hasBaseline?: boolean; upToDate?: boolean },
+}));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({ Link: () => null, useRouterState: () => '/' }));
@@ -18,7 +21,7 @@ vi.mock('@/components/project/publish-modal', () => ({
 }));
 vi.mock('@/hooks/api', () => ({
   useDeployments: () => ({ data: [] }),
-  usePendingChanges: () => ({ data: { changes: [] } }),
+  usePendingChanges: () => ({ data: state.pending }),
   useProject: () => ({ data: undefined }),
 }));
 vi.mock('@/hooks/use-project-admin-status', () => ({ useProjectAdminStatus: () => ({ edit: state.edit }) }));
@@ -66,6 +69,22 @@ describe('PublishControl while the role is loading, failed or a Viewer', () => {
     expect(publish()?.disabled).toBe(false);
   });
 
+  // Sol review of #619: a dismissed sheet reopened when the top bar remounted.
+  it('opens for a launcher request made while mounted, and never replays one after a remount', async () => {
+    state.edit = 'edit';
+    const show = (openRequest: number) => act(async () => root.render(<PublishControl openRequest={openRequest} project={project} />));
+    await show(0);
+    expect(dialogOpen()).toBe(false);
+    await show(1);
+    expect(dialogOpen()).toBe(true);
+    // Another page (the draft preview) has no top-bar Publish; coming back remounts it.
+    await act(async () => root.render(null));
+    await show(1);
+    expect(dialogOpen()).toBe(false);
+    await show(2);
+    expect(dialogOpen()).toBe(true);
+  });
+
   it('drops a Viewer’s ?publish=true request, so a later promotion never pops the dialog open', async () => {
     state.edit = 'pending';
     await render(true);
@@ -76,5 +95,41 @@ describe('PublishControl while the role is loading, failed or a Viewer', () => {
     state.edit = 'edit';
     await render(true);
     expect(dialogOpen()).toBe(false);
+  });
+});
+
+describe('PublishControl unpublished-change indicator', () => {
+  let container: HTMLDivElement;
+  let root: Root;
+  beforeEach(() => {
+    state.edit = 'edit';
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+  });
+  afterEach(async () => {
+    state.pending = { changes: [] };
+    await act(async () => root.unmount());
+    container.remove();
+  });
+  const publish = () => container.querySelector<HTMLButtonElement>('button[aria-label="project.publish"]');
+
+  it('marks a change that is only to navigation or settings, which lists no page', async () => {
+    state.pending = { changes: [], hasBaseline: true, upToDate: false };
+    await act(async () => root.render(<PublishControl project={project} />));
+    expect(container.querySelector('[data-site-changes]')).not.toBeNull();
+    expect(publish()?.title).toBe('editor.unpublishedSiteChanges');
+    expect(document.getElementById(publish()?.getAttribute('aria-describedby') ?? '')?.textContent).toBe('editor.unpublishedSiteChanges');
+  });
+
+  it('shows nothing once the site is up to date, and the count when pages changed', async () => {
+    state.pending = { changes: [], hasBaseline: true, upToDate: true };
+    await act(async () => root.render(<PublishControl project={project} />));
+    expect(container.querySelector('[data-site-changes]')).toBeNull();
+    expect(publish()?.getAttribute('aria-describedby')).toBeNull();
+    state.pending = { changes: [{ id: 'p1' }], hasBaseline: true, upToDate: false };
+    await act(async () => root.render(<PublishControl project={project} />));
+    expect(container.querySelector('[data-site-changes]')).toBeNull();
+    expect(publish()?.textContent).toContain('1');
   });
 });

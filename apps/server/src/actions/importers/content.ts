@@ -69,16 +69,25 @@ export const humanize = (name: string): string =>
     .trim()
     .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Untitled';
 
+/** The file name Nibleaf gives an untitled page (`untitled`, `untitled-2`, …). */
+const UNTITLED_FILE_NAME = /^untitled(?:-\d+)?$/i;
+
 export function deriveTitle(meta: Record<string, string>, body: string, fallbackName: string): string {
-  if (meta.title) {
+  if (meta.title?.trim()) {
     return meta.title.slice(0, 200);
   }
-  if (meta.sidebartitle) {
+  if (meta.sidebartitle?.trim()) {
     return meta.sidebartitle.slice(0, 200);
   }
   const h1 = body.match(/^#\s+(.+)$/m);
   if (h1?.[1]) {
     return h1[1].trim().slice(0, 200);
+  }
+  // An untitled page (exported or synced with an empty title, or with none
+  // under its untitled-N file name) stays untitled instead of becoming
+  // "Untitled 2". Other files keep their humanized file name as before.
+  if ('title' in meta || UNTITLED_FILE_NAME.test(fallbackName)) {
+    return '';
   }
   return humanize(fallbackName);
 }

@@ -87,3 +87,44 @@ export function setNavigationPending(pending: boolean): void {
 export function onlySpeculativeLoads(): boolean {
   return speculativeLoads > 0 && !navigationPending;
 }
+
+/** One claim per optional rejection: Vite may reuse an error across importers. */
+const optionalFailures = new WeakMap<object, number>();
+/** Decisions still waiting for the importer's microtask checkpoint. */
+const pendingPreloadDecisions = new WeakMap<object, number>();
+
+/** Opens one decision window before the preload listener schedules its timer. */
+export function registerPendingPreloadDecision(error: unknown): void {
+  if (error === null || typeof error !== 'object') return;
+  pendingPreloadDecisions.set(error, (pendingPreloadDecisions.get(error) ?? 0) + 1);
+}
+
+/** Runs a load the page has a fallback for (an optional picker or toast host).
+ *  Its own failure can claim a pending preload decision so the importer falls
+ *  back without reloading. A different chunk failing still recovers as usual.
+ *  `load` must return the `import()` promise chain directly, with no macrotask
+ *  before it settles; a late failure cannot exempt a decision that already ran. */
+export function runOptionalLoad<T>(load: () => Promise<T>): Promise<T> {
+  return load().catch((error: unknown) => {
+    if (error !== null && typeof error === 'object') {
+      const claims = optionalFailures.get(error) ?? 0;
+      // Reserve at most one claim per pending decision, even if a rejection is reused.
+      if ((pendingPreloadDecisions.get(error) ?? 0) > claims) optionalFailures.set(error, claims + 1);
+      else if (import.meta.env.DEV) console.warn('An optional load failed too late to be exempt from chunk recovery.', error);
+    }
+    throw error;
+  });
+}
+
+/** Closes one decision window and consumes at most one optional-load claim. */
+export function isOptionalLoadFailure(error: unknown): boolean {
+  if (error === null || typeof error !== 'object') return false;
+  const pending = pendingPreloadDecisions.get(error) ?? 0;
+  if (pending === 1) pendingPreloadDecisions.delete(error);
+  else if (pending > 1) pendingPreloadDecisions.set(error, pending - 1);
+  const claims = optionalFailures.get(error) ?? 0;
+  if (!claims) return false;
+  if (claims === 1) optionalFailures.delete(error);
+  else optionalFailures.set(error, claims - 1);
+  return true;
+}

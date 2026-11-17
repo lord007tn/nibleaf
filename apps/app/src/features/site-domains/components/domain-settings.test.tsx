@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { type QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act } from 'react';
+import { Activity, act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfigDirtyProvider } from '@/components/project-settings/shared';
@@ -55,12 +55,15 @@ const settle = async () =>
   act(async () => {
     for (let i = 0; i < 8; i += 1) await new Promise((resolve) => setTimeout(resolve, 0));
   });
-const render = async (projectId = 'site-1') => {
+/** `hidden` keeps the section in a hidden <Activity>: React keeps it, off screen. */
+const render = async (projectId = 'site-1', hidden = false) => {
   await act(async () =>
     root.render(
       <QueryClientProvider client={queryClient}>
         <ConfigDirtyProvider report={(id, changed) => (changed ? dirty.add(id) : dirty.delete(id))}>
-          <DomainSettings project={{ id: projectId } as Project} />
+          <Activity mode={hidden ? 'hidden' : 'visible'}>
+            <DomainSettings project={{ id: projectId } as Project} />
+          </Activity>
         </ConfigDirtyProvider>
       </QueryClientProvider>,
     ),
@@ -579,13 +582,13 @@ describe('adding a domain', () => {
     expect(hosts()).toEqual(['a.example.com', 'b.example.com']);
   });
 
-  it('says only "another workspace" when the domain belongs to someone else', async () => {
+  it('says only "another organization" when the domain belongs to someone else', async () => {
     expect(await failAdd(409, { code: 'domain:already_connected', details: { scope: 'other_workspace' } })).toBe(
       'settings.domain.error.connectedElsewhere',
     );
   });
 
-  it('falls back to "another workspace" if a same-workspace answer has no name', async () => {
+  it('falls back to "another organization" if a same-organization answer has no name', async () => {
     expect(await failAdd(409, { code: 'domain:already_connected', details: { scope: 'same_workspace' } })).toBe(
       'settings.domain.error.connectedElsewhere',
     );
@@ -660,6 +663,23 @@ describe('adding a domain while the add is in flight', () => {
     await release(third);
     expect(fieldError()).toBe('settings.domain.error.alreadyAdded');
     expect(field().value).toBe('docs.example.com');
+  });
+
+  it.each([
+    ['on screen', false],
+    ['hidden meanwhile', true],
+  ])('an add that completes clears the field, leaves nothing to save and is reported once (%s, #767)', async (_name, hide) => {
+    const gate = server.hold('add');
+    await render();
+    await typeDomain('docs.example.com');
+    await submit();
+    if (hide) await render('site-1', true);
+    await release(gate);
+    if (hide) await render('site-1', false);
+    expect(hosts()).toEqual(['a.example.com', 'b.example.com', 'docs.example.com']);
+    expect(mocks.toast.success).toHaveBeenCalledExactlyOnceWith('settings.domain.toast.added');
+    expect(field().value).toBe('');
+    expect(dirty.size).toBe(0);
   });
 
   it('sends one add for repeated Enter while it runs', async () => {

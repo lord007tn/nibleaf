@@ -1,13 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { resolveTheme, THEME_PRESETS } from '@nibleaf/shared/themes';
-import { type CreateProjectBody, projectConfigSchema } from '@nibleaf/validators';
+import { type CreateProjectBody, projectConfigSchema, updateProjectBody } from '@nibleaf/validators';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   memberFindMany: vi.fn(),
   projectFindMany: vi.fn(),
   projectFindFirst: vi.fn(),
+  projectUpdate: vi.fn(),
   deploymentGroupBy: vi.fn(),
   deploymentFindFirst: vi.fn(),
   deploymentFindMany: vi.fn(),
@@ -18,7 +19,7 @@ const mocks = vi.hoisted(() => ({
   tx: {
     organization: { create: vi.fn() },
     member: { create: vi.fn(), findUnique: vi.fn() },
-    project: { create: vi.fn() },
+    project: { create: vi.fn(), findFirst: vi.fn(), updateManyAndReturn: vi.fn() },
     projectAddon: { createMany: vi.fn() },
     projectAddonAuditEvent: { createMany: vi.fn() },
     language: { create: vi.fn() },
@@ -67,7 +68,7 @@ vi.mock('@nibleaf/database', () => ({
   prisma: {
     member: { findMany: mocks.memberFindMany },
     userPreference: { findUnique: mocks.preferenceFindUnique },
-    project: { findMany: mocks.projectFindMany, findFirst: mocks.projectFindFirst },
+    project: { findMany: mocks.projectFindMany, findFirst: mocks.projectFindFirst, update: mocks.projectUpdate },
     deployment: {
       groupBy: mocks.deploymentGroupBy,
       findFirst: mocks.deploymentFindFirst,
@@ -477,6 +478,46 @@ describe('site creation language, starters and address availability', () => {
     expect(mocks.tx.project.create).not.toHaveBeenCalled();
   });
 
+  // P0-DASH-001: the first sign-up's starter site was once given `docs`, which
+  // is reserved. It must stay editable without its live address changing.
+  it.each(['docs', 'xn--nibleaf', 'dashboard'])('saves other fields of a site that already has the reserved address %s', async (slug) => {
+    mocks.projectFindFirst.mockImplementation(async ({ where }) => (where.id ? { id: 'project-legacy', organizationId: 'org-a', slug } : null));
+    mocks.projectUpdate.mockImplementation(async ({ data }) => ({ id: 'project-legacy', slug, ...data }));
+    await expect(updateProject('org-a', 'project-legacy', { name: 'Docs', slug, description: 'Renamed' })).resolves.toMatchObject({
+      slug,
+      description: 'Renamed',
+    });
+    // The unchanged address is not written back.
+    expect(mocks.projectUpdate).toHaveBeenCalledWith({ where: { id: 'project-legacy' }, data: { name: 'Docs', description: 'Renamed' } });
+  });
+  it('never writes back an unchanged reserved address over a rename that landed after it was read', async () => {
+    // The stale request read `docs`; a rename to `handbook` commits before its write.
+    let stored = 'docs';
+    mocks.projectFindFirst.mockImplementation(async ({ where }) => {
+      if (!where.id) return null;
+      const snapshot = { id: 'project-legacy', organizationId: 'org-a', slug: stored };
+      stored = 'handbook';
+      return snapshot;
+    });
+    mocks.projectUpdate.mockImplementation(async ({ data }) => {
+      if (data.slug !== undefined) stored = data.slug;
+      return { id: 'project-legacy', slug: stored, ...data };
+    });
+    await updateProject('org-a', 'project-legacy', { slug: 'docs', description: 'Edited' });
+    expect(mocks.projectUpdate).toHaveBeenCalledWith({ where: { id: 'project-legacy' }, data: { description: 'Edited' } });
+    expect(stored).toBe('handbook');
+  });
+  it('still refuses moving a site with a reserved address to another reserved address', async () => {
+    mocks.projectFindFirst.mockImplementation(async ({ where }) =>
+      where.id ? { id: 'project-legacy', organizationId: 'org-a', slug: 'docs' } : null,
+    );
+    await expect(updateProject('org-a', 'project-legacy', { slug: 'www' })).rejects.toMatchObject({
+      status: 400,
+      details: { reason: 'slug_reserved' },
+    });
+    expect(mocks.projectUpdate).not.toHaveBeenCalled();
+  });
+
   it('returns only availability and an optional suggestion, without names or counts', async () => {
     mocks.projectFindMany.mockResolvedValue([]);
     await expect(checkProjectAvailability('user-1', { name: 'Acme' })).resolves.toEqual({ available: true });
@@ -540,5 +581,343 @@ describe('site creation language, starters and address availability', () => {
         expect(call.data.content).toBe(catalog[`newsite_starter_${message}_content`]);
       }
     }
+  });
+});
+
+// The dashboard's Banner settings send `config.banner` as JSON; the real
+// validator and merge decide what is stored. `mergeConfig` merges an object
+// section one level deep and keeps any key the patch leaves out.
+describe('updateProject: clearing saved banner text', () => {
+  const BANNER = { enabled: true, dismissible: false, message: 'Spring sale', linkLabel: 'See plans', linkUrl: 'https://example.com/pricing' };
+  const SIBLINGS = { navbar: { ctaLabel: 'Start' }, seo: { metaTitle: 'Docs' }, redirects: [{ from: '/old', to: '/new' }] };
+  let stored: Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stored = { ...structuredClone(SIBLINGS), banner: { ...BANNER } };
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  /** The request as the dashboard sends it: JSON, then the route's validator. */
+  const save = (banner: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { banner } }))));
+
+  it.each(['message', 'linkLabel', 'linkUrl'] as const)('stores an empty %s sent as "", and keeps every other key and section', async (key) => {
+    const readback = await save({ ...BANNER, [key]: '' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, banner: { ...BANNER, [key]: '' } });
+    expect(readback).toMatchObject({ config: { banner: { ...BANNER, [key]: '' } } });
+  });
+
+  it('keeps a key the patch leaves out: why the dashboard must send cleared text as ""', async () => {
+    // JSON drops `undefined`, so this is what an omitted cleared field looks like on the wire.
+    await save({ ...BANNER, message: undefined });
+    expect(stored.banner).toStrictEqual(BANNER);
+  });
+});
+
+// The dashboard's Navbar form sends `config.navbar` as JSON: every list (an
+// emptied one as []), both switches, and each CTA text trimmed, a cleared one
+// the site held as '' (the reader shows the CTA only when both are non-empty).
+describe('updateProject: clearing saved navbar values', () => {
+  const NAVBAR = {
+    ctaLabel: 'Book a demo',
+    ctaUrl: 'https://example.com/demo',
+    links: [{ label: 'Blog', href: 'https://blog.example.com', external: true }],
+    tabs: [{ label: 'Guides', href: '/guides' }],
+    anchors: [{ label: 'Community', href: '/community', icon: 'users' }],
+    showSearch: false,
+    changelog: true,
+  };
+  const SIBLINGS = { footer: { copyright: '© Acme' }, seo: { metaTitle: 'Docs' }, redirects: [{ from: '/old', to: '/new' }] };
+  let stored: Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stored = { ...structuredClone(SIBLINGS), navbar: structuredClone(NAVBAR) };
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  const save = (navbar: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { navbar } }))));
+
+  it('stores cleared CTA texts as "" and emptied lists as [], keeps the switches and every other section, and reads it back', async () => {
+    const sent = { ...NAVBAR, ctaLabel: '', ctaUrl: '', links: [], tabs: [], anchors: [] };
+    const readback = await save(sent);
+    expect(stored).toStrictEqual({ ...SIBLINGS, navbar: sent });
+    expect(readback).toMatchObject({ config: { navbar: sent } });
+  });
+
+  it('keeps row text as sent and `external` true or false', async () => {
+    const links = [
+      { label: '  Docs ', href: ' /docs ', external: false },
+      { label: 'Half', href: '' },
+    ];
+    await save({ ...NAVBAR, links });
+    expect((stored.navbar as typeof NAVBAR).links).toStrictEqual(links);
+  });
+
+  it('keeps every field and list a patch leaves out: the form sends only what changed', async () => {
+    await save({ ctaLabel: 'Talk to sales' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, navbar: { ...NAVBAR, ctaLabel: 'Talk to sales' } });
+  });
+
+  it('keeps a CTA text the patch leaves out: why a cleared one must be sent as ""', async () => {
+    await save({ ...NAVBAR, ctaLabel: undefined, showSearch: true });
+    expect(stored.navbar).toStrictEqual({ ...NAVBAR, showSearch: true });
+  });
+});
+
+// The dashboard's SEO form sends all four `config.seo` values as JSON, a
+// cleared text as '' (the reader treats it as unset).
+describe('updateProject: saving SEO from the dashboard form', () => {
+  const SEO = { metaTitle: 'Docs', metaDescription: 'All of it', socialImage: '/og/cover.png', allowIndex: false };
+  const SIBLINGS = { navbar: { ctaLabel: 'Start' }, banner: { enabled: true, message: 'Sale' } };
+  let stored: Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stored = { ...structuredClone(SIBLINGS), seo: { ...SEO } };
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  const save = (seo: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { seo } }))));
+
+  it.each(['metaTitle', 'metaDescription', 'socialImage'] as const)('stores a cleared %s as "" and keeps the other sections', async (key) => {
+    const readback = await save({ ...SEO, [key]: '' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, seo: { ...SEO, [key]: '' } });
+    expect(readback).toMatchObject({ config: { seo: { ...SEO, [key]: '' } } });
+  });
+
+  it('stores indexing turned back on', async () => {
+    await save({ ...SEO, allowIndex: true });
+    expect(stored.seo).toStrictEqual({ ...SEO, allowIndex: true });
+  });
+
+  it('accepts a relative or absolute social image, and refuses an unsafe scheme', () => {
+    for (const socialImage of ['/og/cover.png', 'https://cdn.example/og.png']) {
+      expect(updateProjectBody.safeParse({ config: { seo: { ...SEO, socialImage } } }).success).toBe(true);
+    }
+    expect(updateProjectBody.safeParse({ config: { seo: { ...SEO, socialImage: 'javascript:alert(1)' } } }).success).toBe(false);
+  });
+});
+
+// The dashboard's Theme Studio sends `config.theme` whole when the authored
+// theme changed and `config.styling: { theme }` when the appearance changed,
+// never Styling's `primaryColor` or `radius` (features/site-theme).
+describe('updateProject: saving the theme and appearance from Theme Studio', () => {
+  const STYLING = { primaryColor: '#5546e8', radius: 'pill', theme: 'dark' };
+  const THEME = {
+    version: 1,
+    preset: 'signal',
+    metadata: { name: 'Handbook', description: 'Our theme', author: 'Docs team' },
+    colors: { light: { accent: '#2f4ad0' } },
+    layout: { shell: 'console' },
+  };
+  const SIBLINGS = { navbar: { ctaLabel: 'Start' }, typography: { bodyFont: 'Inter' }, redirects: [{ from: '/old', to: '/new' }] };
+  let stored: Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stored = { ...structuredClone(SIBLINGS), styling: { ...STYLING }, theme: structuredClone(THEME) };
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  const save = (config: Record<string, unknown>) => updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config }))));
+
+  it('an appearance-only save keeps Styling’s colour and radius and the authored theme', async () => {
+    const readback = await save({ styling: { theme: 'system' } });
+    expect(stored).toStrictEqual({ ...SIBLINGS, styling: { ...STYLING, theme: 'system' }, theme: THEME });
+    expect(readback).toMatchObject({ config: { styling: { ...STYLING, theme: 'system' } } });
+  });
+
+  it('a theme-only save keeps every styling key, and the optional theme parts it carries as authored', async () => {
+    const theme = { ...THEME, colors: { light: { accent: '#2f4ad0', canvas: '#fdfdfd' } } };
+    await save({ theme });
+    expect(stored).toStrictEqual({ ...SIBLINGS, styling: STYLING, theme });
+    // No resolved default was written: layout and components hold only what was authored.
+    expect(Object.keys(stored.theme as object)).toStrictEqual(['version', 'preset', 'metadata', 'colors', 'layout']);
+  });
+
+  it('merges the theme one level deep: a part left out is kept, a part sent empty is cleared (Keep mine)', async () => {
+    await save({ theme: { version: 1, preset: 'harbor' } });
+    expect((stored.theme as typeof THEME).layout).toStrictEqual(THEME.layout);
+    await save({ theme: { version: 1, preset: 'harbor', layout: {}, colors: {} } });
+    expect(stored.theme).toStrictEqual({ ...THEME, preset: 'harbor', layout: {}, colors: {} });
+    expect(resolveTheme({ theme: stored.theme as never }).layout).toStrictEqual(THEME_PRESETS.harbor.layout);
+  });
+
+  it('a preset left out is kept from the server: why Keep mine on a theme without one sends its effective preset', async () => {
+    stored = { styling: { theme: 'dark' }, theme: { version: 1, preset: 'signal', colors: { light: { canvas: '#fdfdfd' } } } };
+    await save({ theme: { version: 1, colors: { light: { canvas: '#fafafa' } } } });
+    expect(resolveTheme({ theme: stored.theme as never }).id).toBe('signal');
+    await save({ theme: { version: 1, colors: { light: { canvas: '#fafafa' } }, preset: 'harbor' } });
+    expect(stored.theme).toStrictEqual({ version: 1, preset: 'harbor', colors: { light: { canvas: '#fafafa' } } });
+    expect(resolveTheme({ theme: stored.theme as never }).id).toBe('harbor');
+  });
+
+  it('a site with no appearance keeps none after a theme save', async () => {
+    stored = { styling: { primaryColor: '#5546e8' } };
+    await save({ theme: { version: 1, preset: 'manuscript' } });
+    expect(stored).toStrictEqual({ styling: { primaryColor: '#5546e8' }, theme: { version: 1, preset: 'manuscript' } });
+  });
+
+  it('refuses an authored theme that fails contrast, as the dashboard does before saving', () => {
+    expect(
+      updateProjectBody.safeParse({ config: { theme: { version: 1, preset: 'harbor', colors: { light: { foreground: '#eeeeee' } } } } }).success,
+    ).toBe(false);
+  });
+});
+
+// The dashboard's Footer form sends `config.footer` as JSON with only the keys
+// the person changed: a text trimmed, a cleared one as '' (the reader shows no
+// link and an empty copyright line), the badge only when switched.
+describe('updateProject: clearing saved footer values', () => {
+  const FOOTER = { copyright: '© Acme', github: 'https://github.com/acme', x: 'https://x.com/acme', linkedin: '/company', madeWithBadge: false };
+  const SIBLINGS = { navbar: { ctaLabel: 'Start' }, seo: { metaTitle: 'Docs' }, banner: { enabled: true, message: 'Sale' } };
+  let stored: Record<string, unknown>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    stored = { ...structuredClone(SIBLINGS), footer: { ...FOOTER } };
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  const save = (footer: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { footer } }))));
+
+  it.each(['copyright', 'github', 'x', 'linkedin'] as const)('stores a cleared %s as "" and keeps the badge and every other section', async (key) => {
+    const readback = await save({ ...FOOTER, [key]: '' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, footer: { ...FOOTER, [key]: '' } });
+    expect(readback).toMatchObject({ config: { footer: { ...FOOTER, [key]: '' } } });
+  });
+
+  it('stores every text cleared with the badge still off', async () => {
+    await save({ copyright: '', github: '', x: '', linkedin: '', madeWithBadge: false });
+    expect(stored).toStrictEqual({ ...SIBLINGS, footer: { copyright: '', github: '', x: '', linkedin: '', madeWithBadge: false } });
+  });
+
+  it('a partial patch (the form sends only what changed) sets those keys and keeps every other key, the badge and other sections', async () => {
+    const readback = await save({ linkedin: '' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, footer: { ...FOOTER, linkedin: '' } });
+    expect(readback).toMatchObject({ config: { footer: { ...FOOTER, linkedin: '' } } });
+    await save({ madeWithBadge: true });
+    expect(stored).toStrictEqual({ ...SIBLINGS, footer: { ...FOOTER, linkedin: '', madeWithBadge: true } });
+    await save({});
+    expect(stored).toStrictEqual({ ...SIBLINGS, footer: { ...FOOTER, linkedin: '', madeWithBadge: true } });
+  });
+
+  it('keeps a key the patch leaves out: why a cleared value must be sent as ""', async () => {
+    // JSON drops `undefined`: what the old form's "blank → undefined" put on the wire.
+    await save({ ...FOOTER, github: undefined, madeWithBadge: true });
+    expect(stored.footer).toStrictEqual({ ...FOOTER, madeWithBadge: true });
+  });
+});
+
+// The dashboard's Styling form sends `config.styling` with only the keys the
+// person changed: a color always as `#` and six lowercase digits (a short
+// `#abc` is expanded first), a radius only when chosen. It never sends the
+// appearance (`styling.theme`) or `config.theme`.
+describe('updateProject: saving styling from the dashboard form', () => {
+  /** A modern theme with its own dark accent and layout radius: the reader prefers both to the legacy styling where they apply. */
+  const THEME = { version: 1, preset: 'harbor', colors: { dark: { accent: '#0f766e' } }, layout: { radius: 'pill' } };
+  const SIBLINGS = { theme: THEME, seo: { metaTitle: 'Docs' }, navbar: { ctaLabel: 'Start' } };
+  let stored: Record<string, unknown>;
+
+  const startWith = (styling: Record<string, unknown>) => {
+    stored = { ...structuredClone(SIBLINGS), styling };
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    startWith({});
+    mocks.projectFindFirst.mockResolvedValue({ id: 'site-1', organizationId: 'org-a', slug: 'acme' });
+    mocks.tx.project.findFirst.mockImplementation(async () => ({ id: 'site-1', config: structuredClone(stored), updatedAt: new Date(0) }));
+    mocks.tx.project.updateManyAndReturn.mockImplementation(async ({ data }: { data: { config: Record<string, unknown> } }) => {
+      stored = structuredClone(data.config);
+      return [{ id: 'site-1', config: stored, updatedAt: new Date(1) }];
+    });
+  });
+
+  const save = (styling: Record<string, unknown>) =>
+    updateProject('org-a', 'site-1', updateProjectBody.parse(JSON.parse(JSON.stringify({ config: { styling } }))));
+
+  it('stores a short color the form expanded (#abc → #aabbcc) as sent, and reads it back', async () => {
+    const readback = await save({ primaryColor: '#aabbcc' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, styling: { primaryColor: '#aabbcc' } });
+    expect(readback).toMatchObject({ config: { styling: { primaryColor: '#aabbcc' } } });
+  });
+
+  it('refuses partial or unprefixed text, which the form therefore never sends', () => {
+    for (const primaryColor of ['#', '#ab', '#abcd', 'aabbcc', 'teal']) {
+      expect(updateProjectBody.safeParse({ config: { styling: { primaryColor } } }).success).toBe(false);
+    }
+  });
+
+  it('a color-only patch keeps the stored radius and appearance, and the modern theme config', async () => {
+    startWith({ primaryColor: '#5546e8', theme: 'dark', radius: 'sharp' });
+    const readback = await save({ primaryColor: '#0ea5e9' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, styling: { primaryColor: '#0ea5e9', theme: 'dark', radius: 'sharp' } });
+    expect(readback).toMatchObject({ config: { theme: THEME, styling: { primaryColor: '#0ea5e9', theme: 'dark', radius: 'sharp' } } });
+  });
+
+  it('a radius-only patch over an unset color and appearance leaves both unset', async () => {
+    await save({ radius: 'rounded' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, styling: { radius: 'rounded' } });
+  });
+
+  it('a color-only patch over an unset radius keeps it unset, so the reader keeps the theme’s corners and its own dark accent', async () => {
+    await save({ primaryColor: '#db2777' });
+    expect(stored.styling).toStrictEqual({ primaryColor: '#db2777' });
+    const theme = resolveTheme(stored as Parameters<typeof resolveTheme>[0], { authoredAccent: true });
+    expect(theme.layout.radius).toBe('pill');
+    expect(theme.colors.dark.accent).toBe('#0f766e');
+    expect(theme.colors.light.accent).not.toBe(THEME_PRESETS.harbor.colors.light.accent);
+  });
+
+  it('a radius chosen over Signal’s inherited Sharp is stored by one patch and outlasts later theme changes', async () => {
+    const signal = { preset: 'signal' };
+    stored = { ...structuredClone(SIBLINGS), theme: signal, styling: { primaryColor: '#5546e8' } };
+    expect(resolveTheme(stored as Parameters<typeof resolveTheme>[0]).layout.radius).toBe('sharp');
+    const readback = await save({ radius: 'rounded' });
+    expect(stored).toStrictEqual({ ...SIBLINGS, theme: signal, styling: { primaryColor: '#5546e8', radius: 'rounded' } });
+    expect(readback).toMatchObject({ config: { theme: signal, styling: { primaryColor: '#5546e8', radius: 'rounded' } } });
+    expect(resolveTheme(stored as Parameters<typeof resolveTheme>[0]).layout.radius).toBe('rounded');
+    expect(
+      resolveTheme({ ...stored, theme: { preset: 'signal', layout: { radius: 'pill' } } } as Parameters<typeof resolveTheme>[0]).layout.radius,
+    ).toBe('rounded');
+  });
+
+  it('why the form sends only what changed: main’s full payload wrote back a radius and appearance it never edited', async () => {
+    // Another writer set the appearance and radius after main's form had read the site.
+    startWith({ primaryColor: '#5546e8', theme: 'dark', radius: 'pill' });
+    // Main sent its mount-time radius (or the 'rounded' default) and the query's old appearance with every save.
+    await save({ primaryColor: '#0ea5e9', radius: 'rounded', theme: 'light' });
+    expect(stored.styling).toStrictEqual({ primaryColor: '#0ea5e9', theme: 'light', radius: 'rounded' });
   });
 });

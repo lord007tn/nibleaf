@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
-import { countDescendants, isSwitchSettled, messageInLanguage, subtreeIds, titleSlugToFollow } from './page-tree-utils';
+import type { PageNode } from '@/hooks/api';
+import { countDescendants, isSwitchSettled, messageInLanguage, pageStructureRevision, subtreeIds, titleSlugToFollow } from './page-tree-utils';
 
 const tree = [
   { id: 'group', parentId: null },
@@ -101,5 +103,35 @@ describe('messageInLanguage', () => {
   it('falls back to the interface language for other page languages', () => {
     expect(messageInLanguage('editor.untitled', 'ja', () => 'fallback')).toBe('fallback');
     expect(messageInLanguage('editor.untitled', undefined, () => 'fallback')).toBe('fallback');
+  });
+});
+
+describe('pageStructureRevision (Move to… precondition)', () => {
+  const rows = [
+    { id: 'cmh2b0x9k0002', parentId: null, branchId: 'main', languageId: 'en', position: 1 },
+    { id: 'cmh2b0x9k0001', parentId: 'cmh2b0x9k0002', branchId: 'main', languageId: 'en', position: 0 },
+    { id: 'cmh2b0xak0003', parentId: null, branchId: 'main', languageId: 'ar', position: 0 },
+  ] as PageNode[];
+
+  it('is the hash the server reports for the same rows, in the published protocol', async () => {
+    // The protocol as documented in the PostgreSQL suite: SHA-256 of the ID-sorted structural tuples.
+    const expected = createHash('sha256')
+      .update(
+        JSON.stringify(
+          [...rows].sort((a, b) => a.id.localeCompare(b.id)).map((page) => [page.id, page.parentId, page.branchId, page.languageId, page.position]),
+        ),
+      )
+      .digest('hex');
+    expect(await pageStructureRevision(rows)).toBe(expected);
+  });
+
+  it('changes when the structure changes, not with row order', async () => {
+    const revision = await pageStructureRevision(rows);
+    expect(await pageStructureRevision([...rows].reverse())).toBe(revision);
+    expect(await pageStructureRevision(rows.map((page) => (page.id === 'cmh2b0xak0003' ? { ...page, position: 1 } : page)))).not.toBe(revision);
+  });
+
+  it('is left out when a row has no branch to hash', async () => {
+    expect(await pageStructureRevision([{ ...rows[0], branchId: undefined } as PageNode])).toBeUndefined();
   });
 });

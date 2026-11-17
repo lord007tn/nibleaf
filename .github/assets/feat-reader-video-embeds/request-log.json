@@ -1,0 +1,146 @@
+[
+  {
+    "phase": "before",
+    "lang": "en",
+    "width": 1440,
+    "embeds": 0,
+    "linkCards": 0,
+    "iframesBeforePlay": 0,
+    "videos": [],
+    "offsiteRequestsBeforePlay": [],
+    "requestsBeforePlay": 80
+  },
+  {
+    "phase": "before",
+    "lang": "en",
+    "width": 390,
+    "embeds": 0,
+    "linkCards": 0,
+    "iframesBeforePlay": 0,
+    "videos": [],
+    "offsiteRequestsBeforePlay": [],
+    "requestsBeforePlay": 79
+  },
+  {
+    "phase": "before",
+    "lang": "ar",
+    "width": 1440,
+    "embeds": 0,
+    "linkCards": 0,
+    "iframesBeforePlay": 0,
+    "videos": [],
+    "offsiteRequestsBeforePlay": [],
+    "requestsBeforePlay": 81
+  },
+  {
+    "phase": "before",
+    "lang": "ar",
+    "width": 390,
+    "embeds": 0,
+    "linkCards": 0,
+    "iframesBeforePlay": 0,
+    "videos": [],
+    "offsiteRequestsBeforePlay": [],
+    "requestsBeforePlay": 80
+  },
+  {
+    "phase": "after",
+    "lang": "en",
+    "width": 1440,
+    "embeds": 2,
+    "linkCards": 1,
+    "iframesBeforePlay": 0,
+    "videos": [
+      {
+        "class": "block aspect-video w-full rounded-xl border border-border bg-black",
+        "controls": "",
+        "playsinline": "",
+        "preload": "none",
+        "src": "https://media.example.com/tidewater/tracking.mp4"
+      }
+    ],
+    "offsiteRequestsBeforePlay": [],
+    "requestsBeforePlay": 80,
+    "requestsAfterPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+    ],
+    "offsiteRequestsAfterPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+    ]
+  },
+  {
+    "phase": "after",
+    "lang": "en",
+    "width": 390,
+    "embeds": 2,
+    "linkCards": 1,
+    "iframesBeforePlay": 0,
+    "videos": [
+      {
+        "class": "block aspect-video w-full rounded-xl border border-border bg-black",
+        "controls": "",
+        "playsinline": "",
+        "preload": "none",
+        "src": "https://media.example.com/tidewater/tracking.mp4"
+      }
+    ],
+    "offsiteRequestsBeforePlay": [],
+    "requestsBeforePlay": 79,
+    "requestsAfterPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+    ],
+    "offsiteRequestsAfterPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+    ]
+  },
+  {
+    "phase": "after",
+    "lang": "ar",
+    "width": 1440,
+    "embeds": 2,
+    "linkCards": 1,
+    "iframesBeforePlay": 0,
+    "videos": [
+      {
+        "class": "block aspect-video w-full rounded-xl border border-border bg-black",
+        "controls": "",
+        "playsinline": "",
+        "preload": "none",
+        "src": "https://media.example.com/tidewater/tracking.mp4"
+      }
+    ],
+    "offsiteRequestsBeforePlay": [],
+    "requestsBeforePlay": 81,
+    "requestsAfterPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+    ],
+    "offsiteRequestsAfterPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+    ]
+  },
+  {
+    "phase": "after",
+    "lang": "ar",
+    "width": 390,
+    "embeds": 2,
+    "linkCards": 1,
+    "iframesBeforePlay": 0,
+    "videos": [
+      {
+        "class": "block aspect-video w-full rounded-xl border border-border bg-black",
+        "controls": "",
+        "playsinline": "",
+        "preload": "none",
+        "src": "https://media.example.com/tidewater/tracking.mp4"
+      }
+    ],
+    "offsiteRequestsBeforePlay": [],
+    "requestsBeforePlay": 80,
+    "requestsAfterPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+    ],
+    "offsiteRequestsAfterPlay": [
+      "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?autoplay=1"
+    ]
+  }
+]

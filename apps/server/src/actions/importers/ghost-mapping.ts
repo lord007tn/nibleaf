@@ -1,11 +1,13 @@
 import { createRequire } from 'node:module';
 import { slugify } from '@nibleaf/shared';
+import { collapseLineBreakRuns, replaceScriptAndStyleElements, replaceTags } from '@nibleaf/shared/markup-scan';
 import type { LexicalHTMLRenderer as LexicalHTMLRendererInstance } from '@tryghost/kg-lexical-html-renderer';
 import type { MobiledocHtmlRenderer as MobiledocHtmlRendererInstance } from '@tryghost/kg-mobiledoc-html-renderer';
 import TurndownService from 'turndown';
 import { strikethrough, tables } from 'turndown-plugin-gfm';
 import { ghostMobiledocSchema, importDocumentSchema, nonEmptyImportStringSchema } from '@/validators/importers';
 import { stableHash } from './content';
+import { type ImportFidelityIssue, normalizeImportFidelity } from './import-fidelity';
 
 /**
  * Pure mapping logic for the Ghost importer: validate the export document's
@@ -256,12 +258,26 @@ export const isGhostPlaceholder = (item: Pick<GhostContentItem, 'title' | 'slug'
   );
 };
 
+// Turndown supplies these DOM fields; the server deliberately has no DOM lib.
+const importMediaHtml = (_content: string, node: unknown): string => {
+  const element = node as { nodeName: string; outerHTML: string; isBlock: boolean };
+  if (element.nodeName === 'IFRAME' || element.nodeName === 'VIDEO') return `\n\n${element.outerHTML}\n\n`;
+  return element.isBlock ? '\n\n' : '';
+};
+
 let turndown: TurndownService | null = null;
 const getTurndown = (): TurndownService => {
   if (!turndown) {
-    turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-', hr: '---' });
+    turndown = new TurndownService({
+      headingStyle: 'atx',
+      codeBlockStyle: 'fenced',
+      bulletListMarker: '-',
+      hr: '---',
+      blankReplacement: importMediaHtml,
+    });
     // GFM extras: tables + strikethrough (images and fenced code are core rules).
     turndown.use([tables, strikethrough]);
+    turndown.addRule('importMedia', { filter: ['iframe', 'video'], replacement: importMediaHtml });
   }
   return turndown;
 };
@@ -312,21 +328,22 @@ const decodeHtmlEntity = (entity: string): string => {
   return entities[entity.toLowerCase()] ?? entity;
 };
 
+// The script/style and tag steps are linear scans (@nibleaf/shared/markup-scan)
+// that give exactly what `/<(script|style)[\s\S]*?<\/\1>/gi` and `/<[^>]+>/g` give.
 export const htmlToPlainText = (html: string): string =>
-  html
-    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, ' ')
-    .replace(/<(?:br|\/p|\/div|\/h[1-6]|\/li)\s*\/?>/gi, '\n')
-    .replace(/<[^>]+>/g, ' ')
-    .replace(/&(nbsp|amp|lt|gt|quot|#39);/gi, decodeHtmlEntity)
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\s*\n\s*/g, '\n')
-    .trim();
+  // collapseLineBreakRuns: what `.replace(/\s*\n\s*/g, '\n')` gives, reading each whitespace run once.
+  collapseLineBreakRuns(
+    replaceTags(replaceScriptAndStyleElements(html, ' ').replace(/<(?:br|\/p|\/div|\/h[1-6]|\/li)\s*\/?>/gi, '\n'), /<[^>]+>/g, ' ')
+      .replace(/&(nbsp|amp|lt|gt|quot|#39);/gi, decodeHtmlEntity)
+      .replace(/[ \t]+/g, ' '),
+  ).trim();
 
 export interface GhostHtmlConversion {
   markdown: string;
   usedFallback: boolean;
   /** True when the export referenced its own site via __GHOST_URL__ placeholders. */
   hadGhostUrls: boolean;
+  issues?: ImportFidelityIssue[];
 }
 
 /** Convert Ghost HTML to Markdown, falling back to plain text when turndown fails. */
@@ -341,7 +358,11 @@ export const convertGhostHtml = (html: string, ghostSourceUrl?: string): GhostHt
       ghostSourceUrl ? `${prefix}${new URL(path, ghostSourceUrl).toString()}` : `${prefix}${path}`,
     );
   try {
-    return { markdown: getTurndown().turndown(prepared).trim(), usedFallback: false, hadGhostUrls };
+    const issues: ImportFidelityIssue[] = [];
+    const markdown = normalizeImportFidelity(getTurndown().turndown(prepared).trim(), (reference) =>
+      issues.push({ kind: 'embed', page: '', reference }),
+    );
+    return { markdown, usedFallback: false, hadGhostUrls, ...(issues.length ? { issues } : {}) };
   } catch {
     return { markdown: htmlToPlainText(prepared), usedFallback: true, hadGhostUrls };
   }

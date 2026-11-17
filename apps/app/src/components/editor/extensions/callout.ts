@@ -2,7 +2,7 @@ import { mergeAttributes, Node } from '@tiptap/core';
 import { type EditorState, Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
 import { liftTarget } from '@tiptap/pm/transform';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
-import { preservedClosingTag, sourceMetadataAttributes, writeBlockTag } from './mdx-roundtrip';
+import { preservedClosingTag, sourceMetadataAttributes, sourceOpeningTag, writeChildrenCloser, writeChildrenOpener } from './mdx-roundtrip';
 
 /** Callout variants → emoji + the GitHub admonition keyword used for markdown round-trip. */
 const CALLOUT_VARIANTS = {
@@ -232,9 +232,9 @@ export const Callout = Node.create({
         serialize(state, node) {
           const sourceOpen = String(node.attrs.sourceOpen ?? '');
           if (sourceOpen) {
-            writeBlockTag(state, node, sourceOpen);
+            writeChildrenOpener(state, node, sourceOpeningTag(node));
             state.renderContent(node);
-            writeBlockTag(state, node, preservedClosingTag(node, 'Callout'));
+            writeChildrenCloser(state, node, preservedClosingTag(node, 'Callout'));
             return;
           }
           const variant = (node.attrs.variant as CalloutVariant) ?? 'note';
@@ -278,7 +278,8 @@ export const Callout = Node.create({
                 if (lead?.nodeType === 1 && (lead as Element).tagName === 'BR') lead.remove();
                 else if (lead?.nodeType === 3 && !lead.textContent && lead.nextSibling?.nodeName === 'BR') lead.nextSibling.remove();
                 if (firstText && !firstText.data.trim() && firstText.parentNode === firstParagraph) firstText.remove();
-                if (!firstParagraph.textContent?.trim() && !firstParagraph.querySelector('img, code, a')) {
+                // A broken component kept as source (#714) is content too, though it has no text.
+                if (!firstParagraph.textContent?.trim() && !firstParagraph.querySelector('img, code, a, nibleaf-mdx-opaque-inline[data-broken]')) {
                   firstParagraph.remove();
                 } else if (!firstParagraph.textContent?.trim() && [...firstParagraph.childNodes].every((child) => child.nodeName === 'IMG')) {
                   // A paragraph left holding only an image would save as an extra empty line.

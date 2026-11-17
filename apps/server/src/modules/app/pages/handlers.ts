@@ -11,9 +11,18 @@ import { Hono } from 'hono';
 import { comparePageHistory, listPageHistory, restorePageHistory } from '@/actions/page-history';
 import { getPageInboundLinks } from '@/actions/page-inbound-links';
 import { deletePage } from '@/actions/page-trash';
-import { createPage, getPage, getPageSearchDescription, listPages, pageStructureRevision, reorderPages, updatePage } from '@/actions/pages';
+import {
+  createPage,
+  duplicatePage,
+  getPage,
+  getPageSearchDescription,
+  listPages,
+  pageStructureRevision,
+  reorderPages,
+  updatePage,
+} from '@/actions/pages';
 import { assertProjectInOrg } from '@/actions/projects';
-import { getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
+import { getContextLocale, getContextOrganizationIdOrThrow, getContextUserOrThrow, type HonoEnv } from '@/lib/hono/context';
 import { validator } from '@/lib/hono/validate';
 import pagesRoutes from './routes';
 
@@ -51,7 +60,7 @@ const app = new Hono<HonoEnv>()
   })
   .get('/:id/inbound-links', ...pagesRoutes.inboundLinks, async (ctx) => {
     const projectId = await projectScope(ctx);
-    return ctx.json({ data: await getPageInboundLinks(projectId, ctx.req.param('id')) }, 200);
+    return ctx.json({ data: await getPageInboundLinks(projectId, ctx.req.param('id'), ctx.req.raw.signal) }, 200);
   })
   .get('/:id/history', ...pagesRoutes.get, validator('query', pageHistoryQuery), async (ctx) => {
     const projectId = await projectScope(ctx);
@@ -60,6 +69,10 @@ const app = new Hono<HonoEnv>()
   .get('/:id/history/compare', ...pagesRoutes.get, validator('query', pageHistorySelection), async (ctx) => {
     const projectId = await projectScope(ctx);
     return ctx.json({ data: await comparePageHistory(projectId, ctx.req.param('id'), ctx.req.valid('query')) }, 200);
+  })
+  .post('/:id/duplicate', ...pagesRoutes.duplicate, async (ctx) => {
+    const projectId = await projectScope(ctx);
+    return ctx.json({ data: await duplicatePage(projectId, ctx.req.param('id'), getContextLocale()) }, 201);
   })
   .post('/:id/history/restore', ...pagesRoutes.update, validator('json', restorePageHistoryBody), async (ctx) => {
     const projectId = await projectScope(ctx);

@@ -1,4 +1,5 @@
 import { createDocIndex, type DocIndex, oramaLanguageForCode, type SearchDoc } from '@nibleaf/search';
+import { displayTitle } from '@nibleaf/shared/page-title';
 import { extractHeadings, type SnapshotPage } from '@nibleaf/shared/site';
 import { LruCache } from './lru';
 
@@ -57,7 +58,7 @@ const docsFromPages = (pages: SnapshotPage[]): SearchDoc[] =>
     .filter((page) => page.kind === 'PAGE' && !page.hidden && !page.config?.seo?.noindex)
     .map((page) => ({
       id: page.id,
-      title: page.title,
+      title: displayTitle(page),
       path: page.path,
       description: page.description ?? '',
       // Include the sidebar label (if it differs from the title) so a search for

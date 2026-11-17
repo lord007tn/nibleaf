@@ -26,16 +26,39 @@ export const safeReturnPath = (value: unknown): string | null => {
   return path && /^\/app(?:[/?#]|$)/.test(path) ? path : null;
 };
 
-/** Copy text with the standard Clipboard API. */
+/** Copy text with the standard Clipboard API, falling back to a selected
+ *  off-screen field where that API is missing or refused (an insecure origin,
+ *  an older browser, a denied permission). */
 export async function copyToClipboard(text: string): Promise<boolean> {
-  if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
-    return false;
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Try the fallback below.
+    }
   }
+  return copyWithSelection(text);
+}
+
+function copyWithSelection(text: string): boolean {
+  if (typeof document === 'undefined' || typeof document.execCommand !== 'function') return false;
+  const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const field = document.createElement('textarea');
+  field.value = text;
+  field.setAttribute('readonly', '');
+  field.style.position = 'fixed';
+  field.style.opacity = '0';
+  document.body.append(field);
+  field.focus({ preventScroll: true });
+  field.select();
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
+    return document.execCommand('copy');
   } catch {
     return false;
+  } finally {
+    field.remove();
+    previous?.focus();
   }
 }
 
@@ -89,6 +112,55 @@ export function setPendingInvitation(invitationId: string): void {
 
 export function clearPendingInvitation(): void {
   clearPendingDestination();
+}
+
+/** sessionStorage: the visitor chose "Create an account to accept" or "Log in to accept". */
+const ACCEPT_INTENT_KEY = 'nibleaf.acceptInvitationAfterAuth';
+/** Long enough to sign up with an emailed code; a stale choice never accepts. */
+export const ACCEPT_INTENT_TTL_MS = 30 * 60 * 1000;
+
+const readAcceptIntent = (): { id: string; at: number } | null => {
+  try {
+    const parsed = JSON.parse(window.sessionStorage.getItem(ACCEPT_INTENT_KEY) ?? 'null') as { id?: unknown; at?: unknown } | null;
+    return parsed && typeof parsed.id === 'string' && typeof parsed.at === 'number' ? { id: parsed.id, at: parsed.at } : null;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Remember that the visitor asked to accept this invitation once they are
+ * signed in, so they are not asked a second time on their way back (P3-JRN-003).
+ * Only an action on the accept page sets it, so a link alone can never accept
+ * an invitation for someone. It lives in sessionStorage: it stays with this tab
+ * (a tab this one opens gets a copy, as the browser copies session storage to
+ * it) and lapses after `ACCEPT_INTENT_TTL_MS`.
+ */
+export function rememberAcceptIntent(invitationId: string, now = Date.now()): void {
+  try {
+    window.sessionStorage.setItem(ACCEPT_INTENT_KEY, JSON.stringify({ id: invitationId, at: now }));
+  } catch {
+    // Without storage they press Accept once more, as before.
+  }
+}
+
+/** True once, when the visitor asked to accept this invitation in the last
+ *  `ACCEPT_INTENT_TTL_MS`; the intent is used up either way. */
+export function takeAcceptIntent(invitationId: string, now = Date.now()): boolean {
+  const intent = readAcceptIntent();
+  if (!intent || intent.id !== invitationId) return false;
+  forgetAcceptIntent(invitationId);
+  return now - intent.at >= 0 && now - intent.at <= ACCEPT_INTENT_TTL_MS;
+}
+
+/** Forget the intent: for one invitation only when `invitationId` is given. */
+export function forgetAcceptIntent(invitationId?: string): void {
+  try {
+    if (invitationId !== undefined && readAcceptIntent()?.id !== invitationId) return;
+    window.sessionStorage.removeItem(ACCEPT_INTENT_KEY);
+  } catch {
+    // ignore storage failures
+  }
 }
 
 /**

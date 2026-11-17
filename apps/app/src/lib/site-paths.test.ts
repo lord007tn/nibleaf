@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { authoredSiteHref } from './site-authored-paths';
 import { isCustomDomainSite, siteBasePath, siteHref, siteLanguageParam, siteRoutePath } from './site-paths';
 
 // site-origin reads the custom-domain origin the server entry stamped on the
@@ -46,46 +47,46 @@ describe('siteHref', () => {
       expect(siteHref('p1', '', { lang, version: 'v2' })).toBe(`${base}/v2`);
       expect(siteHref('p1', 'changelog', { lang })).toBe(`${base}/changelog`);
       expect(siteHref('p1', '/reference?tab=cli#request', { lang, version: 'v2' })).toBe(`${base}/v2/reference?tab=cli#request`);
-      expect(siteHref('p1', '/reference?lang=fr', { lang })).toBe(`${base}/reference?lang=fr`);
+      expect(siteHref('p1', '/reference?lang=fr', { lang })).toBe(`${base}/fr/reference`);
     }
   });
 
   it('retains non-default and unknown-default language selections', () => {
     expect(siteLanguageParam('ar', 'en')).toBe('ar');
     expect(siteLanguageParam('en')).toBe('en');
-    expect(siteHref('p1', 'v2/start', { lang: siteLanguageParam('ar', 'en') })).toBe('/sites/p1/v2/start?lang=ar');
+    expect(siteHref('p1', 'v2/start', { lang: siteLanguageParam('ar', 'en') })).toBe('/sites/p1/ar/v2/start');
   });
   it('preserves an explicit target language on cross-language links', () => {
     expect(siteHref('p1', '/arabic/intro?lang=ar&tab=cli#install', { lang: 'en', version: 'v2' })).toBe(
-      '/sites/p1/v2/arabic/intro?lang=ar&tab=cli#install',
+      '/sites/p1/ar/v2/arabic/intro?tab=cli#install',
     );
     origin.value = 'https://docs.acme.com';
-    expect(siteHref('p1', '/guides/intro?lang=en', { lang: 'ar' })).toBe('/guides/intro?lang=en');
+    expect(siteHref('p1', '/guides/intro?lang=en', { lang: 'ar' })).toBe('/en/guides/intro');
   });
 
   it('builds app-origin hrefs with the language and version carried along', () => {
     expect(siteHref('p1')).toBe('/sites/p1');
     expect(siteHref('p1', '/guides/intro/')).toBe('/sites/p1/guides/intro');
-    expect(siteHref('p1', 'guides/intro', { lang: 'ar' })).toBe('/sites/p1/guides/intro?lang=ar');
-    expect(siteHref('p1', 'guides/intro', { lang: 'ar', version: 'v2' })).toBe('/sites/p1/v2/guides/intro?lang=ar');
+    expect(siteHref('p1', 'guides/intro', { lang: 'ar' })).toBe('/sites/p1/ar/guides/intro');
+    expect(siteHref('p1', 'guides/intro', { lang: 'ar', version: 'v2' })).toBe('/sites/p1/ar/v2/guides/intro');
     expect(siteHref('p1', '', { version: 'v2' })).toBe('/sites/p1/v2');
   });
 
   it('percent-encodes non-ASCII path segments exactly once', () => {
     expect(siteHref('p1', 'الأدلة/المصادقة', { lang: 'ar' })).toBe(
-      '/sites/p1/%D8%A7%D9%84%D8%A3%D8%AF%D9%84%D8%A9/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9?lang=ar',
+      '/sites/p1/ar/%D8%A7%D9%84%D8%A3%D8%AF%D9%84%D8%A9/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9',
     );
     // An authored link that is already encoded is not encoded a second time.
     expect(siteHref('p1', '/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9', { lang: 'ar' })).toBe(
-      '/sites/p1/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9?lang=ar',
+      '/sites/p1/ar/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9',
     );
     expect(siteHref('p1', 'api-الوصول', { version: 'v2' })).toBe('/sites/p1/v2/api-%D8%A7%D9%84%D9%88%D8%B5%D9%88%D9%84');
   });
 
   it('keeps authored anchors and query strings outside the encoded pathname', () => {
-    expect(siteHref('p1', '/guides/intro#setup', { lang: 'ar' })).toBe('/sites/p1/guides/intro?lang=ar#setup');
+    expect(siteHref('p1', '/guides/intro#setup', { lang: 'ar' })).toBe('/sites/p1/ar/guides/intro#setup');
     expect(siteHref('p1', '/المصادقة#الرموز')).toBe('/sites/p1/%D8%A7%D9%84%D9%85%D8%B5%D8%A7%D8%AF%D9%82%D8%A9#الرموز');
-    expect(siteHref('p1', '/guides?tab=cli', { lang: 'ar' })).toBe('/sites/p1/guides?tab=cli&lang=ar');
+    expect(siteHref('p1', '/guides?tab=cli', { lang: 'ar' })).toBe('/sites/p1/ar/guides?tab=cli');
     expect(siteHref('p1', '/guides?tab=cli')).toBe('/sites/p1/guides?tab=cli');
   });
 
@@ -93,11 +94,53 @@ describe('siteHref', () => {
     origin.value = 'https://docs.acme.com';
     expect(isCustomDomainSite('p1')).toBe(true);
     expect(siteHref('p1')).toBe('/');
-    expect(siteHref('p1', 'guides/intro', { lang: 'ar' })).toBe('/guides/intro?lang=ar');
+    expect(siteHref('p1', 'guides/intro', { lang: 'ar' })).toBe('/ar/guides/intro');
   });
 
   it('treats a server request without a stamped origin as app-origin serving', () => {
     expect(isCustomDomainSite('p1')).toBe(false);
     expect(siteHref('p1', 'guides')).toBe('/sites/p1/guides');
   });
+});
+
+it('omits an authored default-language query when the site default is known', () => {
+  expect(siteHref('p1', 'guide?lang=en&tab=cli#install', { lang: 'ar', defaultLanguage: 'en' })).toBe('/sites/p1/guide?tab=cli#install');
+});
+
+it('keeps explicit language and version prefixes from being added twice', () => {
+  expect(
+    authoredSiteHref('p1', 'ar/v2/guide', {
+      lang: 'ar',
+      version: 'v2',
+      defaultLanguage: 'en',
+      languages: [
+        { code: 'en', isDefault: true },
+        { code: 'ar', isDefault: false },
+      ],
+    }),
+  ).toBe('/sites/p1/ar/v2/guide');
+});
+
+it('never deduplicates a raw page named after its version', () => {
+  expect(siteHref('p1', 'v2', { version: 'v2', lang: 'ar' })).toBe('/sites/p1/ar/v2/v2');
+});
+it('uses the escaped language prefix supplied by the published snapshot', () => {
+  expect(siteHref('p1', 'ar/guide', { lang: 'ar', languages: [{ code: 'ar', pathPrefix: '~lang/ar' }] })).toBe('/sites/p1/~lang/ar/ar/guide');
+});
+
+it('retains a resolved authored prefix alongside an unknown query language', () => {
+  expect(
+    authoredSiteHref('p1', '/ar/guide?lang=unknown&tab=cli#install', {
+      defaultLanguage: 'en',
+      languages: [{ code: 'en', isDefault: true }, { code: 'ar' }],
+    }),
+  ).toBe('/sites/p1/ar/guide?lang=unknown&tab=cli#install');
+});
+
+it('prepends the language to the entire authored legacy path', () => {
+  expect(authoredSiteHref('p1', '/ar/guide?lang=ar', { languages: [{ code: 'ar', pathPrefix: '~lang/ar' }] })).toBe('/sites/p1/~lang/ar/ar/guide');
+});
+
+it('does not add the current version to an authored default-version URL', () => {
+  expect(authoredSiteHref('p1', '/guide', { lang: 'ar', version: 'v2' })).toBe('/sites/p1/ar/guide');
 });

@@ -1,10 +1,8 @@
-import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
-import { INTERFACE_LOCALES, type InterfaceLocale, type Locale } from '@nibleaf/i18n';
-import { useLocale } from '@nibleaf/i18n/react';
-import { Check, Languages } from 'lucide-react';
-import { useState } from 'react';
+import { INTERFACE_LOCALES, type InterfaceLocale, type Locale } from '@nibleaf/i18n/locales';
+import { Check } from 'lucide-react';
+import { useAuthLocale } from '@/lib/auth-messages';
 
 /** Two-line locale option: the language's own name (in its own script and
  * direction) over the muted English name. Shared by the picker surfaces. */
@@ -24,7 +22,7 @@ export function InterfaceLocaleLabel({ option }: { option: InterfaceLocale }) {
 }
 
 export function InterfaceLanguageDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-  const { locale, setLocale, t } = useLocale();
+  const { locale, setLocale, t } = useAuthLocale();
 
   const choose = (next: Locale) => {
     setLocale(next);
@@ -60,23 +58,5 @@ export function InterfaceLanguageDialog({ open, onOpenChange }: { open: boolean;
         </Command>
       </DialogContent>
     </Dialog>
-  );
-}
-
-export function InterfaceLanguageButton({ className }: { className?: string }) {
-  const { locale, t } = useLocale();
-  const [open, setOpen] = useState(false);
-  const current = INTERFACE_LOCALES.find((option) => option.code === locale) ?? INTERFACE_LOCALES[0];
-
-  return (
-    <>
-      <Button className={className} onClick={() => setOpen(true)} size="sm" type="button" variant="outline" aria-label={t('account.language')}>
-        <Languages aria-hidden className="size-4" />
-        <span lang={current.code} dir={current.direction}>
-          {current.native}
-        </span>
-      </Button>
-      <InterfaceLanguageDialog open={open} onOpenChange={setOpen} />
-    </>
   );
 }

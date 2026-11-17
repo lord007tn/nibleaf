@@ -45,10 +45,18 @@ describe('site creation', () => {
   });
   it.each(
     ['www', 'admin', 'api', 'app', 'docs', 'storage', 'cname', 'status', 'mail', 'xn--nibleaf', 'xn--80ak6aa92e'].flatMap((slug) =>
-      (['create', 'update', 'availability'] as const).map((path) => ({ slug, path })),
+      (['create', 'availability'] as const).map((path) => ({ slug, path })),
     ),
   )('rejects reserved hostname $slug on $path', ({ slug, path }) => {
-    const schema = path === 'create' ? createProjectBody : path === 'update' ? updateProjectBody : projectAvailabilityQuery;
+    const schema = path === 'create' ? createProjectBody : projectAvailabilityQuery;
     expect(schema.safeParse({ name: 'Site', slug }).success).toBe(false);
+  });
+  // An update may carry the address the site already has, even one reserved
+  // after it was given; the API refuses a reserved address only as a change.
+  it('leaves reservation on update to the API, which knows the current address', () => {
+    expect(updateProjectBody.safeParse({ slug: 'docs' }).success).toBe(true);
+  });
+  it.each(['', 'Docs', '-docs', 'docs-', 'docs_site', 'a'.repeat(64)])('rejects the malformed address %j on update', (slug) => {
+    expect(updateProjectBody.safeParse({ slug }).success).toBe(false);
   });
 });

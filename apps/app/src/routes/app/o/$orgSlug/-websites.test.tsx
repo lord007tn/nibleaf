@@ -185,6 +185,33 @@ describe('organization Websites page', () => {
     expect(host.textContent).not.toContain('organization.websites.emptyAdminTitle');
   });
 
+  it('links each live website to the address readers use, beside (not inside) the card link', async () => {
+    mocks.organization = organization('owner');
+    mocks.projects = [
+      { ...project('docs', 'Developer docs', 'owner'), domain: 'docs.acme.test' },
+      project('api', 'API reference', 'owner'),
+      { ...project('draft', 'Draft site', 'owner'), live: false },
+    ];
+    const host = await render();
+    const cards = [...host.querySelectorAll('li')];
+    const visit = (card: Element | undefined) => card?.querySelector('a[target="_blank"]');
+    expect(visit(cards[0])?.getAttribute('href')).toBe('https://docs.acme.test');
+    // Without a domain, readers find the site on this host: never a made-up `/<slug>`.
+    expect(visit(cards[1])?.getAttribute('href')).toBe('/sites/api');
+    expect(cards[1]?.textContent).toContain('/sites/api');
+    // Nothing to visit before the first publish.
+    expect(visit(cards[2])).toBeNull();
+    for (const card of cards.slice(0, 2)) {
+      const link = visit(card);
+      expect(link?.closest('a[href^="/app/projects/"]')).toBeNull();
+      expect(link?.getAttribute('aria-label')).toBe('overview.viewSite');
+      // The website's name tells the cards' links apart.
+      expect(host.querySelector(`#${link?.getAttribute('aria-describedby')}`)?.textContent).toBe(
+        card === cards[0] ? 'Developer docs' : 'API reference',
+      );
+    }
+  });
+
   it('shows a busy skeleton while websites load', async () => {
     mocks.projectsPending = true;
     const host = await render();

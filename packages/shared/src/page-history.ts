@@ -1,3 +1,5 @@
+import { exceedsUtf8Bytes } from './page-limits';
+
 /** Bounds apply before splitting, parsing, or allocating diff output. */
 export const PAGE_DIFF_MAX_BYTES = 128 * 1024;
 export const PAGE_DIFF_MAX_LINES = 2000;
@@ -9,19 +11,6 @@ export const PAGE_HISTORY_INTERVAL_MS = 30 * 60 * 1000;
 export type PageLineDiff =
   | { status: 'too-large'; limit: 'bytes' | 'lines' }
   | { status: 'equal' | 'changed'; lines: Array<{ kind: 'same' | 'removed' | 'added'; text: string }> };
-
-/** Count UTF-8 bytes only up to the limit. Even a huge single line fails early.
- * Unpaired UTF-16 surrogates encode as a three-byte replacement character. */
-export function exceedsUtf8Bytes(text: string, limit: number): boolean {
-  if (text.length > limit) return true;
-  let bytes = 0;
-  for (const char of text) {
-    const code = char.codePointAt(0) ?? 0;
-    bytes += code <= 0x7f ? 1 : code <= 0x7_ff ? 2 : code <= 0xff_ff ? 3 : 4;
-    if (bytes > limit) return true;
-  }
-  return false;
-}
 
 export function pageDiffLimit(text: string): 'bytes' | 'lines' | null {
   if (exceedsUtf8Bytes(text, PAGE_DIFF_MAX_BYTES)) return 'bytes';

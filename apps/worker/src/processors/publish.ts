@@ -10,6 +10,7 @@ import {
 import { type Deployment, deliveryPlanSelect, loadDefaultDeliveryPlan, Prisma, type Project, prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
+import { replaceElements } from '@nibleaf/shared/markup-scan';
 import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks } from '@nibleaf/shared/publish-checks';
 import { summarizeRedirectIssues, validateSnapshotRedirects } from '@nibleaf/shared/redirects';
 import { buildSnapshot, type SiteSnapshot } from '@nibleaf/shared/site';
@@ -18,6 +19,7 @@ import { env } from '../env';
 import { notifyDeployment } from '../lib/notify';
 import { recordPublishReady } from '../lib/publish-activation';
 import { buildDeploymentAssetReferences } from '../lib/publish-asset-references';
+import { addPublishedImageDimensions } from '../lib/publish-image-dimensions';
 import { DurableUsageEnqueueError, enqueueAnalyticsEvent } from '../lib/usage-ingest';
 
 const log = createLogger({ processor: 'publish' });
@@ -99,12 +101,10 @@ const objectValue = (value: unknown): Record<string, unknown> =>
 
 const normalizedPagePath = (path: string): string => path.replace(/^\/+|\/+$/g, '').replace(/\.(mdx?|html)$/i, '');
 
+// replaceElements: what `.replace(/<pre[\s\S]*?<\/pre>/gi, ' ')` and the `<code>`
+// one give, read in linear time.
 const stripCodeForCopyChecks = (content: string): string =>
-  content
-    .replace(/```[\s\S]*?```/g, ' ')
-    .replace(/`[^`]*`/g, ' ')
-    .replace(/<pre[\s\S]*?<\/pre>/gi, ' ')
-    .replace(/<code[\s\S]*?<\/code>/gi, ' ');
+  replaceElements(replaceElements(content.replace(/```[\s\S]*?```/g, ' ').replace(/`[^`]*`/g, ' '), ['pre'], ' '), ['code'], ' ');
 
 const GRAMMAR_PATTERNS: Array<{ pattern: RegExp; message: string }> = [
   { pattern: /\bteh\b/i, message: 'Use "the" instead of "teh".' },
@@ -392,6 +392,7 @@ export async function handlePublishJobs(job: Job<PublishDeploymentJobData>): Pro
     }
     const snapshot = redirectValidation.snapshot;
     const references = await buildDeploymentAssetReferences(snapshot);
+    await addPublishedImageDimensions(snapshot, references);
     const pageCount = draftSnapshot.pages.filter((page) => page.kind === 'PAGE').length;
 
     const ready = await prisma.deployment.update({

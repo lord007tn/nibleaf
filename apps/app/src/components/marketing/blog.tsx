@@ -1,5 +1,6 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
-import { translateFn, useT } from '@nibleaf/i18n/react';
+import type { MessageKey, MessageVariables } from '@nibleaf/i18n';
+import { translateFn } from '@nibleaf/i18n/react';
 import { ArrowLeft, ArrowRight, Check, Clock, Link2, Search } from 'lucide-react';
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
@@ -120,7 +121,9 @@ function ArticleCard({ entry, featured = false }: { entry: BlogEntry; featured?:
  * so the initial (unfiltered) render is identical on server and client.
  */
 export function BlogIndexPage({ entries, stars = 0 }: { entries: BlogEntry[]; stars?: number }) {
-  const t = useT();
+  // The blog index is an English marketing page: its chrome never follows the
+  // visitor's interface language (that switched it after load), like its shell.
+  const t = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, 'en');
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
   const filtered =

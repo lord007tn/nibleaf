@@ -1,6 +1,7 @@
 import { translateFn } from '@nibleaf/i18n';
+import { contrastRatio, readableAccentText } from '@nibleaf/shared/themes';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ThemePreview } from '@/components/project-settings/theme-section';
 import {
   DOCUMENTATION_THEME_TEMPLATES,
@@ -10,7 +11,49 @@ import {
   DocumentationStudioPreviewLayout,
   DocumentationThemeProvider,
 } from '@/components/site/documentation-theme-provider';
-import { projectThemeCss, projectThemeStyle, projectThemeVariables, resolveProjectTheme, siteThemeNoFlashScript } from './site-theme';
+import { projectThemeCss, projectThemeStyle, projectThemeVariables, resolveProjectTheme, siteAppearance, siteThemeNoFlashScript } from './site-theme';
+
+/** Contrast of `color` on a `weight` tint of itself over `background`, worked
+ * out here independently with unrounded channels (no hex rounding). */
+const onTint = (color: string, background: string, weight: number) => {
+  const rgb = (hex: string) => [1, 3, 5].map((start) => Number.parseInt(hex.slice(start, start + 2), 16));
+  const linear = (value: number) => {
+    const n = value / 255;
+    return n <= 0.040_45 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4;
+  };
+  const luminance = ([r = 0, g = 0, b = 0]: number[]) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+  const text = luminance(rgb(color));
+  const tint = luminance(rgb(background).map((value, index) => value * (1 - weight) + (rgb(color)[index] ?? 0) * weight));
+  return (Math.max(text, tint) + 0.05) / (Math.min(text, tint) + 0.05);
+};
+
+describe('footer small print contrast', () => {
+  const footerColors = (css: string) => [...css.matchAll(/--theme-footer-muted:([^;}]+)/g)].map((match) => match[1]);
+  it.each(['harbor', 'manuscript', 'signal'] as const)('clears 4.7:1 on the %s canvas in light and dark', (preset) => {
+    const theme = resolveProjectTheme({ theme: { preset } } as never);
+    const [light, dark] = footerColors(projectThemeCss({ theme: { preset } } as never));
+    expect(contrastRatio(light as string, theme.colors.light.canvas)).toBeGreaterThanOrEqual(4.7);
+    expect(contrastRatio(dark as string, theme.colors.dark.canvas)).toBeGreaterThanOrEqual(4.7);
+  });
+  it('nudges a custom palette accepted at AA (4.54:1) up to 4.7:1, darker on light and lighter on dark', () => {
+    const config = {
+      theme: {
+        preset: 'harbor',
+        colors: { light: { mutedForeground: '#737373', canvas: '#fafafa' }, dark: { mutedForeground: '#6f6f6f', canvas: '#0a0a0a' } },
+      },
+    };
+    expect(contrastRatio('#737373', '#fafafa')).toBeLessThan(4.7);
+    const [light, dark] = footerColors(projectThemeCss(config as never));
+    expect(contrastRatio(light as string, '#fafafa')).toBeGreaterThanOrEqual(4.7);
+    expect(contrastRatio(dark as string, '#0a0a0a')).toBeGreaterThanOrEqual(4.7);
+    expect(light).toBe(projectThemeVariables(config as never, 'light')['--theme-footer-muted' as keyof object]);
+  });
+  it('uses #707070 on the legacy light palette (4.74:1 on #fafafa) and the muted token in dark', () => {
+    const css = projectThemeCss(null);
+    expect(footerColors(css)).toEqual(['#707070', 'var(--muted-foreground)']);
+    expect(contrastRatio('#707070', '#fafafa')).toBeGreaterThanOrEqual(4.7);
+  });
+});
 
 describe('published theme projection', () => {
   it('projects a preset and semantic overrides onto the stable CSS interface', () => {
@@ -63,6 +106,49 @@ describe('published theme projection', () => {
     expect(script).not.toContain(`+"${projectId}"`);
   });
 
+  describe('appearance before the reader picks one (PUB-004)', () => {
+    /** Run the before-paint script with the OS preference and stored choice given. */
+    const paint = (configured: Parameters<typeof siteThemeNoFlashScript>[1], osDark: boolean, stored?: 'light' | 'dark') => {
+      const classes = new Set<string>();
+      const storage = new Map(stored ? [['nibleaf.site.theme.site-1', stored]] : []);
+      vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null });
+      vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-color-scheme: dark)' && osDark }));
+      vi.stubGlobal('document', {
+        documentElement: {
+          classList: {
+            add: (name: string) => classes.add(name),
+            remove: (...names: string[]) => {
+              for (const name of names) classes.delete(name);
+            },
+          },
+          style: {},
+        },
+      });
+      // Runs the exact inline script the server emits.
+      new Function(configured === undefined ? siteThemeNoFlashScript('site-1') : siteThemeNoFlashScript('site-1', configured))();
+      vi.unstubAllGlobals();
+      return [...classes].join(' ');
+    };
+
+    it('follows the device when the owner never chose', () => {
+      expect(siteAppearance({})).toBe('system');
+      expect(siteAppearance(null)).toBe('system');
+      expect(siteAppearance({ styling: {} })).toBe('system');
+      expect(paint(siteAppearance({}), true)).toBe('dark');
+      expect(paint(siteAppearance({}), false)).toBe('light');
+      // The script's own default agrees.
+      expect(paint(undefined, true)).toBe('dark');
+    });
+
+    it('keeps an explicit owner choice and a reader choice over the device', () => {
+      expect(siteAppearance({ styling: { theme: 'light' } })).toBe('light');
+      expect(paint('light', true)).toBe('light');
+      expect(paint('dark', false)).toBe('dark');
+      expect(paint('system', true, 'light')).toBe('light');
+      expect(paint('system', false, 'dark')).toBe('dark');
+    });
+  });
+
   it('accepts bounded Unicode family names and keeps Arabic fallbacks', () => {
     const css = projectThemeCss({ typography: { headingFont: 'نسق عربي' } });
     expect(css).toContain("font-family:'نسق عربي','Noto Sans Arabic Variable','Noto Sans Arabic'");
@@ -73,10 +159,36 @@ describe('published theme projection', () => {
     expect(String(projectThemeStyle({ typography: { bodyFont: 'Inter' } }).fontFamily)).toMatch(/^'Inter','Noto Sans Arabic Variable',/);
   });
 
+  it.each(['#009966', '#387818'])('keeps the rail accent at AA on Signal with accent %s, in the CSS and the dashboard preview', (accent) => {
+    const config = { theme: { preset: 'signal', colors: { light: { accent } } } } as never;
+    const code = resolveProjectTheme(config).colors.light.code;
+    const css = projectThemeCss(config);
+    const fromCss = css.match(/:root,\.nibleaf-site-chrome\{[^}]*--theme-code-accent:(#[0-9a-f]{6})/)?.[1] as string;
+    const fromPreview = projectThemeVariables(config, 'light')['--theme-code-accent' as never] as string;
+    expect(fromCss).toBe(fromPreview);
+    // Main drew the authored #009966 here; the canvas shade would have read 4.35:1 on the tint.
+    if (accent === '#009966') expect(fromCss).toBe('#009966');
+    // The rail's active item: the code accent on a 14% tint of itself, unrounded.
+    expect(onTint(fromCss, code, 0.14)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(fromCss, code)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("draws a pre-v1 site's code accent from its brand, as before", () => {
+    expect(projectThemeCss({ styling: { primaryColor: '#5546e8' } } as never)).toContain('--theme-code-accent:color-mix(in oklab,#5546e8 55%,white)');
+  });
+
   it('keeps pre-v1 projects on their existing design-system palette', () => {
     const css = projectThemeCss({ styling: { primaryColor: '#c2410c' } });
     expect(css).toContain('--theme-canvas:var(--background)');
-    expect(css).toContain('--primary:#c2410c');
+    // The accent is drawn in the shade that reads as text on #fafafa and its tint (PUB-006).
+    const accent = readableAccentText('#c2410c', '#fafafa');
+    expect(contrastRatio(accent, '#fafafa')).toBeGreaterThanOrEqual(4.5);
+    expect(css).toContain(`--primary:${accent}`);
+    expect(css).toContain('--primary-foreground:#ffffff');
+    // Dark keeps the design system's on-primary text it always had.
+    expect(css).toMatch(/\.dark\{[^}]*--primary-foreground:#171717/);
+    // ...and mixes the brand itself towards white, unchanged from before.
+    expect(css).toContain('color-mix(in oklab,#c2410c 72%,white)');
     expect(css).not.toContain('--background:#f8fafc');
   });
 

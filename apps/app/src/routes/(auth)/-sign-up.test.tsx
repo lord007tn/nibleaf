@@ -5,17 +5,42 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ publicMeta: vi.fn(), refetch: vi.fn(), navigate: vi.fn(), send: vi.fn(), social: vi.fn(), verify: vi.fn() }));
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
+vi.mock('@nibleaf/i18n/react', () => {
+  const t = (key: string) => key;
+  return { useT: () => t, useLocale: () => ({ t, locale: 'en' }) };
+});
+// The auth surfaces translate through AUTH_MESSAGES (MKT-001); give them the
+// same translator and locale as the @nibleaf/i18n/react mock above.
+vi.mock('@/lib/auth-messages', async () => {
+  const react = (await import('@nibleaf/i18n/react')) as unknown as {
+    useT?: () => (key: string, variables?: Record<string, string | number>) => string;
+    useLocale?: () => Record<string, unknown>;
+  };
+  // Plain names: the mocks are read per render, not called as hooks here. A
+  // mock without one of them throws on access, hence the `in` checks.
+  const readT = 'useT' in react ? react.useT : undefined;
+  const readLocale = 'useLocale' in react ? react.useLocale : undefined;
+  const authLocale = (): Record<string, unknown> => ({ locale: 'en', setLocale: () => undefined, ...(readLocale ? readLocale() : { t: readT?.() }) });
+  return { useAuthLocale: authLocale, useAuthT: () => (readT ? readT() : authLocale().t) };
+});
+
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}) }),
+  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useSearch: () => ({}), useLoaderData: () => null }),
   useNavigate: () => mocks.navigate,
   useRouter: () => ({ history: { push: mocks.navigate, replace: mocks.navigate } }),
   Link: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
 vi.mock('@/hooks/api/public', () => ({ useGetPublicMeta: mocks.publicMeta }));
 vi.mock('@/hooks/api/query-options', () => ({ getPublicMetaQueryOptions: () => ({ queryKey: ['public', 'meta'] }) }));
-vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
-vi.mock('@/layouts/auth', () => ({ AuthLayout: ({ children }: { children: ReactNode }) => <div>{children}</div> }));
+vi.mock('@/integrations/tanstack-query/query-client', () => ({ loadRouteData: vi.fn() }));
+vi.mock('@/layouts/auth', () => ({
+  AuthLayout: ({ children, notice }: { children: ReactNode; notice?: ReactNode }) => (
+    <div>
+      {notice}
+      {children}
+    </div>
+  ),
+}));
 vi.mock('@/services/auth-client', () => ({
   authClient: { signIn: { emailOtp: mocks.verify }, emailOtp: { sendVerificationOtp: mocks.send } },
   signIn: { social: mocks.social },
@@ -84,19 +109,22 @@ describe('sign-up availability', () => {
   it.each([
     ['sign-up', Route.options.component],
     ['sign-in', SignInRoute.options.component],
-  ])('shows the same notice at Google and email actions on %s, with no checkbox', async (_name, component) => {
+  ])('shows one notice before both Google and the email form on %s, with no checkbox', async (_name, component) => {
     mocks.publicMeta.mockReturnValue({ isPending: false, data: { signupDisabled: false, providers: { google: true } } });
     mocks.social.mockResolvedValue({});
     const Page = component as unknown as ComponentType;
     await act(async () => root.render(<Page />));
     expect(container.querySelector('input[type="checkbox"]')).toBeNull();
     const notices = [...container.querySelectorAll('p')].filter((p) => p.textContent?.includes('auth.legal.continuePrefix'));
-    expect(notices).toHaveLength(2);
-    for (const notice of notices) {
-      expect(notice.querySelector('a[href="/terms"]')).not.toBeNull();
-      expect(notice.querySelector('a[href="/privacy"]')).not.toBeNull();
-    }
+    expect(notices).toHaveLength(1);
+    const notice = notices[0] as HTMLParagraphElement;
+    expect(notice.querySelector('a[href="/terms"]')).not.toBeNull();
+    expect(notice.querySelector('a[href="/privacy"]')).not.toBeNull();
     const google = container.querySelector<HTMLButtonElement>('button');
+    const form = container.querySelector('form');
+    for (const action of [google, form]) {
+      expect(action && notice.compareDocumentPosition(action) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
     await act(async () => google?.click());
     expect(mocks.social).toHaveBeenCalledWith(expect.objectContaining({ provider: 'google', additionalData: { acceptTerms: true } }));
   });
@@ -124,11 +152,14 @@ describe('sign-up availability', () => {
         container.querySelector('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
       });
     await submit();
-    expect(mocks.send).toHaveBeenCalledWith({ email: 'ada@example.test', type: 'sign-in' });
+    expect(mocks.send).toHaveBeenCalledWith({ email: 'ada@example.test', type: 'sign-in' }, expect.anything());
     expect(container.querySelector('form')?.textContent).toContain('auth.legal.continuePrefix');
     await setInput('#otp', '123456');
     // InputOTP may auto-submit on completion; form submission uses the same path.
     if (!mocks.verify.mock.calls.length) await submit();
-    expect(mocks.verify).toHaveBeenCalledWith(expect.objectContaining({ email: 'ada@example.test', otp: '123456', acceptTerms: true }));
+    expect(mocks.verify).toHaveBeenCalledWith(
+      expect.objectContaining({ email: 'ada@example.test', otp: '123456', acceptTerms: true }),
+      expect.anything(),
+    );
   });
 });

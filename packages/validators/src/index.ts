@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { supportActionUrlSchema, webActionUrlSchema } from './action-urls';
 import { AI_CHAT_LIMITS } from './ai-chat';
 import { isSafeInlineAssetContentType, normalizeAssetContentType } from './assets';
+import { SEARCH_QUERY_MAX_LENGTH } from './search';
 import { themeConfigSchema } from './themes';
 
 export {
@@ -58,6 +59,7 @@ export {
   type VerifyProjectIntegrationBody,
   verifyProjectIntegrationBody,
 } from './integrations';
+export { SEARCH_QUERY_MAX_LENGTH } from './search';
 export {
   parseThemeTemplate,
   type ThemeImportBody,
@@ -531,6 +533,15 @@ export const projectSlug = z
     'Use an available address with lowercase letters, numbers, and hyphens. System hostnames and xn-- labels are reserved.',
   );
 
+/** An address in DNS-label form, without the reserved-name rule. Updates use
+ *  it because the API judges reservation only when the address changes: a site
+ *  keeps an address that was reserved after it was given. */
+export const projectSlugFormat = z
+  .string()
+  .min(1)
+  .max(63)
+  .regex(/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/, 'Use lowercase letters, numbers, and hyphens.');
+
 export const projectAvailabilityQuery = z
   .object({ organizationId: z.string().min(1).optional(), name: z.string().trim().min(1).max(120), slug: projectSlug.optional() })
   .strict();
@@ -553,7 +564,7 @@ export type CreateProjectBody = z.infer<typeof createProjectBody>;
 export const updateProjectBody = z
   .object({
     name: z.string().min(1).max(120).optional(),
-    slug: projectSlug.optional(),
+    slug: projectSlugFormat.optional(),
     description: z.string().max(500).nullable().optional(),
     icon: z.string().max(64).nullable().optional(),
     config: projectConfigUpdateSchema.optional(),
@@ -657,7 +668,7 @@ export const createPageBody = z.object({
   languageId: z.string().optional(),
   branchId: z.string().optional(),
   kind: pageKindEnum.optional(),
-  title: z.string().min(1).max(200),
+  title: z.string().max(200),
   slug: z.string().max(200).optional(),
   icon: z.string().max(64).nullable().optional(),
   description: z.string().max(500).nullable().optional(),
@@ -699,7 +710,7 @@ export type MergeBranchBody = z.infer<typeof mergeBranchBody>;
 export const updatePageBody = z.object({
   expectedUpdatedAt: z.iso.datetime({ offset: true }).optional(),
   parentId: z.string().nullable().optional(),
-  title: z.string().min(1).max(200).optional(),
+  title: z.string().max(200).optional(),
   slug: z.string().max(200).optional(),
   icon: z.string().max(64).nullable().optional(),
   description: z.string().max(500).nullable().optional(),
@@ -942,7 +953,7 @@ export type ConfirmAssetBody = z.infer<typeof confirmAssetBody>;
 // ─── Search & analytics ──────────────────────────────────────────────────────
 
 export const searchQuery = z.object({
-  q: z.string().max(200).default(''),
+  q: z.string().max(SEARCH_QUERY_MAX_LENGTH).default(''),
   limit: z.coerce.number().int().min(1).max(50).optional(),
 });
 export type SearchQuery = z.infer<typeof searchQuery>;
@@ -1205,7 +1216,9 @@ export const gitConfigSchema = z.object({
   cloneUrl: z
     .url()
     .max(500)
+    // z.url() reports a malformed value but does not stop this check, so guard the parse.
     .refine((value) => {
+      if (!URL.canParse(value)) return false;
       const url = new URL(value);
       return ['http:', 'https:'].includes(url.protocol) && !(url.username || url.password || url.search || url.hash);
     }, 'Clone URL must use http(s) without credentials, query parameters, or fragments.')
@@ -1214,6 +1227,7 @@ export const gitConfigSchema = z.object({
     .url()
     .max(200)
     .refine((value) => {
+      if (!URL.canParse(value)) return false;
       const url = new URL(value);
       return ['http:', 'https:'].includes(url.protocol) && !(url.username || url.password || url.search || url.hash);
     }, 'GitLab instance URL must use http(s) without credentials, query parameters, or fragments.')
@@ -1339,6 +1353,15 @@ export type AdminSetRoleBody = z.infer<typeof adminSetRoleBody>;
 // Each importer source gets its own request schema here; the import summaries
 // they return are plain server responses (not validated request bodies).
 
+const importSourceUrl = z
+  .url()
+  .max(2048)
+  .refine((value) => {
+    if (!URL.canParse(value)) return false;
+    const url = new URL(value);
+    return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password;
+  });
+
 /** Import a public Mintlify docs repo from GitHub (docs.json or legacy mint.json). */
 export const mintlifyImportBody = z
   .object({
@@ -1347,6 +1370,7 @@ export const mintlifyImportBody = z
       .max(120)
       .regex(/^[\w.-]+\/[\w.-]+$/, 'Use the form owner/repo.'),
     branch: z.string().max(120).optional(),
+    sourceUrl: importSourceUrl.optional(),
     replaceExisting: z.boolean().optional(),
   })
   .strict();
@@ -1361,6 +1385,7 @@ export const gitbookImportBody = z
       .max(120)
       .regex(/^[\w.-]+\/[\w.-]+$/, 'Use the form owner/repo.'),
     branch: z.string().max(120).optional(),
+    sourceUrl: importSourceUrl.optional(),
     path: z
       .string()
       .trim()

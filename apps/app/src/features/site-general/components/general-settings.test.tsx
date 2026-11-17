@@ -7,7 +7,8 @@ import type { Project } from '@/hooks/api';
 import { isolate } from '@/lib/bidi';
 import { GeneralSettings } from './general-settings';
 
-const mocks = vi.hoisted(() => ({ updateProject: vi.fn(), updateLanguage: vi.fn(), languages: [] as unknown[] }));
+const mocks = vi.hoisted(() => ({ updateProject: vi.fn(), updateLanguage: vi.fn(), toastError: vi.fn(), languages: [] as unknown[] }));
+vi.mock('sonner', () => ({ toast: { error: mocks.toastError, success: vi.fn() } }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, translateFn: (key: string) => key }));
 vi.mock('@/env', () => ({ env: { VITE_SITE_BASE_DOMAIN: 'nibleaf.app' } }));
 vi.mock('@/hooks/api', () => ({
@@ -73,6 +74,7 @@ const blur = (el: HTMLElement) =>
 const region = () => container.querySelector('[data-slot="save-region"]');
 const regionButton = (name: string) => [...(region()?.querySelectorAll('button') ?? [])].find((b) => b.textContent?.includes(name));
 const save = () => act(async () => regionButton('common.save')?.click());
+const barStatus = () => container.querySelector('[role="status"]')?.textContent;
 const errorOf = (el: HTMLElement) =>
   (el.getAttribute('aria-describedby') ?? '')
     .split(' ')
@@ -109,7 +111,7 @@ describe('GeneralSettings', () => {
     expect(name.getAttribute('aria-invalid')).toBeNull();
   });
 
-  it('keeps text typed during a slow save, and the unsaved-changes guard with it', async () => {
+  it('keeps text typed during a slow save, and the unsaved-changes guard with it, saying "Saved" only once nothing is left', async () => {
     const first = deferred();
     mocks.updateProject.mockReturnValueOnce(first.promise);
     const name = input('settings.general.name.label');
@@ -121,6 +123,8 @@ describe('GeneralSettings', () => {
     expect(name.value).toBe('AB');
     expect(dirty.size).toBeGreaterThan(0);
     expect(region()).not.toBeNull();
+    // The request went through, but "AB" is still unsaved (#759).
+    expect(barStatus()).toBe('forms.unsavedChanges');
 
     mocks.updateProject.mockResolvedValueOnce(undefined);
     await save();
@@ -128,6 +132,7 @@ describe('GeneralSettings', () => {
     expect(name.value).toBe('AB');
     expect(dirty.size).toBe(0);
     expect(region()).toBeNull();
+    expect(barStatus()).toBe('common.saved');
   });
 
   it('keeps the save bar and the leave guard up until a pending save settles, even if the text goes back', async () => {
@@ -155,6 +160,52 @@ describe('GeneralSettings', () => {
     expect(region()).not.toBeNull();
     await type(slug, 'help-center');
     expect(slug.getAttribute('aria-invalid')).toBeNull();
+  });
+
+  // P0-DASH-001: this site has the address `docs`, which is reserved. Saving
+  // another field used to re-send it and fail with only a toast.
+  it('saves a description change on a site with a reserved address, sending only the description', async () => {
+    mocks.updateProject.mockResolvedValueOnce(undefined);
+    await type(input('settings.general.description.label'), 'Edited');
+    await save();
+    expect(mocks.updateProject).toHaveBeenCalledWith({ description: 'Edited' });
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(region()).toBeNull();
+  });
+
+  it('says a reserved address is reserved once the field is left, and sends nothing', async () => {
+    const slug = input('settings.general.url.label');
+    await type(slug, 'www');
+    await blur(slug);
+    expect(slug.getAttribute('aria-invalid')).toBe('true');
+    expect(errorOf(slug)).toBe('settings.general.url.reserved');
+    await save();
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    // Going back to the address the site already has is fine.
+    await type(slug, 'docs');
+    expect(slug.getAttribute('aria-invalid')).toBeNull();
+  });
+
+  it.each([
+    [{ status: 400, code: 'http:bad_request', details: { reason: 'slug_reserved' } }, 'settings.general.url.reserved'],
+    [{ status: 422, code: 'validation:failed', details: { issues: [{ path: ['slug'], message: 'Invalid' }] } }, 'settings.general.url.error'],
+  ])('shows the server refusing the address on the field instead of a toast (%j)', async (refusal, message) => {
+    mocks.updateProject.mockRejectedValueOnce(refusal);
+    const slug = input('settings.general.url.label');
+    await type(slug, 'handbook');
+    await save();
+    expect(slug.getAttribute('aria-invalid')).toBe('true');
+    expect(errorOf(slug)).toBe(message);
+    expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(region()).not.toBeNull();
+  });
+
+  it('keeps the toast for a failure that is not about a field', async () => {
+    mocks.updateProject.mockRejectedValueOnce({ status: 500 });
+    await type(input('settings.general.name.label'), 'Renamed');
+    await save();
+    expect(mocks.toastError).toHaveBeenCalledWith('Could not save');
+    expect(container.querySelector('[aria-invalid="true"]')).toBeNull();
   });
 
   it('leaves a corrected address clean when the refusal for the old one arrives late', async () => {
@@ -188,6 +239,32 @@ describe('GeneralSettings', () => {
     expect(name.value).toBe('AB');
     expect(region()).not.toBeNull();
     expect(dirty.size).toBeGreaterThan(0);
+  });
+
+  it('saves on Enter in a single-line field through the hidden default button, and sends nothing while clean', async () => {
+    const buttons = container.querySelectorAll<HTMLButtonElement>('form button[type="submit"]');
+    expect(buttons).toHaveLength(1);
+    const enter = buttons[0] as HTMLButtonElement;
+    expect(enter.hidden).toBe(true);
+    // The browser's implicit submission (Enter in a text field) clicks the form's default button.
+    await act(async () => enter.click());
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    mocks.updateProject.mockResolvedValueOnce(undefined);
+    await type(input('settings.general.name.label'), 'Renamed');
+    await act(async () => enter.click());
+    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+    expect(mocks.updateProject).toHaveBeenCalledWith(expect.objectContaining({ name: 'Renamed' }));
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('common.saved');
+    expect(dirty.size).toBe(0);
+  });
+
+  it('on Enter with an invalid field, focuses it and sends nothing', async () => {
+    const name = input('settings.general.name.label');
+    await type(name, '');
+    await act(async () => container.querySelector<HTMLButtonElement>('form button[type="submit"]')?.click());
+    expect(mocks.updateProject).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(name);
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('forms.fixHighlighted');
   });
 
   it('keeps the save in flight through a refetch after the text was typed back', async () => {

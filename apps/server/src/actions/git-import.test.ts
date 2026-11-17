@@ -1,6 +1,6 @@
 import { slugifyUnicode } from '@nibleaf/shared/utils';
 import { updatePageBody } from '@nibleaf/validators';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 type Row = {
   id: string;
@@ -485,5 +485,68 @@ describe('importFromGitProvider', () => {
     await expect(runImport()).rejects.toThrow('GitHub API 502');
     expect(createPage).not.toHaveBeenCalled();
     expect(mocks.prisma.page.update).not.toHaveBeenCalled();
+  });
+});
+
+describe('importFromGitProvider page size cap', () => {
+  const MiB = 1024 * 1024;
+  const cap = 2 * MiB;
+  beforeEach(() => {
+    // The locked read returns the stored body of the fake row.
+    Object.assign(mocks.prisma, {
+      $queryRaw: vi.fn(async (_sql: TemplateStringsArray, id: string) => {
+        const row = mocks.rows.find((candidate) => candidate.id === id);
+        return row ? [{ content: row.content }] : [];
+      }),
+    });
+  });
+
+  it('skips and reports a re-import that would grow a page past the cap, and leaves the page as it was', async () => {
+    mocks.files.set('docs/guide.md', 'Small');
+    mocks.files.set('docs/other.md', 'Other');
+    await runImport();
+    mocks.files.set('docs/guide.md', 'x'.repeat(cap + 1));
+    mocks.files.set('docs/other.md', 'Other, updated');
+    await expect(runImport()).resolves.toMatchObject({ updated: 1, skipped: 1, tooLarge: ['docs/guide.md'] });
+    expect(pageOf('docs/guide.md')?.content).toBe('Small');
+    expect(pageOf('docs/other.md')?.content).toBe('Other, updated');
+    // Compared with the stored body under the row lock.
+    const raw = mocks.prisma as unknown as { $transaction: ReturnType<typeof vi.fn>; $queryRaw: ReturnType<typeof vi.fn> };
+    expect(raw.$transaction).toHaveBeenCalled();
+    expect(String(raw.$queryRaw.mock.calls.at(-1)?.[0].join('?'))).toContain('FOR NO KEY UPDATE');
+  });
+
+  it('applies a re-import that shrinks a page already over the cap', async () => {
+    mocks.files.set('docs/guide.md', 'Small');
+    await runImport();
+    const stored = pageOf('docs/guide.md');
+    if (stored) stored.content = 'x'.repeat(3 * MiB);
+    mocks.files.set('docs/guide.md', 'x'.repeat(2.5 * MiB));
+    await expect(runImport()).resolves.toMatchObject({ updated: 1, skipped: 0, tooLarge: [] });
+    expect(pageOf('docs/guide.md')?.content).toHaveLength(2.5 * MiB);
+  });
+
+  it('skips and reports a new file over the cap instead of creating its page', async () => {
+    mocks.files.set('docs/huge.md', 'ع'.repeat(MiB + 1));
+    mocks.files.set('docs/intro.md', 'Hello');
+    await expect(runImport()).resolves.toMatchObject({ imported: 1, skipped: 1, tooLarge: ['docs/huge.md'] });
+    expect(createPage).toHaveBeenCalledOnce();
+  });
+
+  it('reads repository files with a bound and reports one that is over it, without stopping the import', async () => {
+    const { getGitHubTextFile } = await import('./importers/github');
+    const { ImportError } = await import('@/errors');
+    const original = vi.mocked(getGitHubTextFile).getMockImplementation();
+    onTestFinished(() => {
+      if (original) vi.mocked(getGitHubTextFile).mockImplementation(original);
+    });
+    vi.mocked(getGitHubTextFile).mockImplementation(async (_owner, _repo, _branch, path, maxBytes) => {
+      expect(maxBytes).toBe(4 * cap);
+      if (path === 'docs/huge.md') throw new ImportError({ code: 'import:limit', message: 'too large' });
+      return mocks.files.get(path) ?? null;
+    });
+    mocks.files.set('docs/huge.md', 'x');
+    mocks.files.set('docs/intro.md', 'Hello');
+    await expect(runImport()).resolves.toMatchObject({ imported: 1, skipped: 1, tooLarge: ['docs/huge.md'] });
   });
 });

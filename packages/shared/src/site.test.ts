@@ -20,8 +20,10 @@ import {
   type SnapshotLanguage,
   type SnapshotPage,
   type SnapshotProject,
+  startsUngroupedBlock,
   withOpenApiNav,
 } from './site';
+import { firstPage } from './site-route';
 
 describe('isPageTranslation', () => {
   it('uses an explicit translation key when localized paths differ', () => {
@@ -119,6 +121,10 @@ describe('buildNavTree', () => {
     ]);
     expect(tree.map((n) => n.title)).toEqual(['Short', 'Plain']);
   });
+  it('labels an untitled page "Untitled" in its language, never an empty link', () => {
+    const tree = buildNavTree([page({ id: 'a', title: '' }), page({ id: 'b', title: '', languageCode: 'ar', position: 1 })]);
+    expect(tree.map((n) => n.title)).toEqual(['Untitled', 'صفحة بدون عنوان']);
+  });
   it('filters pages strictly by language', () => {
     const tree = buildNavTree([page({ id: 'en1', languageCode: 'en' }), page({ id: 'ar1', languageCode: 'ar' })], 'en');
     expect(tree.map((n) => n.id)).toEqual(['en1']);
@@ -133,13 +139,46 @@ describe('buildNavTree', () => {
     expect(tree[0]).toMatchObject({ kind: 'GROUP', icon: 'hotel' });
     expect(tree[0]?.children.map((node) => node.path)).toEqual(['blog/hotel', 'blog/room']);
   });
-  it('keeps real groups ahead of virtual categories and uncategorized pages last', () => {
+  // P1-DASH-002: groups used to be forced ahead of pages, so the live site's
+  // order (and its home page) differed from the editor's.
+  it('keeps the author’s order between groups and pages, with virtual categories where their first page sits', () => {
     const tree = buildNavTree([
       page({ id: 'loose', position: 0 }),
       page({ id: 'guides', kind: 'GROUP', position: 1 }),
       page({ id: 'setup', position: 2, config: { category: 'Start', categoryOrder: 0 } }),
+      page({ id: 'last', position: 3 }),
     ]);
-    expect(tree.map((node) => node.title)).toEqual(['guides', 'Start', 'loose']);
+    expect(tree.map((node) => node.title)).toEqual(['loose', 'guides', 'Start', 'last']);
+  });
+  it('orders the starter site as the editor does, so its home is "Getting started"', () => {
+    // The starter layout from `createStarterProject` (@nibleaf/auth).
+    const pages = [
+      page({ id: 'faq', title: 'FAQ', position: 4 }),
+      page({ id: 'api', kind: 'GROUP', title: 'API reference', path: 'api-reference', position: 3 }),
+      page({ id: 'auth', title: 'Authentication', parentId: 'api', path: 'api-reference/authentication', position: 0 }),
+      page({ id: 'widget', title: 'Create a widget', parentId: 'api', path: 'api-reference/create-a-widget', position: 1 }),
+      page({ id: 'tour', title: 'Components tour', position: 2 }),
+      page({ id: 'install', title: 'Installation', position: 1 }),
+      page({ id: 'start', title: 'Getting started', path: 'getting-started', position: 0 }),
+    ];
+    const tree = buildNavTree(pages);
+    expect(tree.map((node) => node.title)).toEqual(['Getting started', 'Installation', 'Components tour', 'API reference', 'FAQ']);
+    expect(tree[3]?.children.map((node) => node.title)).toEqual(['Authentication', 'Create a widget']);
+    expect(firstPage(pages)?.id).toBe('start');
+    // FAQ follows the API reference section, so it starts its own block.
+    expect(tree.map((_, index) => startsUngroupedBlock(tree, index))).toEqual([false, false, false, false, true]);
+  });
+  it('starts an unlabelled block only after a group that shows pages', () => {
+    const tree = buildNavTree([
+      page({ id: 'empty', kind: 'GROUP', position: 0 }),
+      page({ id: 'a', position: 1 }),
+      page({ id: 'g', kind: 'GROUP', position: 2 }),
+      page({ id: 'child', parentId: 'g', position: 0 }),
+      page({ id: 'b', position: 3 }),
+      page({ id: 'c', position: 4 }),
+    ]);
+    expect(tree.map((node) => node.id)).toEqual(['empty', 'a', 'g', 'b', 'c']);
+    expect(tree.map((_, index) => startsUngroupedBlock(tree, index))).toEqual([false, false, false, true, false]);
   });
   it('auto-organizes oversized flat English imports while explicit categories win', () => {
     const pages = Array.from({ length: 24 }, (_, index) =>
@@ -380,9 +419,7 @@ describe('interpolateVariablesWithin', () => {
   it('stops expanding at the limit, so long values cannot amplify a large body', () => {
     const text = '{{x}}'.repeat(200_000);
     const value = 'v'.repeat(500);
-    const started = performance.now();
     const result = interpolateVariablesWithin(text, { x: value }, 8192);
-    expect(performance.now() - started).toBeLessThan(50);
     expect(result).toHaveLength(8192);
     expect(result).toBe(value.repeat(17).slice(0, 8192));
   });

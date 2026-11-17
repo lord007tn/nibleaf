@@ -1,6 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { type ResolvedTheme, THEME_SCHEMA_VERSION, type ThemeLayout } from '@nibleaf/shared/themes';
-import { type CSSProperties, createContext, type ReactNode, useContext } from 'react';
+import { type CSSProperties, createContext, type ReactNode, useContext, useEffect, useId, useRef, useState } from 'react';
 
 export type DocumentationThemeContextName = 'reader' | 'project-preview' | 'studio-preview';
 
@@ -8,6 +8,9 @@ interface ReaderSlots {
   banner?: ReactNode;
   header: ReactNode;
   navigation: ReactNode;
+  /** In the reader's language: the control that opens a navigation index the
+   *  theme shows in a limited height (Manuscript). */
+  navigationLabels?: { showAll: string; showLess: string };
   content: ReactNode;
   footer?: ReactNode;
   overlays?: ReactNode;
@@ -28,6 +31,10 @@ interface StudioPreviewSlots {
 interface PageSlots {
   article: ReactNode;
   tableOfContents?: ReactNode;
+  /** Keep the outline column even when this page has no outline, so the article
+   *  doesn't jump sideways between pages of the same layout that have one and
+   *  pages that don't. Wide and centered pages leave it out on purpose. */
+  reserveTocColumn?: boolean;
 }
 
 export interface DocumentationThemeTemplate {
@@ -66,7 +73,7 @@ const HarborTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="harbor-reference"
         data-theme-region="content-shell"
       >
-        <aside
+        <div
           className="sticky top-(--site-header-h) hidden h-[calc(100dvh-var(--site-header-h))] self-start border-(--theme-border) border-e lg:block"
           data-theme-region="sidebar"
         >
@@ -75,7 +82,7 @@ const HarborTemplate: DocumentationThemeTemplate = {
               {slots.navigation}
             </div>
           </div>
-        </aside>
+        </div>
         {slots.content}
       </div>,
     ),
@@ -87,9 +94,9 @@ const HarborTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="harbor-reference-preview"
         data-theme-region="preview-shell"
       >
-        <aside className="hidden min-h-0 flex-col border-border border-e bg-card/40 md:flex" data-theme-region="sidebar">
+        <div className="hidden min-h-0 flex-col border-border border-e bg-card/40 md:flex" data-theme-region="sidebar">
           {navigation}
-        </aside>
+        </div>
         {content}
       </div>
     </>
@@ -109,21 +116,96 @@ const HarborTemplate: DocumentationThemeTemplate = {
       </div>
     </>
   ),
-  PageLayout: ({ article, tableOfContents }) => (
+  PageLayout: ({ article, tableOfContents, reserveTocColumn }) => (
     <div
-      className={cn('grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12', tableOfContents && 'xl:grid-cols-[minmax(0,1fr)_13rem]')}
+      className={cn('grid min-w-0 grid-cols-1 gap-12 py-9 lg:py-12', (tableOfContents || reserveTocColumn) && 'xl:grid-cols-[minmax(0,1fr)_13rem]')}
+      data-reader-article-grid=""
       data-documentation-layout="harbor-reference-page"
       data-theme-region="page-shell"
     >
       {article}
       {tableOfContents ? (
-        <aside className="hidden xl:block" data-theme-region="toc">
+        <div className="hidden xl:block" data-theme-region="toc">
           {tableOfContents}
-        </aside>
+        </div>
       ) : null}
     </div>
   ),
 };
+
+/**
+ * Manuscript's navigation index above the paper, at desktop width. It opens in
+ * a limited height so the article stays near the top; when the index is taller,
+ * its end fades and a button shows the rest (and folds it again), so no page is
+ * out of reach. Server HTML keeps every link; collapsing is presentation only.
+ */
+/** The height of the fade at the end of a collapsed index (styles.css: `calc(100% - 4rem)`). */
+const FADE_REM = 4;
+/** Unlayered, so it wins over the collapse rule in `@layer components`. */
+const NO_SCRIPT_INDEX = '.documentation-manuscript-navigation[data-collapsed]{max-block-size:none;overflow:visible}';
+
+function ManuscriptNavigationIndex({ labels, children }: { labels?: ReaderSlots['navigationLabels']; children: ReactNode }) {
+  const content = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflows, setOverflows] = useState(false);
+  const id = useId();
+  useEffect(() => {
+    const element = content.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    // Measured only while collapsed: expanded, the index always fits, and the
+    // button must stay (with its focus) to fold it again.
+    const measure = () => {
+      if (element.hasAttribute('data-collapsed')) setOverflows(element.scrollHeight > element.clientHeight + 1);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    for (const child of element.children) observer.observe(child);
+    // A link reached by keyboard that ends inside the fade (the last 4rem) or
+    // below it opens the whole index, so a focused link is never masked.
+    const reveal = (event: FocusEvent) => {
+      if (!element.hasAttribute('data-collapsed') || !(event.target instanceof Element)) return;
+      const rem = Number.parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+      if (event.target.getBoundingClientRect().bottom > element.getBoundingClientRect().bottom - FADE_REM * rem) setExpanded(true);
+    };
+    element.addEventListener('focusin', reveal);
+    return () => {
+      observer.disconnect();
+      element.removeEventListener('focusin', reveal);
+    };
+  }, []);
+  const collapsible = Boolean(labels) && (overflows || expanded);
+  return (
+    <div className="documentation-manuscript-reader-navigation hidden lg:block" data-theme-region="sidebar">
+      {/* Without JavaScript there's no button: the server's collapsed index opens in full. */}
+      <noscript>
+        <style>{NO_SCRIPT_INDEX}</style>
+      </noscript>
+      <div
+        className="documentation-manuscript-navigation py-6"
+        data-collapsed={expanded ? undefined : ''}
+        data-overflows={collapsible && !expanded ? '' : undefined}
+        data-theme-region="sidebar-content"
+        id={id}
+        ref={content}
+      >
+        {children}
+      </div>
+      {collapsible && labels ? (
+        <button
+          aria-controls={id}
+          aria-expanded={expanded}
+          className="documentation-manuscript-navigation-toggle"
+          data-theme-region="nav-toggle"
+          onClick={() => setExpanded((value) => !value)}
+          type="button"
+        >
+          {expanded ? labels.showLess : labels.showAll}
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 /** Manuscript — an editorial shell: chapter deck across the top, then a single
  * sheet of "paper" carrying a focused reading measure with the outline in the
@@ -142,11 +224,7 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
       >
         {slots.header}
         <div className="mx-auto flex w-full max-w-[82rem] flex-1 flex-col px-4 pb-10 sm:px-6" data-theme-region="content-shell">
-          <aside className="documentation-manuscript-reader-navigation hidden lg:block" data-theme-region="sidebar">
-            <div className="documentation-manuscript-navigation py-6" data-theme-region="sidebar-content">
-              {slots.navigation}
-            </div>
-          </aside>
+          <ManuscriptNavigationIndex labels={slots.navigationLabels}>{slots.navigation}</ManuscriptNavigationIndex>
           <div className="documentation-manuscript-paper min-w-0 flex-1 border border-(--theme-border) bg-(--theme-surface) shadow-[0_18px_50px_-20px_color-mix(in_oklab,var(--theme-foreground)_22%,transparent)] lg:mt-2">
             {slots.content}
           </div>
@@ -166,12 +244,12 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="manuscript-editorial-preview"
         data-theme-region="preview-shell"
       >
-        <aside
+        <div
           className="documentation-manuscript-preview-navigation hidden max-h-40 flex-col border-border border-y bg-(--theme-canvas) md:flex"
           data-theme-region="sidebar"
         >
           {navigation}
-        </aside>
+        </div>
         <div className="mx-auto min-h-0 w-full max-w-[60rem] flex-1 overflow-y-auto border border-border bg-(--theme-surface) shadow-lg">
           {content}
         </div>
@@ -189,19 +267,23 @@ const ManuscriptTemplate: DocumentationThemeTemplate = {
       </div>
     </div>
   ),
-  PageLayout: ({ article, tableOfContents }) => (
+  PageLayout: ({ article, tableOfContents, reserveTocColumn }) => (
     <div
       className={cn(
         'grid min-w-0 grid-cols-1 justify-center gap-10 px-5 py-10 sm:px-8 lg:py-14',
-        tableOfContents && 'xl:grid-cols-[11rem_minmax(0,44rem)] xl:gap-14',
+        (tableOfContents || reserveTocColumn) && 'xl:grid-cols-[11rem_minmax(0,44rem)] xl:gap-14',
       )}
+      data-reader-article-grid=""
       data-documentation-layout="manuscript-editorial-page"
       data-theme-region="page-shell"
     >
       {tableOfContents ? (
-        <aside className="hidden xl:block" data-theme-region="toc">
+        <div className="hidden xl:block" data-theme-region="toc">
           {tableOfContents}
-        </aside>
+        </div>
+      ) : reserveTocColumn ? (
+        // The outline column stays, empty, so the article starts where it does on pages with one.
+        <div aria-hidden className="hidden xl:block" data-reader-toc-spacer="" />
       ) : null}
       {article}
     </div>
@@ -224,7 +306,7 @@ const SignalTemplate: DocumentationThemeTemplate = {
           className="mx-auto grid w-full max-w-[100rem] flex-1 grid-cols-1 bg-(--theme-canvas) lg:grid-cols-[15rem_minmax(0,1fr)] lg:overflow-hidden lg:border lg:border-(--theme-border) lg:border-t-0"
           data-theme-region="content-shell"
         >
-          <aside
+          <div
             className="documentation-signal-rail hidden min-h-0 border-(--theme-border) border-e bg-(--theme-code) text-(--theme-code-foreground) lg:block"
             data-theme-region="sidebar"
           >
@@ -233,7 +315,7 @@ const SignalTemplate: DocumentationThemeTemplate = {
                 {slots.navigation}
               </div>
             </div>
-          </aside>
+          </div>
           <div className="min-w-0">{slots.content}</div>
         </div>
       </section>
@@ -251,12 +333,12 @@ const SignalTemplate: DocumentationThemeTemplate = {
         data-documentation-layout="signal-console-preview"
         data-theme-region="preview-shell"
       >
-        <aside
+        <div
           className="documentation-signal-rail hidden min-h-0 flex-col border border-border bg-(--theme-code) text-(--theme-code-foreground) md:flex"
           data-theme-region="sidebar"
         >
           {navigation}
-        </aside>
+        </div>
         <div className="min-h-0 overflow-y-auto border border-border bg-(--theme-canvas)">{content}</div>
       </div>
     </>
@@ -282,12 +364,12 @@ const SignalTemplate: DocumentationThemeTemplate = {
       data-theme-region="page-shell"
     >
       {tableOfContents ? (
-        <aside
+        <div
           className="documentation-signal-command-index hidden border border-(--theme-border) bg-(--theme-surface) px-4 py-2.5 xl:block"
           data-theme-region="toc"
         >
           {tableOfContents}
-        </aside>
+        </div>
       ) : null}
       <div className="documentation-signal-article min-w-0 lg:border lg:border-(--theme-border) lg:bg-(--theme-surface) lg:px-10 lg:py-9">
         {article}

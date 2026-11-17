@@ -8,6 +8,7 @@ export type ErrorCode =
   | 'http:conflict'
   | 'http:unprocessable'
   | 'http:rate_limited'
+  | 'http:payload_too_large'
   | 'http:internal'
   | 'auth:no_user'
   | 'auth:invalid_session'
@@ -29,12 +30,14 @@ export type ErrorCode =
   | 'mcp:nothing_to_publish'
   | 'mcp:publish_blocked'
   | 'mcp:publish_in_progress'
+  | 'publish:busy'
   | 'validation:failed'
   | 'page:revision_conflict'
   | 'page:address_conflict'
   | 'page:redirect_invalid'
   | 'page:trash_unrestorable'
   | 'page:trash_too_large'
+  | 'page:too_large'
   | 'database:not_found'
   | 'database:conflict'
   | 'join:invalid'
@@ -101,6 +104,7 @@ const ERROR_STATUS = {
   'http:conflict': 409,
   'http:unprocessable': 422,
   'http:rate_limited': 429,
+  'http:payload_too_large': 413,
   'http:internal': 500,
   'auth:no_user': 401,
   'auth:invalid_session': 401,
@@ -122,12 +126,15 @@ const ERROR_STATUS = {
   'mcp:nothing_to_publish': 409,
   'mcp:publish_blocked': 409,
   'mcp:publish_in_progress': 409,
+  // A publish gave up waiting for a concurrent change (the project lock); retry shortly.
+  'publish:busy': 409,
   'validation:failed': 422,
   'page:revision_conflict': 409,
   'page:address_conflict': 409,
   'page:redirect_invalid': 422,
   'page:trash_unrestorable': 422,
   'page:trash_too_large': 413,
+  'page:too_large': 413,
   'database:not_found': 404,
   'database:conflict': 409,
   // One answer for a bad, revoked, expired or used-up join link: no enumeration.

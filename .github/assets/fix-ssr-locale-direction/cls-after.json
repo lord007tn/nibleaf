@@ -1,0 +1,1015 @@
+{
+  "phase": "after",
+  "app": "http://localhost:4310",
+  "runsPerProfile": 3,
+  "profiles": [
+    {
+      "page": "home",
+      "visitor": "en",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        }
+      ]
+    },
+    {
+      "page": "home",
+      "visitor": "en",
+      "width": 1440,
+      "cls": 0.0002477936921296296,
+      "total": 0.0002477936921296296,
+      "runs": [
+        {
+          "total": 0.0002477936921296296,
+          "cls": 0.0002477936921296296,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0.0002690990306712963,
+          "cls": 0.0002690990306712963,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0.0002477936921296296,
+          "cls": 0.0002477936921296296,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        }
+      ]
+    },
+    {
+      "page": "home",
+      "visitor": "ar",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        }
+      ]
+    },
+    {
+      "page": "home",
+      "visitor": "ar",
+      "width": 1440,
+      "cls": 0.0002477936921296296,
+      "total": 0.0002477936921296296,
+      "runs": [
+        {
+          "total": 0.0002477936921296296,
+          "cls": 0.0002477936921296296,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0.0002477936921296296,
+          "cls": 0.0002477936921296296,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0.0002477936921296296,
+          "cls": 0.0002477936921296296,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        }
+      ]
+    },
+    {
+      "page": "home",
+      "visitor": "ar-cookie",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        }
+      ]
+    },
+    {
+      "page": "home",
+      "visitor": "ar-cookie",
+      "width": 1440,
+      "cls": 0.0002477936921296296,
+      "total": 0.0002477936921296296,
+      "runs": [
+        {
+          "total": 0.0002690990306712963,
+          "cls": 0.0002690990306712963,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0.0002477936921296296,
+          "cls": 0.0002477936921296296,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        },
+        {
+          "total": 0.0002477936921296296,
+          "cls": 0.0002477936921296296,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-in",
+      "visitor": "en",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-in"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-in",
+      "visitor": "en",
+      "width": 1440,
+      "cls": 0.00008025588884602194,
+      "total": 0.00008025588884602194,
+      "runs": [
+        {
+          "total": 0.00008025588884602194,
+          "cls": 0.00008025588884602194,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0.00008025588884602194,
+          "cls": 0.00008025588884602194,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0.00008025588884602194,
+          "cls": 0.00008025588884602194,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-in"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-in",
+      "visitor": "ar",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-in",
+      "visitor": "ar",
+      "width": 1440,
+      "cls": 0.0019168766225806971,
+      "total": 0.0019168766225806971,
+      "runs": [
+        {
+          "total": 0.0014623258614245755,
+          "cls": 0.0014623258614245755,
+          "count": 2,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0.0019168766225806971,
+          "cls": 0.0019168766225806971,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0.0019168766225806971,
+          "cls": 0.0019168766225806971,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-in",
+      "visitor": "ar-cookie",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-in",
+      "visitor": "ar-cookie",
+      "width": 1440,
+      "cls": 0.0019168766225806971,
+      "total": 0.0019168766225806971,
+      "runs": [
+        {
+          "total": 0.0019168766225806971,
+          "cls": 0.0019168766225806971,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0.0019168766225806971,
+          "cls": 0.0019168766225806971,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        },
+        {
+          "total": 0.0019168766225806971,
+          "cls": 0.0019168766225806971,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-in"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-up",
+      "visitor": "en",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-up"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-up",
+      "visitor": "en",
+      "width": 1440,
+      "cls": 0.00008025588884602194,
+      "total": 0.00008025588884602194,
+      "runs": [
+        {
+          "total": 0.00008025588884602194,
+          "cls": 0.00008025588884602194,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0.00008025588884602194,
+          "cls": 0.00008025588884602194,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0.00004852363575960219,
+          "cls": 0.00004852363575960219,
+          "count": 2,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/sign-up"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-up",
+      "visitor": "ar",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-up",
+      "visitor": "ar",
+      "width": 1440,
+      "cls": 0.002068317939747835,
+      "total": 0.002068317939747835,
+      "runs": [
+        {
+          "total": 0.002068317939747835,
+          "cls": 0.002068317939747835,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0.002068317939747835,
+          "cls": 0.002068317939747835,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0.002068317939747835,
+          "cls": 0.002068317939747835,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-up",
+      "visitor": "ar-cookie",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        }
+      ]
+    },
+    {
+      "page": "sign-up",
+      "visitor": "ar-cookie",
+      "width": 1440,
+      "cls": 0.002068317939747835,
+      "total": 0.002068317939747835,
+      "runs": [
+        {
+          "total": 0.002068317939747835,
+          "cls": 0.002068317939747835,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0.002068317939747835,
+          "cls": 0.002068317939747835,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        },
+        {
+          "total": 0.002068317939747835,
+          "cls": 0.002068317939747835,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/sign-up"
+          }
+        }
+      ]
+    },
+    {
+      "page": "dashboard",
+      "visitor": "en",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0.25595544367135303,
+          "cls": 0.25595544367135303,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        }
+      ]
+    },
+    {
+      "page": "dashboard",
+      "visitor": "en",
+      "width": 1440,
+      "cls": 0.05722648554044496,
+      "total": 0.05722648554044496,
+      "runs": [
+        {
+          "total": 0.0000020128038194444445,
+          "cls": 0.0000020128038194444445,
+          "count": 1,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0.05878360339506173,
+          "cls": 0.05878360339506173,
+          "count": 2,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0.05722648554044496,
+          "cls": 0.05722648554044496,
+          "count": 2,
+          "served": "<html lang=\"en\" dir=\"ltr\">",
+          "final": {
+            "lang": "en",
+            "dir": "ltr",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        }
+      ]
+    },
+    {
+      "page": "dashboard",
+      "visitor": "ar",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0.25541378053226393,
+          "cls": 0.25541378053226393,
+          "count": 1,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        }
+      ]
+    },
+    {
+      "page": "dashboard",
+      "visitor": "ar",
+      "width": 1440,
+      "cls": 0.05345007394547324,
+      "total": 0.05345007394547324,
+      "runs": [
+        {
+          "total": 0.05345007394547324,
+          "cls": 0.05345007394547324,
+          "count": 2,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0.054923719350137165,
+          "cls": 0.054923719350137165,
+          "count": 3,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0.05345007394547324,
+          "cls": 0.05345007394547324,
+          "count": 2,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        }
+      ]
+    },
+    {
+      "page": "dashboard",
+      "visitor": "ar-cookie",
+      "width": 390,
+      "cls": 0,
+      "total": 0,
+      "runs": [
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0,
+          "cls": 0,
+          "count": 0,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        }
+      ]
+    },
+    {
+      "page": "dashboard",
+      "visitor": "ar-cookie",
+      "width": 1440,
+      "cls": 0.05345007394547324,
+      "total": 0.05345007394547324,
+      "runs": [
+        {
+          "total": 0.05345007394547324,
+          "cls": 0.05345007394547324,
+          "count": 2,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0.05345007394547324,
+          "cls": 0.05345007394547324,
+          "count": 2,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        },
+        {
+          "total": 0.05345007394547324,
+          "cls": 0.05345007394547324,
+          "count": 2,
+          "served": "<html lang=\"ar\" dir=\"rtl\" data-locale=\"ar\">",
+          "final": {
+            "lang": "ar",
+            "dir": "rtl",
+            "path": "/app/o/demo-mwdatuz8/websites"
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteContentT } from '@nibleaf/i18n/site-content';
 import { ChevronRight } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
+import { ReaderLabel } from './reader-label';
 import { truthyAttr } from './utils';
 
 // ─── API reference: ParamField / ResponseField / Expandable ───────────────────
@@ -30,14 +31,18 @@ function FieldRow({
         {name ? <code className="rounded bg-muted px-1.5 py-0.5 font-mono font-semibold text-[0.8rem]">{name}</code> : null}
         {type ? <span className="font-mono text-muted-foreground text-xs">{type}</span> : null}
         {truthyAttr(required) ? (
-          <span className="font-medium text-[11px] text-red-600 uppercase tracking-wide dark:text-red-400">{t('required')}</span>
+          <span className="font-medium text-[11px] text-red-600 uppercase tracking-wide dark:text-red-400">
+            <ReaderLabel language={language}>{t('required')}</ReaderLabel>
+          </span>
         ) : null}
         {truthyAttr(deprecated) ? (
-          <span className="font-medium text-[11px] text-amber-600 uppercase tracking-wide dark:text-amber-400">{t('deprecated')}</span>
+          <span className="font-medium text-[11px] text-amber-600 uppercase tracking-wide dark:text-amber-400">
+            <ReaderLabel language={language}>{t('deprecated')}</ReaderLabel>
+          </span>
         ) : null}
         {defaultValue ? (
           <span className="text-muted-foreground text-xs">
-            {t('defaultValue')}: <code className="font-mono">{defaultValue}</code>
+            <ReaderLabel language={language}>{t('defaultValue')}:</ReaderLabel> <code className="font-mono">{defaultValue}</code>
           </span>
         ) : null}
       </div>
@@ -134,7 +139,7 @@ export function Expandable({
         className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-start font-medium text-sm"
       >
         <ChevronRight className={cn('size-4 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90')} aria-hidden />
-        {title ?? t('showProperties')}
+        {title ?? <ReaderLabel language={language}>{t('showProperties')}</ReaderLabel>}
       </button>
       <section
         id={`${expandableId}-panel`}

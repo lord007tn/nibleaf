@@ -3,6 +3,7 @@ import { siteContentT } from '@nibleaf/i18n/site-content';
 import { blockDirection } from '@nibleaf/shared/script-direction';
 import { ChevronDown } from 'lucide-react';
 import { type ReactNode, useId, useState } from 'react';
+import { ReaderLabel } from './reader-label';
 import { truthyAttr } from './utils';
 
 // ─── Accordions ─────────────────────────────────────────────────────────────
@@ -36,7 +37,7 @@ export function Accordion({
         className="flex w-full cursor-pointer items-center justify-between gap-2 px-4 py-3 text-start font-medium"
       >
         <span className="min-w-0" dir={title ? blockDirection(title) : undefined}>
-          {title ?? t('details')}
+          {title ?? <ReaderLabel language={language}>{t('details')}</ReaderLabel>}
         </span>
         <ChevronDown className={cn('size-4 shrink-0 transition-transform', open && 'rotate-180')} aria-hidden />
       </button>

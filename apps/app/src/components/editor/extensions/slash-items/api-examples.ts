@@ -1,4 +1,5 @@
 import { Braces, Inbox, Send } from 'lucide-react';
+import { insertBlockAtFirstItem } from './insert-items';
 import type { SlashItem } from './types';
 
 export const apiExampleSlashItems: SlashItem[] = [
@@ -9,19 +10,14 @@ export const apiExampleSlashItems: SlashItem[] = [
     glyph: '{}',
     keywords: ['api', 'request', 'response', 'example'],
     command: ({ editor, range }) =>
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertContent({
-          type: 'mdxApiExample',
-          attrs: { title: '' },
-          content: [
-            { type: 'mdxRequestExample', attrs: { title: '' }, content: [{ type: 'paragraph' }] },
-            { type: 'mdxResponseExample', attrs: { title: '', status: '' }, content: [{ type: 'paragraph' }] },
-          ],
-        })
-        .run(),
+      insertBlockAtFirstItem(editor, range, {
+        type: 'mdxApiExample',
+        attrs: { title: '' },
+        content: [
+          { type: 'mdxRequestExample', attrs: { title: '' }, content: [{ type: 'paragraph' }] },
+          { type: 'mdxResponseExample', attrs: { title: '', status: '' }, content: [{ type: 'paragraph' }] },
+        ],
+      }),
   },
   {
     titleKey: 'editor.slash.requestExample.title',

@@ -1,10 +1,25 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { blockDirection } from '@nibleaf/shared/script-direction';
+import { startsUngroupedBlock } from '@nibleaf/shared/site-nav';
 import { ChevronRight } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { PageIcon } from '@/components/site/page-icon';
+import { useSiteReader } from '@/components/site/site-reader-context';
 import type { NavNode } from '@/hooks/api';
 import { siteHref } from '@/lib/site-paths';
+
+/** A label two lines can't hold shows its whole title in a tooltip on hover. A
+ *  label that fits gets none, so a screen reader doesn't hear the title twice and
+ *  the pointer doesn't raise a tooltip that repeats what's on screen. Measured at
+ *  that moment, after layout; the control's accessible name doesn't change.
+ *  Keyboard focus doesn't show native tooltips, so a focused control's label
+ *  also unclamps to its full text (`in-focus-visible:line-clamp-none`). */
+const showClampedTitle = (event: { currentTarget: HTMLElement }) => {
+  const label = event.currentTarget.querySelector<HTMLElement>('[data-nav-label]');
+  if (!label) return;
+  if (label.scrollHeight > label.clientHeight + 1) label.title = label.textContent ?? '';
+  else label.removeAttribute('title');
+};
 
 /** First navigable page in document order — used to highlight the home page's entry. */
 export function firstLeafPath(nodes: NavNode[]): string | undefined {
@@ -47,7 +62,18 @@ export const isVersionIndependentNavNode = (node: Pick<NavNode, 'id'>): boolean 
  *  holding the current page starts expanded. The link keeps navigating; the
  *  adjacent chevron toggles the subtree. Collapsed subpages stay in the DOM,
  *  hidden, so server HTML keeps every link for crawlers. */
-function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLabel, rail }: NavItemProps & { node: NavNode; rail?: boolean }) {
+function NavLink({
+  node,
+  projectId,
+  currentPath,
+  lang,
+  version,
+  depth,
+  toggleLabel,
+  rail,
+  blockStart,
+}: NavItemProps & { node: NavNode; rail?: boolean; blockStart?: boolean }) {
+  const languages = useSiteReader()?.languages;
   const active = currentPath === node.path;
   const hasChildren = node.children.length > 0;
   const [open, setOpen] = useState(() => containsPath(node, currentPath));
@@ -61,30 +87,56 @@ function NavLink({ node, projectId, currentPath, lang, version, depth, toggleLab
   const toggleId = `${id}-toggle`;
   const childrenId = `${id}-children`;
   return (
-    <li>
+    // A page after a section starts its own unlabelled block, spaced like a section.
+    <li className={blockStart ? 'mt-7' : undefined} data-nav-block-start={blockStart ? '' : undefined}>
       <div className="flex items-start gap-0.5 pointer-coarse:items-center">
         <a
           id={linkId}
-          href={siteHref(projectId, node.path, { lang, version: isVersionIndependentNavNode(node) ? undefined : version })}
+          onFocus={showClampedTitle}
+          onPointerEnter={showClampedTitle}
+          href={siteHref(projectId, node.path, { lang, version: isVersionIndependentNavNode(node) ? undefined : version, languages })}
           aria-current={active ? 'page' : undefined}
           className={cn(
             // Touch screens get 44px rows; mouse and trackpad keep the dense list.
             'relative flex min-w-0 flex-1 items-start gap-2.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors pointer-coarse:min-h-11 pointer-coarse:items-center',
-            active ? 'bg-primary/10 font-medium text-primary' : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+            // On hover the title turns to the foreground, and so does a tag: its
+            // small accent text on its own tint over the hover wash fell below AA
+            // (#731), while the foreground reads on any of these surfaces.
+            active
+              ? 'bg-primary/10 font-medium text-primary'
+              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground hover:[&_[data-nav-tag]]:text-foreground',
             // Entries in a railed list recolor their segment of the rail when active.
             rail && active && 'before:absolute before:-start-[13px] before:inset-y-1 before:w-[1.5px] before:rounded-full before:bg-primary',
           )}
         >
           <PageIcon name={node.icon} className={cn('mt-0.5 size-4 shrink-0', active ? 'text-primary' : 'text-muted-foreground/80')} />
-          {/* Long titles wrap onto a second line instead of losing their end to an ellipsis. */}
-          <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)}>
-            {node.title}
-          </span>
-          {node.tag ? (
-            <span className="ms-auto mt-0.5 shrink-0 rounded-full bg-primary/10 px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase tracking-wide">
-              {node.tag}
+          {/* The title gets the whole row: long titles wrap onto a second line
+              instead of losing their end to an ellipsis, and a tag sits on its
+              own small line under the title rather than in a column beside it. */}
+          <span className="flex min-w-0 flex-1 flex-col items-start gap-1">
+            <span
+              className="line-clamp-2 min-w-0 max-w-full break-words in-focus-visible:line-clamp-none"
+              dir={blockDirection(node.title)}
+              data-nav-label
+            >
+              {node.title}
             </span>
-          ) : null}
+            {node.tag ? (
+              <span
+                className={cn(
+                  'max-w-full break-words rounded-full px-1.5 py-0.5 font-medium text-[10px] text-primary uppercase leading-none tracking-wide',
+                  // The accent shade is chosen to read on one 10% tint. An active
+                  // row already draws it, so the tag outlines itself instead of
+                  // stacking a second tint under its small text (#678).
+                  active ? 'ring-1 ring-primary/40 ring-inset' : 'bg-primary/10',
+                )}
+                data-nav-tag
+                dir={blockDirection(node.tag)}
+              >
+                {node.tag}
+              </span>
+            ) : null}
+          </span>
         </a>
         {hasChildren ? (
           <button
@@ -131,15 +183,20 @@ function NavSection({ node, projectId, currentPath, lang, version, depth, toggle
       setOpen(true);
     }
   }, [currentPath, node]);
+  // The list it opens and closes (P3-PUB-029); named only while it is rendered.
+  const childrenId = useId();
   return (
     <li className="mt-7 first:mt-1">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
+        onFocus={showClampedTitle}
+        onPointerEnter={showClampedTitle}
         aria-expanded={open}
+        aria-controls={open && node.children.length > 0 ? childrenId : undefined}
         className="group flex w-full cursor-pointer items-start justify-between gap-2 rounded-md px-2.5 py-1 text-start font-semibold text-foreground text-sm pointer-coarse:min-h-11 pointer-coarse:items-center"
       >
-        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)}>
+        <span className="line-clamp-2 min-w-0 break-words in-focus-visible:line-clamp-none" dir={blockDirection(node.title)} data-nav-label>
           {node.title}
         </span>
         {/* Resting state hides the chevron on fine pointers only; keyboard focus,
@@ -152,7 +209,7 @@ function NavSection({ node, projectId, currentPath, lang, version, depth, toggle
         />
       </button>
       {open && node.children.length > 0 ? (
-        <div className="mt-1">
+        <div className="mt-1" id={childrenId}>
           <NavItems
             nodes={node.children}
             projectId={projectId}
@@ -179,31 +236,37 @@ function NavSubGroup({ node, projectId, currentPath, lang, version, depth, toggl
       setOpen(true);
     }
   }, [currentPath, node]);
+  const childrenId = useId();
   return (
     <li>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
+        onFocus={showClampedTitle}
+        onPointerEnter={showClampedTitle}
         aria-expanded={open}
+        aria-controls={open && node.children.length > 0 ? childrenId : undefined}
         className="flex w-full cursor-pointer items-start gap-2 rounded-lg px-2.5 py-1.5 text-start font-medium text-muted-foreground text-sm transition-colors hover:bg-muted/60 hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:items-center"
       >
         <ChevronRight className={cn('mt-[3px] size-3.5 shrink-0 transition-transform rtl:-scale-x-100', open && 'rotate-90 rtl:-rotate-90')} />
         {node.icon ? <PageIcon name={node.icon} className="mt-[3px] size-3.5 shrink-0 text-muted-foreground/80" /> : null}
-        <span className="line-clamp-2 min-w-0 break-words" dir={blockDirection(node.title)}>
+        <span className="line-clamp-2 min-w-0 break-words in-focus-visible:line-clamp-none" dir={blockDirection(node.title)} data-nav-label>
           {node.title}
         </span>
       </button>
       {open && node.children.length > 0 ? (
-        <NavItems
-          nodes={node.children}
-          projectId={projectId}
-          currentPath={currentPath}
-          depth={depth + 1}
-          lang={lang}
-          version={version}
-          toggleLabel={toggleLabel}
-          rail
-        />
+        <div id={childrenId}>
+          <NavItems
+            nodes={node.children}
+            projectId={projectId}
+            currentPath={currentPath}
+            depth={depth + 1}
+            lang={lang}
+            version={version}
+            toggleLabel={toggleLabel}
+            rail
+          />
+        </div>
       ) : null}
     </li>
   );
@@ -223,11 +286,12 @@ interface NavItemProps {
 function NavItems({ id, hidden, nodes, rail, ...rest }: NavItemProps & { id?: string; hidden?: boolean; nodes: NavNode[]; rail?: boolean }) {
   return (
     <ul id={id} hidden={hidden} className={cn('space-y-px', rail && 'ms-3 border-border/70 border-s ps-3')}>
-      {nodes.map((node) => {
+      {nodes.map((node, index) => {
         if (node.kind === 'GROUP') {
+          if (!firstLeafPath(node.children)) return null;
           return rest.depth === 0 ? <NavSection key={node.id} node={node} {...rest} /> : <NavSubGroup key={node.id} node={node} {...rest} />;
         }
-        return <NavLink key={node.id} node={node} rail={rail} {...rest} />;
+        return <NavLink blockStart={rest.depth === 0 && startsUngroupedBlock(nodes, index)} key={node.id} node={node} rail={rail} {...rest} />;
       })}
     </ul>
   );

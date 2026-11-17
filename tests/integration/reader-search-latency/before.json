@@ -1,0 +1,133 @@
+{
+  "label": "before",
+  "pages": 300,
+  "measurement": "Hono search action Server-Timing; real PostgreSQL and Orama; controlled readiness delay; no external HTTP",
+  "reports": [
+    {
+      "readinessDelayMs": 0,
+      "coldMs": 314.5688000000009,
+      "samples": 45,
+      "p50Ms": 15.333400000003166,
+      "p95Ms": 16.624199999998382,
+      "perQuery": [
+        {
+          "query": "custom domain",
+          "resultHash": "e3ef4762d3089406335b954ae29ee8ea11999577689a0d5a819ad67af1867cce",
+          "p50Ms": 15.637900000001537,
+          "p95Ms": 16.10439999999653
+        },
+        {
+          "query": "publsh",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 12.104999999995925,
+          "p95Ms": 13.088300000003073
+        },
+        {
+          "query": "zzqxv",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 14.526899999997113,
+          "p95Ms": 15.11069999999745
+        },
+        {
+          "query": "نطاق",
+          "resultHash": "c98f76fedae4f0f841bdd5e405b2ea980a10c27635942d49cacb072729bfb955",
+          "p50Ms": 15.880899999996473,
+          "p95Ms": 16.145900000003166
+        },
+        {
+          "query": "promo code",
+          "resultHash": "1b0adf93292806d47f53882cade09de238a61fa06840f3c471cec6e0fddf895d",
+          "p50Ms": 16.254199999995762,
+          "p95Ms": 16.896199999995588
+        },
+        {
+          "query": "zzqxv",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 12.560600000004342,
+          "p95Ms": 13.060700000001816
+        },
+        {
+          "query": "الحجوزات",
+          "resultHash": "9b5bbc75551ac0dd456f0be24a03479bb636753fac797b513c0dd85bbde64c2f",
+          "p50Ms": 16.14140000000043,
+          "p95Ms": 16.373700000003737
+        },
+        {
+          "query": "reservation",
+          "resultHash": "b325008e2da9142650506770dd39d1c521504e08e5d93f9e74c933b8e74ec638",
+          "p50Ms": 16.35280000000057,
+          "p95Ms": 16.624199999998382
+        },
+        {
+          "query": "install",
+          "resultHash": "81514300732c2ff980c5f9cbf07285e3ebcd248c17b1f7a7b2b0b0f97b597352",
+          "p50Ms": 14.367400000002817,
+          "p95Ms": 15.052199999998265
+        }
+      ]
+    },
+    {
+      "readinessDelayMs": 700,
+      "coldMs": 707.4429000000018,
+      "samples": 45,
+      "p50Ms": 711.6606000000029,
+      "p95Ms": 724.6215000000084,
+      "perQuery": [
+        {
+          "query": "custom domain",
+          "resultHash": "e3ef4762d3089406335b954ae29ee8ea11999577689a0d5a819ad67af1867cce",
+          "p50Ms": 721.4291999999987,
+          "p95Ms": 724.6215000000084
+        },
+        {
+          "query": "publsh",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 716.8127999999997,
+          "p95Ms": 717.7491000000009
+        },
+        {
+          "query": "zzqxv",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 707.1634000000049,
+          "p95Ms": 769.323900000003
+        },
+        {
+          "query": "نطاق",
+          "resultHash": "c98f76fedae4f0f841bdd5e405b2ea980a10c27635942d49cacb072729bfb955",
+          "p50Ms": 709.2217000000092,
+          "p95Ms": 710.954700000002
+        },
+        {
+          "query": "promo code",
+          "resultHash": "1b0adf93292806d47f53882cade09de238a61fa06840f3c471cec6e0fddf895d",
+          "p50Ms": 709.2574000000022,
+          "p95Ms": 721.3997999999992
+        },
+        {
+          "query": "zzqxv",
+          "resultHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+          "p50Ms": 717.795299999998,
+          "p95Ms": 732.9348000000027
+        },
+        {
+          "query": "الحجوزات",
+          "resultHash": "9b5bbc75551ac0dd456f0be24a03479bb636753fac797b513c0dd85bbde64c2f",
+          "p50Ms": 707.812699999995,
+          "p95Ms": 709.988599999997
+        },
+        {
+          "query": "reservation",
+          "resultHash": "b325008e2da9142650506770dd39d1c521504e08e5d93f9e74c933b8e74ec638",
+          "p50Ms": 722.1316999999981,
+          "p95Ms": 722.9412000000011
+        },
+        {
+          "query": "install",
+          "resultHash": "81514300732c2ff980c5f9cbf07285e3ebcd248c17b1f7a7b2b0b0f97b597352",
+          "p50Ms": 719.9783000000025,
+          "p95Ms": 721.5048999999999
+        }
+      ]
+    }
+  ]
+}

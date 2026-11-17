@@ -30,7 +30,7 @@ function getPlatforms(t: T): Platform[] {
     {
       name: 'Nibleaf',
       sources: [
-        { href: '/pricing', label: t('marketing.arabicSeo.source.pricing') },
+        { href: '/ar/pricing', label: t('marketing.arabicSeo.source.pricing') },
         { href: 'https://github.com/lord007tn/nibleaf', label: t('marketing.arabicSeo.source.public') },
       ],
       summary: t('marketing.arabicSeo.platform.nibleaf.summary'),

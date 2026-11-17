@@ -1,15 +1,25 @@
 import { createHash } from 'node:crypto';
 import { Prisma, prisma } from '@nibleaf/database';
-import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
+import { DEFAULT_LOCALE, INTERFACE_LOCALES, resolveLocale } from '@nibleaf/i18n/locales';
+import { editor_duplicatetitle } from '@nibleaf/i18n/messages/editor_duplicatetitle';
 import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
+import { editor_pagetoolarge } from '@nibleaf/i18n/messages/editor_pagetoolarge';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
 import { pageDescriptionText } from '@nibleaf/shared/markdown-text';
-import { type PageStructureRow, resolvePageMove } from '@nibleaf/shared/page-moves';
+import { isSupportedPageIcon } from '@nibleaf/shared/page-icons';
+import { MAX_PAGE_CONTENT_BYTES, oversizedPageContent } from '@nibleaf/shared/page-limits';
+import { type PageStructureRow, pageStructureRevisionSource, resolvePageMove } from '@nibleaf/shared/page-moves';
 import { interpolateVariablesWithin, variablesFromConfig } from '@nibleaf/shared/site';
 import { joinPath, slugifyUnicode } from '@nibleaf/shared/utils';
 import type { BulkReorderPagesBody, CreatePageBody, ReorderPagesBody, UpdatePageBody } from '@nibleaf/validators';
 import { AppError, badRequest, conflict, notFound } from '@/errors';
-import { assertAddressLinkRevisions, type PagePathChange, prepareAddressLinks, preservePageAddresses } from '@/lib/page-address-changes';
+import {
+  assertAddressLinkRevisions,
+  type PagePathChange,
+  prepareAddressLinks,
+  prepareReorderAddressLinks,
+  preservePageAddresses,
+} from '@/lib/page-address-changes';
 import { snapshotPage } from '@/lib/page-history';
 import { assertBranchInProject, getDefaultBranch } from './branches';
 import { assertLanguageInProject, getDefaultLanguage } from './languages';
@@ -150,12 +160,12 @@ export const uniqueSiblingSlug = async (
 };
 
 const PLACEHOLDER_SLUG_RE = /^(?:untitled|new-group)(?:-\d+)?$/;
-/** The dashboard creates pages/groups with a placeholder title in the author's
- *  interface locale (`editor.untitled` / `editor.newGroup`), so "still a
- *  placeholder" must be recognised in every locale, not only English. */
-const PLACEHOLDER_TITLES = new Set<string>(
-  INTERFACE_LOCALES.flatMap(({ code }) => [editor_untitled(undefined, { locale: code }), editor_newgroup(undefined, { locale: code })]),
-);
+/** New pages have an empty title. Also recognize existing localized placeholder
+ *  titles when their first real title supplies the address. */
+const PLACEHOLDER_TITLES = new Set<string>([
+  '',
+  ...INTERFACE_LOCALES.flatMap(({ code }) => [editor_untitled(undefined, { locale: code }), editor_newgroup(undefined, { locale: code })]),
+]);
 
 type PageTreeNode = { id: string; parentId: string | null; branchId: string; languageId: string };
 
@@ -191,12 +201,9 @@ const assertNoParentCycle = (pages: Map<string, PageTreeNode>, id: string, paren
   }
 };
 
-/** Recompute materialized paths in the same transaction as the tree change. */
-export const recomputeProjectPaths = async (projectId: string, tx: Prisma.TransactionClient): Promise<PagePathChange[]> => {
-  const pages = await tx.page.findMany({
-    where: { projectId },
-    select: { id: true, parentId: true, slug: true, path: true, updatedAt: true, branchId: true, languageId: true },
-  });
+const pagePathChanges = <T extends { id: string; parentId: string | null; slug: string; path: string; branchId: string; languageId: string }>(
+  pages: T[],
+) => {
   const byId = new Map(pages.map((p) => [p.id, p]));
   const pathOf = (id: string, seen = new Set<string>()): string => {
     if (seen.has(id)) {
@@ -209,18 +216,66 @@ export const recomputeProjectPaths = async (projectId: string, tx: Prisma.Transa
     }
     return node.parentId ? joinPath(pathOf(node.parentId, seen), node.slug) : node.slug;
   };
-  const updates = pages
-    .map((p) => ({ id: p.id, branchId: p.branchId, languageId: p.languageId, path: pathOf(p.id), old: p.path, updatedAt: p.updatedAt }))
-    .filter((u) => u.path !== u.old);
+  return pages.map((p) => ({ ...p, path: pathOf(p.id), old: p.path })).filter((u) => u.path !== u.old);
+};
+
+/** Recompute materialized paths in the same transaction as the tree change. */
+export const recomputeProjectPaths = async (projectId: string, tx: Prisma.TransactionClient): Promise<PagePathChange[]> => {
+  const pages = await tx.page.findMany({
+    where: { projectId },
+    select: { id: true, parentId: true, slug: true, path: true, updatedAt: true, branchId: true, languageId: true },
+  });
+  const updates = pagePathChanges(pages);
   for (const u of updates)
     await tx.page.update({ where: { id: u.id }, data: { path: u.path, updatedAt: new Date(Math.max(Date.now(), u.updatedAt.getTime() + 1)) } });
   return updates;
 };
 
+/**
+ * Refuse page content over MAX_PAGE_CONTENT_BYTES (413 `page:too_large`). An
+ * update passes the stored body: content already over the cap may be saved
+ * again as long as it does not grow, so a page stored before the cap existed
+ * can always be shrunk. Editor, API and MCP writes all reach it through
+ * createPage and updatePage.
+ */
+export const assertPageContentFits = (content: string | undefined, stored?: string) => {
+  if (content === undefined) return;
+  const bytes = oversizedPageContent(content, stored);
+  if (bytes === null) return;
+  throw new AppError({
+    code: 'page:too_large',
+    message: editor_pagetoolarge(undefined, { locale: 'en' }),
+    details: { bytes, limit: MAX_PAGE_CONTENT_BYTES },
+  });
+};
+
 /** A move or slug change rewrites the paths of the page and its subtree. */
 export const STRUCTURAL_UPDATE_TIMEOUT_MS = 30_000;
 
+/** A page may start untitled (the editor shows a placeholder and the tree a
+ *  warning), but a group is only a navigation heading: it needs its name. */
+/** Page and category icons must be ones the reader draws (the shared list), so
+ *  REST, MCP and the dashboard agree. An update may keep the value already
+ *  stored, so a page saved before this check is never blocked by its own icon. */
+const assertSupportedIcons = (
+  next: { icon?: string | null; categoryIcon?: string | null },
+  stored: { icon?: string | null; categoryIcon?: string | null } = {},
+) => {
+  for (const field of ['icon', 'categoryIcon'] as const) {
+    const value = next[field];
+    if (!value?.trim() || value === stored[field] || isSupportedPageIcon(value)) continue;
+    throw badRequest(`"${value}" is not a supported icon name.`, { field, value });
+  }
+};
+
+const assertGroupTitled = (kind: string, title: string) => {
+  if (kind === 'GROUP' && !title.trim()) throw badRequest('A group needs a title.', { field: 'title' });
+};
+
 export const createPage = async (projectId: string, body: CreatePageBody, userId?: string) => {
+  assertPageContentFits(body.content);
+  assertGroupTitled(body.kind ?? 'PAGE', body.title);
+  assertSupportedIcons({ icon: body.icon, categoryIcon: body.config?.categoryIcon });
   const page = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
@@ -234,7 +289,7 @@ export const createPage = async (projectId: string, body: CreatePageBody, userId
       const languageId =
         parent.languageId ??
         (body.languageId ? (await assertLanguageInProject(projectId, body.languageId, tx)).id : (await getDefaultLanguage(projectId, tx)).id);
-      const slug = await uniqueSiblingSlug(tx, projectId, languageId, branchId, parentId, body.slug || body.title);
+      const slug = await uniqueSiblingSlug(tx, projectId, languageId, branchId, parentId, body.slug || body.title.trim() || 'untitled');
       const maxPosition = await tx.page.aggregate({ where: { projectId, branchId, languageId, parentId }, _max: { position: true } });
       return tx.page.create({
         data: {
@@ -260,6 +315,87 @@ export const createPage = async (projectId: string, body: CreatePageBody, userId
   if (userId && page.kind === 'PAGE' && page.content.trim()) logFirstContentEdit(userId, projectId);
   return page;
 };
+
+/** A duplicate's settings: the original's, minus what names one address. A
+ *  copied canonical URL would keep the copy pointing search engines at the
+ *  original after the writer rewrites it. */
+const duplicatedPageConfig = (config: Prisma.JsonValue | null): Prisma.InputJsonValue | undefined => {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return config ?? undefined;
+  const { seo, ...rest } = config as Record<string, Prisma.JsonValue>;
+  if (!seo || typeof seo !== 'object' || Array.isArray(seo)) return config as Prisma.InputJsonValue;
+  const { canonicalUrl: _canonical, ...keptSeo } = seo as Record<string, Prisma.JsonValue>;
+  const next = Object.keys(keptSeo).length > 0 ? { ...rest, seo: keptSeo } : rest;
+  return Object.keys(next).length > 0 ? (next as Prisma.InputJsonValue) : undefined;
+};
+
+/**
+ * Copy one page, or one group without its pages, as a writer's starting point:
+ * the same parent, kind, content, icon, description, settings and visibility,
+ * placed right after the original, titled "<title> (copy)" in the page's
+ * language (the writer's interface language when the page language has no
+ * catalog). The address is the original's, made unique among its siblings.
+ *
+ * Not copied: pages inside it, comments, history, reader access grants, the
+ * canonical URL, the Git import source and the translation link (a second variant of one page in
+ * one language would break hreflang pairing).
+ *
+ * Takes the page-move lock order (the project, then every page row by id),
+ * because it shifts the siblings after the original. Those shifts are raw
+ * position writes, so a sibling's revision stamp stays put and a collaborator
+ * editing it never gets a conflict from a duplicate next to it.
+ */
+export const duplicatePage = async (projectId: string, id: string, interfaceLocale?: string | null) =>
+  prisma.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
+      await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
+      const source = await tx.page.findFirst({ where: { id, projectId }, include: { language: { select: { code: true } } } });
+      if (!source) throw notFound('page', { id });
+      assertPageContentFits(source.content);
+      const scope = { projectId, branchId: source.branchId, languageId: source.languageId, parentId: source.parentId };
+      const locale = resolveLocale(source.language.code) ?? resolveLocale(interfaceLocale) ?? DEFAULT_LOCALE;
+      // Cut to the 200-unit title limit without leaving half of a surrogate pair.
+      // An untitled page's copy stays untitled (its address follows its first
+      // title like any new page's), never " (copy)".
+      const title = source.title.trim()
+        ? editor_duplicatetitle({ title: source.title }, { locale })
+            .slice(0, 200)
+            .replace(/[\uD800-\uDBFF]$/, '')
+        : '';
+      const slug = await uniqueSiblingSlug(tx, projectId, source.languageId, source.branchId, source.parentId, source.slug);
+      const parent = await parentInfo(tx, projectId, source.parentId);
+      // Siblings in tree order. The copy takes the next position; later siblings
+      // move down only as far as needed to stay after it, in the same order.
+      const siblings = await tx.page.findMany({
+        where: scope,
+        orderBy: [{ position: 'asc' }, { createdAt: 'asc' }],
+        select: { id: true, position: true },
+      });
+      const position = source.position + 1;
+      let previous = position;
+      for (const sibling of siblings.slice(siblings.findIndex((page) => page.id === source.id) + 1)) {
+        const next = Math.max(sibling.position, previous + 1);
+        if (next !== sibling.position) await tx.$executeRaw`UPDATE "page" SET position = ${next} WHERE id = ${sibling.id}`;
+        previous = next;
+      }
+      return tx.page.create({
+        data: {
+          ...scope,
+          kind: source.kind,
+          title,
+          slug,
+          path: joinPath(parent.path, slug),
+          icon: source.icon,
+          description: source.description,
+          content: source.content,
+          config: duplicatedPageConfig(source.config),
+          hidden: source.hidden,
+          position,
+        },
+      });
+    },
+    { timeout: STRUCTURAL_UPDATE_TIMEOUT_MS },
+  );
 
 /** Deep-merge a page-config patch over the stored config: the `seo` object is
  *  merged key-by-key; scalar keys (sidebarTitle/mode/hideToc) replace. Passing
@@ -296,14 +432,39 @@ interface UpdatePageOptions {
   expectedUpdatedAt?: Date;
 }
 
-const pageRouteEdit = (page: { title: string; slug: string; parentId: string | null }, body: UpdatePageBody) => {
-  const adoptsTitle =
-    body.slug === undefined &&
-    body.title !== undefined &&
-    body.title.trim() !== '' &&
-    body.title !== page.title &&
-    PLACEHOLDER_SLUG_RE.test(page.slug) &&
-    PLACEHOLDER_TITLES.has(page.title);
+/** A page still on its placeholder address and title whose first real title
+ *  would become its address. */
+const adoptsFirstTitle = (page: { title: string; slug: string }, body: UpdatePageBody) =>
+  body.slug === undefined &&
+  body.title !== undefined &&
+  body.title.trim() !== '' &&
+  body.title !== page.title &&
+  PLACEHOLDER_SLUG_RE.test(page.slug) &&
+  // A blank (whitespace-only) title is as untitled as an empty one.
+  PLACEHOLDER_TITLES.has(page.title.trim());
+
+/** Whether readers may already have this page's address: it is in the newest
+ *  live snapshot, or a publish is still pending or building (it may be about
+ *  to put the page live at its current address). The same "published" the
+ *  dashboard uses (pending changes against the newest live version). Read
+ *  under the structural lock (project row FOR NO KEY UPDATE). A publish takes
+ *  the same row FOR SHARE while it reads the drafts and creates its PENDING row
+ *  (createDeployment in ./deployments), so the two never interleave. */
+const pageAddressMayBeLive = async (tx: Prisma.TransactionClient, projectId: string, pageId: string): Promise<boolean> => {
+  const [row] = await tx.$queryRaw<Array<{ live: boolean }>>`
+    SELECT EXISTS (
+        SELECT 1 FROM "deployment" WHERE "projectId" = ${projectId} AND status IN ('PENDING', 'BUILDING')
+      ) OR EXISTS (
+        SELECT 1 FROM (
+          SELECT snapshot FROM "deployment" WHERE "projectId" = ${projectId} AND status = 'READY' ORDER BY version DESC LIMIT 1
+        ) latest
+        WHERE latest.snapshot -> 'pages' @> jsonb_build_array(jsonb_build_object('id', ${pageId}::text))
+      ) AS live`;
+  return row?.live === true;
+};
+
+const pageRouteEdit = (page: { title: string; slug: string; parentId: string | null }, body: UpdatePageBody, mayAdoptTitle = true) => {
+  const adoptsTitle = mayAdoptTitle && adoptsFirstTitle(page, body);
   const desired = body.slug || (adoptsTitle ? body.title : page.slug) || page.slug;
   const parentId = body.parentId === undefined ? page.parentId : body.parentId;
   return {
@@ -332,12 +493,29 @@ export const updatePage = async (projectId: string, id: string, body: UpdatePage
         if (lockStructure) await assertAddressLinkRevisions(projectId, prepared, tx);
         const page = await tx.page.findFirst({ where: { id, projectId } });
         if (!page) throw notFound('page', { id });
-        const route = pageRouteEdit(page, options?.restore ? {} : body);
+        if (body.title !== undefined) assertGroupTitled(page.kind, body.title);
+        if (!options?.restore) {
+          const storedConfig = (page.config ?? {}) as { categoryIcon?: string };
+          assertSupportedIcons(
+            { icon: body.icon, categoryIcon: body.config?.categoryIcon },
+            { icon: page.icon, categoryIcon: storedConfig.categoryIcon },
+          );
+        }
+        const edit = options?.restore ? {} : body;
+        // Only a never-published page's address follows its first real title:
+        // a published address is one readers and links already use. Checked
+        // under the structural lock; without it, a possible adoption retries there.
+        const mayAdoptTitle = lockStructure && adoptsFirstTitle(page, edit) ? !(await pageAddressMayBeLive(tx, projectId, id)) : true;
+        const route = pageRouteEdit(page, edit, mayAdoptTitle);
         if (!lockStructure && route.structural) throw new StructuralPageEdit();
         const expectedUpdatedAt = options?.expectedUpdatedAt ?? (body.expectedUpdatedAt ? new Date(body.expectedUpdatedAt) : undefined);
         if (expectedUpdatedAt && page.updatedAt.getTime() !== expectedUpdatedAt.getTime()) {
           throw pageRevisionConflict(id);
         }
+        // After the revision check, so a stale draft gets the conflict review
+        // first. Measured against the locked row, so a concurrent save cannot
+        // move the baseline.
+        assertPageContentFits(body.content, page.content);
         // The slug/URL is decoupled from the title (Mintlify-style): it only changes
         // when the slug is set explicitly or the page is re-parented (which needs a
         // uniqueness re-check among the new siblings). A title-only edit â€” e.g. every
@@ -431,13 +609,7 @@ type ReorderRow = {
 
 /** Returned on unfiltered branch-list reads; ignores content-only edits. */
 export const pageStructureRevision = (rows: readonly PageStructureRow[]) =>
-  createHash('sha256')
-    .update(
-      JSON.stringify(
-        [...rows].sort((a, b) => a.id.localeCompare(b.id)).map((page) => [page.id, page.parentId, page.branchId, page.languageId, page.position]),
-      ),
-    )
-    .digest('hex');
+  createHash('sha256').update(pageStructureRevisionSource(rows)).digest('hex');
 
 /** The languages a reorder moves pages into must belong to this site. */
 const assertTargetLanguages = async (tx: Prisma.TransactionClient, projectId: string, body: BulkReorderPagesBody) => {
@@ -474,122 +646,134 @@ const settleLanguageMoves = (tree: Map<string, ReorderRow>, before: Map<string, 
   }
 };
 
+const planReorder = async (projectId: string, request: ReorderPagesBody, tx: Prisma.TransactionClient) => {
+  const pages = await tx.page.findMany({
+    where: { projectId },
+    select: { id: true, parentId: true, branchId: true, languageId: true, position: true, slug: true, translationKey: true, path: true },
+  });
+  const byPage = new Map(pages.map((page) => [page.id, page]));
+  let body: BulkReorderPagesBody;
+  let moveBranchId: string | undefined;
+  if ('pageId' in request) {
+    const active = byPage.get(request.pageId);
+    if (!active) throw notFound('page', { id: request.pageId });
+    moveBranchId = active.branchId;
+    if (
+      request.expectedStructureRevision &&
+      request.expectedStructureRevision !== pageStructureRevision(pages.filter((page) => page.branchId === active.branchId))
+    ) {
+      throw conflict('The page structure changed. Refresh the tree and try again.', { reason: 'structure_changed' });
+    }
+    if (request.parentId && !byPage.has(request.parentId)) throw notFound('page', { id: request.parentId });
+    assertNoParentCycle(byPage, active.id, request.parentId);
+    const parent = request.parentId ? byPage.get(request.parentId) : undefined;
+    if (parent && (parent.branchId !== active.branchId || parent.languageId !== (request.languageId ?? active.languageId))) {
+      throw badRequest('Pages can only be moved within one branch and under a parent in the destination language.');
+    }
+    if (request.languageId)
+      await assertTargetLanguages(tx, projectId, {
+        items: [{ id: active.id, parentId: request.parentId, position: 0, languageId: request.languageId }],
+      });
+    const items = resolvePageMove(pages, request);
+    if (!items) throw conflict('The destination sibling changed. Refresh the tree and try again.', { reason: 'structure_changed' });
+    body = { items };
+  } else {
+    body = request;
+    if (request.expectedStructureRevision) {
+      const branch = request.items[0] ? byPage.get(request.items[0].id)?.branchId : undefined;
+      if (request.expectedStructureRevision !== pageStructureRevision(pages.filter((page) => page.branchId === branch))) {
+        throw conflict('The page structure changed. Refresh the tree and try again.', { reason: 'structure_changed' });
+      }
+    }
+  }
+  const proposed = new Map<string, BulkReorderPagesBody['items'][number]>();
+  for (const item of body.items) {
+    if (proposed.has(item.id)) {
+      throw badRequest('Each page can only appear once in a reorder request.', { id: item.id });
+    }
+    if (!byPage.has(item.id)) {
+      throw notFound('page', { id: item.id });
+    }
+    if (item.parentId && !byPage.has(item.parentId)) {
+      throw notFound('page', { id: item.parentId });
+    }
+    proposed.set(item.id, item);
+  }
+  await assertTargetLanguages(tx, projectId, body);
+  const nextTree = new Map(
+    pages.map((page) => {
+      const item = proposed.get(page.id);
+      return [page.id, { ...page, parentId: item ? item.parentId : page.parentId, languageId: item?.languageId ?? page.languageId }];
+    }),
+  );
+  for (const item of body.items) {
+    assertNoParentCycle(nextTree, item.id, item.parentId);
+  }
+  // A page that changes language takes its whole subtree along; a
+  // descendant listed with its own language keeps that (and is checked below).
+  const children = new Map<string, string[]>();
+  for (const page of nextTree.values()) {
+    if (!page.parentId) continue;
+    children.set(page.parentId, [...(children.get(page.parentId) ?? []), page.id]);
+  }
+  const moved = new Set(body.items.map((item) => item.id));
+  for (const item of body.items) {
+    const languageId = nextTree.get(item.id)?.languageId;
+    if (!languageId || languageId === byPage.get(item.id)?.languageId) continue;
+    const stack = [...(children.get(item.id) ?? [])];
+    while (stack.length > 0) {
+      const id = stack.pop() as string;
+      const page = nextTree.get(id);
+      if (!page || proposed.get(id)?.languageId) continue;
+      page.languageId = languageId;
+      moved.add(id);
+      stack.push(...(children.get(id) ?? []));
+    }
+  }
+  for (const id of moved) {
+    const page = nextTree.get(id);
+    const parent = page?.parentId ? nextTree.get(page.parentId) : undefined;
+    if (page && parent && (parent.branchId !== page.branchId || parent.languageId !== page.languageId)) {
+      throw badRequest('Pages can only be reordered under parents in the same branch and language.', { id, parentId: parent.id });
+    }
+  }
+  settleLanguageMoves(nextTree, byPage, [...moved]);
+  for (const item of body.items) {
+    const page = nextTree.get(item.id);
+    const before = byPage.get(item.id);
+    if (!page || before?.parentId === item.parentId || before?.languageId !== page.languageId) continue;
+    const clash = [...nextTree.values()].find(
+      (sibling) =>
+        sibling.id !== page.id &&
+        sibling.branchId === page.branchId &&
+        sibling.languageId === page.languageId &&
+        sibling.parentId === page.parentId &&
+        sibling.slug === page.slug,
+    );
+    if (clash) {
+      throw conflict('A page with this address already exists in that group. Change its address first.', { id: page.id, reason: 'slug_taken' });
+    }
+  }
+  const changes = pagePathChanges([...nextTree.values()]).map((change) => ({ ...change, oldLanguageId: byPage.get(change.id)?.languageId }));
+  return { pages, byPage, body, nextTree, moved, proposed, moveBranchId, changes };
+};
+
+// Content-only saves do not invalidate a prepared tree. Slugs and stored paths do.
+const reorderPlanRevision = (pages: (ReorderRow & { path: string })[]) => JSON.stringify([...pages].sort((a, b) => a.id.localeCompare(b.id)));
+
 const reorderPagesAttempt = async (projectId: string, request: ReorderPagesBody) => {
-  // Narrow intents can acquire a different current parent after preparation.
-  // Parse all documents outside the lock, then verify their revisions inside it.
-  const prepared = await prepareAddressLinks(projectId, undefined, 'pageId' in request ? undefined : request.items);
+  const observed = await planReorder(projectId, request, prisma);
+  const prepared = observed.changes.length ? await prepareReorderAddressLinks(projectId, observed.changes) : undefined;
   const branchId = await prisma.$transaction(
     async (tx) => {
       await tx.$queryRaw`SELECT 1 FROM "project" WHERE id = ${projectId} FOR NO KEY UPDATE`;
       await tx.$queryRaw`SELECT 1 FROM "page" WHERE "projectId" = ${projectId} ORDER BY id FOR NO KEY UPDATE`;
-      await assertAddressLinkRevisions(projectId, prepared, tx);
-      const pages: ReorderRow[] = await tx.page.findMany({
-        where: { projectId },
-        select: { id: true, parentId: true, branchId: true, languageId: true, position: true, slug: true, translationKey: true },
-      });
-      const byPage = new Map(pages.map((page) => [page.id, page]));
-      let body: BulkReorderPagesBody;
-      let moveBranchId: string | undefined;
-      if ('pageId' in request) {
-        const active = byPage.get(request.pageId);
-        if (!active) throw notFound('page', { id: request.pageId });
-        moveBranchId = active.branchId;
-        if (
-          request.expectedStructureRevision &&
-          request.expectedStructureRevision !== pageStructureRevision(pages.filter((page) => page.branchId === active.branchId))
-        ) {
-          throw conflict('The page structure changed. Refresh the tree and try again.', { reason: 'structure_changed' });
-        }
-        if (request.parentId && !byPage.has(request.parentId)) throw notFound('page', { id: request.parentId });
-        assertNoParentCycle(byPage, active.id, request.parentId);
-        const parent = request.parentId ? byPage.get(request.parentId) : undefined;
-        if (parent && (parent.branchId !== active.branchId || parent.languageId !== (request.languageId ?? active.languageId))) {
-          throw badRequest('Pages can only be moved within one branch and under a parent in the destination language.');
-        }
-        if (request.languageId)
-          await assertTargetLanguages(tx, projectId, {
-            items: [{ id: active.id, parentId: request.parentId, position: 0, languageId: request.languageId }],
-          });
-        const items = resolvePageMove(pages, request);
-        if (!items) throw conflict('The destination sibling changed. Refresh the tree and try again.', { reason: 'structure_changed' });
-        body = { items };
-      } else {
-        body = request;
-        if (request.expectedStructureRevision) {
-          const branch = request.items[0] ? byPage.get(request.items[0].id)?.branchId : undefined;
-          if (request.expectedStructureRevision !== pageStructureRevision(pages.filter((page) => page.branchId === branch))) {
-            throw conflict('The page structure changed. Refresh the tree and try again.', { reason: 'structure_changed' });
-          }
-        }
+      const plan = await planReorder(projectId, request, tx);
+      if (reorderPlanRevision(plan.pages) !== reorderPlanRevision(observed.pages)) {
+        throw new AppError({ code: 'page:address_conflict', details: { reason: 'address_raced' } });
       }
-      const proposed = new Map<string, BulkReorderPagesBody['items'][number]>();
-      for (const item of body.items) {
-        if (proposed.has(item.id)) {
-          throw badRequest('Each page can only appear once in a reorder request.', { id: item.id });
-        }
-        if (!byPage.has(item.id)) {
-          throw notFound('page', { id: item.id });
-        }
-        if (item.parentId && !byPage.has(item.parentId)) {
-          throw notFound('page', { id: item.parentId });
-        }
-        proposed.set(item.id, item);
-      }
-      await assertTargetLanguages(tx, projectId, body);
-      const nextTree = new Map(
-        pages.map((page) => {
-          const item = proposed.get(page.id);
-          return [page.id, { ...page, parentId: item ? item.parentId : page.parentId, languageId: item?.languageId ?? page.languageId }];
-        }),
-      );
-      for (const item of body.items) {
-        assertNoParentCycle(nextTree, item.id, item.parentId);
-      }
-      // A page that changes language takes its whole subtree along; a
-      // descendant listed with its own language keeps that (and is checked below).
-      const children = new Map<string, string[]>();
-      for (const page of nextTree.values()) {
-        if (!page.parentId) continue;
-        children.set(page.parentId, [...(children.get(page.parentId) ?? []), page.id]);
-      }
-      const moved = new Set(body.items.map((item) => item.id));
-      for (const item of body.items) {
-        const languageId = nextTree.get(item.id)?.languageId;
-        if (!languageId || languageId === byPage.get(item.id)?.languageId) continue;
-        const stack = [...(children.get(item.id) ?? [])];
-        while (stack.length > 0) {
-          const id = stack.pop() as string;
-          const page = nextTree.get(id);
-          if (!page || proposed.get(id)?.languageId) continue;
-          page.languageId = languageId;
-          moved.add(id);
-          stack.push(...(children.get(id) ?? []));
-        }
-      }
-      for (const id of moved) {
-        const page = nextTree.get(id);
-        const parent = page?.parentId ? nextTree.get(page.parentId) : undefined;
-        if (page && parent && (parent.branchId !== page.branchId || parent.languageId !== page.languageId)) {
-          throw badRequest('Pages can only be reordered under parents in the same branch and language.', { id, parentId: parent.id });
-        }
-      }
-      settleLanguageMoves(nextTree, byPage, [...moved]);
-      for (const item of body.items) {
-        const page = nextTree.get(item.id);
-        const before = byPage.get(item.id);
-        if (!page || before?.parentId === item.parentId || before?.languageId !== page.languageId) continue;
-        const clash = [...nextTree.values()].find(
-          (sibling) =>
-            sibling.id !== page.id &&
-            sibling.branchId === page.branchId &&
-            sibling.languageId === page.languageId &&
-            sibling.parentId === page.parentId &&
-            sibling.slug === page.slug,
-        );
-        if (clash) {
-          throw conflict('A page with this address already exists in that group. Change its address first.', { id: page.id, reason: 'slug_taken' });
-        }
-      }
+      const { byPage, body, nextTree, moved, proposed, moveBranchId } = plan;
+      await prepared?.assertRevisions(tx);
       for (const id of moved) {
         const page = nextTree.get(id);
         const before = byPage.get(id);
@@ -610,7 +794,7 @@ const reorderPagesAttempt = async (projectId: string, request: ReorderPagesBody)
         projectId,
         changes.map((change) => ({ ...change, oldLanguageId: byPage.get(change.id)?.languageId })),
         tx,
-        prepared,
+        prepared?.documents ?? new Map(),
       );
       return moveBranchId ?? (body.items[0] ? byPage.get(body.items[0].id)?.branchId : undefined);
     },
@@ -628,14 +812,8 @@ export const reorderPages = async (projectId: string, request: ReorderPagesBody)
       return await reorderPagesAttempt(projectId, request);
     } catch (error) {
       // A collaborator may commit while Markdown is being parsed. Retry the
-      // narrow intent against fresh content, never an old structural snapshot.
-      if (
-        !('pageId' in request) ||
-        attempt >= 2 ||
-        !(error instanceof AppError) ||
-        error.code !== 'page:address_conflict' ||
-        error.details?.reason !== 'address_raced'
-      )
+      // request against fresh content. Its structure precondition is checked again.
+      if (attempt >= 2 || !(error instanceof AppError) || error.code !== 'page:address_conflict' || error.details?.reason !== 'address_raced')
         throw error;
     }
   }

@@ -2,32 +2,47 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { DataList, DataListItem, DataListSkeleton } from '@nibleaf/design-system/components/ui/data-list';
 import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
-import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
-import { useT } from '@nibleaf/i18n/react';
+import { useLocale, useT } from '@nibleaf/i18n/react';
+import { isLocatablePublishCheck, publishFixSearch } from '@nibleaf/shared/publish-check-codes';
 import { Link } from '@tanstack/react-router';
-import { CircleCheck, PenLine } from 'lucide-react';
-import { useId, useMemo } from 'react';
+import { ChevronDown, CircleCheck, PenLine } from 'lucide-react';
+import { useId, useMemo, useState } from 'react';
 import type { PublishCheck } from '@/hooks/api/types';
 import { useFormatters } from '@/lib/format';
+import { languageName } from '@/lib/language-name';
 
 type CheckCode = PublishCheck['code'];
+
+/** Keeps a version name's own direction inside a translated sentence. */
+const isolate = (value: string) => `\u2068${value}\u2069`;
 
 /** Group order: what breaks the live site first, cosmetic issues last. */
 const CHECK_META: Record<CheckCode, { title: MessageKey; hint: MessageKey; order: number }> = {
   'broken-internal-link': { title: 'publish.checks.brokenLink', hint: 'publish.checks.brokenLinkHint', order: 0 },
   'empty-page': { title: 'publish.checks.emptyPage', hint: 'publish.checks.emptyPageHint', order: 1 },
   'untitled-page': { title: 'publish.checks.untitledPage', hint: 'publish.checks.untitledPageHint', order: 2 },
-  'missing-alt': { title: 'publish.checks.missingAlt', hint: 'publish.checks.missingAltHint', order: 3 },
-  'duplicate-title': { title: 'publish.checks.duplicateTitle', hint: 'publish.checks.duplicateTitleHint', order: 4 },
-  'stray-characters': { title: 'publish.checks.strayCharacters', hint: 'publish.checks.strayCharactersHint', order: 5 },
-  'unreadable-slug': { title: 'publish.checks.unreadableSlug', hint: 'publish.checks.unreadableSlugHint', order: 6 },
+  'video-not-https': { title: 'publish.checks.videoNotHttps', hint: 'publish.checks.videoNotHttpsHint', order: 3 },
+  'missing-alt': { title: 'publish.checks.missingAlt', hint: 'publish.checks.missingAltHint', order: 4 },
+  'embed-untitled': { title: 'publish.checks.embedUntitled', hint: 'publish.checks.embedUntitledHint', order: 5 },
+  'embed-as-link': { title: 'publish.checks.embedAsLink', hint: 'publish.checks.embedAsLinkHint', order: 6 },
+  'embed-unclosed': { title: 'publish.checks.embedUnclosed', hint: 'publish.checks.embedUnclosedHint', order: 7 },
+  'video-poster-hidden': { title: 'publish.checks.videoPosterHidden', hint: 'publish.checks.videoPosterHiddenHint', order: 8 },
+  'duplicate-title': { title: 'publish.checks.duplicateTitle', hint: 'publish.checks.duplicateTitleHint', order: 9 },
+  'stray-characters': { title: 'publish.checks.strayCharacters', hint: 'publish.checks.strayCharactersHint', order: 10 },
+  'unreadable-slug': { title: 'publish.checks.unreadableSlug', hint: 'publish.checks.unreadableSlugHint', order: 11 },
+  'home-untranslated': { title: 'publish.checks.homeUntranslated', hint: 'publish.checks.homeUntranslatedHint', order: 12 },
+  'blog-root-group': { title: 'publish.checks.blogRootGroup', hint: 'publish.checks.blogRootGroupHint', order: 13 },
 };
 
-/** One row per page and check: a page with three broken links is one thing to fix. */
+/** One row per thing to fix: a page-level problem is one row for its page; a
+ *  problem on the page (a broken link, an image) is one row per item, so each
+ *  has its own Fix that opens the editor at it. */
 interface CheckRow {
   pageId: string;
+  versionId: string | undefined;
   title: string;
   path: string;
   languageCode: string;
@@ -48,13 +63,15 @@ const groupChecks = (checks: readonly PublishCheck[]): CheckGroup[] => {
     const key = `${check.severity}:${check.code}`;
     const group = groups.get(key) ?? { code: check.code, severity: check.severity, rows: [] };
     groups.set(key, group);
-    const row = group.rows.find((candidate) => candidate.pageId === check.pageId);
+    const locatable = isLocatablePublishCheck(check.code);
+    const row = group.rows.find((candidate) => candidate.pageId === check.pageId && (!locatable || candidate.details[0] === check.detail));
     if (row) {
       if (check.detail && !row.details.includes(check.detail)) row.details.push(check.detail);
       if (check.reason === 'path-too-long' && !row.tooLong.includes(check.detail)) row.tooLong.push(check.detail);
     } else {
       group.rows.push({
         pageId: check.pageId,
+        versionId: check.versionId,
         title: check.title,
         path: check.path,
         languageCode: check.languageCode,
@@ -74,14 +91,19 @@ interface PublishChecksProps {
   loading: boolean;
   /** Closes the publish dialog when a Fix link opens the editor. */
   onFix: () => void;
+  /** Docs version (branch) names by id, to tell apart same-address pages in
+   *  different versions. */
+  versionNames?: ReadonlyMap<string, string>;
 }
 
 /**
- * The "Checks" part of the publish dialog: a one-line verdict, then the
- * problems grouped by kind with a Fix link to each page. Warnings never block;
- * errors (the publish would fail) do, and the dialog disables Publish for them.
+ * The "Checks" part of the publish sheet: a one-line verdict, then the
+ * problems grouped by kind with a Fix link that opens the page at the problem.
+ * Warnings never block; errors (the publish would fail) do, and the sheet
+ * disables Publish for them. While an error remains, warning groups start
+ * collapsed to their title and count, so the blocking problems lead.
  */
-export function PublishChecks({ projectId, checks, loading, onFix }: PublishChecksProps) {
+export function PublishChecks({ projectId, checks, loading, onFix, versionNames }: PublishChecksProps) {
   const t = useT();
   const { count } = useFormatters();
   const headingId = useId();
@@ -89,6 +111,10 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
   const errors = checks.filter((check) => check.severity === 'error').length;
   const warnings = checks.length - errors;
   const multiLang = new Set(checks.map((check) => check.languageCode)).size > 1;
+  // Name versions only when the checks span more than one known version; an
+  // unknown or missing version is never guessed, so it gets no label.
+  const knownVersions = new Set(checks.flatMap((check) => (check.versionId && versionNames?.has(check.versionId) ? [check.versionId] : [])));
+  const versions = knownVersions.size > 1 ? versionNames : undefined;
 
   const summary = errors
     ? [
@@ -116,86 +142,193 @@ export function PublishChecks({ projectId, checks, loading, onFix }: PublishChec
       ) : (
         <>
           <Callout className="py-2.5" title={summary.filter(Boolean).join(' · ')} tone={errors ? 'danger' : 'warning'} />
-          <ScrollArea className="max-h-72 rounded-xl border border-border">
-            <div className="divide-y divide-border">
-              {groups.map((group) => {
-                const meta = CHECK_META[group.code];
-                const groupHeadingId = `${headingId}-${group.severity}-${group.code}`;
-                return (
-                  <div key={`${group.severity}-${group.code}`}>
-                    <div className="flex flex-col gap-1 px-4 pt-3 sm:px-5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h4 className="font-medium text-sm" id={groupHeadingId}>
-                          {t(meta.title)}
-                        </h4>
-                        <StatusBadge size="sm" tone={group.severity === 'error' ? 'danger' : 'warning'}>
-                          {t(group.severity === 'error' ? 'publish.checks.error' : 'publish.checks.warning')}
-                        </StatusBadge>
-                      </div>
-                      <p className="text-muted-foreground text-xs">{t(meta.hint)}</p>
-                    </div>
-                    <DataList aria-labelledby={groupHeadingId}>
-                      {group.rows.map((row) => {
-                        const title = row.title.trim() || t('editor.untitled');
-                        return (
-                          <DataListItem
-                            badges={
-                              multiLang && row.languageCode ? (
-                                <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground uppercase">
-                                  {row.languageCode}
-                                </span>
-                              ) : null
-                            }
-                            description={<CheckDetails code={group.code} details={row.details} tooLong={row.tooLong} />}
-                            key={row.pageId}
-                            meta={
-                              <span className="break-all font-mono" dir="ltr">
-                                /{row.path}
-                              </span>
-                            }
-                            title={<bdi>{title}</bdi>}
-                            trailing={
-                              <Button
-                                aria-label={t('publish.checks.fixLabel', { title })}
-                                className="min-h-9"
-                                nativeButton={false}
-                                onClick={onFix}
-                                render={<Link params={{ projectId }} search={{ page: row.pageId }} to="/app/projects/$projectId/editor" />}
-                                size="sm"
-                                variant="outline"
-                              >
-                                <PenLine aria-hidden />
-                                {t('publish.checks.fix')}
-                              </Button>
-                            }
-                          />
-                        );
-                      })}
-                    </DataList>
-                  </div>
-                );
-              })}
-            </div>
-          </ScrollArea>
+          <div className="divide-y divide-border rounded-xl border border-border">
+            {groups.map((group) => (
+              <CheckGroupSection
+                defaultOpen={group.severity === 'error' || errors === 0}
+                group={group}
+                headingId={`${headingId}-${group.severity}-${group.code}`}
+                key={`${group.severity}-${group.code}`}
+                multiLang={multiLang}
+                onFix={onFix}
+                projectId={projectId}
+                versions={versions}
+              />
+            ))}
+          </div>
         </>
       )}
     </section>
   );
 }
 
+/** One kind of problem: its name, severity, page count and hint, then a row per
+ *  page. A collapsed group still names itself and how many pages it covers. */
+function CheckGroupSection({
+  group,
+  headingId,
+  defaultOpen,
+  multiLang,
+  projectId,
+  onFix,
+  versions,
+}: {
+  group: CheckGroup;
+  headingId: string;
+  defaultOpen: boolean;
+  multiLang: boolean;
+  projectId: string;
+  onFix: () => void;
+  versions: ReadonlyMap<string, string> | undefined;
+}) {
+  const t = useT();
+  const { count } = useFormatters();
+  const [open, setOpen] = useState(defaultOpen);
+  // Follow the rule when it flips (the last error fixed, or a new one): a
+  // warning group never stays folded once nothing blocks publishing.
+  const [ruleOpen, setRuleOpen] = useState(defaultOpen);
+  if (ruleOpen !== defaultOpen) {
+    setRuleOpen(defaultOpen);
+    setOpen(defaultOpen);
+  }
+  const locatable = isLocatablePublishCheck(group.code);
+  const meta = CHECK_META[group.code];
+  const rowsId = `${headingId}-rows`;
+  return (
+    <div data-check-group={group.code}>
+      <div className="flex flex-col gap-1 px-4 pt-3 pb-1 sm:px-5">
+        <div className="flex items-center gap-2">
+          <h4 className="min-w-0 font-medium text-sm" id={headingId}>
+            {t(meta.title)}
+          </h4>
+          <StatusBadge size="sm" tone={group.severity === 'error' ? 'danger' : 'warning'}>
+            {t(group.severity === 'error' ? 'publish.checks.error' : 'publish.checks.warning')}
+          </StatusBadge>
+          <Button
+            aria-controls={rowsId}
+            aria-expanded={open}
+            aria-labelledby={`${headingId}-toggle ${headingId}`}
+            className="ms-auto shrink-0 text-muted-foreground"
+            id={`${headingId}-toggle`}
+            onClick={() => setOpen((value) => !value)}
+            size="sm"
+            type="button"
+            variant="ghost"
+          >
+            {open ? t('publish.checks.hide') : t('publish.checks.show', count(group.rows.length))}
+            <ChevronDown aria-hidden className={cn('size-4 transition-transform', open && 'rotate-180')} />
+          </Button>
+        </div>
+        <p className="text-muted-foreground text-xs">{t(meta.hint)}</p>
+      </div>
+      <DataList aria-labelledby={headingId} hidden={!open} id={rowsId}>
+        {group.rows.map((row) => {
+          const title = row.title.trim() || t('editor.untitled');
+          const evidence = row.details[0];
+          const versionName = row.versionId ? versions?.get(row.versionId) : undefined;
+          const version = versionName ? t('editor.branch.trigger', { name: isolate(versionName) }) : undefined;
+          // Unique per button: the problem, its evidence, and the page's address
+          // (and language and version), so neither two problems on one page nor
+          // two pages with the same title share a name.
+          const where = multiLang && row.languageCode ? `/${row.path} · ${row.languageCode}` : `/${row.path}`;
+          const problem = [t(meta.title), locatable ? evidence : undefined, where, version].filter(Boolean).join(' · ');
+          return (
+            <DataListItem
+              badges={
+                multiLang && row.languageCode ? (
+                  <span className="rounded bg-muted px-1.5 py-0.5 font-mono text-muted-foreground text-xs uppercase">{row.languageCode}</span>
+                ) : null
+              }
+              description={<CheckDetails code={group.code} details={row.details} tooLong={row.tooLong} />}
+              key={`${row.pageId}:${locatable ? evidence : ''}`}
+              meta={
+                <span className="break-all font-mono" dir="ltr">
+                  /{row.path}
+                </span>
+              }
+              title={<bdi>{title}</bdi>}
+              trailing={
+                <Button
+                  aria-label={t('publish.checks.fixProblem', { title, problem })}
+                  className="min-h-9"
+                  nativeButton={false}
+                  onClick={onFix}
+                  render={
+                    <Link
+                      params={{ projectId }}
+                      search={publishFixSearch(
+                        group.code,
+                        row.pageId,
+                        evidence ? { detail: evidence, truncated: row.tooLong.includes(evidence) } : undefined,
+                      )}
+                      to="/app/projects/$projectId/editor"
+                    />
+                  }
+                  size="sm"
+                  variant="outline"
+                >
+                  <PenLine aria-hidden />
+                  {t('publish.checks.fix')}
+                  {version && (
+                    <bdi className="max-w-36 truncate font-normal" title={version}>
+                      {version}
+                    </bdi>
+                  )}
+                </Button>
+              }
+            />
+          );
+        })}
+      </DataList>
+    </div>
+  );
+}
+
+/** A `home-untranslated` detail: JSON from the server's check. */
+const homeLanding = (detail: string): { language: string; landing: string; key: string | null; path: string } => {
+  try {
+    const parsed = JSON.parse(detail) as Partial<{ language: string; landing: string; key: string | null; path: string }>;
+    return { language: parsed.language ?? '', landing: parsed.landing ?? '', key: parsed.key ?? null, path: parsed.path ?? '' };
+  } catch {
+    return { language: detail, landing: '', key: null, path: '' };
+  }
+};
+
 /** The evidence under a row: the broken links, image sources or stray text,
  *  read left to right as code; or, for a duplicate, the other page. */
 function CheckDetails({ code, details, tooLong = [] }: { code: CheckCode; details: string[]; tooLong?: string[] }) {
-  const t = useT();
+  const { locale, t } = useLocale();
   if (details.length === 0 || code === 'unreadable-slug') return null;
   if (code === 'duplicate-title') {
     return <span>{t('publish.checks.duplicateOf', { path: `/${details[0] ?? ''}` })}</span>;
+  }
+  if (code === 'home-untranslated') {
+    // Who lands where instead of on a translation of this page, and the exact
+    // change that sends them to one.
+    return (
+      <span className="flex flex-col gap-0.5">
+        {details.map((detail) => {
+          const landing = homeLanding(detail);
+          const language = languageName(landing.language, undefined, locale);
+          return (
+            <span className="flex flex-col gap-0.5" key={detail}>
+              <span>{t('publish.checks.homeUntranslatedLanding', { language, title: landing.landing })}</span>
+              <span>
+                {landing.key
+                  ? t('publish.checks.homeUntranslatedFixKey', { language, key: landing.key })
+                  : t('publish.checks.homeUntranslatedFixPath', { language, path: `/${landing.path}` })}
+              </span>
+            </span>
+          );
+        })}
+      </span>
+    );
   }
   return (
     <span className="flex flex-wrap gap-1.5">
       {details.map((detail) => (
         <span className="inline-flex flex-wrap items-center gap-1" key={detail}>
-          <code className="break-all rounded bg-muted px-1 py-0.5 text-[11.5px] text-foreground" dir="ltr">
+          <code className="break-all rounded bg-muted px-1 py-0.5 text-foreground text-xs" dir="ltr">
             {detail}
           </code>
           {tooLong.includes(detail) ? <span className="text-muted-foreground">{t('publish.checks.pathTooLong')}</span> : null}

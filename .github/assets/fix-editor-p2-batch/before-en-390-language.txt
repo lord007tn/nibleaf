@@ -1,0 +1,12 @@
+- dialog "Add a language":
+  - heading "Add a language" [level=2]
+  - paragraph: Create a new localized version of this site's pages.
+  - group:
+    - combobox [expanded]: Arab
+    - group
+  - listbox "Suggestions":
+    - group:
+      - option "العربية Arabic ar RTL" [selected]
+      - option "Português (Brasil) Portuguese (Brazil) pt-BR"
+  - button "Add a language not listed"
+  - button "Close"

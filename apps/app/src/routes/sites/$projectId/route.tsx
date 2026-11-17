@@ -3,37 +3,43 @@ import { THEME_STORAGE_KEY } from '@nibleaf/design-system/theme';
 import { isRtl as isRtlLocale, resolveLocale } from '@nibleaf/i18n/locales';
 import { deploy_close } from '@nibleaf/i18n/messages';
 import { siteT } from '@nibleaf/i18n/site';
-import { createFileRoute, Outlet, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
+import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
+import { blockDirection } from '@nibleaf/shared/script-direction';
+import { parseSiteLanguagePath } from '@nibleaf/shared/site-language-prefix';
+import { createFileRoute, Outlet, redirect, useNavigate, useRouter, useRouterState } from '@tanstack/react-router';
 import { BookOpen, ExternalLink, Link2, Moon, Search, Sun } from 'lucide-react';
 import { lazy, type MouseEvent, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { z } from 'zod';
-import { askSearchSchema } from '@/components/site/ai-chat/ask-search';
-import { ChatSearchBridge, SiteChatReaderLayout } from '@/components/site/ai-chat/provider';
+import { readAskSearch } from '@/components/site/ai-chat/ask-search';
+import { ChatSearchBridge, SiteChatHeaderAction, SiteChatReaderLayout } from '@/components/site/ai-chat/provider';
 import { DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
 import { LanguageSwitcher } from '@/components/site/language-switcher';
 import { MadeWithBadge } from '@/components/site/made-with-badge';
 import { MobileNav, type MobileNavChoice } from '@/components/site/mobile-nav';
 import { type SiteLanguageAlternate, SitePageAlternatesContext } from '@/components/site/page-alternates-context';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
-import { SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
+import { PrivacyChoicesLink, SiteAnalyticsConsent } from '@/components/site/site-analytics-consent';
+import { SiteArticleSkeleton } from '@/components/site/site-article-skeleton';
 import { SiteBanner } from '@/components/site/site-banner';
 import { firstLeafPath, isVersionIndependentNavNode, leadingPages, SiteNav } from '@/components/site/site-nav';
 import type { PrivateSiteGate } from '@/components/site/site-private-gate';
 import { SiteReaderContext, type SiteReaderContextValue } from '@/components/site/site-reader-context';
 import { openSiteSearch, preloadSiteSearch, SiteSearch } from '@/components/site/site-search';
+import { searchKeyShortcuts, useSlashShortcut } from '@/components/site/site-search-shortcut';
 import { SiteSignOut } from '@/components/site/site-sign-out';
 import { VersionSwitcher } from '@/components/site/version-switcher';
 import { getSiteFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import type { ProjectConfig, SiteShell } from '@/hooks/api/types';
+import { boundedText, readSearch } from '@/lib/search-params';
 import { useSearchShortcutLabel } from '@/lib/shortcut';
 import { publishedSiteLogo } from '@/lib/site-branding';
+import { siteEmoji } from '@/lib/site-emoji';
 import { useSiteLinkNavigation } from '@/lib/site-link-navigation';
 import { customDomainOrigin } from '@/lib/site-origin';
-import { safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
-import { readerFallbackHead, siteEmoji, siteHead, siteIconHref, siteRobotsHeaders, unavailableSiteHead } from '@/lib/site-seo';
+import { isCustomDomainSite, safeDecode, siteHref, siteLanguageParam, siteRoutePath } from '@/lib/site-paths';
+import { siteIconHref } from '@/lib/site-seo';
 import { readSiteStorage, writeSiteStorage } from '@/lib/site-storage';
-import { projectThemeCss, projectThemeStyle, resolveProjectTheme } from '@/lib/site-theme';
+import { projectThemeCss, projectThemeStyle, resolveProjectTheme, siteAppearance } from '@/lib/site-theme';
 import { SiteAnalyticsProvider } from '@/providers/site-analytics-provider';
 
 // Only visitors of a private site need this screen's copy.
@@ -42,13 +48,14 @@ const SitePrivateGate = lazy(() => import('@/components/site/site-private-gate')
 export const Route = createFileRoute('/sites/$projectId')({
   component: SiteRoute,
   // The active language lives in the URL so it survives reloads and is shareable.
-  validateSearch: (search) => z.object({ lang: z.string().min(1).optional().catch(undefined), ask: askSearchSchema }).parse(search),
+  validateSearch: (search) => readSearch(search, { lang: boundedText(1), ask: readAskSearch }),
   loaderDeps: ({ search }) => ({ lang: search.lang }),
-  // Version changes explicitly invalidate this shell; ordinary page clicks reuse it.
-  shouldReload: false,
+  // The language now lives in the pathname. Refresh the shell on path changes
+  // so client navigation resolves the same language/version as SSR.
+  shouldReload: true,
   // Fetch the site shell on the server so the chrome (nav, branding) is in the
   // initial HTML; the result also feeds site-level SEO tags via head(). The
-  // first path segment is passed as a version candidate so versioned URLs
+  // first segment after a language prefix selects the version, so versioned URLs
   // (`/sites/:id/v2/...`) SSR with that version's nav — the server ignores
   // candidates that aren't real version slugs.
   loader: async ({ params, deps, location }) => {
@@ -56,12 +63,35 @@ export const Route = createFileRoute('/sites/$projectId')({
       const rest = siteRoutePath(location.pathname).replace(/\/+$/, '');
       const segment = rest.split('/')[0];
       const candidate = segment && rest !== 'changelog' ? safeDecode(segment) : undefined;
-      const site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang, version: candidate } });
+      let site = await getSiteFn({ data: { projectId: params.projectId, language: deps.lang, version: candidate } });
+      const { parseSiteLanguagePath: parsePath } = await import('@nibleaf/shared/site-language-prefix');
+      const parsed = parsePath(rest, site.languages);
+      const target =
+        deps.lang !== undefined || parsed.language?.isDefault
+          ? (await import('@/lib/site-language-path')).resolveLanguagePathRedirect({
+              splat: rest,
+              languages: site.languages,
+              projectId: params.projectId,
+              isCustomDomain: isCustomDomainSite(params.projectId),
+              search: location.searchStr,
+              hash: location.hash,
+            })
+          : null;
+      if (target) throw redirect({ href: target, statusCode: 308, replace: true });
+      const language = parsed.language?.code ?? deps.lang;
+      // A language homepage (`/ar`, `/~lang/ar`) has no path after the prefix, so
+      // no version segment: send none rather than an empty slug the API rejects.
+      const version = parsed.path.split('/')[0] || undefined;
+      const requestedVersion = site.versions.find((item) => item.slug === version) ?? site.versions.find((item) => item.isDefault);
+      if (parsed.language && (site.activeLanguage !== language || site.activeVersion !== requestedVersion?.slug)) {
+        site = await getSiteFn({ data: { projectId: params.projectId, language, version } });
+      }
       return { site, siteOrigin: customDomainOrigin() };
     } catch (error) {
       if (!(error instanceof ApiResponseError) || error.status !== 404) throw error;
       // The API names why the shell is hidden. A private site gets its own
-      // sign-in screen; every other cause keeps the not-published screen.
+      // sign-in screen; a site that exists but isn't published says so; anything
+      // else (an unknown address, a taken-down site) is just no site here.
       // A private site's sign-in screen shows the site's own name, logo and colours.
       if (error.reason === 'private') {
         return {
@@ -71,11 +101,15 @@ export const Route = createFileRoute('/sites/$projectId')({
           gate: error.details?.gate as PrivateSiteGate | undefined,
         };
       }
-      return { site: null, siteOrigin: customDomainOrigin(), unavailable: undefined };
+      return { site: null, siteOrigin: customDomainOrigin(), unavailable: error.reason === 'not_published' ? undefined : ('missing' as const) };
     }
   },
-  headers: ({ loaderData }) => (loaderData ? siteRobotsHeaders(loaderData.site) : undefined),
-  head: ({ loaderData, match, matches }) => {
+  // The SEO helpers load with the reader, not in every page's entry chunk: a
+  // route's head() and headers() always stay in the router's eager chunk. The
+  // reader's components import site-seo too, so a published page has it already.
+  headers: async ({ loaderData }) => (loaderData ? (await import('@/lib/site-seo')).siteRobotsHeaders(loaderData.site) : undefined),
+  head: async ({ loaderData, match, matches }) => {
+    const { readerFallbackHead, siteHead, unavailableSiteHead } = await import('@/lib/site-seo');
     const lang = (match.search as { lang?: string }).lang;
     // The shell failed to load (not a 404): still give the tab a title.
     if (!loaderData) return readerFallbackHead(matches, lang);
@@ -115,7 +149,7 @@ function LinkedinIcon({ className }: { className?: string }) {
 
 function SiteChrome() {
   const { projectId } = Route.useParams();
-  const { lang, ask } = Route.useSearch();
+  const { ask } = Route.useSearch();
   const loaderData = Route.useLoaderData();
   const site = loaderData.site;
   const unavailable = 'unavailable' in loaderData ? loaderData.unavailable : undefined;
@@ -142,9 +176,13 @@ function SiteChrome() {
   }, []);
   // SSR renders the platform-neutral label; the client corrects it after hydration.
   const searchShortcut = useSearchShortcutLabel();
+  // '/' opens search unless the reader turned it off in search's footer (WCAG 2.1.4).
+  const slashShortcut = useSlashShortcut(projectId);
   const committedLocation = useRouterState({ select: (s) => s.resolvedLocation ?? s.location });
   const pathname = committedLocation.pathname;
-  const currentPath = safeDecode(siteRoutePath(pathname)).replace(/\/+$/, '');
+  const parsedPath = parseSiteLanguagePath(siteRoutePath(pathname), site?.languages ?? []);
+  const lang = parsedPath.language?.code ?? (committedLocation.search as { lang?: string }).lang;
+  const currentPath = safeDecode(parsedPath.path);
   const isChangelog = currentPath === 'changelog';
   const currentVersion = site?.versions.find((item) => item.slug === site.activeVersion) ?? site?.versions.find((item) => item.isDefault);
   const pathVersion = site?.versions.find((item) => item.slug === currentPath.split('/')[0]);
@@ -183,7 +221,7 @@ function SiteChrome() {
   }, [languages, lang, site?.activeLanguage]);
   const isRtl = activeLanguage?.direction === 'RTL';
   const defaultLanguage = languages.find((language) => language.isDefault)?.code;
-  const committedLanguage = (committedLocation.search as { lang?: string }).lang;
+  const committedLanguage = lang;
   const analyticsLanguage = languages.find((language) => language.code === committedLanguage)?.code ?? defaultLanguage;
   const navigationLanguage = siteLanguageParam(activeLanguage?.code, defaultLanguage);
   // Chrome strings follow the active language so an Arabic site reads Arabic.
@@ -193,7 +231,8 @@ function SiteChrome() {
   // The published site manages its OWN light/dark theme (a class on the chrome
   // below), independent of the dashboard's theme — so the site's config default
   // and a visitor's toggle never clobber the editor/dashboard theme.
-  const configTheme = config?.styling?.theme; // 'light' | 'dark' | 'system' | undefined
+  // Unset follows the reader's device (siteAppearance); 'light'/'dark' are the owner's pick.
+  const configTheme = siteAppearance(config);
   const [siteTheme, setSiteTheme] = useState<'light' | 'dark'>(configTheme === 'dark' ? 'dark' : 'light');
   const [siteThemeHydratedFor, setSiteThemeHydratedFor] = useState<string>();
   const hasExplicitThemeChoice = useRef(false);
@@ -292,13 +331,14 @@ function SiteChrome() {
   const showSearch = config?.navbar?.showSearch !== false;
   // Outlet content (the site 404) links home and opens search through this.
   const readerLanguage = activeLanguage?.code;
-  const readerHomeHref = siteHref(projectId, '', { lang: navigationLanguage, version: activeVersionPrefix });
+  const readerHomeHref = siteHref(projectId, '', { lang: navigationLanguage, version: activeVersionPrefix, languages, defaultLanguage });
   // React Compiler memoizes this value; a manual useMemo here blocks compilation.
   const readerContext: SiteReaderContextValue = {
     lang: readerLanguage,
     languages,
     homeHref: readerHomeHref,
     openSearch: showSearch ? () => openSiteSearch(() => setSearchOpen(true), t('searchDocumentation')) : undefined,
+    pendingArticle: SiteArticleSkeleton,
   };
 
   if (!site) {
@@ -319,8 +359,8 @@ function SiteChrome() {
       >
         <div>
           <BookOpen className="mx-auto size-8 text-muted-foreground" aria-hidden />
-          <h1 className="mt-4 font-semibold text-2xl tracking-tight">{t('notPublishedTitle')}</h1>
-          <p className="mt-2 max-w-sm text-muted-foreground text-sm">{t('notPublishedBody')}</p>
+          <h1 className="mt-4 font-semibold text-2xl tracking-tight">{t(unavailable === 'missing' ? 'noSiteTitle' : 'notPublishedTitle')}</h1>
+          <p className="mt-2 max-w-sm text-muted-foreground text-sm">{t(unavailable === 'missing' ? 'noSiteBody' : 'notPublishedBody')}</p>
         </div>
       </div>
     );
@@ -337,6 +377,8 @@ function SiteChrome() {
   // "Made with Nibleaf" attribution is on by default.
   const showBadge = footer?.madeWithBadge !== false;
   const hasFooterContent = Boolean(footer && (footer.copyright || footer.github || footer.x || footer.linkedin));
+  // Sites that ask for analytics consent keep "Privacy choices" in the footer.
+  const asksConsent = analyticsConsentPolicy(config) === 'required';
 
   // Branding can provide a theme-specific logo and an optional off-site link.
   const branding = config?.branding;
@@ -355,6 +397,7 @@ function SiteChrome() {
   const themeCss = projectThemeCss(config);
   // The active language may localize the site name (brand + footer copyright).
   const siteName = site?.languageConfig?.name || site?.project.name;
+  const footerCopyright = footer?.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim();
   const brandInner = (
     <>
       {logo ? (
@@ -381,7 +424,7 @@ function SiteChrome() {
     const targetLanguage = siteLanguageParam(code, defaultLanguage);
     const alternate = pageAlternates.find((item) => item.code === code && item.path);
     if (!isChangelog && alternate?.path) {
-      navigate({ href: siteHref(projectId, alternate.path, { lang: targetLanguage, version: activeVersionPrefix }) });
+      navigate({ href: siteHref(projectId, alternate.path, { lang: targetLanguage, version: activeVersionPrefix, languages, defaultLanguage }) });
       return;
     }
     // No known translation path (the changelog, the API reference, a 404, an
@@ -389,16 +432,16 @@ function SiteChrome() {
     // the same URL, version prefix included, in the other language. A
     // search-only navigate from this layout route would resolve to the site
     // root instead.
-    navigate({ href: siteHref(projectId, currentPath, { lang: targetLanguage }) });
+    navigate({ href: siteHref(projectId, currentPath, { lang: targetLanguage, languages, defaultLanguage }) });
   };
   const changeVersion = (slug: string) => {
     const defaultVersion = versions.find((item) => item.isDefault);
     const targetPrefix = defaultVersion?.slug === slug ? '' : slug;
     const targetPath = [targetPrefix, isChangelog ? '' : contentPath].filter(Boolean).join('/');
-    navigate({ href: siteHref(projectId, targetPath, { lang: navigationLanguage }) });
+    navigate({ href: siteHref(projectId, targetPath, { lang: navigationLanguage, languages, defaultLanguage }) });
   };
   const activeVersion = site?.activeVersion ?? versions.find((item) => item.isDefault)?.slug ?? '';
-  const sitePath = (path = '') => siteHref(projectId, path, { lang: navigationLanguage, version: activeVersionPrefix });
+  const sitePath = (path = '') => siteHref(projectId, path, { lang: navigationLanguage, version: activeVersionPrefix, languages, defaultLanguage });
   const searchSuggestions = leadingPages(site.nav ?? [], 5).map((node) => ({
     title: node.title,
     path: node.path,
@@ -443,7 +486,9 @@ function SiteChrome() {
   // keep the active language/version) so `/guides`-style links work on both
   // path-based (/sites/:id) and custom-domain serving.
   const resolveNavHref = (href: string): string =>
-    href.startsWith('/') && !href.startsWith('//') ? siteHref(projectId, href, { lang: navigationLanguage, version: activeVersionPrefix }) : href;
+    href.startsWith('/') && !href.startsWith('//')
+      ? siteHref(projectId, href, { lang: navigationLanguage, version: activeVersionPrefix, languages, defaultLanguage })
+      : href;
   const isNavActive = (href: string): boolean => {
     if (!href.startsWith('/') || href.startsWith('//')) {
       return false;
@@ -456,7 +501,14 @@ function SiteChrome() {
   // the mobile drawer render the same list.
   const headerLinks = [
     ...(config?.navbar?.changelog === true
-      ? [{ label: t('changelog'), href: siteHref(projectId, 'changelog', { lang: navigationLanguage }), active: isChangelog, external: false }]
+      ? [
+          {
+            label: t('changelog'),
+            href: siteHref(projectId, 'changelog', { lang: navigationLanguage, languages, defaultLanguage }),
+            active: isChangelog,
+            external: false,
+          },
+        ]
       : []),
     ...navLinks.map((link) => ({
       label: link.label,
@@ -500,6 +552,7 @@ function SiteChrome() {
               questionRetentionDays: site?.capabilities?.questionRetentionDays,
               lang: activeLanguage?.code,
               defaultLanguage,
+              languages,
               direction: isRtl ? 'rtl' : 'ltr',
               version: activeVersionPrefix,
               config,
@@ -554,7 +607,7 @@ function SiteChrome() {
                   )}
 
                   {/* Centered search (Mintlify-style); collapses to an icon on phones. */}
-                  <div className="hidden min-w-0 flex-1 justify-center px-2 sm:flex">
+                  <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 px-2 sm:flex">
                     {showSearch ? (
                       <button
                         className="hidden h-9 w-full max-w-md cursor-pointer items-center gap-2.5 rounded-full border border-border/80 bg-muted/50 px-4 text-muted-foreground text-sm transition-colors hover:border-foreground/25 hover:bg-muted pointer-coarse:h-11 sm:flex"
@@ -563,7 +616,7 @@ function SiteChrome() {
                         onPointerEnter={preloadSiteSearch}
                         onPointerDown={preloadSiteSearch}
                         onTouchStart={preloadSiteSearch}
-                        aria-keyshortcuts={searchHotkey === 'slash' ? '/' : 'Control+K Meta+K'}
+                        aria-keyshortcuts={searchKeyShortcuts(searchHotkey, slashShortcut)}
                         data-theme-region="search-trigger"
                         type="button"
                       >
@@ -575,10 +628,11 @@ function SiteChrome() {
                           dir="ltr"
                           aria-hidden
                         >
-                          {searchHotkey === 'slash' ? '/' : searchShortcut}
+                          {searchHotkey === 'slash' && slashShortcut ? '/' : searchShortcut}
                         </kbd>
                       </button>
                     ) : null}
+                    <SiteChatHeaderAction lang={activeLanguage?.code} />
                   </div>
 
                   {showSearch ? (
@@ -606,7 +660,7 @@ function SiteChrome() {
                           rel={link.external ? 'noreferrer' : undefined}
                           aria-current={link.active ? 'page' : undefined}
                           className={cn(
-                            'inline-flex items-center gap-1 transition-colors',
+                            'inline-flex min-h-6 items-center gap-1 transition-colors',
                             link.active ? 'font-medium text-primary' : 'text-muted-foreground hover:text-foreground',
                           )}
                         >
@@ -639,7 +693,10 @@ function SiteChrome() {
                         data-analytics-placement="navbar"
                         target="_blank"
                         rel="noreferrer"
-                        className="ms-1 hidden h-9 cursor-pointer items-center rounded-full bg-primary px-4 font-medium text-primary-foreground text-sm shadow-sm transition-opacity hover:opacity-90 sm:inline-flex"
+                        // Hover moves the fill towards the foreground, away from its label, so the
+                        // pair only gains contrast; fading the whole button dropped below AA. Only the
+                        // fill transitions, so the focus outline still appears at once.
+                        className="ms-1 hidden h-9 cursor-pointer items-center rounded-full bg-primary px-4 font-medium text-primary-foreground text-sm shadow-sm transition-[background-color] hover:bg-[color-mix(in_oklab,var(--primary)_85%,var(--foreground))] sm:inline-flex"
                       >
                         {ctaLabel}
                       </a>
@@ -677,26 +734,31 @@ function SiteChrome() {
                 ) : null}
               </div>
             }
+            navigationLabels={{ showAll: t('navShowAll'), showLess: t('navShowLess') }}
             navigation={
               <>
+                {/* Its own named landmark: the sidebar box around it is a plain
+                    div, so these links would otherwise sit outside every landmark. */}
                 {navAnchors.length > 0 ? (
-                  <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
-                    {navAnchors.map((anchor) => (
-                      <li key={`${anchor.label}-${anchor.href}`}>
-                        <a
-                          href={resolveNavHref(anchor.href)}
-                          target={anchor.external ? '_blank' : undefined}
-                          rel={anchor.external ? 'noreferrer' : undefined}
-                          className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
-                        >
-                          <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
-                            {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
-                          </span>
-                          <span className="truncate">{anchor.label}</span>
-                        </a>
-                      </li>
-                    ))}
-                  </ul>
+                  <nav aria-label={t('quickLinks')}>
+                    <ul className="mb-4 space-y-1 border-border/60 border-b pb-5">
+                      {navAnchors.map((anchor) => (
+                        <li key={`${anchor.label}-${anchor.href}`}>
+                          <a
+                            href={resolveNavHref(anchor.href)}
+                            target={anchor.external ? '_blank' : undefined}
+                            rel={anchor.external ? 'noreferrer' : undefined}
+                            className="group flex items-center gap-3 rounded-lg px-2 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:text-foreground"
+                          >
+                            <span className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-card shadow-2xs transition-colors group-hover:border-primary/40 group-hover:text-primary">
+                              {hasIcon(anchor.icon) ? <PageIcon name={anchor.icon} className="size-3.5" /> : <Link2 className="size-3.5" />}
+                            </span>
+                            <span className="truncate">{anchor.label}</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
                 ) : null}
                 <SiteNav
                   nodes={site.nav ?? []}
@@ -718,14 +780,15 @@ function SiteChrome() {
               </main>
             }
             footer={
-              hasFooterContent || showBadge || site.signedIn ? (
+              hasFooterContent || showBadge || site.signedIn || asksConsent ? (
                 <footer className="mt-auto border-border/60 border-t">
                   {hasFooterContent && footer ? (
                     <div
                       className="mx-auto flex max-w-[90rem] flex-col items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm sm:flex-row"
                       data-theme-region="footer"
                     >
-                      <span>{footer.copyright ?? `© ${new Date().getFullYear()} ${siteName ?? ''}`.trim()}</span>
+                      {/* Isolated and laid out by its own script, like the rest of the chrome (PUB-015). */}
+                      <span dir={blockDirection(footerCopyright)}>{footerCopyright}</span>
                       <div className="flex items-center gap-1">
                         {footer.github ? (
                           <a
@@ -765,7 +828,19 @@ function SiteChrome() {
                   ) : null}
                   {showBadge ? (
                     <div className={cn('mx-auto max-w-[90rem] px-6', hasFooterContent ? 'pb-6' : 'py-5')}>
-                      <MadeWithBadge lang={activeLanguage?.code} />
+                      {/* Only sites that ask for consent add "Privacy choices" (and its separator). */}
+                      <MadeWithBadge lang={activeLanguage?.code}>
+                        {asksConsent ? <PrivacyChoicesLink projectId={projectId} config={config} lang={activeLanguage?.code} /> : null}
+                      </MadeWithBadge>
+                    </div>
+                  ) : asksConsent ? (
+                    <div
+                      className={cn(
+                        'mx-auto flex max-w-[90rem] justify-center px-6 text-[12px] text-[color:var(--theme-footer-muted,var(--muted-foreground))]',
+                        hasFooterContent ? 'pb-6' : 'py-5',
+                      )}
+                    >
+                      <PrivacyChoicesLink projectId={projectId} config={config} lang={activeLanguage?.code} />
                     </div>
                   ) : null}
                   {/* Signed in on the site itself (a reader, or a team member on a custom domain). */}

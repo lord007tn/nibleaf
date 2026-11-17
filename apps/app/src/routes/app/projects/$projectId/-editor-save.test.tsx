@@ -32,21 +32,27 @@ vi.mock('@tanstack/react-router', () => ({
     useNavigate: () => mocks.navigate,
   }),
   useBlocker: () => undefined,
+  useRouter: () => ({ buildLocation: () => ({ href: '' }) }),
   Link: ({ children, to: _to, params: _params, ...props }: { children: ReactNode; to: string; params: unknown }) => <a {...props}>{children}</a>,
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => vi.fn(), usePrompt: () => vi.fn() }));
 vi.mock('sonner', () => ({ toast: { error: mocks.toast } }));
-vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ getQueryData: () => undefined }) }));
+vi.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({ getQueryData: () => undefined }),
+  useQueries: ({ combine }: { combine: (results: unknown[]) => unknown }) => combine([]),
+}));
+vi.mock('@/components/editor/linked-page-history', () => ({ useLinkedPageHistory: () => vi.fn() }));
 vi.mock('@/hooks/api', async () => ({
   useProject: () => ({ data: { id: 'project-1', name: 'Test site', config: {} } }),
   useProjectMembers: () => ({ data: { members: [{ role: mocks.role, user: { id: 'user-1' } }] }, isPending: mocks.membersPending }),
   useAiDraftCapability: () => mocks.capability,
   addressMayFollowTitle: () => false,
-  friendlyErrorMessage: () => '',
+  friendlyErrorMessage: (await import('@/hooks/api/errors')).friendlyErrorMessage,
   pageNeverPublished: () => false,
   pagePublishState: () => 'unchanged',
   queryKeys: (await import('@/hooks/api/query-keys')).queryKeys,
   useBranches: () => ({}),
+  useOpenApiConfiguration: () => ({}),
   useLanguages: () => ({ data: [{ id: 'lang-en', code: 'en', label: 'English', isDefault: true }] }),
   usePages: () => ({ data: mocks.pages, isPending: false }),
   usePage: () => ({ data: mocks.page }),
@@ -57,10 +63,14 @@ vi.mock('@/hooks/api', async () => ({
   useUploadAsset: () => ({}),
   useDeleteAsset: () => ({}),
   useReorderPages: () => ({}),
+  useDuplicatePage: () => ({ mutate: vi.fn(), isPending: false }),
+  useDomains: () => ({}),
+  pickLiveDomain: () => undefined,
 }));
 vi.mock('@/hooks/api/query-options', () => ({
   aiDraftCapabilityQueryOptions: (id: string) => ({ queryKey: ['workspace-ai', id, 'draft-capability'] }),
   commentsQueryOptions: vi.fn(),
+  pagesQueryOptions: vi.fn(),
   pageQueryOptions: vi.fn(),
   projectMembersQueryOptions: (id: string) => ({ queryKey: ['members', id] }),
 }));
@@ -99,6 +109,7 @@ vi.mock('@/components/editor/tiptap-editor', () => ({
   ),
 }));
 
+import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { Route } from './editor';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -149,6 +160,35 @@ describe('AUTH-16 editor save lifecycle', () => {
       await new Promise((resolve) => setTimeout(resolve, 800));
     });
   }
+  /** Saves start at least 3 s apart (editor-save-throttle.ts). */
+  async function pace() {
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 3100));
+    });
+  }
+  it('closes the page drawer after creating a page from it, so the focused title is visible', async () => {
+    const showPages = container.querySelector<HTMLButtonElement>('button[aria-label="editor.showPages"]');
+    if (!showPages) throw new Error('Missing the page drawer button');
+    await act(async () => showPages.click());
+    // The drawer button says whether the page drawer is open.
+    const drawerOpen = () => showPages.getAttribute('aria-expanded');
+    expect(drawerOpen()).toBe('true');
+    const created = { ...page, id: 'page-new', title: '', slug: 'untitled', path: 'untitled' };
+    mocks.create.mockImplementation((_body, callbacks) => {
+      mocks.page = created;
+      mocks.pages = [page, created];
+      callbacks.onSuccess(created);
+      callbacks.onSettled();
+    });
+    const newPage = [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('editor.newPage'));
+    if (!newPage) throw new Error('Missing new page action');
+    await act(async () => newPage.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.create).toHaveBeenCalledOnce();
+    expect(drawerOpen()).toBe('false');
+    const title = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="editor.pageTitlePlaceholder"]');
+    expect(document.activeElement).toBe(title);
+  });
   it('AUTH-07: failed creation clears the pending canvas and restores the action focus', async () => {
     mocks.page = undefined;
     mocks.pages = [];
@@ -184,6 +224,59 @@ describe('AUTH-16 editor save lifecycle', () => {
     );
     expect(container.querySelector('[role="alert"] button')?.textContent).toBe(kind === 'conflict' ? 'editor.conflict.review' : 'editor.retrySave');
   });
+  it('keeps a draft the server refused as too large, says why, and waits for the next edit', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const tooLarge = new ApiResponseError(
+      'This page is too large (2 MB maximum). Split it into smaller pages.',
+      413,
+      'page:too_large',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      { bytes: 2_097_153, limit: 2_097_152 },
+    );
+    mocks.update.mockRejectedValue(tooLarge);
+    await edit('Huge');
+    await debounce();
+    expect(mocks.update).toHaveBeenCalledOnce();
+    // Settled, with the size message and Retry: never left "saving".
+    expect(container.textContent).not.toContain('editor.savingShort');
+    expect(container.textContent).toContain('editor.saveFailedShort');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('editor.pageTooLarge');
+    expect(container.querySelector('[role="alert"] button')?.textContent).toBe('editor.retrySave');
+    // The draft stays in the editor.
+    expect(container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]')?.value).toBe('Huge');
+
+    // A page refetch re-runs autosave; the refused text is not sent again.
+    mocks.page = { ...page };
+    await act(async () => root.render(<Editor />));
+    await debounce();
+    expect(mocks.update).toHaveBeenCalledOnce();
+    expect(container.textContent).not.toContain('editor.savingShort');
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain('editor.pageTooLarge');
+
+    // The next edit is saved.
+    mocks.update.mockResolvedValue({ ...page, content: 'Smaller', updatedAt: 'revision-2' });
+    await edit('Smaller');
+    await debounce();
+    expect(mocks.update).toHaveBeenCalledTimes(2);
+    expect(mocks.update).toHaveBeenLastCalledWith(expect.objectContaining({ body: expect.objectContaining({ content: 'Smaller' }) }));
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.textContent).toContain('editor.savedShort');
+
+    // The refusal was measured at revision-1. The baseline is now revision-2,
+    // where the same text may fit (here the server accepts it): it is sent.
+    mocks.update.mockResolvedValue({ ...page, content: 'Huge', updatedAt: 'revision-3' });
+    await edit('Huge');
+    await pace();
+    expect(mocks.update).toHaveBeenCalledTimes(3);
+    expect(mocks.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ content: 'Huge', expectedUpdatedAt: 'revision-2' }) }),
+    );
+    expect(container.querySelector('[role="alert"]')).toBeNull();
+    expect(container.textContent).toContain('editor.savedShort');
+  }, 15_000);
   it('settles a cancelled debounced draft when undo restores the server copy', async () => {
     await edit('Unsaved');
     expect(container.textContent).toContain('editor.savingShort');

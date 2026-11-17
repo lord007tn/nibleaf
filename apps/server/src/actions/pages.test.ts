@@ -14,7 +14,8 @@ const database = vi.hoisted(() => ({
 }));
 const recordEdit = vi.hoisted(() => vi.fn());
 vi.mock('@/lib/page-address-changes', () => ({
-  prepareAddressLinks: async () => undefined,
+  prepareAddressLinks: async () => new Map(),
+  prepareReorderAddressLinks: vi.fn(async () => ({ documents: new Map(), assertRevisions: async () => undefined })),
   assertAddressLinkRevisions: async () => undefined,
   preservePageAddresses: async () => ({ redirectsAdded: 0, linksUpdated: 0, documentsSkipped: 0 }),
 }));
@@ -32,12 +33,15 @@ vi.mock('@nibleaf/database', () => ({
       update: database.update,
       updateMany: database.updateMany,
     },
+    language: { findMany: database.languages },
     $transaction: database.transaction,
   },
 }));
 
 import { reorderPagesBody } from '@nibleaf/validators';
-import { reorderPages, updatePage } from './pages';
+import { Hono } from 'hono';
+import { errorMiddleware } from '@/errors/handler';
+import { createPage, reorderPages, updatePage } from './pages';
 
 type Row = {
   id: string;
@@ -150,6 +154,28 @@ describe('updatePage placeholder slug adoption', () => {
     expect(recordEdit).toHaveBeenCalledExactlyOnceWith('author-1', 'project-1');
   });
 
+  it("refuses clearing a group's name, while a page may be left untitled", async () => {
+    seed(row({ kind: 'GROUP', title: 'Guides', slug: 'guides' }));
+    await expect(updatePage('project-1', 'page-1', { title: ' ' })).rejects.toMatchObject({ details: { field: 'title' } });
+    expect(database.update).not.toHaveBeenCalled();
+    seed(row({ title: 'Guide', slug: 'guide' }));
+    await updatePage('project-1', 'page-1', { title: '' });
+    expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ title: '' }) }));
+  });
+
+  it('refuses a new unsupported icon but never blocks a page that keeps its stored one', async () => {
+    seed(row({ title: 'Guide', slug: 'guide', icon: 'legacy-name', config: { categoryIcon: 'old-category' } } as unknown as Partial<Row>));
+    // An ordinary save that resends the stored values goes through.
+    await updatePage('project-1', 'page-1', { content: 'Edited', icon: 'legacy-name', config: { categoryIcon: 'old-category' } });
+    expect(database.update).toHaveBeenCalledTimes(1);
+    await expect(updatePage('project-1', 'page-1', { icon: 'another-unknown' })).rejects.toMatchObject({ details: { field: 'icon' } });
+    await expect(updatePage('project-1', 'page-1', { config: { categoryIcon: 'nope' } })).rejects.toMatchObject({
+      details: { field: 'categoryIcon' },
+    });
+    await updatePage('project-1', 'page-1', { icon: 'rocket' });
+    expect(database.update).toHaveBeenLastCalledWith(expect.objectContaining({ data: expect.objectContaining({ icon: 'rocket' }) }));
+  });
+
   it('does not record an edit when the project-scoped update fails', async () => {
     seed(row());
     database.findFirst.mockResolvedValue(null);
@@ -158,6 +184,8 @@ describe('updatePage placeholder slug adoption', () => {
   });
 
   it.each([
+    ['blank', '   '],
+    ['empty', ''],
     ['English', editor_untitled(undefined, { locale: 'en' })],
     ['Arabic', editor_untitled(undefined, { locale: 'ar' })],
     ['French', editor_untitled(undefined, { locale: 'fr' })],
@@ -170,6 +198,35 @@ describe('updatePage placeholder slug adoption', () => {
       expect.objectContaining({ data: expect.objectContaining({ title: 'Getting started', slug: 'getting-started' }) }),
     );
     expect(updated.path).toBe('getting-started');
+  });
+
+  it.each([
+    ['is in the live version', true],
+    ['is in a publish still building', true],
+    ['was never published', false],
+  ])('keeps the address of a placeholder page that %s', async (_case, live) => {
+    seed(row({ title: '', slug: 'untitled-2', path: 'untitled-2' }));
+    const liveChecks: string[] = [];
+    database.queryRaw.mockImplementation(async (strings: TemplateStringsArray) => {
+      const sql = strings.join('?');
+      if (!sql.includes('"deployment"')) return [];
+      liveChecks.push(sql);
+      return [{ live }];
+    });
+
+    const updated = await updatePage('project-1', 'page-1', { title: 'Getting started' });
+
+    // Asked once, under the structural lock, and only because the address could follow the title.
+    expect(liveChecks).toHaveLength(1);
+    expect(liveChecks[0]).toMatch(/PENDING.*BUILDING/s);
+    expect(updated.title).toBe('Getting started');
+    expect(updated.slug).toBe(live ? 'untitled-2' : 'getting-started');
+  });
+
+  it('never asks about publication for an ordinary title edit', async () => {
+    seed(row({ title: 'Overview', slug: 'overview', path: 'overview' }));
+    await updatePage('project-1', 'page-1', { title: 'Overview and setup' });
+    expect(database.queryRaw.mock.calls.some(([strings]) => (strings as TemplateStringsArray).join('?').includes('"deployment"'))).toBe(false);
   });
 
   it('adopts the title slug for a localized placeholder group', async () => {
@@ -516,5 +573,86 @@ describe('updatePage revision precondition', () => {
       ).rejects.toMatchObject({ code: 'http:bad_request' });
       expect(database.updateMany).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('page content size cap', () => {
+  const MiB = 1024 * 1024;
+  const limit = 2 * MiB;
+
+  beforeEach(() => {
+    for (const mock of Object.values(database)) mock.mockReset();
+    recordEdit.mockClear();
+  });
+
+  it('refuses a create over the cap with a 413 before opening a transaction', async () => {
+    const app = new Hono()
+      .post('/pages', async (ctx) => ctx.json(await createPage('project-1', { title: 'Huge', content: 'x'.repeat(limit + 1) })))
+      .onError(errorMiddleware({ isDevelopment: false }));
+    const response = await app.request('/pages', { method: 'POST' });
+    expect(response.status).toBe(413);
+    expect(await response.json()).toEqual({
+      error: {
+        code: 'page:too_large',
+        message: 'This page is too large (2 MB maximum). Split it into smaller pages.',
+        details: { bytes: limit + 1, limit },
+      },
+    });
+    // Multibyte text is measured in UTF-8 bytes: 1 MiB + 1 Arabic letters is 2 MiB + 2 bytes.
+    await expect(createPage('project-1', { title: 'Arabic', content: 'ع'.repeat(MiB + 1) })).rejects.toMatchObject({
+      status: 413,
+      details: { bytes: limit + 2, limit },
+    });
+    expect(database.transaction).not.toHaveBeenCalled();
+  });
+
+  it('saves an update under the cap', async () => {
+    seed(row());
+    await updatePage('project-1', 'page-1', { content: 'x'.repeat(limit) }, 'author-1');
+    expect(database.update).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ content: 'x'.repeat(limit) }) }));
+  });
+
+  it('refuses an update over the cap that grows the page, before writing', async () => {
+    seed(row());
+    await expect(updatePage('project-1', 'page-1', { content: 'x'.repeat(limit + 1) }, 'author-1')).rejects.toMatchObject({
+      status: 413,
+      code: 'page:too_large',
+      details: { bytes: limit + 1, limit },
+    });
+    seed(row({ content: 'x'.repeat(3 * MiB) }));
+    await expect(updatePage('project-1', 'page-1', { content: 'x'.repeat(3 * MiB + 1) }, 'author-1')).rejects.toMatchObject({
+      code: 'page:too_large',
+      details: { bytes: 3 * MiB + 1, limit },
+    });
+    expect(database.update).not.toHaveBeenCalled();
+    expect(recordEdit).not.toHaveBeenCalled();
+  });
+
+  it('saves an edit that shrinks a page already over the cap, even while it stays over', async () => {
+    seed(row({ content: 'x'.repeat(3 * MiB) }));
+    const shrunk = 'x'.repeat(2.5 * MiB);
+    const updated = await updatePage('project-1', 'page-1', { content: shrunk }, 'author-1');
+    expect(updated.content).toBe(shrunk);
+    // Same size, different text: not growing, so it saves too.
+    await updatePage('project-1', 'page-1', { content: 'y'.repeat(2.5 * MiB) }, 'author-1');
+    // Metadata-only edits never measure content.
+    await updatePage('project-1', 'page-1', { hidden: true }, 'author-1');
+    expect(database.update).toHaveBeenCalledTimes(3);
+  });
+
+  it('reports a stale revision as a conflict before measuring an oversize body', async () => {
+    seed(row());
+    await expect(
+      updatePage('project-1', 'page-1', { content: 'x'.repeat(limit + 1) }, 'author-1', {
+        expectedUpdatedAt: new Date('2026-11-01T00:00:00.000Z'),
+      }),
+    ).rejects.toMatchObject({ code: 'page:revision_conflict' });
+    // With the current revision, the same body is refused for its size.
+    await expect(
+      updatePage('project-1', 'page-1', { content: 'x'.repeat(limit + 1) }, 'author-1', {
+        expectedUpdatedAt: new Date('2026-11-02T00:00:00.000Z'),
+      }),
+    ).rejects.toMatchObject({ code: 'page:too_large' });
+    expect(database.update).not.toHaveBeenCalled();
   });
 });

@@ -326,7 +326,8 @@ export const readerAccessQueryOptions = (projectId: string | undefined) =>
 export const getPublicMetaQueryOptions = () =>
   queryOptions({
     queryKey: queryKeys.public.meta(),
-    queryFn: async () => getData(await api.public.meta.$get(), 'public instance metadata'),
+    // The signal lets a route loader that stops waiting (loadRouteData) abort the request.
+    queryFn: async ({ signal }) => getData(await api.public.meta.$get(undefined, { init: { signal } }), 'public instance metadata'),
     staleTime: 5 * 60 * 1000,
   });
 

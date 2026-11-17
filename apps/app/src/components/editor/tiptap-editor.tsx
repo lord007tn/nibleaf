@@ -3,7 +3,6 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { type Locale, type MessageKey, translateFn } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { type Editor, Extension } from '@tiptap/core';
-import CharacterCount from '@tiptap/extension-character-count';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import { DragHandle, type DragHandleProps } from '@tiptap/extension-drag-handle-react';
 import Highlight from '@tiptap/extension-highlight';
@@ -46,34 +45,52 @@ import {
   Underline as UnderlineIcon,
   Undo2,
 } from 'lucide-react';
-import { type ComponentType, type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Markdown, type MarkdownNodeSpec } from 'tiptap-markdown';
+import {
+  type ComponentType,
+  type CSSProperties,
+  type MutableRefObject,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { CodeBlockMenu } from './code-block-menu';
-import { EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
+import { type CommentAnchor, EditorBubbleMenu, LinkEditorPanel } from './editor-bubble-menu';
+import { isUserDocChange, type LoadedMarkdown, markdownToEmit, redrawTransaction } from './editor-change-origin';
+import { type EditorLinks, useEditorLinks } from './editor-links';
+import { seedPageContent } from './editor-sections';
 import { AlignedTable, AlignedTableCell, AlignedTableHeader } from './extensions/aligned-table';
 import { BlockImage, LegacyImage } from './extensions/block-image';
+import { CachedCharacterCount } from './extensions/cached-character-count';
 import { Callout, calloutVariantAttributes, isCalloutMenuHidden, keepCalloutMenu } from './extensions/callout';
 import { CleanPaste } from './extensions/clean-paste';
+import { codeBlockHighlightPlugin, type LowlightLike } from './extensions/code-block-highlight';
 import { CommentDecorations, type CommentMarker } from './extensions/comment-decorations';
+import { FixHighlight } from './extensions/fix-highlight';
 import { ImageControls } from './extensions/image-controls';
 import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions/image-upload';
+import { InternalLinkClicks } from './extensions/internal-link-clicks';
+import { LinkableCode } from './extensions/linkable-code';
 import { mdxNodes } from './extensions/mdx';
-import { decodeMdxSource, encodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
+import { decodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { MarkdownBlockquote } from './extensions/quote';
+import { SectionTarget } from './extensions/section-target';
+import { SelectionShortcuts } from './extensions/selection-shortcuts';
 import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/slash-command';
+import { VideoEmbed } from './extensions/video-embed';
+import { annotateFences, type FenceSerializeState, writeFence } from './fence-source';
+import { LinearMarkdown } from './markdown-output';
+import { SourceParagraph } from './paragraph-source';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
+import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
 
 // Register a small set of common languages for code-block highlighting.
 const lowlight = createLowlight(common);
-
-type MarkdownSerializeState = {
-  write: (text: string) => void;
-  text: (text: string, shouldEscape?: boolean) => void;
-  esc: (text: string) => string;
-  ensureNewLine: () => void;
-  closeBlock: (node: PMNode) => void;
-};
 
 const fenceParsers = new WeakSet<object>();
 
@@ -99,6 +116,10 @@ export function getMarkdown(editor: Editor): string {
  * document behind.
  */
 export function seedMarkdown(editor: Editor, markdown: string): void {
+  seedPageContent(editor, markdown, () => replaceWithMarkdown(editor, markdown));
+}
+
+function replaceWithMarkdown(editor: Editor, markdown: string): void {
   if (markdown.trim() === '') {
     editor.commands.clearContent(false);
     return;
@@ -126,6 +147,16 @@ function getCounts(editor: Editor): { words: number; characters: number } {
 /** CodeBlockLowlight that mirrors the chosen language onto the <pre> as `data-language`,
  * so the dark chrome's label bar (CSS ::before) can display it. */
 const CodeBlock = CodeBlockLowlight.extend({
+  // One highlighting plugin that re-highlights only the code blocks an edit
+  // touches, in place of CodeBlockLowlight's (which this extension inherited
+  // twice) — see code-block-highlight.ts.
+  addProseMirrorPlugins() {
+    const inherited = (this.parent?.() ?? []).filter((plugin) => !(plugin as unknown as { key: string }).key.startsWith('lowlight$'));
+    return [
+      ...inherited,
+      codeBlockHighlightPlugin({ name: this.name, lowlight: this.options.lowlight as LowlightLike, defaultLanguage: this.options.defaultLanguage }),
+    ];
+  },
   addAttributes() {
     return {
       ...this.parent?.(),
@@ -144,6 +175,16 @@ const CodeBlock = CodeBlockLowlight.extend({
         parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-language')),
         rendered: false,
       },
+      sourceFenceLines: {
+        default: '',
+        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-lines')),
+        rendered: false,
+      },
+      sourceFenceTail: {
+        default: '',
+        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-tail')),
+        rendered: false,
+      },
     };
   },
   renderHTML({ node, HTMLAttributes }) {
@@ -153,52 +194,20 @@ const CodeBlock = CodeBlockLowlight.extend({
   addStorage() {
     return {
       markdown: {
-        serialize(state: MarkdownSerializeState, node: PMNode) {
+        serialize(state, node, parent, index) {
           const sourceOpen = String(node.attrs.sourceFenceOpen ?? '');
-          if (sourceOpen) {
-            const language = String(node.attrs.language ?? '');
-            const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
-            state.write(language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language));
-            state.write('\n');
-            state.text(node.textContent, false);
-            state.ensureNewLine();
-            state.write(String(node.attrs.sourceFenceClose ?? '') || (sourceOpen.trimStart().startsWith('~') ? '~~~' : '```'));
-            state.closeBlock(node);
-            return;
-          }
-          state.write(`\`\`\`${node.attrs.language || ''}\n`);
-          state.text(node.textContent, false);
-          state.ensureNewLine();
-          state.write('```');
-          state.closeBlock(node);
+          const language = String(node.attrs.language ?? '');
+          const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
+          let open = `\`\`\`${language}`;
+          if (sourceOpen) open = language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language);
+          // `output`, `delim` and `closed`: see LinearMarkdownSerializerState (markdown-output.ts).
+          writeFence(state as unknown as FenceSerializeState, node, parent, index, open);
         },
         parse: {
           setup(markdownit) {
             markdownit.set({ langPrefix: 'language-' });
             if (fenceParsers.has(markdownit)) return;
-            markdownit.core.ruler.after('block', 'nibleaf_fence_source', (state) => {
-              const lines = state.src.split('\n');
-              // A fence inside a quote keeps its source line without the quote's
-              // `>` markers: the quote's serializer writes them again on save, and
-              // keeping them saved `> ```js` as `> > ```js`.
-              let quoteDepth = 0;
-              const withoutQuotes = (line: string) => {
-                let inner = line;
-                for (let depth = 0; depth < quoteDepth; depth += 1) inner = inner.replace(/^ {0,3}> ?/, '');
-                return inner;
-              };
-              for (const token of state.tokens) {
-                if (token.type === 'blockquote_open') quoteDepth += 1;
-                if (token.type === 'blockquote_close') quoteDepth = Math.max(0, quoteDepth - 1);
-                if (token.type !== 'fence' || !token.map) continue;
-                const open = withoutQuotes(lines[token.map[0]] ?? '');
-                const close = withoutQuotes(lines[Math.max(token.map[0], token.map[1] - 1)] ?? '');
-                const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
-                token.attrSet('data-mdx-fence-open', encodeMdxSource(open));
-                token.attrSet('data-mdx-fence-close', encodeMdxSource(close));
-                token.attrSet('data-mdx-fence-language', encodeMdxSource(language));
-              }
-            });
+            markdownit.core.ruler.after('block', 'nibleaf_fence_source', (state) => annotateFences(state));
             fenceParsers.add(markdownit);
           },
           updateDOM(element: HTMLElement) {
@@ -225,6 +234,8 @@ interface BuildExtensionsOptions {
    *  disabled for RTL documents. */
   dir?: 'ltr' | 'rtl';
   locale?: Locale;
+  /** The page editor's link resolution, for clicks on links into the site. */
+  getLinks?: () => EditorLinks | null;
 }
 
 const RTL_LETTER = /[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufeff]/u;
@@ -344,6 +355,7 @@ export function buildEditorExtensions({
   getActiveId,
   dir = 'ltr',
   locale = dir === 'rtl' ? 'ar' : 'en',
+  getLinks = () => null,
 }: BuildExtensionsOptions = {}) {
   return [
     StarterKit.configure({
@@ -351,16 +363,22 @@ export function buildEditorExtensions({
       codeBlock: false,
       // MarkdownBlockquote replaces it, saving bold at a quote paragraph's start intact.
       blockquote: false,
+      // SourceParagraph replaces it, saving an untouched paragraph's line breaks.
+      paragraph: false,
+      // LinkableCode replaces it, so a link can wrap inline code (#660).
+      code: false,
       undoRedo: { newGroupDelay: 300 },
       link: { openOnClick: false, autolink: true, HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' } },
     }),
     MarkdownBlockquote,
+    LinkableCode,
+    SourceParagraph,
     AutomaticBlockDirection.configure({ dir }),
     ImageUpload.configure({ canEdit, getUpload: getUpload ?? (() => onUpload) }),
     CleanPaste.configure({ getUpload: getUpload ?? (() => onUpload), dir }),
     // html:true so raw MDX component tags (<Steps>, <Step>, …) survive the
     // Markdown round-trip and our custom nodes can rebuild them on parse.
-    Markdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),
+    LinearMarkdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),
     Placeholder.configure({
       placeholder: ({ node }) =>
         translateFn(node.type.name === 'heading' ? 'editor.placeholder.heading' : 'editor.placeholder.body', undefined, locale),
@@ -380,9 +398,10 @@ export function buildEditorExtensions({
     TableRow,
     AlignedTableHeader,
     AlignedTableCell,
-    CharacterCount,
+    CachedCharacterCount,
     Callout,
     ...mdxNodes,
+    VideoEmbed,
     ...opaqueMdxNodes,
     SlashCommand.configure({
       locale,
@@ -390,6 +409,10 @@ export function buildEditorExtensions({
       onUpload: onUpload ? (...args: Parameters<ImageUploader>) => (getUpload?.() ?? onUpload)(...args) : undefined,
     }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
+    SelectionShortcuts,
+    InternalLinkClicks.configure({ getLinks }),
+    FixHighlight,
+    SectionTarget,
   ];
 }
 
@@ -676,11 +699,33 @@ function EditorFooter({ editor, documentMode = false }: { editor: Editor; docume
   );
 }
 
+/** The editor's unserialized edit, for the page that owns the draft (P2-ED-005). */
+export interface EditorDraftHandle {
+  /** Serialize a pending edit now; the Markdown reaches `onChange` before this returns. */
+  flush: () => void;
+  /** True while an edit has not been serialized yet. */
+  pending: () => boolean;
+}
+
+/** How long typing pauses before a deferred edit is serialized for the page. */
+const DEFERRED_EMIT_IDLE_MS = 300;
+
 interface TiptapEditorProps {
   /** Markdown source — the single source of truth. */
   value: string;
-  /** Called with updated Markdown on every editor change. */
+  /** Called with updated Markdown on every editor change (with `onEdit`: when a
+   *  pending edit is serialized). */
   onChange: (markdown: string) => void;
+  /**
+   * Defer serialization (P2-ED-005). Serializing a large page on every keystroke
+   * made typing lag, so with `onEdit` a keystroke only calls it. The page is
+   * serialized and sent to `onChange` once typing pauses
+   * (`DEFERRED_EMIT_IDLE_MS`), when the editor loses focus, before the editor is
+   * replaced or unmounted, and whenever the owner calls `draftRef.current.flush()`.
+   */
+  onEdit?: () => void;
+  /** Set while the editor is mounted (see `EditorDraftHandle`). */
+  draftRef?: MutableRefObject<EditorDraftHandle | null>;
   /** Upload a pasted/dropped/picked image, returning its hosted URL (or null). */
   onUpload?: ImageUploader;
   dir?: 'ltr' | 'rtl';
@@ -729,12 +774,37 @@ export function TiptapEditor({
   onAddComment,
   variant = 'visual',
   titleSlot,
+  onEdit,
+  draftRef,
 }: TiptapEditorProps) {
   const lastEmitted = useRef<string>(value);
+  // The Markdown last seeded and its serialization: an edit back to it emits the source.
+  const loaded = useRef<LoadedMarkdown | null>(null);
   // Latest `value`, read inside deferred seeding so a re-seed queued before a
   // newer value arrived never re-applies the stale one.
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
+  const onEditRef = useRef(onEdit);
+  onEditRef.current = onEdit;
+  // The editor instance holding an edit not serialized yet (deferred mode only).
+  const pendingEdit = useRef<Editor | null>(null);
+  const emitTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const dropPendingEdit = useCallback(() => {
+    clearTimeout(emitTimer.current);
+    emitTimer.current = undefined;
+    pendingEdit.current = null;
+  }, []);
+  /** Serialize a deferred edit and hand it to `onChange`, as an eager edit is. */
+  const emitPendingEdit = useCallback(() => {
+    const pendingEditor = pendingEdit.current;
+    dropPendingEdit();
+    if (!pendingEditor) return;
+    const markdown = markdownToEmit(loaded.current, getMarkdown(pendingEditor));
+    lastEmitted.current = markdown;
+    // An editor created before the owner re-renders seeds this, not the stale value.
+    valueRef.current = markdown;
+    onChangeRef.current(markdown);
+  }, [dropPendingEdit]);
   const onUploadRef = useRef(onUpload);
   const editorRef = useRef<Editor | null>(null);
   // Comment state read by the CommentDecorations plugin + the click handler.
@@ -743,6 +813,12 @@ export function TiptapEditor({
   const commentModeRef = useRef(commentMode);
   const editableRef = useRef(editable);
   const onAddCommentRef = useRef(onAddComment);
+  // Read by the link click handler, so it always resolves against the current site.
+  const links = useEditorLinks();
+  const linksRef = useRef(links);
+  useEffect(() => {
+    linksRef.current = links;
+  }, [links]);
   useEffect(() => {
     valueRef.current = value;
     onChangeRef.current = onChange;
@@ -779,10 +855,15 @@ export function TiptapEditor({
           : undefined,
         getComments: () => commentsRef.current,
         getActiveId: () => activeCommentRef.current,
+        getLinks: () => linksRef.current,
         dir,
         locale: scaffoldLocaleOf({ lang, dir }),
       }),
       content: value,
+      // The editor is about to be replaced (its direction, language or variant
+      // changed): its deferred edit must reach the page before it goes.
+      onDestroy: () => emitPendingEdit(),
+      onBlur: () => emitPendingEdit(),
       onCreate: ({ editor }) => {
         editorRef.current = editor;
         // Seed once with the markdown source (StarterKit treats string content as HTML;
@@ -794,10 +875,22 @@ export function TiptapEditor({
           }
           seedMarkdown(editor, valueRef.current);
           lastEmitted.current = getMarkdown(editor);
+          loaded.current = { source: valueRef.current, serialized: lastEmitted.current };
         });
       },
-      onUpdate: ({ editor }) => {
-        const markdown = getMarkdown(editor);
+      onUpdate: ({ editor, transaction }) => {
+        // Only the writer's own changes reach the draft (see editor-change-origin.ts).
+        if (!isUserDocChange(transaction)) return;
+        const notifyEdit = onEditRef.current;
+        if (notifyEdit) {
+          // Deferred: note the edit; it is serialized later (see `onEdit`).
+          pendingEdit.current = editor;
+          clearTimeout(emitTimer.current);
+          emitTimer.current = setTimeout(emitPendingEdit, DEFERRED_EMIT_IDLE_MS);
+          notifyEdit();
+          return;
+        }
+        const markdown = markdownToEmit(loaded.current, getMarkdown(editor));
         lastEmitted.current = markdown;
         onChangeRef.current(markdown);
       },
@@ -807,6 +900,8 @@ export function TiptapEditor({
           // published page (content-blocks.css).
           class: 'nibleaf-content focus:outline-none',
           dir,
+          // Ctrl/⌘+K here adds a link instead of opening the command palette (AUTH-10).
+          [MOD_K_OWNER_ATTRIBUTE]: '',
         },
         handleTextInput: () => commentModeRef.current,
         handleKeyDown: (_view, event) => {
@@ -857,16 +952,33 @@ export function TiptapEditor({
     }
     if (value !== lastEmitted.current) {
       lastEmitted.current = value;
+      // A new value from outside replaces the document, edits included, as it did
+      // when every edit was serialized at once.
+      dropPendingEdit();
       // `emitUpdate: false` so re-seeding doesn't bounce back through onChange. Deferred
       // to a microtask so NodeView remounts don't flushSync inside React's commit.
       // Reads the latest value so an earlier queued re-seed can't win over a newer one.
       queueMicrotask(() => {
         if (!editor.isDestroyed) {
           seedMarkdown(editor, valueRef.current);
+          loaded.current = { source: valueRef.current, serialized: getMarkdown(editor) };
         }
       });
     }
-  }, [value, editor]);
+  }, [value, editor, dropPendingEdit]);
+
+  // The owner's handle on a deferred edit. Unmounting serializes it first: this
+  // runs before the owner's own unmount effects, which save the draft.
+  useLayoutEffect(() => {
+    if (!draftRef) return;
+    draftRef.current = { flush: emitPendingEdit, pending: () => pendingEdit.current !== null };
+    return () => {
+      emitPendingEdit();
+      draftRef.current = null;
+    };
+  }, [draftRef, emitPendingEdit]);
+  // Without a handle, still serialize a deferred edit when the editor unmounts.
+  useLayoutEffect(() => () => emitPendingEdit(), [emitPendingEdit]);
 
   // Keep editability in sync. Review mode stays contenteditable so ProseMirror
   // receives exact text selections; mutation handlers above make it read-only.
@@ -888,10 +1000,13 @@ export function TiptapEditor({
     }
     queueMicrotask(() => {
       if (!editor.isDestroyed) {
-        editor.view.dispatch(editor.state.tr);
+        editor.view.dispatch(redrawTransaction(editor.state.tr));
       }
     });
   }, [comments, activeCommentId, commentMode, editor]);
+
+  // The selection menu's Comment starts the same flow as review mode's Comment.
+  const startComment = useCallback((anchor: CommentAnchor) => onAddCommentRef.current?.(anchor), []);
 
   // Formatting menus and block controls only make sense while the page can change.
   const tools = editable && !commentMode;
@@ -906,7 +1021,7 @@ export function TiptapEditor({
       {editor && variant === 'wysiwyg' && tools ? <DocumentToolbar editor={editor} /> : null}
       {editor && tools ? <CalloutMenu editor={editor} /> : null}
       {editor && tools ? <ImageControls editor={editor} dir={dir} /> : null}
-      {editor && tools ? <EditorBubbleMenu editor={editor} /> : null}
+      {editor && tools ? <EditorBubbleMenu editor={editor} onComment={onAddComment ? startComment : undefined} /> : null}
       {editor && tools ? <TableBubbleMenu editor={editor} dir={dir} /> : null}
       {editor && tools ? <CodeBlockMenu editor={editor} /> : null}
       {editor && commentMode && onAddComment ? <CommentSelectionMenu editor={editor} onAddComment={onAddComment} /> : null}

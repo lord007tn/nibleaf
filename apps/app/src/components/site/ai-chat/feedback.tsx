@@ -33,12 +33,16 @@ export function Feedback({
   lang,
   consent,
   leading,
+  trailing,
 }: {
   final: AiChatFinalEvent;
   projectId: string;
   lang?: string;
   consent: AiChatConsent;
+  /** Before the rating buttons (the copy button). */
   leading?: ReactNode;
+  /** After the rating buttons, in the same row (the copy status). */
+  trailing?: ReactNode;
 }) {
   const t = siteChatT(lang);
   const [rating, setRating] = useState<Rating>(null);
@@ -118,6 +122,7 @@ export function Feedback({
         >
           <ThumbsDown aria-hidden className="size-4" />
         </Button>
+        {trailing}
       </div>
       {mutation.isPending && origin !== 'details' && <p role="status">{t('aiSavingRating')}</p>}
       {details && rating === 'down' && (

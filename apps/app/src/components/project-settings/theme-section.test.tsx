@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
+import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
 import { resolveTheme, THEME_PRESETS } from '@nibleaf/shared/themes';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -46,7 +48,7 @@ const OPTION_IDS = [
 ];
 const translations: Record<string, string> = Object.fromEntries(OPTION_IDS.map((id) => [`settings.theme.option.${id}`, `تسمية ${id}`]));
 
-const mutation = { isPending: false, mutate: vi.fn() };
+const mutation = { isPending: false, mutate: vi.fn(), mutateAsync: vi.fn() };
 
 vi.mock('@nibleaf/i18n/react', () => ({
   useT: () => (key: string) => translations[key] ?? key,
@@ -57,7 +59,13 @@ vi.mock('@/hooks/api', () => ({
   useImportProjectTheme: () => mutation,
   useExportProjectTheme: () => mutation,
 }));
-vi.mock('@/lib/site-theme', () => ({ projectThemeVariables: () => ({}), projectThemeStyle: () => ({}) }));
+vi.mock('@tanstack/react-router', () => ({ useBlocker: () => undefined }));
+vi.mock('@/services/api-origin', () => ({ apiOrigin: () => 'http://dashboard.test' }));
+vi.mock('@/lib/site-theme', () => ({
+  projectThemeVariables: () => ({}),
+  projectThemeStyle: () => ({}),
+  siteAppearance: (config?: { styling?: { theme?: string } } | null) => config?.styling?.theme ?? 'system',
+}));
 vi.mock('@/components/site/documentation-theme-provider', () => ({
   DocumentationThemeProvider: ({
     children,
@@ -93,6 +101,17 @@ const project: Project = {
   updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
+const render = (root: ReturnType<typeof createRoot>, site: Project) =>
+  act(async () =>
+    root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ConfirmProvider>
+          <ThemeSection project={site} />
+        </ConfirmProvider>
+      </QueryClientProvider>,
+    ),
+  );
+
 const preview = () => document.querySelector<HTMLElement>('[data-testid="preview"]');
 const triggers = () => [...document.querySelectorAll<HTMLElement>('[data-slot="select-trigger"]')];
 const triggerLabel = (trigger: HTMLElement) => trigger.querySelector('[data-slot="select-value"]')?.textContent;
@@ -116,7 +135,7 @@ describe('ThemeSection controls', () => {
     container.dir = 'rtl';
     document.body.append(container);
     root = createRoot(container);
-    await act(async () => root.render(<ThemeSection project={project} />));
+    await render(root, project);
   });
 
   afterEach(async () => {
@@ -192,5 +211,23 @@ describe('ThemeSection controls', () => {
       expect(hex.textContent).toMatch(/^#[0-9a-f]{6}$/i);
     }
     expect(container.querySelector('textarea')?.getAttribute('dir')).toBe('ltr');
+  });
+
+  it('shows no accent adjustment for a preset that already reads as text', () => {
+    expect(container.querySelector('[data-accent-adjustments]')).toBeNull();
+  });
+
+  it('shows the shade links will use when the authored accent fails as text, and keeps the input on the authored colour (PUB-006)', async () => {
+    const branded = { ...project, config: { theme: { version: 1, preset: 'harbor', colors: { light: { accent: '#b96a3d' } } } } } as Project;
+    // The project query answering with another theme reaches the clean draft.
+    await render(root, branded);
+    const readout = container.querySelector<HTMLElement>('[data-accent-adjustments]');
+    expect(readout).not.toBeNull();
+    expect(readout?.getAttribute('role')).toBeNull();
+    const line = readout?.querySelector('li')?.textContent ?? '';
+    expect(line).toMatch(/#b96a3d 3\.94:1→#[0-9a-f]{6} [4-9]\.\d\d:1/);
+    expect(readout?.querySelector('li')?.getAttribute('dir')).toBe('ltr');
+    const accentInput = [...container.querySelectorAll<HTMLInputElement>('input[type="color"]')].find((input) => input.value === '#b96a3d');
+    expect(accentInput).toBeDefined();
   });
 });

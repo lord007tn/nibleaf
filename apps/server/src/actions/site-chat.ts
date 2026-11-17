@@ -26,7 +26,7 @@ import {
   suggestFollowUps,
 } from '@nibleaf/search';
 import { type ChatCostSink, knownChatCost, workspaceChatAdapter, workspaceChatModelOptions } from '@nibleaf/search/workspace';
-import { defaultLanguage, extractHeadings } from '@nibleaf/shared/site';
+import { defaultLanguage } from '@nibleaf/shared/site';
 import {
   AI_CHAT_EVENT,
   type AiChatConsent,
@@ -34,7 +34,6 @@ import {
   type AiChatFinalEvent,
   type AiChatFollowUpsEvent,
   type AiChatNoAnswerReason,
-  type AiChatSource,
   type AiConversationTurnStatus,
   type SiteChatBody,
   type SiteChatFeedbackBody,
@@ -49,8 +48,9 @@ import { type ChatTurnHold, extendChatTurn, releaseChatTurn, reserveChatTurn, se
 import { aiChatConsentRequired, trustedChatConsent } from '@/lib/ai-search/chat-consent';
 import { readerChatPolicy, recordAiChatFeedback, recordAiChatTurn } from '@/lib/ai-search/conversation-archive';
 import { chatFeedbackToken, verifyChatFeedbackToken } from '@/lib/ai-search/feedback-token';
-import { consumeAnswerQuota } from '@/lib/ai-search/quota';
+import { consumeAnswerQuota, recordAnswerServed } from '@/lib/ai-search/quota';
 import { type ChatRetrieval, resolveChatRuntime, retrieveChatLanguages } from '@/lib/ai-search/runtime';
+import { publishedSections } from '@/lib/ai-search/sections';
 import { envExtras } from '@/lib/env-extras';
 import type { HonoEnv } from '@/lib/hono/context';
 import { resolvePublishedSearchLanguages } from '@/lib/search-configuration';
@@ -93,38 +93,6 @@ const resolvePageContext = (context: PublishedAnswerContext, pagePath?: string) 
   return page ? { id: page.id, title: page.title, path: page.path } : undefined;
 };
 
-const headingKey = (text: string) =>
-  text
-    .normalize('NFKC')
-    .toLocaleLowerCase()
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-
-/** Adds the article's own heading id (the same github-slugger ids the reader
- * TOC uses) to each source, so a citation opens the exact section. A heading
- * that cannot be matched leaves the source page-level rather than guessing. */
-const withSectionAnchors = (context: PublishedAnswerContext) => {
-  const byPage = new Map<string, Map<string, string>>();
-  const anchorsFor = (pageId: string) => {
-    let anchors = byPage.get(pageId);
-    if (!anchors) {
-      anchors = new Map();
-      const page = context.versionPages.find((candidate) => candidate.id === pageId);
-      for (const heading of page ? extractHeadings(page.content) : []) {
-        const key = headingKey(heading.text);
-        if (key && !anchors.has(key)) anchors.set(key, heading.id);
-      }
-      byPage.set(pageId, anchors);
-    }
-    return anchors;
-  };
-  return (sources: AiChatSource[]): AiChatSource[] =>
-    sources.map((source) => {
-      const anchor = source.heading ? anchorsFor(source.pageId).get(headingKey(source.heading)) : undefined;
-      return anchor && anchor.length <= 200 ? { ...source, anchor } : source;
-    });
-};
-
 /** Refusal codes that are a quota or budget the reader ran into. */
 const QUOTA_KIND: Partial<Record<AiChatErrorCode, Extract<AiChatServerEvent, { name: 'quota_reached' }>['kind']>> = {
   quota_exhausted: 'daily_quota',
@@ -156,6 +124,8 @@ type ProviderCall = 'condense' | 'generation' | 'follow_ups';
 
 interface TurnOutcome {
   status: AiConversationTurnStatus;
+  /** When the reader took the checked final event: the answer's completion time. */
+  finalAt?: Date;
   noAnswerReason?: AiChatNoAnswerReason;
   answer?: string;
   rewrittenQuery?: string;
@@ -376,7 +346,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
   const cost: ChatCostSink = {};
   // A separate utility model reports its spend apart from the answer model's.
   const utilityCost: ChatCostSink = {};
-  const anchored = withSectionAnchors(context);
+  const sections = publishedSections(context.versionPages, context.scope.deploymentId);
   const supportUrl = context.request.configuration.aiSupportUrl;
   // Side calls (suggestions) stop with the turn, even when it fails.
   const sideCalls = new AbortController();
@@ -440,12 +410,20 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       { language, page, signal },
     );
     outcome.retrieval = retrieval;
+    // Only sources whose section the published page renders are read, so every
+    // citation the answer can make opens a real section (see publishedSections).
+    const sectioned = retrieval.chunks.flatMap((chunk) => sections(chunk) ?? []);
+    if (sectioned.length < retrieval.chunks.length)
+      log.info(
+        { projectId, leftOut: retrieval.chunks.length - sectioned.length },
+        'AI chat left out sources whose section the published page does not render',
+      );
     // The sources the answer reads: the best matches that fit the context, and
     // only as many as the budgets have room for. The least of them was reserved
     // before the turn ran; reserve what reading the rest adds, or read less.
     let sources: SearchChunk[] = [];
-    if (retrieval.chunks.length && retrieval.confidence >= env.SEARCH_ANSWER_MIN_CONFIDENCE) {
-      const fitted = fitChatContext(retrieval.chunks);
+    if (sectioned.length && retrieval.confidence >= env.SEARCH_ANSWER_MIN_CONFIDENCE) {
+      const fitted = fitChatContext(sectioned);
       const wanted = chatSourcesTokens(shape, fitted) - CHAT_MIN_SOURCES_TOKENS;
       const granted =
         wanted > 0
@@ -512,7 +490,7 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       Object.assign(outcome, { status: result.status, noAnswerReason: result.noAnswerReason, answer: result.answer });
       final =
         result.status === 'answered'
-          ? { status: 'answered', answer: result.answer, citations: anchored(citationsToSources(result.citations)), suggestions: [] }
+          ? { status: 'answered', answer: result.answer, citations: citationsToSources(result.citations), suggestions: [] }
           : noAnswer(result.answer, result.noAnswerReason ?? 'empty');
       if (result.status === 'answered') {
         // Suggestions read the checked answer, so they never ask what it already
@@ -564,6 +542,10 @@ async function* chatTurnEvents({ context, body, signal, reader }: ChatTurnInput)
       language,
       limits: { turnsRemaining: reservation.turnsRemaining, quotaRemaining: quota.remaining },
     } satisfies AiChatFinalEvent);
+    // Resumed only when the stream asks for more, i.e. the reader took the final event. A
+    // reader who leaves while it is still queued ends the turn at the yield above, so the
+    // turn is not counted as a completed answer.
+    outcome.finalAt = new Date();
     const { questions: followUps } = await suggesting;
     if (followUps.length) yield custom(AI_CHAT_EVENT.followUps, { turnId, questions: followUps } satisfies AiChatFollowUpsEvent);
     yield { type: EventType.RUN_FINISHED, threadId, runId, finishReason: 'stop', timestamp: Date.now() };
@@ -658,6 +640,9 @@ const finishTurn = async ({
   await settleChatSpend(projectId, body.conversationId, reservation, chargedTokens).catch(() =>
     log.warn({ projectId }, 'AI chat spend could not be recorded'),
   );
+  // Counted on the day the reader got it (suggestions can settle after midnight UTC),
+  // and not at all if the reader left before the final event.
+  if (outcome.finalAt && (outcome.status === 'answered' || outcome.status === 'no_answer')) await recordAnswerServed(projectId, outcome.finalAt);
 
   // Estimated totals stay out of analytics events, which carry reported facts
   // only, and they report the answer model's usage, the model they name.

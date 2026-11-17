@@ -1,5 +1,4 @@
 import { posix } from 'node:path';
-import { performance } from 'node:perf_hooks';
 import { describe, expect, it } from 'vitest';
 import {
   convertGitBookMarkdown,
@@ -83,7 +82,7 @@ describe('convertGitBookMarkdown', () => {
         '{% endtabs %}',
       ].join('\n'),
     );
-    expect(content).toBe('<Tabs>\n\n<Tab title="Node">\n\n```javascript title="index.js"\nrun();\n```\n\n\n</Tab>\n\n</Tabs>');
+    expect(content).toBe('<Tabs>\n\n<Tab title="Node">\n\n```javascript title="index.js"\nrun();\n```\n\n</Tab>\n\n</Tabs>');
   });
 
   it('lifts step headings into Step titles', () => {
@@ -97,7 +96,7 @@ describe('convertGitBookMarkdown', () => {
     expect(warnings).toEqual([]);
   });
 
-  it('turns page links, embeds, and files into cards', () => {
+  it('keeps page and file cards and maps other HTTPS embeds to frame link cards', () => {
     const { content, warnings } = convert(
       [
         '{% content-ref url="guides/setup.md" %}',
@@ -114,9 +113,32 @@ describe('convertGitBookMarkdown', () => {
       (reference) => (reference.includes('guide') ? 'https://raw.example/guide%20%281%29.pdf' : undefined),
     );
     expect(content).toContain('<Card title="setup.md" href="guides/setup.md"></Card>');
-    expect(content).toContain('<Card title="youtube.com" href="https://www.youtube.com/watch?v=abc" icon="arrow-up-right-from-square"></Card>');
-    expect(content).toContain('<Card title="Pen caption" href="https://codepen.io/x"');
+    expect(content).toContain('<iframe src="https://www.youtube.com/watch?v=abc" title=');
+    expect(content).toContain('<iframe src="https://codepen.io/x" title="Pen caption"');
     expect(content).toContain('<Card title="guide (1).pdf" href="https://raw.example/guide%20%281%29.pdf" icon="file">\n\nThe PDF\n\n</Card>');
+    expect(warnings).toEqual([]);
+  });
+
+  it('turns embeds of allowlisted video providers into their canonical player frame', () => {
+    const { content, warnings } = convert(
+      [
+        '{% embed url="https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=1m5s&list=PL1" %}',
+        '{% embed url="https://vimeo.com/76979871" %}',
+        'Release walkthrough',
+        '{% endembed %}',
+        '{% embed url="https://www.loom.com/share/0123456789abcdef0123456789abcdef?sid=x" %}',
+        '{% embed url="https://acme.wistia.com/medias/abc123def4" %}',
+        '{% embed url="https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ" %}',
+      ].join('\n'),
+    );
+    expect(content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ?start=65" title="Video"></iframe>');
+    expect(content).toContain(
+      '<Frame caption="Release walkthrough">\n\n<iframe src="https://player.vimeo.com/video/76979871" title="Release walkthrough"></iframe>\n\n</Frame>',
+    );
+    expect(content).toContain('<iframe src="https://www.loom.com/embed/0123456789abcdef0123456789abcdef" title="Video"></iframe>');
+    expect(content).toContain('<iframe src="https://fast.wistia.net/embed/iframe/abc123def4" title="Video"></iframe>');
+    expect(content).toContain('<iframe src="https://youtube.com.evil.example/watch?v=dQw4w9WgXcQ" title="Video"></iframe>');
+    expect(content).not.toContain('endembed');
     expect(warnings).toEqual([]);
   });
 
@@ -300,15 +322,12 @@ describe('expandGitBookIncludes', () => {
 });
 
 it.each(['details', 'figure', 'picture', 'table data-view="cards"', 'div', 'a class="button"'])(
-  'converts a MiB of unclosed %s openings promptly',
+  'converts a MiB of unclosed %s openings (its cost: gitbook-markdown.growth.test.ts)',
   (tag) => {
     const unit = `<${tag}>`;
-    const input = unit.repeat(Math.ceil((1024 * 1024) / unit.length));
-    const started = performance.now();
-    convertGitBookMarkdown(input, { resolveFile: () => undefined });
-    const elapsed = performance.now() - started;
-    console.info(`HTML conversion ${tag}: ${Math.round(elapsed)} ms`);
-    expect(elapsed).toBeLessThan(900);
+    const input = (bytes: number) => unit.repeat(Math.ceil(bytes / unit.length));
+    const convert = (markdown: string) => convertGitBookMarkdown(markdown, { resolveFile: () => undefined });
+    convert(input(1024 * 1024));
   },
 );
 it.each(['a < b and c', 'x <= y', 'List<T> API'])('preserves literal title text %s', (label) => {

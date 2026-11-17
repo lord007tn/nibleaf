@@ -1,0 +1,115 @@
+{
+  "baselineHead": "a164b695acadc5a72a29ed466f14e8e2559201a0",
+  "failed": 27,
+  "passed": 0,
+  "tests": [
+    {
+      "name": "P1: GitBook never reuses protected code as a derived embed title",
+      "status": "failed"
+    },
+    {
+      "name": "P1: Mintlify never reuses protected code as a derived embed title",
+      "status": "failed"
+    },
+    {
+      "name": "P1: GitBook preserves indented and container code byte for byte",
+      "status": "failed"
+    },
+    {
+      "name": "P1: Mintlify preserves indented and container code byte for byte",
+      "status": "failed"
+    },
+    {
+      "name": "P2 origin: retains and reports https://help.test//evil.test/next",
+      "status": "failed"
+    },
+    {
+      "name": "P2 origin: retains and reports https://nibleaf.com/pages//evil.test/next",
+      "status": "failed"
+    },
+    {
+      "name": "P2 origin: retains and reports https://help.test/\\evil.test/next",
+      "status": "failed"
+    },
+    {
+      "name": "P2 origin: retains and reports https://nibleaf.com/pages/\\evil.test/next",
+      "status": "failed"
+    },
+    {
+      "name": "P2 media: rejected URL stays inert through reader and publish facts: \"https://youtu.be\\\\abcdefghijk\"",
+      "status": "failed"
+    },
+    {
+      "name": "P2 media: rejected URL stays inert through reader and publish facts: \"http://youtu.be/abcdefghijk\"",
+      "status": "failed"
+    },
+    {
+      "name": "P2 media: rejected URL stays inert through reader and publish facts: \"//youtu.be/abcdefghijk\"",
+      "status": "failed"
+    },
+    {
+      "name": "P2 media: rejected URL stays inert through reader and publish facts: \"javascript:alert(1)\"",
+      "status": "failed"
+    },
+    {
+      "name": "P2 media: rejected URL stays inert through reader and publish facts: \"data:text/html,<video></video>\"",
+      "status": "failed"
+    },
+    {
+      "name": "P2 media: rejected URL stays inert through reader and publish facts: \"https://youtu.be/abc\\tdefghijk\"",
+      "status": "failed"
+    },
+    {
+      "name": "P2 media: rejected URL stays inert through reader and publish facts: \"https://youtu.be/abc\\ndefghijk\"",
+      "status": "failed"
+    },
+    {
+      "name": "P2 media: rejected URL stays inert through reader and publish facts: \"https://youtu.be/abc\\u0000defghijk\"",
+      "status": "failed"
+    },
+    {
+      "name": "P2 media: rejected URL stays inert through reader and publish facts: \"\\thttps://youtu.be/abcdefghijk\"",
+      "status": "failed"
+    },
+    {
+      "name": "P2 media: rejected URL stays inert through reader and publish facts: \"https://youtu.be/abcdefghijk\\r\"",
+      "status": "failed"
+    },
+    {
+      "name": "P2 language: selects Arabic before rewriting and resolves to the Arabic page",
+      "status": "failed"
+    },
+    {
+      "name": "P2 language: reports a missing Arabic page instead of English fallback",
+      "status": "failed"
+    },
+    {
+      "name": "P2 language/version: resolves Arabic in v2 and reports an absent Arabic version",
+      "status": "failed"
+    },
+    {
+      "name": "P2 containers: GitBook keeps the video and following paragraph in the same list or quote",
+      "status": "failed"
+    },
+    {
+      "name": "P2 containers: Mintlify keeps the video and following paragraph in the same list or quote",
+      "status": "failed"
+    },
+    {
+      "name": "P2 metadata: GitBook retains a source video opener, poster, title and children",
+      "status": "failed"
+    },
+    {
+      "name": "P2 metadata: Mintlify retains a source video opener, poster, title and children",
+      "status": "failed"
+    },
+    {
+      "name": "P2 metadata: GitBook adds controls without discarding source-video attributes",
+      "status": "failed"
+    },
+    {
+      "name": "P2 metadata: Mintlify adds controls without discarding source-video attributes",
+      "status": "failed"
+    }
+  ]
+}

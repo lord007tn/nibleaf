@@ -54,7 +54,9 @@ export const themeConfigSchema = z
   })
   .strict()
   .superRefine((theme, ctx) => {
-    for (const issue of themeContrastIssues(resolveTheme({ theme }))) {
+    // The owner's authored colours are what is validated: the shade the reader
+    // draws an accent in (readableAccentText) never stands in for them.
+    for (const issue of themeContrastIssues(resolveTheme({ theme }, { authoredAccent: true }))) {
       ctx.addIssue({
         code: 'custom',
         path: ['colors', issue.mode],
@@ -169,7 +171,7 @@ export const themeTemplateV1Schema = z
   })
   .strict()
   .superRefine((template, ctx) => {
-    for (const issue of themeContrastIssues(resolveTheme(template.config))) {
+    for (const issue of themeContrastIssues(resolveTheme(template.config, { authoredAccent: true }))) {
       ctx.addIssue({
         code: 'custom',
         path: ['config', 'theme', 'colors', issue.mode],

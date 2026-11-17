@@ -86,3 +86,9 @@ describe('rewriteMintlifyInternalLinks', () => {
     expect(mintlifyInternalLinkTargets(content, 'guides/quickstart')).toEqual(['rules', 'ptrace']);
   });
 });
+
+it('discovers absolute source links to hidden pages', () => {
+  expect(mintlifyInternalLinkTargets('[Hidden](https://help.example.test/hidden?lang=ar#start)', 'intro', 'https://help.example.test')).toEqual([
+    'hidden',
+  ]);
+});

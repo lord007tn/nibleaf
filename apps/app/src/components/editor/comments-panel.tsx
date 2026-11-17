@@ -6,7 +6,7 @@ import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { Check, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { Comment } from '@/hooks/api';
 import { friendlyErrorMessage, useComments, useCreateComment, useDeleteComment, useResolveComment } from '@/hooks/api';
@@ -81,6 +81,12 @@ export function CommentsPanel({
   const deleteComment = useDeleteComment(projectId);
 
   const [draft, setDraft] = useState('');
+  // A passage picked to comment on (review mode or the selection menu) takes the
+  // writer straight to its composer, so the keyboard flow continues there.
+  const anchoredComposer = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    if (pendingAnchor && !readOnly) anchoredComposer.current?.focus();
+  }, [pendingAnchor, readOnly]);
 
   const list = comments ?? [];
 
@@ -119,6 +125,7 @@ export function CommentsPanel({
             “{pendingAnchor.quote}”
           </p>
           <Textarea
+            ref={anchoredComposer}
             className="min-h-[56px] resize-none text-sm"
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {

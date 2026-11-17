@@ -1,0 +1,92 @@
+{
+  "en-before": {
+    "chunk": [
+      {
+        "heading": "Install",
+        "headingPath": ["Windows", "Install"]
+      }
+    ],
+    "citations": [
+      {
+        "id": "S1",
+        "pageId": "cli-en",
+        "title": "Install the command-line tool",
+        "path": "cli",
+        "heading": "Install",
+        "anchor": "install",
+        "snippet": "Open PowerShell as an administrator and run: winget install Nibleaf.CLI Restart PowerShell so it finds the new command.",
+        "direction": "ltr",
+        "language": "en"
+      }
+    ],
+    "answer": "Open PowerShell as an administrator and run `winget install Nibleaf.CLI`. [S1]"
+  },
+  "en-after": {
+    "chunk": [
+      {
+        "heading": "Install",
+        "headingPath": ["Windows", "Install"],
+        "anchor": "install-1"
+      }
+    ],
+    "citations": [
+      {
+        "id": "S1",
+        "pageId": "cli-en",
+        "title": "Install the command-line tool",
+        "path": "cli",
+        "heading": "Install",
+        "anchor": "install-1",
+        "snippet": "Open PowerShell as an administrator and run: winget install Nibleaf.CLI Restart PowerShell so it finds the new command.",
+        "direction": "ltr",
+        "language": "en"
+      }
+    ],
+    "answer": "Open PowerShell as an administrator and run `winget install Nibleaf.CLI`. [S1]"
+  },
+  "ar-before": {
+    "chunk": [
+      {
+        "heading": "التثبيت",
+        "headingPath": ["Windows", "التثبيت"]
+      }
+    ],
+    "citations": [
+      {
+        "id": "S1",
+        "pageId": "cli-ar",
+        "title": "ثبّت أداة سطر الأوامر",
+        "path": "cli",
+        "heading": "التثبيت",
+        "anchor": "التثبيت",
+        "snippet": "افتح PowerShell بصلاحيات المسؤول وشغّل: winget install Nibleaf.CLI أعد تشغيل PowerShell ليعثر على الأمر الجديد.",
+        "direction": "rtl",
+        "language": "ar"
+      }
+    ],
+    "answer": "افتح PowerShell بصلاحيات المسؤول وشغّل `winget install Nibleaf.CLI`. [S1]"
+  },
+  "ar-after": {
+    "chunk": [
+      {
+        "heading": "التثبيت",
+        "headingPath": ["Windows", "التثبيت"],
+        "anchor": "التثبيت-1"
+      }
+    ],
+    "citations": [
+      {
+        "id": "S1",
+        "pageId": "cli-ar",
+        "title": "ثبّت أداة سطر الأوامر",
+        "path": "cli",
+        "heading": "التثبيت",
+        "anchor": "التثبيت-1",
+        "snippet": "افتح PowerShell بصلاحيات المسؤول وشغّل: winget install Nibleaf.CLI أعد تشغيل PowerShell ليعثر على الأمر الجديد.",
+        "direction": "rtl",
+        "language": "ar"
+      }
+    ],
+    "answer": "افتح PowerShell بصلاحيات المسؤول وشغّل `winget install Nibleaf.CLI`. [S1]"
+  }
+}

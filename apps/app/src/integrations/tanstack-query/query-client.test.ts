@@ -1,7 +1,7 @@
-import { CancelledError, queryOptions } from '@tanstack/react-query';
+import { CancelledError, QueryClient, queryOptions } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
-import { createQueryClient, isClientError, prefetchRouteData, shouldRetry } from './query-client';
+import { createQueryClient, isClientError, loadRouteData, prefetchRouteData, shouldRetry } from './query-client';
 
 const toastError = vi.hoisted(() => vi.fn());
 vi.mock('sonner', () => ({ toast: { error: toastError } }));
@@ -146,5 +146,37 @@ describe('global mutation error toasts', () => {
     await import('sonner');
     expect(toastError).not.toHaveBeenCalled();
     client.clear();
+  });
+});
+
+describe('loadRouteData', () => {
+  it('gives up on a stalled request within its bound, aborts it, and returns null', async () => {
+    const client = new QueryClient();
+    let aborted = false;
+    const started = Date.now();
+    const result = await loadRouteData(
+      client,
+      {
+        queryKey: ['stalled'],
+        queryFn: ({ signal }) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => {
+              aborted = true;
+              reject(new Error('aborted'));
+            });
+          }),
+      },
+      50,
+    );
+    expect(result).toBeNull();
+    expect(Date.now() - started).toBeLessThan(1000);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(aborted).toBe(true);
+  });
+
+  it('returns the data when the request answers in time, and null when it fails', async () => {
+    const client = new QueryClient();
+    expect(await loadRouteData(client, { queryKey: ['fine'], queryFn: async () => ({ google: true }) })).toEqual({ google: true });
+    expect(await loadRouteData(client, { queryKey: ['broken'], queryFn: async () => Promise.reject(new Error('down')) })).toBeNull();
   });
 });

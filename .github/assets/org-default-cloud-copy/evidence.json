@@ -1,0 +1,73 @@
+{
+  "environment": "Isolated copy specimens: real Alert component and starterOrganizationName; not the full dashboard or production",
+  "baseline": "94c50b9b068e846c9bec711bc46c6d07a563a750",
+  "head": "48ad1b98f838585e769503217b0c33c027df6888",
+  "uncommitted": "?? .github/assets/org-default-cloud-copy/after-ar-1440.png\n?? .github/assets/org-default-cloud-copy/after-ar-390.png\n?? .github/assets/org-default-cloud-copy/after-en-1440.png\n?? .github/assets/org-default-cloud-copy/after-en-390.png\n?? .github/assets/org-default-cloud-copy/before-ar-1440.png\n?? .github/assets/org-default-cloud-copy/before-ar-390.png\n?? .github/assets/org-default-cloud-copy/before-en-1440.png\n?? .github/assets/org-default-cloud-copy/before-en-390.png\n?? apps/app/.copy-capture-RcEngR/",
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "before-en-1440.png",
+      "locale": "en",
+      "phase": "before",
+      "width": 1440,
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "before-en-390.png",
+      "locale": "en",
+      "phase": "before",
+      "width": 390,
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "after-en-1440.png",
+      "locale": "en",
+      "phase": "after",
+      "width": 1440,
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "after-en-390.png",
+      "locale": "en",
+      "phase": "after",
+      "width": 390,
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "before-ar-1440.png",
+      "locale": "ar",
+      "phase": "before",
+      "width": 1440,
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "before-ar-390.png",
+      "locale": "ar",
+      "phase": "before",
+      "width": 390,
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "after-ar-1440.png",
+      "locale": "ar",
+      "phase": "after",
+      "width": 1440,
+      "errors": [],
+      "overflow": false
+    },
+    {
+      "file": "after-ar-390.png",
+      "locale": "ar",
+      "phase": "after",
+      "width": 390,
+      "errors": [],
+      "overflow": false
+    }
+  ]
+}

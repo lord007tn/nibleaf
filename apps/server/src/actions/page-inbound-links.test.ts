@@ -54,6 +54,7 @@ describe('branch inbound map cache and trusted origins', () => {
   let getPageInboundLinks: typeof import('./page-inbound-links').getPageInboundLinks;
   beforeEach(async () => {
     vi.resetModules();
+    vi.restoreAllMocks();
     vi.clearAllMocks();
     ({ getPageInboundLinks } = await import('./page-inbound-links'));
     database.pageFindFirst.mockResolvedValue({ branchId: 'main' });
@@ -124,5 +125,59 @@ describe('branch inbound map cache and trusted origins', () => {
     expect(database.pageFindMany).toHaveBeenCalledTimes(1);
     expect((await getPageInboundLinks('project', 'target')).total).toBe(1);
     expect(database.pageFindMany).toHaveBeenCalledTimes(2);
+  });
+
+  it('evicts an aborted scan and rebuilds the complete map on the next open', async () => {
+    const shared = await import('@nibleaf/shared/publish-checks');
+    const scan = shared.buildInboundPageLinkMapAsync;
+    const controller = new AbortController();
+    let clock = 0;
+    const scanner = vi.spyOn(shared, 'buildInboundPageLinkMapAsync').mockImplementationOnce((snapshot, origins, options) =>
+      scan(snapshot, origins, {
+        ...options,
+        now: () => {
+          clock += 25;
+          return clock;
+        },
+        yieldToEventLoop: async () => {
+          controller.abort();
+        },
+      }),
+    );
+    await expect(getPageInboundLinks('project', 'target', controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    expect((await getPageInboundLinks('project', 'target')).total).toBe(1);
+    expect((await getPageInboundLinks('project', 'source')).total).toBe(0);
+    expect(database.pageFindMany).toHaveBeenCalledTimes(2);
+    expect(scanner).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps a coalesced scan alive for another caller when one request aborts', async () => {
+    const shared = await import('@nibleaf/shared/publish-checks');
+    const scan = shared.buildInboundPageLinkMapAsync;
+    const controller = new AbortController();
+    let clock = 0;
+    vi.spyOn(shared, 'buildInboundPageLinkMapAsync').mockImplementationOnce((snapshot, origins, options) =>
+      scan(snapshot, origins, {
+        ...options,
+        now: () => {
+          clock += 25;
+          return clock;
+        },
+        yieldToEventLoop: async () => {
+          controller.abort();
+        },
+      }),
+    );
+    const aborted = getPageInboundLinks('project', 'target', controller.signal);
+    const retained = getPageInboundLinks('project', 'target');
+    await expect(aborted).rejects.toMatchObject({ name: 'AbortError' });
+    expect((await retained).total).toBe(1);
+    expect((await getPageInboundLinks('project', 'target')).total).toBe(1);
+    expect(database.pageFindMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('rejects an already aborted request before any reads', async () => {
+    await expect(getPageInboundLinks('project', 'target', AbortSignal.abort())).rejects.toMatchObject({ name: 'AbortError' });
+    expect(database.pageFindFirst).not.toHaveBeenCalled();
   });
 });

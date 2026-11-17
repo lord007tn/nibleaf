@@ -338,10 +338,10 @@ describe('launcher on phones', () => {
     const room = () => view.container.querySelector<HTMLElement>('[data-chat-launcher-space]')?.style.height;
     expect(offset()).toBe('1rem');
     expect(room()).toBe(`calc(${offset()} + 3rem + env(safe-area-inset-bottom))`);
-    // Above the consent "Manage" button when the site asks for consent.
+    // The same corner when the site asks for consent: "Privacy choices" lives in the footer now.
     const consent = { analytics: { cookieConsent: true } } as ProjectConfig;
     await view.render(<ChatRoot {...options} config={consent} openChat={vi.fn()} />);
-    expect(offset()).toBe('4.5rem');
+    expect(offset()).toBe('1rem');
     expect(room()).toBe(`calc(${offset()} + 3rem + env(safe-area-inset-bottom))`);
   });
 });

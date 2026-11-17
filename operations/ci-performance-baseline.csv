@@ -1,0 +1,661 @@
+run_id,head_sha,created_at_utc,workflow_seconds,verify_seconds,step,step_seconds,conclusion
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Set up job,1,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Initialize containers,22,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Run actions/checkout@v7,14,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Install pnpm,5,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Setup Node,19,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Test installer safety boundaries,0,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Test release notes,1,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Preview release notes on Linux,16,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Test production email diagnostic boundaries,0,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Test immutable image verification,0,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Install dependencies,6,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Check migrations are expand-only and the image role selector,0,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Generate Prisma client,2,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Compile interface messages,2,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Exercise Prisma migrations and runtime database access,6,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify concurrent manual-publish receipts,2,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify Better Auth on PostgreSQL,3,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify organization grants and expand-only backfill,11,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify concurrent custom-domain transitions,1,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify publishing retention aggregates,2,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify Promote into main refuses when main changed,3,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,"Verify page history bounds, restore conflicts and erasure",3,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify page address atomicity and parsing outside locks,3,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify a publish and a first-title address adoption never interleave,2,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify the Viewer role cannot change a site,12,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify organization merge and offline restore,5,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify the organization shell and organization deletion,9,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify Git webhook secrets and publish attribution,1,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify immutable website data partitions,3,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify site slug races and starter rollback,1,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify transactional organization admissions,6,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify a rollback never grants more than the new model,6,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,"Verify organization people management (invitations, resend, members without websites)",5,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,"Verify join links (atomic max uses, one answer for bad links)",6,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify preserving content imports on PostgreSQL,13,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify the People page only shows sites you administer,2,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify pending asset uploads in a fresh database,3,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify deleting an asset keeps files that saved content uses,2,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify private sites hide every published surface from visitors without access,30,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify concurrent page move integrity on PostgreSQL,21,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,"Verify page Trash (restore races, schema drift, erasure)",8,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,"Verify the publish history (access, paging, bounded change summaries)",2,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Exercise ClickHouse analytics migrations,20,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify relational analytics and admin discovery on PostgreSQL,7,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Check documentation,0,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Check self-host release integrity,0,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Check deployment release contract,1,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Check for unused source files,5,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Dashboard type scale (no new arbitrary font sizes),0,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Typecheck,41,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Lint,11,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Test,364,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,"Growth tests, serial",141,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify indexed multilingual search and chat fixtures,2,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Verify importer timings,13,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Build production app,38,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Smoke production app runtime,5,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Build production admin,6,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Smoke production admin runtime,1,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Enforce public JavaScript budget,1,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Upload public bundle report,1,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Post Setup Node,0,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Post Install pnpm,0,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Post Run actions/checkout@v7,0,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Stop containers,2,success
+43608098952,1270e549c01924e5156697986a513faafa1ce7c2,2026-11-14T15:03:36Z,923,921,Complete job,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Set up job,2,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Initialize containers,27,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Run actions/checkout@v7,18,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Install pnpm,4,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Setup Node,23,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Test installer safety boundaries,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Test release notes,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Preview release notes on Linux,21,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Test production email diagnostic boundaries,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Test immutable image verification,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Install dependencies,7,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Check migrations are expand-only and the image role selector,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Generate Prisma client,3,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Compile interface messages,2,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Exercise Prisma migrations and runtime database access,9,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify concurrent manual-publish receipts,2,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify Better Auth on PostgreSQL,4,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify organization grants and expand-only backfill,16,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify concurrent custom-domain transitions,2,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify publishing retention aggregates,1,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify Promote into main refuses when main changed,5,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,"Verify page history bounds, restore conflicts and erasure",4,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify page address atomicity and parsing outside locks,5,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify a publish and a first-title address adoption never interleave,3,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify the Viewer role cannot change a site,18,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify organization merge and offline restore,7,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify the organization shell and organization deletion,13,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify Git webhook secrets and publish attribution,2,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify immutable website data partitions,3,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify site slug races and starter rollback,2,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify transactional organization admissions,10,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify a rollback never grants more than the new model,9,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,"Verify organization people management (invitations, resend, members without websites)",8,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,"Verify join links (atomic max uses, one answer for bad links)",8,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify preserving content imports on PostgreSQL,18,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify the People page only shows sites you administer,2,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify pending asset uploads in a fresh database,5,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify deleting an asset keeps files that saved content uses,1,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify private sites hide every published surface from visitors without access,40,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify concurrent page move integrity on PostgreSQL,28,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,"Verify page Trash (restore races, schema drift, erasure)",11,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,"Verify the publish history (access, paging, bounded change summaries)",3,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Exercise ClickHouse analytics migrations,22,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify relational analytics and admin discovery on PostgreSQL,10,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Check documentation,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Check self-host release integrity,1,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Check deployment release contract,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Check for unused source files,7,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Dashboard type scale (no new arbitrary font sizes),0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Typecheck,50,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Lint,15,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Test,519,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,"Growth tests, serial",205,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify indexed multilingual search and chat fixtures,2,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Verify importer timings,18,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Build production app,52,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Smoke production app runtime,6,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Build production admin,8,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Smoke production admin runtime,1,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Enforce public JavaScript budget,1,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Upload public bundle report,2,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Post Setup Node,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Post Install pnpm,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Post Run actions/checkout@v7,0,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Stop containers,3,success
+43605337993,5bb58625b0bbee981438f5a86fbc9dc9cec76961,2026-11-14T14:31:53Z,1273,1271,Complete job,0,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Set up job,1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Initialize containers,27,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Run actions/checkout@v7,14,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Install pnpm,7,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Setup Node,25,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Test installer safety boundaries,0,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Test release notes,0,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Preview release notes on Linux,15,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Test production email diagnostic boundaries,1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Test immutable image verification,0,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Install dependencies,8,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Check migrations are expand-only and the image role selector,0,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Generate Prisma client,2,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Compile interface messages,2,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Exercise Prisma migrations and runtime database access,8,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify concurrent manual-publish receipts,2,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify Better Auth on PostgreSQL,4,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify organization grants and expand-only backfill,14,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify concurrent custom-domain transitions,2,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify publishing retention aggregates,1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify Promote into main refuses when main changed,7,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,"Verify page history bounds, restore conflicts and erasure",4,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify page address atomicity and parsing outside locks,5,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify a publish and a first-title address adoption never interleave,2,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify the Viewer role cannot change a site,15,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify organization merge and offline restore,6,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify the organization shell and organization deletion,11,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify Git webhook secrets and publish attribution,3,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify immutable website data partitions,3,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify site slug races and starter rollback,1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify transactional organization admissions,9,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify a rollback never grants more than the new model,7,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,"Verify organization people management (invitations, resend, members without websites)",8,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,"Verify join links (atomic max uses, one answer for bad links)",7,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify preserving content imports on PostgreSQL,16,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify the People page only shows sites you administer,1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify pending asset uploads in a fresh database,5,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify deleting an asset keeps files that saved content uses,1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify private sites hide every published surface from visitors without access,37,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify concurrent page move integrity on PostgreSQL,25,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,"Verify page Trash (restore races, schema drift, erasure)",11,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,"Verify the publish history (access, paging, bounded change summaries)",2,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Exercise ClickHouse analytics migrations,23,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify relational analytics and admin discovery on PostgreSQL,8,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Check documentation,1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Check self-host release integrity,0,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Check deployment release contract,3,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Check for unused source files,5,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Dashboard type scale (no new arbitrary font sizes),1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Typecheck,44,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Lint,12,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Test,453,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,"Growth tests, serial",180,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify indexed multilingual search and chat fixtures,3,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Verify importer timings,15,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Build production app,45,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Smoke production app runtime,5,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Build production admin,7,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Smoke production admin runtime,2,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Enforce public JavaScript budget,1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Upload public bundle report,1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Post Setup Node,0,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Post Install pnpm,0,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Post Run actions/checkout@v7,1,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Stop containers,2,success
+43602250938,fe175995c938e51c44a4253276591ae90f9052c0,2026-11-14T13:56:20Z,1156,1134,Complete job,0,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Set up job,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Initialize containers,26,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Run actions/checkout@v7,14,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Install pnpm,4,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Setup Node,22,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Test installer safety boundaries,0,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Test release notes,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Preview release notes on Linux,18,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Test production email diagnostic boundaries,0,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Test immutable image verification,0,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Install dependencies,6,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Check migrations are expand-only and the image role selector,0,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Generate Prisma client,2,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Compile interface messages,2,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Exercise Prisma migrations and runtime database access,7,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify concurrent manual-publish receipts,2,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify Better Auth on PostgreSQL,3,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify organization grants and expand-only backfill,12,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify concurrent custom-domain transitions,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify publishing retention aggregates,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify Promote into main refuses when main changed,4,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,"Verify page history bounds, restore conflicts and erasure",3,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify page address atomicity and parsing outside locks,4,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify a publish and a first-title address adoption never interleave,2,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify the Viewer role cannot change a site,13,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify organization merge and offline restore,6,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify the organization shell and organization deletion,8,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify Git webhook secrets and publish attribution,2,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify immutable website data partitions,2,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify site slug races and starter rollback,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify transactional organization admissions,7,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify a rollback never grants more than the new model,5,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,"Verify organization people management (invitations, resend, members without websites)",6,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,"Verify join links (atomic max uses, one answer for bad links)",6,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify preserving content imports on PostgreSQL,14,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify the People page only shows sites you administer,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify pending asset uploads in a fresh database,5,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify deleting an asset keeps files that saved content uses,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify private sites hide every published surface from visitors without access,32,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify concurrent page move integrity on PostgreSQL,22,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,"Verify page Trash (restore races, schema drift, erasure)",8,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,"Verify the publish history (access, paging, bounded change summaries)",2,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Exercise ClickHouse analytics migrations,21,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify relational analytics and admin discovery on PostgreSQL,7,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Check documentation,0,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Check self-host release integrity,0,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Check deployment release contract,2,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Check for unused source files,5,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Dashboard type scale (no new arbitrary font sizes),0,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Typecheck,39,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Lint,9,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Test,351,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,"Growth tests, serial",138,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify indexed multilingual search and chat fixtures,2,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Verify importer timings,11,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Build production app,32,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Smoke production app runtime,5,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Build production admin,5,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Smoke production admin runtime,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Enforce public JavaScript budget,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Upload public bundle report,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Post Setup Node,0,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Post Install pnpm,0,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Post Run actions/checkout@v7,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Stop containers,1,success
+43599003467,f8e1f166530e906110aa6debd958d04615ca4643,2026-11-14T13:17:23Z,914,911,Complete job,0,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Set up job,1,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Initialize containers,20,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Run actions/checkout@v7,14,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Install pnpm,5,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Setup Node,18,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Test installer safety boundaries,0,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Test release notes,1,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Preview release notes on Linux,19,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Test production email diagnostic boundaries,0,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Test immutable image verification,0,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Install dependencies,6,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Check migrations are expand-only and the image role selector,1,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Generate Prisma client,3,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Compile interface messages,2,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Exercise Prisma migrations and runtime database access,10,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify concurrent manual-publish receipts,2,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify Better Auth on PostgreSQL,4,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify organization grants and expand-only backfill,18,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify concurrent custom-domain transitions,2,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify publishing retention aggregates,1,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify Promote into main refuses when main changed,5,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,"Verify page history bounds, restore conflicts and erasure",4,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify page address atomicity and parsing outside locks,7,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify a publish and a first-title address adoption never interleave,2,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify the Viewer role cannot change a site,19,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify organization merge and offline restore,7,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify the organization shell and organization deletion,15,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify Git webhook secrets and publish attribution,2,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify immutable website data partitions,4,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify site slug races and starter rollback,2,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify transactional organization admissions,10,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify a rollback never grants more than the new model,9,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,"Verify organization people management (invitations, resend, members without websites)",10,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,"Verify join links (atomic max uses, one answer for bad links)",8,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify preserving content imports on PostgreSQL,19,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify the People page only shows sites you administer,2,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify pending asset uploads in a fresh database,5,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify deleting an asset keeps files that saved content uses,2,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify private sites hide every published surface from visitors without access,41,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify concurrent page move integrity on PostgreSQL,28,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,"Verify page Trash (restore races, schema drift, erasure)",12,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,"Verify the publish history (access, paging, bounded change summaries)",3,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Exercise ClickHouse analytics migrations,24,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify relational analytics and admin discovery on PostgreSQL,11,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Check documentation,0,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Check self-host release integrity,1,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Check deployment release contract,1,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Check for unused source files,7,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Dashboard type scale (no new arbitrary font sizes),0,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Typecheck,58,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Lint,16,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Test,549,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,"Growth tests, serial",206,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify indexed multilingual search and chat fixtures,3,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Verify importer timings,19,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Build production app,57,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Smoke production app runtime,6,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Build production admin,10,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Smoke production admin runtime,1,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Enforce public JavaScript budget,1,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Upload public bundle report,2,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Post Setup Node,0,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Post Install pnpm,0,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Post Run actions/checkout@v7,0,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Stop containers,1,success
+43597064798,68eff3b06803cb43367ec7e7ea04474bad99dfa7,2026-11-14T12:54:08Z,1323,1319,Complete job,0,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Set up job,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Initialize containers,28,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Run actions/checkout@v7,15,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Install pnpm,5,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Setup Node,22,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Test installer safety boundaries,0,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Test release notes,1,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Preview release notes on Linux,17,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Test production email diagnostic boundaries,0,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Test immutable image verification,0,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Install dependencies,7,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Check migrations are expand-only and the image role selector,1,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Generate Prisma client,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Compile interface messages,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Exercise Prisma migrations and runtime database access,8,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify concurrent manual-publish receipts,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify Better Auth on PostgreSQL,5,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify organization grants and expand-only backfill,14,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify concurrent custom-domain transitions,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify publishing retention aggregates,1,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify Promote into main refuses when main changed,4,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,"Verify page history bounds, restore conflicts and erasure",4,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify page address atomicity and parsing outside locks,5,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify a publish and a first-title address adoption never interleave,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify the Viewer role cannot change a site,15,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify organization merge and offline restore,6,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify the organization shell and organization deletion,12,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify Git webhook secrets and publish attribution,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify immutable website data partitions,3,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify site slug races and starter rollback,1,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify transactional organization admissions,9,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify a rollback never grants more than the new model,7,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,"Verify organization people management (invitations, resend, members without websites)",8,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,"Verify join links (atomic max uses, one answer for bad links)",7,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify preserving content imports on PostgreSQL,16,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify the People page only shows sites you administer,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify pending asset uploads in a fresh database,4,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify deleting an asset keeps files that saved content uses,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify private sites hide every published surface from visitors without access,37,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify concurrent page move integrity on PostgreSQL,25,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,"Verify page Trash (restore races, schema drift, erasure)",10,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,"Verify the publish history (access, paging, bounded change summaries)",2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Exercise ClickHouse analytics migrations,22,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify relational analytics and admin discovery on PostgreSQL,8,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Check documentation,1,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Check self-host release integrity,0,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Check deployment release contract,1,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Check for unused source files,6,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Dashboard type scale (no new arbitrary font sizes),0,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Typecheck,45,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Lint,12,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Test,428,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,"Growth tests, serial",164,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify indexed multilingual search and chat fixtures,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Verify importer timings,15,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Build production app,43,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Smoke production app runtime,5,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Build production admin,7,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Smoke production admin runtime,1,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Enforce public JavaScript budget,1,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Upload public bundle report,1,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Post Setup Node,0,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Post Install pnpm,1,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Post Run actions/checkout@v7,0,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Stop containers,2,success
+43594125364,ee4c3d81f2414580e36d53afb0730bc7de027700,2026-11-14T12:18:03Z,1105,1086,Complete job,0,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Set up job,1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Initialize containers,20,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Run actions/checkout@v7,16,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Install pnpm,7,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Setup Node,16,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Test installer safety boundaries,0,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Test release notes,1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Preview release notes on Linux,21,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Test production email diagnostic boundaries,0,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Test immutable image verification,1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Install dependencies,5,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Check migrations are expand-only and the image role selector,0,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Generate Prisma client,3,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Compile interface messages,2,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Exercise Prisma migrations and runtime database access,9,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify concurrent manual-publish receipts,2,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify Better Auth on PostgreSQL,4,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify organization grants and expand-only backfill,16,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify concurrent custom-domain transitions,2,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify publishing retention aggregates,1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify Promote into main refuses when main changed,5,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,"Verify page history bounds, restore conflicts and erasure",4,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify page address atomicity and parsing outside locks,6,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify a publish and a first-title address adoption never interleave,3,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify the Viewer role cannot change a site,17,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify organization merge and offline restore,7,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify the organization shell and organization deletion,13,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify Git webhook secrets and publish attribution,3,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify immutable website data partitions,3,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify site slug races and starter rollback,1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify transactional organization admissions,10,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify a rollback never grants more than the new model,9,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,"Verify organization people management (invitations, resend, members without websites)",9,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,"Verify join links (atomic max uses, one answer for bad links)",8,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify preserving content imports on PostgreSQL,17,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify the People page only shows sites you administer,2,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify pending asset uploads in a fresh database,5,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify deleting an asset keeps files that saved content uses,2,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify private sites hide every published surface from visitors without access,39,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify concurrent page move integrity on PostgreSQL,27,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,"Verify page Trash (restore races, schema drift, erasure)",12,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,"Verify the publish history (access, paging, bounded change summaries)",3,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Exercise ClickHouse analytics migrations,24,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify relational analytics and admin discovery on PostgreSQL,10,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Check documentation,0,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Check self-host release integrity,1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Check deployment release contract,1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Check for unused source files,7,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Dashboard type scale (no new arbitrary font sizes),1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Typecheck,52,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Lint,15,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Test,507,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,"Growth tests, serial",199,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify indexed multilingual search and chat fixtures,2,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Verify importer timings,18,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Build production app,53,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Smoke production app runtime,6,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Build production admin,8,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Smoke production admin runtime,2,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Enforce public JavaScript budget,1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Upload public bundle report,1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Post Setup Node,0,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Post Install pnpm,0,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Post Run actions/checkout@v7,0,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Stop containers,1,success
+43583586274,4e80721353e7ba3119c8cd4694c80a825fa7fdb8,2026-11-14T10:05:17Z,1267,1245,Complete job,0,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Set up job,1,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Initialize containers,20,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Run actions/checkout@v7,13,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Install pnpm,4,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Setup Node,21,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Test installer safety boundaries,1,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Test release notes,0,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Preview release notes on Linux,16,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Test production email diagnostic boundaries,0,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Test immutable image verification,0,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Install dependencies,7,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Check migrations are expand-only and the image role selector,0,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Generate Prisma client,3,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Compile interface messages,2,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Exercise Prisma migrations and runtime database access,10,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify concurrent manual-publish receipts,3,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify Better Auth on PostgreSQL,4,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify organization grants and expand-only backfill,17,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify concurrent custom-domain transitions,2,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify publishing retention aggregates,1,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify Promote into main refuses when main changed,5,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,"Verify page history bounds, restore conflicts and erasure",4,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify page address atomicity and parsing outside locks,7,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify a publish and a first-title address adoption never interleave,3,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify the Viewer role cannot change a site,18,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify organization merge and offline restore,7,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify the organization shell and organization deletion,15,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify Git webhook secrets and publish attribution,2,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify immutable website data partitions,4,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify site slug races and starter rollback,2,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify transactional organization admissions,10,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify a rollback never grants more than the new model,9,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,"Verify organization people management (invitations, resend, members without websites)",10,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,"Verify join links (atomic max uses, one answer for bad links)",9,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify preserving content imports on PostgreSQL,18,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify the People page only shows sites you administer,2,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify pending asset uploads in a fresh database,5,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify deleting an asset keeps files that saved content uses,2,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify private sites hide every published surface from visitors without access,41,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify concurrent page move integrity on PostgreSQL,28,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,"Verify page Trash (restore races, schema drift, erasure)",12,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,"Verify the publish history (access, paging, bounded change summaries)",3,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Exercise ClickHouse analytics migrations,24,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify relational analytics and admin discovery on PostgreSQL,12,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Check documentation,0,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Check self-host release integrity,0,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Check deployment release contract,1,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Check for unused source files,7,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Dashboard type scale (no new arbitrary font sizes),1,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Typecheck,57,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Lint,15,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Test,545,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,"Growth tests, serial",208,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify indexed multilingual search and chat fixtures,3,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Verify importer timings,18,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Build production app,57,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Smoke production app runtime,6,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Build production admin,10,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Smoke production admin runtime,1,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Enforce public JavaScript budget,1,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Upload public bundle report,2,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Post Setup Node,0,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Post Install pnpm,0,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Post Run actions/checkout@v7,0,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Stop containers,1,success
+43578964746,48b29f52e17aa9fe65d22221c2f9db9246fcb60c,2026-11-14T09:06:34Z,1318,1314,Complete job,0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Set up job,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Initialize containers,19,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Run actions/checkout@v7,14,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Install pnpm,5,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Setup Node,20,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Test installer safety boundaries,0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Test release notes,0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Preview release notes on Linux,17,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Test production email diagnostic boundaries,0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Test immutable image verification,0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Install dependencies,3,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Check migrations are expand-only and the image role selector,1,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Generate Prisma client,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Compile interface messages,1,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Exercise Prisma migrations and runtime database access,6,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify concurrent manual-publish receipts,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify Better Auth on PostgreSQL,3,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify organization grants and expand-only backfill,11,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify concurrent custom-domain transitions,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify publishing retention aggregates,1,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify Promote into main refuses when main changed,3,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,"Verify page history bounds, restore conflicts and erasure",2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify page address atomicity and parsing outside locks,4,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify a publish and a first-title address adoption never interleave,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify the Viewer role cannot change a site,13,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify organization merge and offline restore,5,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify the organization shell and organization deletion,9,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify Git webhook secrets and publish attribution,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify immutable website data partitions,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify site slug races and starter rollback,1,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify transactional organization admissions,7,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify a rollback never grants more than the new model,7,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,"Verify organization people management (invitations, resend, members without websites)",6,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,"Verify join links (atomic max uses, one answer for bad links)",6,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify preserving content imports on PostgreSQL,14,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify the People page only shows sites you administer,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify pending asset uploads in a fresh database,3,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify deleting an asset keeps files that saved content uses,1,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify private sites hide every published surface from visitors without access,33,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify concurrent page move integrity on PostgreSQL,23,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,"Verify page Trash (restore races, schema drift, erasure)",9,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,"Verify the publish history (access, paging, bounded change summaries)",2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Exercise ClickHouse analytics migrations,19,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify relational analytics and admin discovery on PostgreSQL,7,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Check documentation,0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Check self-host release integrity,1,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Check deployment release contract,1,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Check for unused source files,5,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Dashboard type scale (no new arbitrary font sizes),0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Typecheck,36,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Lint,10,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Test,362,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,"Growth tests, serial",139,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify indexed multilingual search and chat fixtures,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Verify importer timings,12,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Build production app,36,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Smoke production app runtime,4,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Build production admin,6,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Smoke production admin runtime,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Enforce public JavaScript budget,0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Upload public bundle report,2,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Post Setup Node,0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Post Install pnpm,0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Post Run actions/checkout@v7,0,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Stop containers,1,success
+43570847514,f52208058e54e61ed8f0a3b60be9a4a1da0e4883,2026-11-14T07:23:04Z,918,916,Complete job,0,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Set up job,1,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Initialize containers,18,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Run actions/checkout@v7,13,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Install pnpm,5,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Setup Node,16,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Test installer safety boundaries,1,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Test release notes,0,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Preview release notes on Linux,19,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Test production email diagnostic boundaries,0,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Test immutable image verification,0,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Install dependencies,6,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Check migrations are expand-only and the image role selector,1,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Generate Prisma client,2,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Compile interface messages,2,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Exercise Prisma migrations and runtime database access,10,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify concurrent manual-publish receipts,3,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify Better Auth on PostgreSQL,4,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify organization grants and expand-only backfill,17,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify concurrent custom-domain transitions,2,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify publishing retention aggregates,2,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify Promote into main refuses when main changed,5,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,"Verify page history bounds, restore conflicts and erasure",4,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify page address atomicity and parsing outside locks,6,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify a publish and a first-title address adoption never interleave,3,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify the Viewer role cannot change a site,18,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify organization merge and offline restore,8,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify the organization shell and organization deletion,14,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify Git webhook secrets and publish attribution,3,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify immutable website data partitions,4,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify site slug races and starter rollback,1,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify transactional organization admissions,11,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify a rollback never grants more than the new model,9,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,"Verify organization people management (invitations, resend, members without websites)",10,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,"Verify join links (atomic max uses, one answer for bad links)",8,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify preserving content imports on PostgreSQL,19,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify the People page only shows sites you administer,2,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify pending asset uploads in a fresh database,5,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify deleting an asset keeps files that saved content uses,2,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify private sites hide every published surface from visitors without access,41,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify concurrent page move integrity on PostgreSQL,29,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,"Verify page Trash (restore races, schema drift, erasure)",12,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,"Verify the publish history (access, paging, bounded change summaries)",3,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Exercise ClickHouse analytics migrations,24,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify relational analytics and admin discovery on PostgreSQL,11,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Check documentation,1,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Check self-host release integrity,0,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Check deployment release contract,2,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Check for unused source files,7,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Dashboard type scale (no new arbitrary font sizes),1,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Typecheck,58,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Lint,16,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Test,548,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,"Growth tests, serial",206,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify indexed multilingual search and chat fixtures,3,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Verify importer timings,19,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Build production app,56,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Smoke production app runtime,6,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Build production admin,11,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Smoke production admin runtime,1,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Enforce public JavaScript budget,1,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Upload public bundle report,1,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Post Setup Node,0,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Post Install pnpm,0,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Post Run actions/checkout@v7,0,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Stop containers,1,success
+43563021358,1073a8f93857bb4ce3608f88cb3606f4111753a9,2026-11-14T05:45:03Z,1333,1315,Complete job,0,success

@@ -9,7 +9,7 @@ import { ChatMessage } from './message';
 
 const mocks = vi.hoisted(() => ({ feedback: vi.fn() }));
 vi.mock('@/functions/site-chat', () => ({ submitChatFeedbackFn: mocks.feedback }));
-const options = { projectId: 'project', lang: 'en', direction: 'ltr' as const, config: null };
+const options = { projectId: 'project', lang: 'en', defaultLanguage: 'en', direction: 'ltr' as const, config: null };
 const final: AiChatFinalEvent = {
   conversationId: '00000000-0000-4000-8000-000000000001',
   turnId: '00000000-0000-4000-8000-000000000002',
@@ -57,12 +57,13 @@ describe('reader chat messages', () => {
     await render(message(final));
     expect(container.textContent).toContain('Verified answer');
     expect(container.textContent).not.toContain('Unverified draft');
-    expect(container.querySelector('a')?.textContent).toContain('Getting started › Install');
+    expect(container.querySelector('a')?.closest('li[dir]')?.textContent).toContain('Getting started');
+    expect(container.querySelector('a')?.textContent).toContain('Install');
     const chip = container.querySelector<HTMLButtonElement>('button[aria-label="Source 1"]');
     expect(chip).not.toBeNull();
     HTMLElement.prototype.scrollIntoView = vi.fn();
     chip?.click();
-    expect(document.activeElement?.textContent).toContain('Getting started');
+    expect(document.activeElement?.textContent).toContain('Install');
     await unmount();
   });
 
@@ -76,8 +77,9 @@ describe('reader chat messages', () => {
     };
     // The reader has since switched to English.
     await render(<ChatMessage text="" final={arabic} options={options} busy={false} consent="granted" close={vi.fn()} scope={{ version: 'v1' }} />);
-    const href = document.getElementById('00000000-0000-4000-8000-000000000002-S1')?.getAttribute('href') ?? '';
-    expect(href).toContain('lang=en');
+    const href = document.getElementById('00000000-0000-4000-8000-000000000002-source-1')?.getAttribute('href') ?? '';
+    expect(href).toContain('/v1/guide#');
+    expect(href).not.toContain('?lang=');
     expect(href).toContain('v1');
     expect(decodeURIComponent(href)).toContain('#انتهاء-صلاحية-الرمز');
     await unmount();
@@ -92,15 +94,75 @@ describe('reader chat messages', () => {
       answer: 'Install it [S3]. Then sign in [S2].',
       citations: [
         { ...first, id: 'S3', title: 'Install' },
-        { ...first, id: 'S2', title: 'Sign in', anchor: 'sign-in' },
+        { ...first, id: 'S2', pageId: 'other', title: 'Sign in', anchor: 'sign-in' },
       ],
     };
     await render(<ChatMessage text="" final={cited} options={options} busy={false} consent="granted" close={vi.fn()} />);
     const chips = [...container.querySelectorAll<HTMLButtonElement>('button[aria-label^="Source "]')].map((chip) => chip.textContent);
     expect(chips).toEqual(['1', '2']);
     expect(container.querySelector('button[aria-label="Source 3"]')).toBeNull();
-    const cards = [...container.querySelectorAll('a')].map((card) => card.querySelector('span')?.textContent);
-    expect(cards).toEqual(['1. Install', '2. Sign in']);
+    const cards = [...container.querySelectorAll('a')].map((card) => card.textContent);
+    expect(cards).toEqual(['1InstallUseful steps', '2InstallUseful steps']);
+    expect([...container.querySelectorAll('li[dir] > p')].map((page) => page.textContent)).toEqual(['Install', 'Sign in']);
+    await unmount();
+  });
+
+  it('lists a page once with its cited sections, and copies clean text with numbered sources', async () => {
+    const { container, render, unmount } = mount();
+    const [first] = final.citations;
+    if (!first) throw new Error('fixture');
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    const cited: AiChatFinalEvent = {
+      ...final,
+      answer: 'Install **it**. [S1]\n\nThen sign in. [S2]\n\nIt updates itself. [S4]',
+      citations: [
+        first,
+        { ...first, id: 'S2', heading: 'Sign in', anchor: 'sign-in' },
+        { ...first, id: 'S4', snippet: 'Another chunk of the install section' },
+      ],
+    };
+    await render(<ChatMessage text="" final={cited} options={options} busy={false} consent="granted" close={vi.fn()} />);
+    expect([...container.querySelectorAll('li[dir] > p')].map((page) => page.textContent)).toEqual(['Getting started']);
+    expect([...container.querySelectorAll('li[dir] a')].map((section) => section.getAttribute('href'))).toEqual(['/guide#install', '/guide#sign-in']);
+    expect([...container.querySelectorAll('button[data-citation]')].map((chip) => chip.textContent)).toEqual(['1', '2', '1']);
+    await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Copy answer"]')?.click());
+    expect(writeText).toHaveBeenCalledWith(
+      [
+        'Install it. [1]',
+        '',
+        'Then sign in. [2]',
+        '',
+        'It updates itself. [1]',
+        '',
+        'Sources',
+        '[1] Getting started › Install',
+        `${window.location.origin}/guide#install`,
+        '[2] Getting started › Sign in',
+        `${window.location.origin}/guide#sign-in`,
+      ].join('\n'),
+    );
+    await unmount();
+  });
+
+  it('says in the panel whether copying worked, in a polite live region, without a toast region', async () => {
+    const { container, render, unmount } = mount();
+    const status = () => container.querySelector('[aria-live="polite"]');
+    const copyButton = () => container.querySelector<HTMLButtonElement>('button[aria-label="Copy answer"]');
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(async () => undefined) } });
+    await render(<ChatMessage text="" final={final} options={options} busy={false} consent="granted" close={vi.fn()} />);
+    // Mounted empty before any copy, so screen readers announce what it says next.
+    expect(status()?.textContent).toBe('');
+    await act(async () => copyButton()?.click());
+    expect(status()?.textContent).toBe('Answer copied');
+    expect(copyButton()?.querySelector('.lucide-check')).not.toBeNull();
+    // Plain http: no async clipboard, and the copy command is refused.
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => false) });
+    await act(async () => copyButton()?.click());
+    expect(status()?.textContent).toBe('Could not copy the answer. Please try again.');
+    expect(status()?.className).toContain('text-destructive');
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: undefined });
     await unmount();
   });
 
@@ -122,8 +184,8 @@ describe('reader chat messages', () => {
         onSourceOpen={onSourceOpen}
       />,
     );
-    const card = document.getElementById('00000000-0000-4000-8000-000000000002-S1');
-    expect(card?.getAttribute('href')).toBe('/guide?lang=en#install');
+    const card = document.getElementById('00000000-0000-4000-8000-000000000002-source-1');
+    expect(card?.getAttribute('href')).toBe('/guide#install');
     card?.addEventListener('click', (event) => event.preventDefault(), { once: true });
     card?.click();
     expect(onSourceOpen).toHaveBeenCalledWith(expect.objectContaining({ id: 'S1' }), 1);
@@ -131,6 +193,118 @@ describe('reader chat messages', () => {
     const chips = [...container.querySelectorAll('button')].filter((button) => button.textContent === 'How do I update?');
     chips[0]?.click();
     expect(onFollowUp).toHaveBeenCalledWith('How do I update?', 2);
+    await unmount();
+  });
+
+  it('lays out English labels, code and links in an Arabic answer as their own left-to-right islands', async () => {
+    const { container, render, unmount } = mount();
+    const arabic: AiChatFinalEvent = {
+      ...final,
+      language: 'ar',
+      answer:
+        'افتح **Settings → Custom domain**، وأدخل نطاقك مثل `docs.example.com`، ثم اختر **نشر**. [S1]\n\nزر https://docs.example.com/setup للتفاصيل. [S1]',
+    };
+    await render(<ChatMessage text="" final={arabic} options={{ ...options, lang: 'ar' }} busy={false} consent="granted" close={vi.fn()} />);
+    const labels = [...container.querySelectorAll('strong')].map((strong) => [strong.textContent, strong.getAttribute('dir')]);
+    expect(labels).toEqual([
+      ['Settings → Custom domain', 'ltr'],
+      ['نشر', null],
+    ]);
+    expect(container.querySelector('code')?.getAttribute('dir')).toBe('ltr');
+    expect([...container.querySelectorAll('bdi[dir="ltr"]')].map((island) => island.textContent)).toEqual(['https://docs.example.com/setup']);
+    await unmount();
+  });
+
+  it('decides a label’s direction from all of its text, code and nested emphasis included', async () => {
+    const { container, render, unmount } = mount();
+    const arabic: AiChatFinalEvent = {
+      ...final,
+      language: 'ar',
+      answer: 'افتح **`Settings` → `Custom domain`** ثم **Settings → *إعدادات النطاق***. [S1]',
+    };
+    await render(<ChatMessage text="" final={arabic} options={{ ...options, lang: 'ar' }} busy={false} consent="granted" close={vi.fn()} />);
+    const labels = [...container.querySelectorAll('strong')].map((strong) => [strong.textContent, strong.getAttribute('dir')]);
+    expect(labels).toEqual([
+      ['Settings → Custom domain', 'ltr'],
+      ['Settings → إعدادات النطاق', null],
+    ]);
+    await unmount();
+  });
+
+  it('keeps a link’s own closing bracket inside its left-to-right island', async () => {
+    const { container, render, unmount } = mount();
+    const link = 'https://en.wikipedia.org/wiki/Function_(mathematics)';
+    await render(
+      <ChatMessage
+        text=""
+        final={{ ...final, language: 'ar', answer: `راجع ${link}. [S1]` }}
+        options={options}
+        busy={false}
+        consent="granted"
+        close={vi.fn()}
+      />,
+    );
+    expect([...container.querySelectorAll('bdi[dir="ltr"]')].map((island) => island.textContent)).toEqual([link]);
+    await unmount();
+  });
+
+  it('lets a long link, label or code run wrap inside while its citation stays with the last line', async () => {
+    const { container, render, unmount } = mount();
+    const long = `docs.example.com/guides/${'custom-domains/'.repeat(4)}verify`;
+    await render(
+      <ChatMessage
+        text=""
+        final={{
+          ...final,
+          language: 'ar',
+          answer: `راجع https://${long} [S1]\n\nاختر **Settings → Custom domain → Verify the DNS records now** [S1]\n\nشغّل \`nibleaf domains verify --site ${long}\` [S1]`,
+        }}
+        options={options}
+        busy={false}
+        consent="granted"
+        close={vi.fn()}
+      />,
+    );
+    const kept = [...container.querySelectorAll('span.whitespace-nowrap')];
+    expect(kept).toHaveLength(3);
+    for (const glue of kept) {
+      // The anchor sits in its own wrapping run; only the break before the chip is held.
+      const anchor = glue.firstElementChild;
+      expect(anchor?.matches('span.whitespace-normal')).toBe(true);
+      expect(anchor?.textContent?.length).toBeGreaterThan(40);
+      expect(glue.lastElementChild?.matches('button[data-citation]')).toBe(true);
+    }
+    await unmount();
+  });
+
+  it('shows code exactly as written: a marker inside it is text, not a citation', async () => {
+    const { container, render, unmount } = mount();
+    await render(
+      <ChatMessage text="" final={{ ...final, answer: 'Type `[S1]` here. [S1]' }} options={options} busy={false} consent="granted" close={vi.fn()} />,
+    );
+    expect(container.querySelector('code')?.textContent).toBe('[S1]');
+    expect(container.querySelectorAll('button[data-citation]')).toHaveLength(1);
+    await unmount();
+  });
+
+  it('keeps each citation on the line of the word before it, so a number never starts a line alone', async () => {
+    const { container, render, unmount } = mount();
+    const [first] = final.citations;
+    if (!first) throw new Error('fixture');
+    const cited: AiChatFinalEvent = {
+      ...final,
+      language: 'ar',
+      answer: 'قد يستغرق ذلك حتى 24 ساعة. [S1][S2]\n\nثم اختر **Check again** [S1]',
+      citations: [first, { ...first, id: 'S2', heading: 'Wait', anchor: 'wait' }],
+    };
+    await render(<ChatMessage text="" final={cited} options={options} busy={false} consent="granted" close={vi.fn()} />);
+    const kept = [...container.querySelectorAll('span.whitespace-nowrap')];
+    // The last word with both numbers after it, and a bold label with its number.
+    expect(kept.map((span) => span.textContent)).toEqual(['ساعة.12', 'Check again1']);
+    expect(kept[0]?.querySelectorAll('button[data-citation]')).toHaveLength(2);
+    expect(kept[1]?.querySelector('strong')?.textContent).toBe('Check again');
+    // The text before stays free to wrap.
+    expect(container.querySelector('p')?.textContent).toBe('قد يستغرق ذلك حتى 24 ساعة.12');
     await unmount();
   });
 
@@ -263,4 +437,22 @@ describe('reader chat messages', () => {
     expect(mocks.feedback.mock.calls[1]?.[0].data).toMatchObject({ rating: 'down', reason: 'incomplete', previousRating: 'down' });
     await unmount();
   });
+});
+
+it('keeps an AI citation page named v2 inside the answered version v2', async () => {
+  const { container, render, unmount } = mount();
+  const citation = { ...final.citations[0], path: 'v2', language: 'ar' } as (typeof final.citations)[number];
+  await render(
+    <ChatMessage
+      text=""
+      final={{ ...final, citations: [citation] }}
+      options={options}
+      busy={false}
+      consent="granted"
+      close={vi.fn()}
+      scope={{ lang: 'ar', version: 'v2' }}
+    />,
+  );
+  expect(container.querySelector('a[href*="v2"]')?.getAttribute('href')).toBe('/ar/v2/v2#install');
+  await unmount();
 });

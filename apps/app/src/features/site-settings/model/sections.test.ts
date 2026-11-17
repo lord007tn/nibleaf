@@ -30,13 +30,13 @@ describe('settings sections', () => {
     expect(navIds(siteAdmin)).toEqual(SECTION_IDS.filter((id) => id !== 'danger'));
   });
 
-  it('opens content languages, members, usage, exports and API keys to editors', () => {
-    expect(navIds(editor)).toEqual(['languages', 'exports', 'apiKeys', 'members', 'usage']);
+  it('opens content languages, members, usage, exports, AI answers (read-only) and API keys to editors', () => {
+    expect(navIds(editor)).toEqual(['languages', 'exports', 'ai', 'apiKeys', 'members', 'usage']);
     expect(settingsNav(editor).map((group) => group.id)).toEqual(['website', 'publishing', 'ai', 'team', 'usage']);
   });
 
   it('shows Viewers the same, except API keys', () => {
-    expect(navIds(viewer)).toEqual(['languages', 'exports', 'members', 'usage']);
+    expect(navIds(viewer)).toEqual(['languages', 'exports', 'ai', 'members', 'usage']);
   });
 
   it('keeps the promoted Content pages for site Admins', () => {

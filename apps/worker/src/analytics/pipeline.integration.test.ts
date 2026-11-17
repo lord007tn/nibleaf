@@ -44,7 +44,9 @@ integration('real Redis/Postgres/ClickHouse analytics pipeline', () => {
       throw new Error('Pipeline fixtures require the assigned nibleaf-analytics-test namespace');
     vi.stubEnv('ANALYTICS_MODE', 'clickhouse');
     await prisma.organization.create({ data: { id: tenantId, name: 'Fictional analytics pipeline', slug: tenantId } });
-    await prisma.project.create({ data: { id: projectId, organizationId: tenantId, name: 'Fictional analytics test', slug: projectId } });
+    await prisma.project.create({
+      data: { id: projectId, organizationId: tenantId, dataTenantId: tenantId, name: 'Fictional analytics test', slug: projectId },
+    });
     queue = new Queue(queueName, { connection });
     events = new QueueEvents(queueName, { connection });
     worker = new Worker<AnalyticsJobData, unknown, AnalyticsJobName>(queueName, (job) => handleAnalyticsJobs(job), { connection, concurrency: 10 });
@@ -62,6 +64,7 @@ integration('real Redis/Postgres/ClickHouse analytics pipeline', () => {
     }
     await deleteProjectAnalytics(tenantId, projectId);
     await deleteProjectUsage(tenantId, projectId);
+    await prisma.project.deleteMany({ where: { id: projectId, organizationId: tenantId } });
     await prisma.organization.deleteMany({ where: { id: tenantId } });
     await closeClickHouseClients();
     await prisma.$disconnect();

@@ -11,6 +11,10 @@
     },
     ".": {
       "entry": [
+        ".github/assets/*/capture.mjs",
+        "tests/integration/editor-p2/browser.mjs",
+        "tests/integration/import-fidelity/browser.mjs",
+        "tests/integration/import-fidelity/local-only-node.mjs",
         "changelogithub.config.mjs",
         "scripts/docker-context-smoke.mjs",
         "scripts/graceful-web-service.mjs",
@@ -19,7 +23,21 @@
         "scripts/site-preview-mock.mjs",
         "scripts/site-preview-shots.mjs",
         "scripts/split-ghost-by-language.mjs",
-        "tests/integration/delete-inbound-links/browser.mjs"
+        "tests/integration/ai-answers/journey.mjs",
+        "tests/integration/dash-locale-screens/browser.mjs",
+        "tests/integration/dash-polish-p1/browser.mjs",
+        "tests/integration/dash-unknown-shell/browser.mjs",
+        "tests/integration/delete-inbound-links/browser.mjs",
+        "tests/integration/editor-paste-and-title/browser.mjs",
+        "tests/integration/reader-video-embeds/capture.mjs",
+        "tests/integration/editor-video-blocks/publish-worker.mjs",
+        "tests/integration/overview-first-publish/browser.mjs",
+        "tests/integration/reader-search-latency/benchmark.ts",
+        "tests/integration/reader-search-latency/vitest.config.ts",
+        "tests/integration/site-owner-addresses/browser.mjs",
+        "tests/integration/ssr-locale-direction/capture.mjs",
+        "tests/integration/theme-contrast/browser.mjs",
+        "tests/integration/theme-contrast/oklab-mix.mjs"
       ]
     },
     "apps/server": {
@@ -27,7 +45,18 @@
       "ignoreDependencies": ["quansync"]
     },
     "apps/app": {
-      "entry": ["scripts/delete-inbound-links.fixture.tsx"]
+      "entry": [
+        "scripts/dash-locale-screens.fixture.tsx",
+        "scripts/dash-polish-p1.fixture.tsx",
+        "scripts/dash-unknown-shell.fixture.tsx",
+        "scripts/delete-inbound-links.fixture.tsx",
+        "scripts/editor-paste-and-title.fixture.tsx",
+        "scripts/overview-first-publish.fixture.tsx",
+        "scripts/site-owner-addresses.fixture.tsx",
+        "scripts/theme-contrast.fixture.tsx",
+        // Run by hand to record main's serializer output for the differential (#612).
+        "src/components/editor/__fixtures__/serializer-differential.generate.mjs"
+      ]
     },
     "packages/database": {
       "ignoreDependencies": ["@prisma/client"]

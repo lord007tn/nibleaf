@@ -16,7 +16,7 @@ vi.mock('@/providers/site-analytics-provider', () => ({
   SiteAnalyticsProvider: ({ children }: { children: unknown }) => children,
   useSiteAnalytics: () => ({ track: vi.fn() }),
 }));
-vi.mock('@/components/site/site-analytics-consent', () => ({ SiteAnalyticsConsent: () => null }));
+vi.mock('@/components/site/site-analytics-consent', () => ({ SiteAnalyticsConsent: () => null, PrivacyChoicesLink: () => null }));
 // Plain buttons stand in for the dropdown, so a test can pick a language.
 vi.mock('@/components/site/language-switcher', () => ({
   LanguageSwitcher: ({ languages, onChange }: { languages: Array<{ code: string }>; onChange: (code: string) => void }) =>
@@ -32,10 +32,11 @@ import { Route as SiteRoute } from './route';
 
 const PATH = 'blog/add-new-reservation-2';
 
-// The audited site: light by configuration (no `styling.theme`), English by
-// default, and this post has no Arabic translation.
-/** The site's configured theme (`styling.theme`); null is the audited light default. */
+// The audited site: English by default, and this post has no Arabic
+// translation. Each test sets the configured theme it needs.
+/** The site's configured theme (`styling.theme`). */
 let siteConfig: SiteShell['project']['config'] = null;
+const LIGHT_SITE = { styling: { theme: 'light' } } as SiteShell['project']['config'];
 
 const shell = (activeLanguage: string): SiteShell => ({
   project: { id: 'docs', name: 'Jood Booking', slug: 'docs', description: null, config: siteConfig, primaryDomain: null },
@@ -112,14 +113,14 @@ beforeEach(() => {
       disconnect = vi.fn();
     },
   );
-  // The reader's OS prefers dark, and nothing is stored: the site's configured
-  // light theme is the only right answer.
+  // The reader's OS prefers dark, and nothing is stored: a site configured
+  // light stays light; one that never chose follows the OS.
   vi.stubGlobal(
     'matchMedia',
     vi.fn((query: string) => ({ matches: query.includes('dark'), addEventListener: vi.fn(), removeEventListener: vi.fn() })),
   );
   localStorage.clear();
-  siteConfig = null;
+  siteConfig = LIGHT_SITE;
   document.documentElement.className = '';
   mocks.getSite.mockImplementation(async ({ data }: { data: { language?: string } }) => shell(data.language ?? 'en'));
   mocks.getSitePage.mockResolvedValue(englishPage);
@@ -171,14 +172,15 @@ describe('reader theme across languages', () => {
 
     // Hold the Arabic shell back so the router shows the pending reader route.
     let releaseShell: () => void = () => undefined;
-    mocks.getSite.mockImplementation(
-      ({ data }: { data: { language?: string } }) =>
-        new Promise<SiteShell>((resolve) => {
-          releaseShell = () => resolve(shell(data.language ?? 'en'));
-        }),
+    mocks.getSite.mockImplementation(({ data }: { data: { language?: string } }) =>
+      data.language !== 'ar'
+        ? Promise.resolve(shell(data.language ?? 'en'))
+        : new Promise<SiteShell>((resolve) => {
+            releaseShell = () => resolve(shell(data.language ?? 'en'));
+          }),
     );
     await act(async () => container.querySelector<HTMLButtonElement>('[data-switch-language="ar"]')?.click());
-    await vi.waitFor(() => expect(container.querySelector('[data-pending]')).not.toBeNull());
+    await vi.waitFor(() => expect(container.querySelector('[data-site-article-skeleton]')).not.toBeNull());
     expect(documentTheme()).toBe('light');
     const rootDocument = container.querySelector('[data-root-document]');
     // Still the same site, already in the requested Arabic, while its shell
@@ -219,14 +221,15 @@ function stubOsTheme(initial: 'light' | 'dark') {
 /** Switches to Arabic with the Arabic shell held back; returns its release. */
 async function switchToArabicHeld(container: HTMLElement) {
   let releaseShell: () => void = () => undefined;
-  mocks.getSite.mockImplementation(
-    ({ data }: { data: { language?: string } }) =>
-      new Promise<SiteShell>((resolve) => {
-        releaseShell = () => resolve(shell(data.language ?? 'en'));
-      }),
+  mocks.getSite.mockImplementation(({ data }: { data: { language?: string } }) =>
+    data.language !== 'ar'
+      ? Promise.resolve(shell(data.language ?? 'en'))
+      : new Promise<SiteShell>((resolve) => {
+          releaseShell = () => resolve(shell(data.language ?? 'en'));
+        }),
   );
   await act(async () => container.querySelector<HTMLButtonElement>('[data-switch-language="ar"]')?.click());
-  await vi.waitFor(() => expect(container.querySelector('[data-pending]')).not.toBeNull());
+  await vi.waitFor(() => expect(container.querySelector('[data-site-article-skeleton]')).not.toBeNull());
   return async () => {
     await act(async () => releaseShell());
     await vi.waitFor(() => expect(container.querySelector('[role="note"]')).not.toBeNull(), { timeout: 15_000 });
@@ -236,6 +239,25 @@ async function switchToArabicHeld(container: HTMLElement) {
 const themeToggle = (container: HTMLElement) => container.querySelector<HTMLButtonElement>('button[aria-pressed]');
 
 describe('reader theme sources across a language switch', () => {
+  it('follows the OS when the owner never chose a theme (PUB-004)', async () => {
+    siteConfig = { styling: {} } as SiteShell['project']['config'];
+    const setOs = stubOsTheme('dark');
+    const container = await renderReader(`/sites/docs/${PATH}`);
+    expect(documentTheme()).toBe('dark');
+    const release = await switchToArabicHeld(container);
+    expect(documentTheme()).toBe('dark');
+    await setOs('light');
+    await release();
+    expect(documentTheme()).toBe('light');
+  }, 30_000);
+
+  it('follows the OS for a site with no config at all', async () => {
+    siteConfig = null;
+    stubOsTheme('dark');
+    await renderReader(`/sites/docs/${PATH}`);
+    expect(documentTheme()).toBe('dark');
+  }, 30_000);
+
   it.each(['light', 'dark'] as const)(
     'keeps a stored %s choice over the configured theme and the OS',
     async (stored) => {
@@ -279,4 +301,23 @@ describe('reader theme sources across a language switch', () => {
     expect(documentTheme()).toBe('dark');
     expect(themeToggle(container)?.getAttribute('aria-pressed')).toBe('true');
   }, 30_000);
+});
+
+it('uses Arabic document attributes for a resolved prefix with an unknown query language', async () => {
+  const container = await renderReader(`/sites/docs/ar/${PATH}?lang=unknown`);
+  expect(container.querySelector('[data-root-document]')?.getAttribute('data-lang')).toBe('ar');
+  expect(container.querySelector('[data-root-document]')?.getAttribute('data-dir')).toBe('rtl');
+});
+
+it('uses the escaped prefix for document attributes with an unknown query language', async () => {
+  mocks.getSite.mockImplementation(async ({ data }: { data: { language?: string } }) => {
+    const site = shell(data.language ?? 'en');
+    return {
+      ...site,
+      languages: site.languages.map((language) => ({ ...language, pathPrefix: language.code === 'ar' ? '~lang/ar' : language.code })),
+    };
+  });
+  const container = await renderReader(`/sites/docs/~lang/ar/${PATH}?lang=unknown`);
+  expect(container.querySelector('[data-root-document]')?.getAttribute('data-lang')).toBe('ar');
+  expect(container.querySelector('[data-root-document]')?.getAttribute('data-dir')).toBe('rtl');
 });

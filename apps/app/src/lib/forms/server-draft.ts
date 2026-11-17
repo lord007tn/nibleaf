@@ -7,6 +7,11 @@
  * - `submitted`: what an in-flight save sent;
  * - `current`: the form's state.
  *
+ * Some forms send a transformed payload (`toSent`: rows without a key dropped,
+ * strings trimmed), so the server stores and echoes values the form never
+ * held. A save is then judged in sent space: what it sent, and the baseline
+ * passed through `toSent`. The form itself always keeps the raw values.
+ *
  * Values are compared per top-level key, each key compared deeply. That is the
  * granularity at which edits are kept or replaced.
  */
@@ -34,6 +39,54 @@ export const isDraftDirty = <T extends DraftValues>(current: T, baseline: T) => 
 export const editedKeys = <T extends DraftValues>(current: T, baseline: T) =>
   keysOf(current, baseline).filter((key) => !deepEqual(current[key], baseline[key])) as Array<keyof T & string>;
 
+/**
+ * A save in flight, fixed when its request is sent:
+ * - `from`: the baseline it was sent from;
+ * - `values`: what it sent (`toSent` of the form's values, when given);
+ * - `raw`: the form's values it was sent from;
+ * - `toSent`: the transform, when the form sends a transformed payload;
+ * - `sent`: the keys it changed from the baseline at that moment, compared in
+ *   sent space, so a change `toSent` drops (a row without a key, trailing
+ *   spaces) is not awaited as an echo that never comes;
+ * - `echoed`: the sent keys a refetch has since returned with the sent value.
+ *   A key joins once and never leaves for the rest of the save.
+ */
+export type PendingSave<T extends DraftValues> = {
+  from: T;
+  values: T;
+  raw: T;
+  toSent?: (values: T) => T;
+  sent: ReadonlySet<string>;
+  echoed: ReadonlySet<string>;
+};
+
+export const startSave = <T extends DraftValues>(baseline: T, raw: T, toSent?: (values: T) => T): PendingSave<T> => {
+  const values = toSent ? toSent(raw) : raw;
+  return { from: baseline, values, raw, toSent, sent: new Set(editedKeys(values, toSent ? toSent(baseline) : baseline)), echoed: new Set() };
+};
+
+/** A sent key the server hasn't echoed yet: the form holds the person's pending value for it. */
+const awaitingEcho = <T extends DraftValues>(save: PendingSave<T>, key: string) => save.sent.has(key) && !save.echoed.has(key);
+
+/** Server values as a transforming save would send them, so they compare with what it sent. */
+const inSentSpace = <T extends DraftValues>(save: PendingSave<T> | undefined, values: T) => (save?.toSent ? save.toSent(values) : values);
+
+/**
+ * During a transforming save, a key the person hasn't changed since is judged
+ * by what the save sent for it. Never true without `toSent`.
+ */
+const untouched = <T extends DraftValues>(save: PendingSave<T> | undefined, current: T, key: string): save is PendingSave<T> =>
+  Boolean(save?.toSent) && deepEqual(current[key], save?.raw[key]);
+
+/**
+ * Whether the form's value for a key agrees with `server`'s: compared in sent
+ * space for a key left untouched during a transforming save, else as is.
+ */
+export function agreesWith<T extends DraftValues>(current: T, server: T, save?: PendingSave<T>) {
+  const serverSent = inSentSpace(save, server);
+  return (key: string) => (untouched(save, current, key) ? deepEqual(save.values[key], serverSent[key]) : deepEqual(current[key], server[key]));
+}
+
 export type ServerChange<T extends DraftValues> = {
   /** The new baseline: always the server's values. */
   baseline: T;
@@ -41,6 +94,8 @@ export type ServerChange<T extends DraftValues> = {
   current: T;
   /** Keys the person edited that the server also changed, to a different value. Their edits are kept. */
   conflicts: Array<keyof T & string>;
+  /** The save in flight, with the keys this change echoed added. */
+  save?: PendingSave<T>;
 };
 
 /**
@@ -49,38 +104,118 @@ export type ServerChange<T extends DraftValues> = {
  * - Keys the person edited and the server left alone keep the edit.
  * - Keys both changed keep the edit and are reported as conflicts, unless
  *   both landed on the same value.
+ *
+ * During a save, pass it as `save`. A sent key awaiting its echo holds the
+ * person's pending value: it counts as edited even if they typed it back
+ * since, and the server returning the sent value is the echo, never a
+ * conflict. Once echoed, the key follows the rules above against the
+ * baseline, which the echo set to the sent value and later changes move on.
+ *
+ * A transforming save (`toSent`) compares server values in sent space, so the
+ * server normalizing a value is no change. Once echoed, a key the person
+ * hasn't changed since the save is judged by what was sent for it, and keeps
+ * its raw value until the server changes it. A key the save sent nothing new
+ * for is judged by its raw value, so content `toSent` drops is never lost.
  */
-export function reconcileServerChange<T extends DraftValues>({ baseline, current, next }: { baseline: T; current: T; next: T }): ServerChange<T> {
+export function reconcileServerChange<T extends DraftValues>({
+  baseline,
+  current,
+  next,
+  save,
+}: {
+  baseline: T;
+  current: T;
+  next: T;
+  save?: PendingSave<T>;
+}): ServerChange<T> {
   const merged: DraftValues = { ...current };
   const conflicts: Array<keyof T & string> = [];
+  const echoed = new Set(save?.echoed);
+  const baselineSent = inSentSpace(save, baseline);
+  const nextSent = inSentSpace(save, next);
+  const agreesWithBaseline = agreesWith(current, baseline, save);
+  const agreesWithNext = agreesWith(current, next, save);
   for (const key of keysOf(baseline, current, next)) {
-    const edited = !deepEqual(current[key], baseline[key]);
-    const serverChanged = !deepEqual(next[key], baseline[key]);
-    if (!edited) merged[key] = next[key];
-    else if (serverChanged && !deepEqual(current[key], next[key])) conflicts.push(key as keyof T & string);
+    const serverChanged = !deepEqual(nextSent[key], baselineSent[key]);
+    if (save && awaitingEcho(save, key)) {
+      if (deepEqual(nextSent[key], save.values[key])) echoed.add(key);
+      else if (serverChanged && !agreesWithNext(key)) conflicts.push(key as keyof T & string);
+      continue;
+    }
+    const wasEchoed = Boolean(save?.echoed.has(key));
+    const edited = wasEchoed ? !agreesWithBaseline(key) : !deepEqual(current[key], baseline[key]);
+    if (!edited) merged[key] = wasEchoed && !serverChanged && untouched(save, current, key) ? current[key] : next[key];
+    else if (serverChanged && !agreesWithNext(key)) conflicts.push(key as keyof T & string);
   }
-  return { baseline: next, current: merged as T, conflicts };
+  return { baseline: next, current: merged as T, conflicts, save: save && { ...save, echoed } };
 }
 
 /**
  * Rule 3: a save succeeded. The baseline becomes what the server confirmed:
  * the response's values when it returned the entity (server normalization
- * wins), else what was sent. Keys edited while the request was in flight
- * (`current` differs from `submitted`) keep the newer edit and stay dirty.
+ * wins), else what was sent. Keys the person edited keep the edit and stay
+ * dirty: without `during`, any key that differs from `submitted`.
+ *
+ * With `during` (the save's state and the baseline it reached through
+ * refetches), keys are judged by rule 2's classification: a key awaiting its
+ * echo is edited if it differs from what was sent; any other key if it
+ * differs from that baseline, so values the form took from the server are
+ * not edits. Without a response, those keys confirm that baseline.
+ *
+ * A refetch during the save can show a value that is neither what the save
+ * started from, nor what it sent, nor what the response confirms (compared in
+ * sent space): someone else's write from before or after the save, or the
+ * server normalizing differently. Values can't order it against the response,
+ * so it is never resolved silently. Where the form holds another value for
+ * that key (the one sent, an edit, a "Keep mine"), the form keeps it, dirty,
+ * against the refetched value as baseline: a conflict reported during the save
+ * survives, and "theirs" is the value the person saw. Anywhere else the
+ * response is confirmed, as when nothing was refetched.
+ *
+ * During a transforming save, a key the person hasn't changed since is judged
+ * in sent space by what the save sent for it, and is also confirmed when that
+ * agrees with the new baseline: a value `toSent` normalized is confirmed,
+ * never kept as an edit.
  */
 export function reconcileSaveSuccess<T extends DraftValues>({
   submitted,
   current,
   confirmed,
+  during,
 }: {
   submitted: T;
   current: T;
   confirmed?: T;
+  during?: { save: PendingSave<T>; baseline: T };
 }): { baseline: T; current: T } {
-  const baseline = confirmed ?? submitted;
+  const awaiting = (key: string) => !during || awaitingEcho(during.save, key);
+  const reference = (key: string) => (awaiting(key) ? submitted[key] : during?.baseline[key]);
+  const keys = keysOf(submitted, current, ...(during ? [during.baseline] : []));
+  const reachedSent = during && inSentSpace(during.save, during.baseline);
+  const fromSent = during && inSentSpace(during.save, during.save.from);
+  const responded = confirmed ?? (during ? (Object.fromEntries(keys.map((key) => [key, reference(key)])) as T) : submitted);
+  const respondedSent = during && inSentSpace(during.save, responded);
+  const agreesWithReached = during && agreesWith(current, during.baseline, during.save);
+  const contested = new Set(
+    keys.filter(
+      (key) =>
+        reachedSent &&
+        ![fromSent?.[key], during?.save.values[key], respondedSent?.[key]].some((known) => deepEqual(reachedSent[key], known)) &&
+        !agreesWithReached?.(key),
+    ),
+  );
+  const baseline =
+    contested.size === 0 ? responded : ({ ...responded, ...Object.fromEntries([...contested].map((key) => [key, during?.baseline[key]])) } as T);
+  const agreesWithNew = agreesWith(current, baseline, during?.save);
+  const edited = (key: string) => {
+    if (contested.has(key)) return true;
+    if (!untouched(during?.save, current, key)) return !deepEqual(current[key], reference(key));
+    const sentSpaceReference = awaiting(key) ? submitted[key] : reachedSent?.[key];
+    return !deepEqual(during?.save.values[key], sentSpaceReference) && !agreesWithNew(key);
+  };
   const next: DraftValues = { ...baseline };
-  for (const key of keysOf(submitted, current)) {
-    if (!deepEqual(current[key], submitted[key])) next[key] = current[key];
+  for (const key of keys) {
+    if (edited(key)) next[key] = current[key];
   }
   return { baseline, current: next as T };
 }

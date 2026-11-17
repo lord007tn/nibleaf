@@ -55,13 +55,14 @@ it.each(['page', 'language', 'version'])('resets reader feedback and URL when %s
   initial.project.config = { addons: { feedback: true, editUrl: 'https://example.test/edit?url={url}' } };
   window.history.replaceState(null, '', '/sites/project-1/start');
   await act(async () => root.render(<SitePageView data={initial} projectId="project-1" />));
-  const initialFeedback = container.querySelector('button');
+  // The feedback buttons (the page actions by the title come first in the page).
+  const initialFeedback = container.querySelector<HTMLButtonElement>('button[aria-pressed]');
   if (!initialFeedback) throw new Error('Missing feedback button');
   await act(async () => initialFeedback.click());
   expect(initialFeedback.isConnected).toBe(true);
   expect(initialFeedback.getAttribute('aria-pressed')).toBe('true');
-  expect(container.querySelector('[role="status"]')?.textContent).toContain('Thanks');
-  expect(container.querySelectorAll('button')).toHaveLength(2);
+  expect(container.querySelector('[role="status"]:not(:empty)')?.textContent).toContain('Thanks');
+  expect(container.querySelectorAll('button[aria-pressed]')).toHaveLength(2);
   const next = {
     ...initial,
     page: { ...initial.page, path: change === 'page' ? 'next' : 'start' },
@@ -71,7 +72,7 @@ it.each(['page', 'language', 'version'])('resets reader feedback and URL when %s
   const url = `/sites/project-1/${change === 'version' ? 'v2/' : ''}${next.page.path}${change === 'language' ? '?lang=ar' : ''}`;
   window.history.replaceState(null, '', url);
   await act(async () => root.render(<SitePageView data={next} projectId="project-1" />));
-  expect(container.querySelector('button')?.getAttribute('aria-pressed')).toBe('false');
+  expect(container.querySelector('button[aria-pressed]')?.getAttribute('aria-pressed')).toBe('false');
   expect(container.querySelector('[role="status"]')?.textContent).toBe('');
   const edit = container.querySelector<HTMLAnchorElement>('a[target="_blank"]');
   if (!edit) throw new Error('Missing edit link');

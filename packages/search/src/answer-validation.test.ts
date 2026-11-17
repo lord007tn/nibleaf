@@ -20,15 +20,18 @@ const chunk: SearchChunk = {
 
 describe('chat heading detection', () => {
   it.each([
-    ['refusal with 100k spaces', `I couldn't verify this from the docs.${' '.repeat(100_000)}Try another question. [S1]`, 'no_answer'],
-    ['100k spaces interleaved with partial refusal tokens', `I could${`n't v${' '.repeat(1000)}`.repeat(100)}erify this. [S1]`, 'answered'],
-  ])('handles %s in under 50ms after warm-up', (_name, answer, status) => {
-    validateCitedAnswer(answer, [chunk], '', 'chat');
-    const started = performance.now();
-    const result = validateCitedAnswer(answer, [chunk], '', 'chat');
-    const elapsed = performance.now() - started;
-    expect(result.status).toBe(status);
-    expect(elapsed).toBeLessThan(50);
+    [
+      'refusal with 100k spaces',
+      (n: number) => `I couldn't verify this from the docs.${' '.repeat(n * 1000)}Try another question. [S1]`,
+      'no_answer',
+    ],
+    [
+      '100k spaces interleaved with partial refusal tokens',
+      (n: number) => `I could${`n't v${' '.repeat(1000)}`.repeat(n)}erify this. [S1]`,
+      'answered',
+    ],
+  ] as const)('handles %s (its cost: answer-validation.growth.test.ts)', (_name, build, status) => {
+    expect(validateCitedAnswer(build(100), [chunk], '', 'chat').status).toBe(status);
   });
   it.each([
     [
@@ -52,10 +55,9 @@ describe('chat heading detection', () => {
     expect(validateCitedAnswer(answer, [chunk], '', 'chat')).toMatchObject({ status: 'no_answer' });
   });
   it('stays linear on a hash followed by a long run of spaces', () => {
-    const started = performance.now();
-    const result = validateCitedAnswer(`Use s3 [S1]\n\n#${' '.repeat(50_000)}x\n\nMore s3 [S1]`, [chunk], 'storage', 'chat');
-    expect(performance.now() - started).toBeLessThan(500);
-    expect(result).toMatchObject({ status: 'answered' });
+    const answer = (n: number) => `Use s3 [S1]\n\n#${' '.repeat(n)}x\n\nMore s3 [S1]`;
+    const validate = (text: string) => validateCitedAnswer(text, [chunk], 'storage', 'chat');
+    expect(validate(answer(50_000))).toMatchObject({ status: 'answered' });
   });
 
   it('treats bold section labels like headings (live model output)', () => {

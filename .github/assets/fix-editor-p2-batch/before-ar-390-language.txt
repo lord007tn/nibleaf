@@ -1,0 +1,12 @@
+- dialog "إضافة لغة":
+  - heading "إضافة لغة" [level=2]
+  - paragraph: أنشئ نسخة مترجمة جديدة من صفحات هذا الموقع.
+  - group:
+    - combobox [expanded]: Arab
+    - group
+  - listbox "Suggestions":
+    - group:
+      - option "العربية Arabic ar من اليمين إلى اليسار" [selected]
+      - option "Português (Brasil) Portuguese (Brazil) pt-BR"
+  - button "إضافة لغة غير مدرجة"
+  - button "إغلاق"

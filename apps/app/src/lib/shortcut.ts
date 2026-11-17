@@ -23,6 +23,7 @@ export const detectShortcutPlatform = (nav?: NavigatorLike | null): ShortcutPlat
 };
 
 export const searchShortcutLabel = (platform: ShortcutPlatform): string => (platform === 'apple' ? '⌘K' : 'Ctrl K');
+export const askAiShortcutLabel = (platform: ShortcutPlatform): string => (platform === 'apple' ? '⌘I' : 'Ctrl I');
 
 const subscribe = () => () => undefined;
 const getServerPlatform = (): ShortcutPlatform => 'other';
@@ -32,6 +33,11 @@ const getClientPlatform = (): ShortcutPlatform => {
   clientPlatform ??= detectShortcutPlatform(globalThis.navigator);
   return clientPlatform;
 };
+
+/** The Ask AI hotkey label ("⌘I" / "Ctrl I") for the visitor's platform. */
+export function useAskAiShortcutLabel(): string {
+  return askAiShortcutLabel(useSyncExternalStore(subscribe, getClientPlatform, getServerPlatform));
+}
 
 /** The search hotkey label ("⌘K" / "Ctrl K") for the visitor's platform. */
 export function useSearchShortcutLabel(): string {

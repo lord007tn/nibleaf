@@ -63,6 +63,7 @@ export const landingEn: LandingCopy = {
         'Says when it can’t answer, and suggests articles or your support link instead of guessing',
         'Offers related questions, and readers can rate every answer',
       ],
+      cta: { label: 'Insights and AI-assistant fixes for support teams', href: '/use-cases/support-teams' },
       noteLabel: 'Requirements and availability',
       note: `Needs an AI provider key: your workspace’s own OpenAI or OpenRouter key, or one your instance provides. You turn it on per site, and self-hosters also run the optional Qdrant search service. ${availabilityNote('askAi', 'en')}`,
       media: {
@@ -136,6 +137,7 @@ export const landingEn: LandingCopy = {
         'Preview privately, then publish when you’re ready',
         'Every publish is a snapshot you can roll back to',
       ],
+      cta: { label: 'Previews, versions and translations for product teams', href: '/use-cases/product-docs' },
       media: {
         key: 'editor',
         alt: 'The Nibleaf editor with the slash menu open over an article, listing basic blocks such as text, headings and lists.',
@@ -268,6 +270,7 @@ export const landingEn: LandingCopy = {
         a: `Ask AI needs an AI provider key and is turned on per site. With your workspace’s own OpenAI or OpenRouter key, stored encrypted, your provider bills you for those calls. An instance can also provide a key of its own. Daily limits on answers and tokens keep usage in check, and self-hosters also run the optional Qdrant search service. The editor’s writing assistant is separate and doesn’t use your workspace key. ${availabilityNote('askAi', 'en')}`,
       },
       {
+        featured: true,
         q: 'Does Ask AI make things up?',
         a: 'It answers only from your published docs and cites the sections it used. When it isn’t confident, it says so and suggests articles or your support link instead. AI models can still make mistakes, which is why readers always see the sources.',
       },
@@ -276,6 +279,7 @@ export const landingEn: LandingCopy = {
         a: 'Yes. Pages are stored as Markdown, and you can export them at any time as Markdown, HTML or PDF, or keep them in your own GitHub repository. The code is open source too.',
       },
       {
+        featured: true,
         q: 'Can I import from Mintlify or GitBook?',
         a: `Yes, from a public GitHub repository: a Mintlify docs repo, or a GitBook repo set up with Git Sync. Pages, navigation and images come across. Check any custom components after the import. Ghost exports can be imported too. ${groupAvailabilityNote('GitBook import', ['gitbookImport'], 'en') ?? ''}`,
       },
@@ -288,9 +292,14 @@ export const landingEn: LandingCopy = {
         a: `Assistants that support MCP. Our docs cover ChatGPT, Claude (web, desktop and Claude Code), Cursor and VS Code. Connect by signing in, or with a scoped key that expires. Self-hosters turn MCP on first. ${availabilityNote('supportMcp', 'en')}`,
       },
       {
+        featured: true,
         q: 'What happens to my readers’ data?',
         a: `Reader analytics store no IP addresses. If your site asks readers for consent, their visits are linked only after they agree. Search terms are kept only if you turn that on, and a term appears only after two different visits searched for it. Ask AI sends questions and matching passages to the AI provider you choose, under that provider’s terms. You can turn off saving Ask AI conversations. ${groupAvailabilityNote('The analytics pipeline described here', ['readerAnalytics'], 'en') ?? ''}`,
       },
+    ],
+    moreLinks: [
+      { label: 'More questions on the pricing page', href: '/pricing#faq' },
+      { label: 'Read the blog', href: '/blog' },
     ],
   },
   blog: {

@@ -1,0 +1,32 @@
+The 'BrandingSettings: uploads' tests of components/branding-settings.test.tsx, run against main's
+components/project-settings/branding-section.tsx (run at 72db23107; the file is identical at the current merge base a72e5f398) with mutate() shims on the same mocks.
+All 10 fail on main. Every one passes on this branch. The first assertion that failed in each:
+
+- fills only its own field, never saves, and the route guard sees the filled draft
+    AssertionError: expected "vi.fn()" to be called with arguments: [ 'settings.branding.uploaded', …(1) ]
+- keeps the value and names the field once when an upload fails
+    AssertionError: expected "vi.fn()" to be called with arguments: [ …(2) ]
+- does not overwrite a field typed in while its upload ran
+    AssertionError: expected 'https://cdn.example/assets/light.svg' to be '/typed-meanwhile.svg' // Object.is equality
+- does not refill a field cleared while its upload ran
+    AssertionError: expected 'https://cdn.example/assets/favicon.png' to be '' // Object.is equality
+- does not re-dirty a draft discarded before the upload finished
+    Error: No forms.discard button in the save bar
+- never fills another site's form, nor reports there, when the first site's upload settles
+    AssertionError: expected 'https://cdn.example/assets/a-light.svg' to be '/b-light.svg' // Object.is equality
+- drops a result from an earlier visit after A → B → A
+    AssertionError: expected { …(4) } to deeply equal { logoLight: '/logo/light.svg', …(3) }
+- runs uploads for different fields side by side, each with its own progress and result
+    AssertionError: expected [ false, false, true ] to deeply equal [ true, false, true ]
+- starts one upload per field at a time
+    AssertionError: expected "vi.fn()" to be called 1 times, but got 2 times
+- a save during an upload sends the draft as it is, and the upload then fills a new draft
+    Error: No common.save button in the save bar
+    TypeError: Cannot read properties of undefined (reading 'then')
+
+Race regressions that fail on main for the race itself:
+- a field typed in or cleared during its upload is overwritten by the late URL;
+- an upload started on site A fills the form after switching to B, and after A -> B -> A, when the form instance is reused
+  (the editor host keys the section by site today, which hides this there; the toast still fires);
+- one shared uploading marker: a second field's upload clears the first one's progress;
+- choosing a file again for a busy field starts a second upload.

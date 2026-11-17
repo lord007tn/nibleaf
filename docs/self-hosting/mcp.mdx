@@ -23,18 +23,19 @@ deployments, and integrations. Support-writer tools can create and edit page
 drafts and publish them after an explicit preview and confirmation. Deletion,
 settings and membership changes, provider credentials, payment actions,
 database primitives, arbitrary files, and code execution are not available. For
-the support workflow and the complete tool catalog, see
-[Work on your docs with an AI assistant](/product/ai-assistants).
+the support workflow, see
+[Use Nibleaf from your AI assistant](/product/ai-assistants); for the complete
+tool catalog, see the [AI assistant (MCP) reference](/reference/mcp).
 
 ## Check your release first
 
 This page describes the support-writer tools and OAuth, which ship in v0.2.1.
 The v0.2.0 image shipped only the read-only MCP surface. Apply the release's
-migrations before enabling the new capabilities. The pinned production Compose file passes `MCP_ENABLED`,
-`MCP_ALLOWED_HOSTS`, and `MCP_RATE_LIMIT_PER_MIN`, but does not pass
-`MCP_WRITE_RATE_LIMIT_PER_MIN` or `MCP_PUBLISH_RATE_LIMIT_PER_HOUR`. Add explicit
-API environment mappings in an override to customize those source-era limits;
-`.env` alone does not pass them through. See the
+migrations before enabling the new capabilities. The bundled Compose files
+(`docker-compose.yml`, `docker-compose.prod.yml` and `docker-compose.coolify.yml`)
+pass `MCP_ENABLED`, `MCP_ALLOWED_HOSTS`, `MCP_RATE_LIMIT_PER_MIN`,
+`MCP_WRITE_RATE_LIMIT_PER_MIN` and `MCP_PUBLISH_RATE_LIMIT_PER_HOUR` to the API
+service, so setting them in `.env` is enough. See the
 [environment reference](/reference/environment-variables).
 
 ## Enable the endpoint
@@ -61,7 +62,7 @@ disabled until the public TLS and proxy path return the expected hostname.
 
 ## Personal keys and live access checks
 
-Any project member creates their own key in **Settings → AI assistants (MCP)**.
+Any project member creates their own key in **Settings → Connect AI tools**.
 They pick a preset (or individual scopes under
 **Advanced: choose individual permissions**) and an expiry of 7, 30, 90, 180, or
 365 days, then select **Create key**. The secret is shown once:
@@ -465,7 +466,7 @@ token works once. Every refresh re-checks that the connection is still live.
 
 ### Connected apps and revocation
 
-**Settings → AI assistants (MCP) → Connected apps** lists live connections with
+**Settings → Connect AI tools → Connected apps** lists live connections with
 the app, the preset, who connected it, the last use, and the latest activity.
 Editors see and disconnect their own; admins and owners see and disconnect
 everyone's. Disconnecting revokes the grant, its refresh tokens, and its consent

@@ -1,6 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteContentT } from '@nibleaf/i18n/site-content';
-import { Link, ZoomIn } from 'lucide-react';
+import { Link, X, ZoomIn } from 'lucide-react';
 import { type ComponentProps, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -40,14 +40,41 @@ export function SectionLink({ id, language }: { id: string; language?: string })
   }
   return (
     // The heading (its id) describes each button, so a list of buttons tells them apart.
-    <button type="button" className="reader-section-link reader-control" aria-label={t('copySectionLink')} aria-describedby={id} onClick={copy}>
+    // `lang`: its label is the reader's, which can differ from the article's on a fallback page.
+    <button
+      type="button"
+      className="reader-section-link reader-control"
+      aria-label={t('copySectionLink')}
+      aria-describedby={id}
+      lang={language}
+      onClick={copy}
+    >
       <Link className="size-4" aria-hidden />
     </button>
   );
 }
 
+/** How much of the viewport the full-size view may fill (typeset.css, .reader-image-dialog). */
+const LIGHTBOX_FILL = 0.9;
+/** Zoom only when the full-size view shows the image at least this much larger than inline. */
+const ZOOM_GAIN = 1.2;
+
+/** The width the full-size view would draw the image at: its natural size,
+ *  scaled down to fit 90% of the viewport either way. */
+export const lightboxWidth = (natural: { width: number; height: number }, viewport: { width: number; height: number }) =>
+  Math.min(natural.width, viewport.width * LIGHTBOX_FILL, natural.width * ((viewport.height * LIGHTBOX_FILL) / natural.height));
+
+/** Worth zooming: a real picture, not a link, that the full-size view would
+ *  show meaningfully larger than the article does (PUB-012). A 436px screenshot
+ *  shown at 436px gains nothing from a lightbox. */
 const isZoomable = (image: HTMLImageElement) =>
-  !image.closest('a') && image.naturalWidth > 96 && image.naturalHeight > 96 && image.width > 64 && image.height > 64;
+  !image.closest('a') &&
+  image.naturalWidth > 96 &&
+  image.naturalHeight > 96 &&
+  image.width > 64 &&
+  image.height > 64 &&
+  lightboxWidth({ width: image.naturalWidth, height: image.naturalHeight }, { width: window.innerWidth, height: window.innerHeight }) >=
+    image.width * ZOOM_GAIN;
 
 // Display and auto-margin utilities, with any variants (`dark:hidden`, `md:block`, `mx-auto`).
 const WRAPPER_CLASS = /^(?:[\w-]+:)*(?:hidden|block|inline|inline-block|flex|inline-flex|grid|contents|mx-auto|ms-auto|me-auto)$/;
@@ -62,6 +89,9 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
     .filter((name) => WRAPPER_CLASS.test(name))
     .join(' ');
   const [zoomable, setZoomable] = useState(false);
+  // The full-size copy is only mounted while the dialog is open, so the page
+  // doesn't hold a second image (and request) for every picture.
+  const [fullSize, setFullSize] = useState(false);
   const image = useRef<HTMLImageElement>(null);
   const dialog = useRef<HTMLDialogElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -76,34 +106,42 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
       if (element.complete && element.naturalWidth > 0) setZoomable(isZoomable(element));
     };
     measure();
-    if (typeof ResizeObserver === 'undefined') return;
+    // A wider or narrower window changes what the full-size view would gain.
+    window.addEventListener('resize', measure);
+    if (typeof ResizeObserver === 'undefined') return () => window.removeEventListener('resize', measure);
     const observer = new ResizeObserver(measure);
     observer.observe(element);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
   }, []);
   const alt = props.alt?.trim();
   const openFullSize = () => {
     const modal = dialog.current;
     const source = trigger.current;
     if (!modal || !source) return;
-    // The dialog is portaled out of the article, so carry over its direction and language.
+    // The dialog is portaled out of the article, so carry over its direction. Its
+    // text (the close button) is the reader's, so it takes the reader's language.
     modal.dir = getComputedStyle(source).direction === 'rtl' ? 'rtl' : 'ltr';
-    const lang = source.closest('[lang]')?.getAttribute('lang');
+    const lang = language ?? source.closest('[lang]')?.getAttribute('lang');
     if (lang) modal.lang = lang;
+    setFullSize(true);
     modal.showModal();
   };
   return (
     <span className={cn('reader-image relative inline-block max-w-full', wrapperClassName, wrapperClassName && 'w-fit')}>
-      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: load measures dimensions; interaction uses a separate button. */}
+      {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: a pointer shortcut to the zoom button beside it, which keyboard and screen-reader users reach. */}
       <img
         {...props}
-        className={className}
+        className={cn(className, zoomable && 'cursor-zoom-in')}
         ref={image}
         alt={props.alt ?? ''}
         onLoad={(event) => {
           props.onLoad?.(event);
           setZoomable(isZoomable(event.currentTarget));
         }}
+        onClick={zoomable ? openFullSize : undefined}
       />
       {zoomable ? (
         <>
@@ -112,6 +150,7 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
             type="button"
             className="reader-image-zoom reader-control"
             aria-label={alt ? t('viewFullSizeOf', { alt }) : t('viewFullSize')}
+            lang={language}
             onClick={openFullSize}
           >
             <ZoomIn className="size-4" aria-hidden />
@@ -127,16 +166,30 @@ export function ContentImage({ language, className, ...props }: ComponentProps<'
                 event.preventDefault();
                 dialog.current?.close();
               }}
-              onClose={() => trigger.current?.focus()}
+              onClose={() => {
+                setFullSize(false);
+                trigger.current?.focus();
+              }}
               onClick={(event) => {
                 // A click on the dialog element itself (not its content) is a backdrop click.
                 if (event.target === event.currentTarget) dialog.current?.close();
               }}
             >
-              <button type="button" className="reader-control" onClick={() => dialog.current?.close()}>
-                {t('closeImage')}
+              <button
+                type="button"
+                className="reader-image-close reader-control"
+                aria-label={t('closeImage')}
+                title={t('closeImage')}
+                onClick={() => dialog.current?.close()}
+              >
+                <X className="size-5" aria-hidden />
               </button>
-              <img src={props.src} alt={props.alt ?? ''} />
+              {fullSize ? (
+                <figure className="reader-image-figure">
+                  <img src={props.src} alt={props.alt ?? ''} decoding="async" />
+                  {alt ? <figcaption dir="auto">{alt}</figcaption> : null}
+                </figure>
+              ) : null}
             </dialog>,
             document.body,
           )}

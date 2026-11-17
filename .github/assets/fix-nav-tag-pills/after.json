@@ -1,0 +1,129 @@
+{
+  "label": "after",
+  "ar-1440-light": {
+    "row": {
+      "link": {
+        "x": 1179,
+        "y": 157,
+        "width": 212,
+        "height": 70
+      },
+      "title": {
+        "x": 1189,
+        "y": 163,
+        "width": 192,
+        "height": 40
+      },
+      "tag": {
+        "x": 1295,
+        "y": 207,
+        "width": 86,
+        "height": 14
+      },
+      "tagText": "Reservations"
+    },
+    "bodyBackground": "rgb(250, 250, 250)",
+    "url": "http://docs.joodbooking.com/blog/kyf-ndyf-wousoumwsm-mn-qym-laaddt?lang=ar"
+  },
+  "ar-1440-dark": {
+    "row": {
+      "link": {
+        "x": 1179,
+        "y": 157,
+        "width": 212,
+        "height": 70
+      },
+      "title": {
+        "x": 1189,
+        "y": 163,
+        "width": 192,
+        "height": 40
+      },
+      "tag": {
+        "x": 1295,
+        "y": 207,
+        "width": 86,
+        "height": 14
+      },
+      "tagText": "Reservations"
+    },
+    "bodyBackground": "rgb(10, 10, 10)",
+    "url": "http://docs.joodbooking.com/blog/kyf-ndyf-wousoumwsm-mn-qym-laaddt?lang=ar"
+  },
+  "ar-390-light": {
+    "row": {
+      "link": {
+        "x": 114,
+        "y": 239,
+        "width": 235,
+        "height": 70
+      },
+      "title": {
+        "x": 124,
+        "y": 245,
+        "width": 215,
+        "height": 40
+      },
+      "tag": {
+        "x": 252,
+        "y": 289,
+        "width": 86,
+        "height": 14
+      },
+      "tagText": "Reservations"
+    },
+    "bodyBackground": "rgb(250, 250, 250)",
+    "url": "http://docs.joodbooking.com/blog/kyf-ndyf-wousoumwsm-mn-qym-laaddt?lang=ar"
+  },
+  "en-1440-light": {
+    "row": {
+      "link": {
+        "x": 49,
+        "y": 223,
+        "width": 212,
+        "height": 70
+      },
+      "title": {
+        "x": 59,
+        "y": 229,
+        "width": 192,
+        "height": 40
+      },
+      "tag": {
+        "x": 59,
+        "y": 273,
+        "width": 77,
+        "height": 14
+      },
+      "tagText": "Shrh Shsht"
+    },
+    "bodyBackground": "rgb(250, 250, 250)",
+    "url": "http://docs.joodbooking.com/blog/kyfy-qttaa2-tdhkr-lldaam-lfny-mn-dkhl-lbrnmj?lang=en"
+  },
+  "en-390-light": {
+    "row": {
+      "link": {
+        "x": 41,
+        "y": 329,
+        "width": 235,
+        "height": 70
+      },
+      "title": {
+        "x": 51,
+        "y": 335,
+        "width": 215,
+        "height": 40
+      },
+      "tag": {
+        "x": 51,
+        "y": 379,
+        "width": 77,
+        "height": 14
+      },
+      "tagText": "Shrh Shsht"
+    },
+    "bodyBackground": "rgb(250, 250, 250)",
+    "url": "http://docs.joodbooking.com/blog/kyfy-qttaa2-tdhkr-lldaam-lfny-mn-dkhl-lbrnmj?lang=en"
+  },
+  "externalAttempts": 0
+}

@@ -1,0 +1,491 @@
+{
+  "$comment": "Source terms for translating the Nibleaf dashboard, reader and emails. Each locale has glossary/<locale>.json with one entry per id here (translation, plural or short forms, notes), and every catalog string uses those words. doNotTranslate values stay as written in every locale; untranslated.test.ts also accepts a string made only of them, numbers, punctuation and {placeholders}.",
+  "doNotTranslate": [
+    "Nibleaf",
+    "Nibleaf Cloud",
+    "Mintlify",
+    "GitBook",
+    "Docusaurus",
+    "ReadMe",
+    "Notion",
+    "Confluence",
+    "WordPress",
+    "Ghost",
+    "GitHub",
+    "GitLab",
+    "Bitbucket",
+    "Git",
+    "Discord",
+    "Slack",
+    "Zapier",
+    "Google",
+    "Google Analytics",
+    "Cloudflare",
+    "Vercel",
+    "Netlify",
+    "Docker",
+    "Docker Compose",
+    "Coolify",
+    "ClickHouse",
+    "PostgreSQL",
+    "Redis",
+    "OpenRouter",
+    "OpenAI",
+    "ChatGPT",
+    "Claude",
+    "Anthropic",
+    "Gemini",
+    "Perplexity",
+    "Cursor",
+    "VS Code",
+    "Markdown",
+    "MDX",
+    "HTML",
+    "CSS",
+    "JSON",
+    "YAML",
+    "CSV",
+    "PDF",
+    "SVG",
+    "PNG",
+    "ZIP",
+    "MCP",
+    "API",
+    "REST",
+    "OpenAPI",
+    "Swagger",
+    "OAuth",
+    "SSO",
+    "SAML",
+    "URL",
+    "URI",
+    "DNS",
+    "CNAME",
+    "TXT",
+    "SSL",
+    "TLS",
+    "HTTPS",
+    "SEO",
+    "RSS",
+    "SMTP",
+    "ID",
+    "IP",
+    "LCP",
+    "INP",
+    "CLS",
+    "p75",
+    "llms.txt",
+    "llms-full.txt",
+    "robots.txt",
+    "sitemap.xml",
+    "KB",
+    "MB",
+    "GB",
+    "ms",
+    "px",
+    "UTC",
+    "Ctrl",
+    "Cmd",
+    "Shift",
+    "Alt",
+    "Esc"
+  ],
+  "terms": [
+    {
+      "id": "site",
+      "en": "site, website",
+      "definition": "One documentation site a team publishes, with its own pages, languages, domain and settings.",
+      "note": "The main object in the dashboard. Use one word for it everywhere; English uses \"site\" and \"website\" interchangeably, translations pick one."
+    },
+    {
+      "id": "organization",
+      "en": "organization (legacy English copy also says \"workspace\")",
+      "definition": "The team account that owns many sites, with members, billing and settings.",
+      "note": "Never translate as \"workspace\" (the UI rule is organization, never workspace). English strings that still say workspace mean this."
+    },
+    {
+      "id": "page",
+      "en": "page",
+      "definition": "One document in a site's page tree."
+    },
+    {
+      "id": "group",
+      "en": "group",
+      "definition": "A heading in the page tree that holds pages, without content of its own."
+    },
+    {
+      "id": "page-tree",
+      "en": "page tree",
+      "definition": "The ordered, nested list of a site's groups and pages in the editor and the reader's sidebar."
+    },
+    {
+      "id": "publish",
+      "en": "publish (verb), publish (noun: one published version)",
+      "definition": "Make the current draft the version readers see.",
+      "note": "Button label: the shortest imperative. A \"publish\" as a noun is one entry in the publish history."
+    },
+    {
+      "id": "draft",
+      "en": "draft",
+      "definition": "The unpublished state of a site's pages, which only the team sees.",
+      "note": "Unpublished changes = changes in the draft."
+    },
+    {
+      "id": "unpublished-changes",
+      "en": "unpublished changes",
+      "definition": "Edits saved in the draft that readers don't see yet."
+    },
+    {
+      "id": "preview",
+      "en": "preview",
+      "definition": "Seeing the draft (or the live site) the way readers will.",
+      "note": "Button label: one word."
+    },
+    {
+      "id": "live-site",
+      "en": "live site",
+      "definition": "The published version readers see."
+    },
+    {
+      "id": "reader",
+      "en": "reader",
+      "definition": "Someone reading a published site. Not a team member.",
+      "note": "Analytics are about readers; keep it distinct from user and member."
+    },
+    {
+      "id": "member",
+      "en": "member",
+      "definition": "A person with access to an organization or a site."
+    },
+    {
+      "id": "people",
+      "en": "People",
+      "definition": "The page listing an organization's members, invitations and join links."
+    },
+    {
+      "id": "invitation",
+      "en": "invitation, invite",
+      "definition": "An email asking someone to join an organization or site.",
+      "note": "Button: \"Invite\" (verb, short)."
+    },
+    {
+      "id": "join-link",
+      "en": "join link",
+      "definition": "A shareable link that lets anyone with it join, with a set role."
+    },
+    {
+      "id": "role",
+      "en": "role",
+      "definition": "What a member may do."
+    },
+    {
+      "id": "role-owner",
+      "en": "Owner",
+      "definition": "The role that can do everything, including deleting the organization.",
+      "note": "Capitalised as a role name in English; follow the locale's convention for role names consistently."
+    },
+    {
+      "id": "role-admin",
+      "en": "Admin",
+      "definition": "A site or organization role that manages settings and members.",
+      "note": "Distinct from a server administrator (operator) in failure messages."
+    },
+    {
+      "id": "role-editor",
+      "en": "Editor",
+      "definition": "A role that can write and publish pages.",
+      "note": "Also the name of the editing screen (\"the editor\"); disambiguate if the locale uses different words."
+    },
+    {
+      "id": "role-viewer",
+      "en": "Viewer",
+      "definition": "A role that can read the draft but not change it."
+    },
+    {
+      "id": "server-admin",
+      "en": "server administrator, operator",
+      "definition": "Whoever runs a self-hosted Nibleaf server. Not a site Admin."
+    },
+    {
+      "id": "account",
+      "en": "account",
+      "definition": "A person's own sign-in, profile and preferences."
+    },
+    {
+      "id": "sign-in",
+      "en": "sign in, sign up, sign out",
+      "definition": "Authentication actions.",
+      "note": "Use the locale's standard UI verbs; one pair everywhere."
+    },
+    {
+      "id": "settings",
+      "en": "settings",
+      "definition": "Configuration screens."
+    },
+    {
+      "id": "general",
+      "en": "General",
+      "definition": "The first settings section (name, address, basics)."
+    },
+    {
+      "id": "appearance",
+      "en": "Appearance",
+      "definition": "The settings section for theme, colours, logo and layout of the reader."
+    },
+    {
+      "id": "theme",
+      "en": "theme",
+      "definition": "A set of colours and styles for the reader; also light/dark mode."
+    },
+    {
+      "id": "custom-domain",
+      "en": "custom domain",
+      "definition": "A site's own address (docs.example.com) instead of the Nibleaf address."
+    },
+    {
+      "id": "domain",
+      "en": "domain, address",
+      "definition": "Where a site is reachable."
+    },
+    {
+      "id": "redirect",
+      "en": "redirect",
+      "definition": "A rule sending an old URL to a new one."
+    },
+    {
+      "id": "visibility",
+      "en": "visibility, access",
+      "definition": "Who can read a published site: public, password, or signed-in members."
+    },
+    {
+      "id": "add-on",
+      "en": "add-on",
+      "definition": "An optional site feature turned on in Settings (search, Ask AI, preview deployments…)."
+    },
+    {
+      "id": "integration",
+      "en": "integration",
+      "definition": "A connection to another service (Git, Discord, webhooks)."
+    },
+    {
+      "id": "webhook",
+      "en": "webhook",
+      "definition": "A URL Nibleaf calls on events.",
+      "note": "Many locales keep the English loanword; follow the locale's common developer usage."
+    },
+    {
+      "id": "api-key",
+      "en": "API key",
+      "definition": "A secret for calling the Nibleaf API."
+    },
+    {
+      "id": "token",
+      "en": "token",
+      "definition": "A secret credential (access token)."
+    },
+    {
+      "id": "branch",
+      "en": "branch",
+      "definition": "A parallel version of a site's content (Git sense)."
+    },
+    {
+      "id": "sync",
+      "en": "sync",
+      "definition": "Keeping content in step with a Git repository."
+    },
+    {
+      "id": "import",
+      "en": "import",
+      "definition": "Bringing existing docs in (from Mintlify, GitBook, Markdown…)."
+    },
+    {
+      "id": "export",
+      "en": "export",
+      "definition": "Downloading a site's content."
+    },
+    {
+      "id": "language",
+      "en": "language",
+      "definition": "A content language a site is published in (and the dashboard's interface language).",
+      "note": "Source language = the one translations start from."
+    },
+    {
+      "id": "ask-ai",
+      "en": "Ask AI",
+      "definition": "The reader feature that answers questions from the site's pages.",
+      "note": "Feature name: translate as a short imperative phrase readers understand, and use it identically everywhere."
+    },
+    {
+      "id": "ai-assistant",
+      "en": "AI assistant",
+      "definition": "The dashboard page that writes and edits with AI."
+    },
+    {
+      "id": "smart-ai",
+      "en": "Smart AI",
+      "definition": "Per-site AI settings (model, budget)."
+    },
+    {
+      "id": "analytics",
+      "en": "Analytics",
+      "definition": "The section with reader statistics."
+    },
+    {
+      "id": "page-views",
+      "en": "page views",
+      "definition": "How many times pages were loaded."
+    },
+    {
+      "id": "visits",
+      "en": "visits",
+      "definition": "Reading sessions."
+    },
+    {
+      "id": "searches",
+      "en": "searches",
+      "definition": "Reader searches on the site."
+    },
+    {
+      "id": "feedback",
+      "en": "feedback",
+      "definition": "Readers' \"Was this helpful?\" answers and comments."
+    },
+    {
+      "id": "period",
+      "en": "period, range",
+      "definition": "The time window of a report (last 7 days, custom range)."
+    },
+    {
+      "id": "compare",
+      "en": "compare with previous period",
+      "definition": "Showing change against the window before."
+    },
+    {
+      "id": "web-vitals",
+      "en": "Web Vitals (Main content shows up, Responds to clicks, Layout stays still)",
+      "definition": "Page-speed measurements; the card names are plain-language, the abbreviations (LCP, INP, CLS) stay in English."
+    },
+    {
+      "id": "ai-crawlers",
+      "en": "AI crawlers, AI visibility",
+      "definition": "Bots of AI services reading the site, and how the site appears in AI answers."
+    },
+    {
+      "id": "plan",
+      "en": "plan",
+      "definition": "The subscription tier."
+    },
+    {
+      "id": "usage",
+      "en": "usage",
+      "definition": "How much of a plan's limits is used."
+    },
+    {
+      "id": "billing",
+      "en": "billing",
+      "definition": "Payment settings."
+    },
+    {
+      "id": "notifications",
+      "en": "notifications",
+      "definition": "In-app and email alerts."
+    },
+    {
+      "id": "history",
+      "en": "history",
+      "definition": "A page's earlier saved versions, and a site's list of publishes."
+    },
+    {
+      "id": "version",
+      "en": "version",
+      "definition": "One saved state of a page's content; also a docs version a site keeps side by side (v1, v2)."
+    },
+    {
+      "id": "restore",
+      "en": "restore",
+      "definition": "Bringing back an earlier version, or a page from Trash."
+    },
+    {
+      "id": "promote",
+      "en": "promote into main",
+      "definition": "Merging a branch's content into the main content. Not the same as publishing, which makes the draft live."
+    },
+    {
+      "id": "rollback",
+      "en": "roll back",
+      "definition": "Making an earlier publish live again."
+    },
+    {
+      "id": "checks",
+      "en": "publish checks",
+      "definition": "Problems found before publishing (broken links, missing titles).",
+      "note": "\"Fix\" button on each check: short imperative."
+    },
+    {
+      "id": "danger-zone",
+      "en": "Danger zone",
+      "definition": "The settings section with irreversible actions (delete, transfer)."
+    },
+    {
+      "id": "delete",
+      "en": "delete, move to Trash",
+      "definition": "Deleting a page or group moves it to Trash, where it stays restorable for 30 days.",
+      "note": "Not permanent: keep the word distinct from \"delete permanently\"."
+    },
+    {
+      "id": "trash",
+      "en": "Trash",
+      "definition": "Where deleted pages and groups wait for 30 days before they are removed for good."
+    },
+    {
+      "id": "delete-permanently",
+      "en": "delete permanently, delete forever",
+      "definition": "Destroying something with no way back (emptying Trash, deleting an organization or site)."
+    },
+    {
+      "id": "remove",
+      "en": "remove",
+      "definition": "Taking something out of a list without destroying it (a member, a domain, a redirect)."
+    },
+    {
+      "id": "save",
+      "en": "save, saved, unsaved changes",
+      "definition": "Form saving."
+    },
+    {
+      "id": "cancel",
+      "en": "cancel",
+      "definition": "Dismiss without changes."
+    },
+    {
+      "id": "copy",
+      "en": "copy, copied",
+      "definition": "Clipboard actions."
+    },
+    {
+      "id": "self-hosted",
+      "en": "self-hosted",
+      "definition": "Running Nibleaf on your own server (vs Nibleaf Cloud)."
+    },
+    {
+      "id": "dashboard",
+      "en": "dashboard",
+      "definition": "The signed-in app where teams manage sites."
+    },
+    {
+      "id": "editor-screen",
+      "en": "editor",
+      "definition": "The screen where pages are written."
+    },
+    {
+      "id": "component",
+      "en": "component, block",
+      "definition": "A content element inserted in a page (callout, tabs, steps, card)."
+    },
+    {
+      "id": "callout",
+      "en": "callout",
+      "definition": "A highlighted note block (Note, Tip, Warning)."
+    }
+  ]
+}

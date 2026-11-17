@@ -1,0 +1,386 @@
+{
+  "environment": "Component fixture: the real Variables section (before: main; after: this branch) with the real design system, EN/AR catalogs, project query and config mutation, in an editor-canvas frame; fictional site with fictional public variables; project GET and config PATCH (arrays replace, like the API merge) answered by interception; not the signed-in dashboard or production",
+  "baseline": "afa096e7ad68545b54a30216bf1b2d0b7ed45a24",
+  "head": "358b5ff7e353d02e572a255d01f7da3fba88e66b",
+  "uncommitted": [],
+  "swappedForBefore": [
+    "apps/app/src/components/project-settings/variables-section.tsx"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "pristine-en-1440.png",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "rows": [
+          ["product", "Handbook"],
+          ["version", "4.2"],
+          ["support_email", "help@handbook.example"],
+          ["tagline_ar", "دليلك إلى المنصة"]
+        ],
+        "keyDir": ["ltr"],
+        "valueDir": ["auto"],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "rows": [
+          ["product", "Handbook"],
+          ["version", "4.2"],
+          ["support_email", "help@handbook.example"],
+          ["tagline_ar", "دليلك إلى المنصة"]
+        ],
+        "keyDir": ["ltr"],
+        "valueDir": ["auto"],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "pristine-en-390.png",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "rows": [
+          ["product", "Handbook"],
+          ["version", "4.2"],
+          ["support_email", "help@handbook.example"],
+          ["tagline_ar", "دليلك إلى المنصة"]
+        ],
+        "keyDir": ["ltr"],
+        "valueDir": ["auto"],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "rows": [
+          ["product", "Handbook"],
+          ["version", "4.2"],
+          ["support_email", "help@handbook.example"],
+          ["tagline_ar", "دليلك إلى المنصة"]
+        ],
+        "keyDir": ["ltr"],
+        "valueDir": ["auto"],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "pristine-ar-1440.png",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "rows": [
+          ["product", "Handbook"],
+          ["version", "4.2"],
+          ["support_email", "help@handbook.example"],
+          ["tagline_ar", "دليلك إلى المنصة"]
+        ],
+        "keyDir": ["ltr"],
+        "valueDir": ["auto"],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "rows": [
+          ["product", "Handbook"],
+          ["version", "4.2"],
+          ["support_email", "help@handbook.example"],
+          ["tagline_ar", "دليلك إلى المنصة"]
+        ],
+        "keyDir": ["ltr"],
+        "valueDir": ["auto"],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "pristine-ar-390.png",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "rows": [
+          ["product", "Handbook"],
+          ["version", "4.2"],
+          ["support_email", "help@handbook.example"],
+          ["tagline_ar", "دليلك إلى المنصة"]
+        ],
+        "keyDir": ["ltr"],
+        "valueDir": ["auto"],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "rows": [
+          ["product", "Handbook"],
+          ["version", "4.2"],
+          ["support_email", "help@handbook.example"],
+          ["tagline_ar", "دليلك إلى المنصة"]
+        ],
+        "keyDir": ["ltr"],
+        "valueDir": ["auto"],
+        "focused": null,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "keyboard-flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": {
+            "config": {
+              "variables": [
+                { "key": "product", "value": "Handbook" },
+                { "key": "version", "value": "4.2" },
+                { "key": "support_email", "value": "help@handbook.example" },
+                { "key": "tagline_ar", "value": "دليلك إلى المنصة" },
+                { "key": "docs_url", "value": "https://handbook.example/docs" }
+              ]
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened: the saved variables, no save bar",
+          "dir": "ltr",
+          "rows": [
+            ["product", "Handbook"],
+            ["version", "4.2"],
+            ["support_email", "help@handbook.example"],
+            ["tagline_ar", "دليلك إلى المنصة"]
+          ],
+          "keyDir": ["ltr"],
+          "valueDir": ["auto"],
+          "focused": null,
+          "toasts": [],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Tab: focus on Add variable",
+          "dir": "ltr",
+          "rows": [
+            ["product", "Handbook"],
+            ["version", "4.2"],
+            ["support_email", "help@handbook.example"],
+            ["tagline_ar", "دليلك إلى المنصة"]
+          ],
+          "keyDir": ["ltr"],
+          "valueDir": ["auto"],
+          "focused": "Add variable",
+          "toasts": [],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Enter on Add: a blank row, focus in its name",
+          "dir": "ltr",
+          "rows": [
+            ["product", "Handbook"],
+            ["version", "4.2"],
+            ["support_email", "help@handbook.example"],
+            ["tagline_ar", "دليلك إلى المنصة"],
+            ["", ""]
+          ],
+          "keyDir": ["ltr"],
+          "valueDir": ["auto"],
+          "focused": "Variable name",
+          "toasts": [],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "typed a name and a value: unsaved, nothing sent",
+          "dir": "ltr",
+          "rows": [
+            ["product", "Handbook"],
+            ["version", "4.2"],
+            ["support_email", "help@handbook.example"],
+            ["tagline_ar", "دليلك إلى المنصة"],
+            ["docs_url", "https://handbook.example/docs"]
+          ],
+          "keyDir": ["ltr"],
+          "valueDir": ["auto"],
+          "focused": "Variable value",
+          "toasts": [],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Shift+Tab: focus on Remove for \"version\"",
+          "dir": "ltr",
+          "rows": [
+            ["product", "Handbook"],
+            ["version", "4.2"],
+            ["support_email", "help@handbook.example"],
+            ["tagline_ar", "دليلك إلى المنصة"],
+            ["docs_url", "https://handbook.example/docs"]
+          ],
+          "keyDir": ["ltr"],
+          "valueDir": ["auto"],
+          "focused": "Remove variable version",
+          "toasts": [],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Enter on Remove: the row is gone, focus on the next row’s Remove, Undo offered",
+          "dir": "ltr",
+          "rows": [
+            ["product", "Handbook"],
+            ["support_email", "help@handbook.example"],
+            ["tagline_ar", "دليلك إلى المنصة"],
+            ["docs_url", "https://handbook.example/docs"]
+          ],
+          "keyDir": ["ltr"],
+          "valueDir": ["auto"],
+          "focused": "Remove variable support_email",
+          "toasts": ["Removed\nUndo"],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Alt+T, Tab ×2: focus on the toast’s Undo",
+          "dir": "ltr",
+          "rows": [
+            ["product", "Handbook"],
+            ["support_email", "help@handbook.example"],
+            ["tagline_ar", "دليلك إلى المنصة"],
+            ["docs_url", "https://handbook.example/docs"]
+          ],
+          "keyDir": ["ltr"],
+          "valueDir": ["auto"],
+          "focused": "Undo",
+          "toasts": ["Removed\nUndo"],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Enter on Undo: the row is back in place, the new row kept",
+          "dir": "ltr",
+          "rows": [
+            ["product", "Handbook"],
+            ["version", "4.2"],
+            ["support_email", "help@handbook.example"],
+            ["tagline_ar", "دليلك إلى المنصة"],
+            ["docs_url", "https://handbook.example/docs"]
+          ],
+          "keyDir": ["ltr"],
+          "valueDir": ["auto"],
+          "focused": "Remove variable version",
+          "toasts": [],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Ctrl+S: saving",
+          "dir": "ltr",
+          "rows": [
+            ["product", "Handbook"],
+            ["version", "4.2"],
+            ["support_email", "help@handbook.example"],
+            ["tagline_ar", "دليلك إلى المنصة"],
+            ["docs_url", "https://handbook.example/docs"]
+          ],
+          "keyDir": ["ltr"],
+          "valueDir": ["auto"],
+          "focused": "Variable name",
+          "toasts": [],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "saved and refetched: the rows the server holds, no save bar",
+          "dir": "ltr",
+          "rows": [
+            ["product", "Handbook"],
+            ["version", "4.2"],
+            ["support_email", "help@handbook.example"],
+            ["tagline_ar", "دليلك إلى المنصة"],
+            ["docs_url", "https://handbook.example/docs"]
+          ],
+          "keyDir": ["ltr"],
+          "valueDir": ["auto"],
+          "focused": "Variable name",
+          "toasts": [],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { type Branch, Prisma, prisma } from '@nibleaf/database';
 import { newId } from '@nibleaf/shared/ids';
+import { exceedsUtf8Bytes, MAX_PAGE_CONTENT_BYTES, oversizedPageContent } from '@nibleaf/shared/page-limits';
 import { joinPath } from '@nibleaf/shared/utils';
 import type { CreateBranchBody, MergeBranchBody } from '@nibleaf/validators';
 import { AppError, conflict, notFound } from '@/errors';
@@ -406,6 +407,43 @@ const rescopeImportIdentities = async (tx: Prisma.TransactionClient, projectId: 
   }
 };
 
+/** Promote copies version bodies over main pages. Each copied body is held to
+ *  the shared page rule against the main page's stored body: a page over
+ *  MAX_PAGE_CONTENT_BYTES may not grow. Main's rows are already locked by the
+ *  promote read, and only bodies over the cap are compared. A refusal is a 413
+ *  `page:too_large` listing the pages; nothing is promoted. */
+const assertPromotedContentFits = async (
+  tx: Prisma.TransactionClient,
+  projectId: string,
+  mainId: string,
+  updates: ReadonlyArray<{ id: string; contentFrom?: string }>,
+  sources: ReadonlyMap<string, { content: string }>,
+  rows: ReadonlyArray<{ id: string; path: string }>,
+) => {
+  const overCap = updates.flatMap((update) => {
+    const next = update.contentFrom ? sources.get(update.contentFrom)?.content : undefined;
+    return next !== undefined && exceedsUtf8Bytes(next, MAX_PAGE_CONTENT_BYTES) ? [{ id: update.id, next }] : [];
+  });
+  if (overCap.length === 0) return;
+  const stored = new Map<string, string>();
+  for (const chunk of chunks(overCap.map((update) => update.id))) {
+    for (const page of await tx.page.findMany({ where: { id: { in: chunk }, projectId, branchId: mainId }, select: { id: true, content: true } })) {
+      stored.set(page.id, page.content);
+    }
+  }
+  const paths = new Map(rows.map((row) => [row.id, row.path]));
+  const refused = overCap.flatMap(({ id, next }) => {
+    const bytes = oversizedPageContent(next, stored.get(id));
+    return bytes === null ? [] : [{ id, path: paths.get(id) ?? '', bytes }];
+  });
+  if (refused.length === 0) return;
+  throw new AppError({
+    code: 'page:too_large',
+    message: `These pages are larger than the ${MAX_PAGE_CONTENT_BYTES / (1024 * 1024)} MiB page limit: ${refused.map((page) => page.path).join(', ')}. Split them into smaller pages in the version, then promote again. Nothing was changed.`,
+    details: { bytes: Math.max(...refused.map((page) => page.bytes)), limit: MAX_PAGE_CONTENT_BYTES, pages: refused },
+  });
+};
+
 /** Promote a version into the default branch ('main').
  *   - No baseline: 409 `branch:baseline_missing`, nothing changed.
  *   - A plan that would put pages inside each other: 409
@@ -493,6 +531,7 @@ export const mergeBranch = async (
           });
           for (const p of found) sources.set(p.id, p);
         }
+        await assertPromotedContentFits(tx, projectId, main.id, plan.mainUpdates, sources, rows);
         for (const update of plan.mainUpdates) {
           const content = update.contentFrom ? sources.get(update.contentFrom) : undefined;
           const config = update.configFrom ? sources.get(update.configFrom) : undefined;

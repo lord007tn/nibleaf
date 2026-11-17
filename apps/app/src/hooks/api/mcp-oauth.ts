@@ -6,18 +6,23 @@ import { useSessionMutation as useMutation, useSessionQueryClient as useQueryCli
 import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';
 import { queryKeys } from './query-keys';
-import { connectedAppsQueryOptions } from './query-options';
 import type { ConnectedApp } from './types';
 
 /** What the OAuth project and consent pages show for one authorization request. */
 export interface McpOAuthAuthorization {
   client: { clientId: string; name: string | null; uri: string | null; redirectTarget: string | null; verifiedDomain: string | null };
   requestedScopes: string[];
-  projects: Array<{ id: string; name: string; slug: string; workspace: string; role: string; presets: McpKeyPreset[] }>;
+  projects: Array<{
+    id: string;
+    name: string;
+    slug: string;
+    workspace: string;
+    organization: { id: string; name: string };
+    role: string;
+    presets: McpKeyPreset[];
+  }>;
   selection: { id: string; preset: McpKeyPreset; scopes: string[]; project: { id: string; name: string } } | null;
 }
-
-export const useConnectedApps = (projectId: string) => useQuery(connectedAppsQueryOptions(projectId));
 
 export const useRevokeConnectedApp = (projectId: string) => {
   const queryClient = useQueryClient();

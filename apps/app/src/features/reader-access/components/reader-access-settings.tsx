@@ -50,7 +50,8 @@ export function ReaderAccessSettings({ project }: { project: Project }) {
       <>
         {/* A failed refetch keeps the last answer on screen; every write is still checked by the server. */}
         {query.isError ? retry : null}
-        <VisibilitySection current={props.data.accessMode} projectId={project.id} status={access.status} />
+        {/* Per site: another site's section starts without this one's confirmation or its pending answer. */}
+        <VisibilitySection current={props.data.accessMode} key={project.id} projectId={project.id} status={access.status} />
         <DirtyStateReporter dirty={readerDrafts.sources.size > 0} />
         {readersMounted ? (
           <ConfigDirtyProvider report={readerDrafts.report}>

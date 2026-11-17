@@ -1,3 +1,4 @@
+import { MAX_PAGE_CONTENT_BYTES } from '@nibleaf/shared/page-limits';
 import { ImportError } from '../../errors';
 
 /** Shared by all source reads and include expansions in one import. */
@@ -23,7 +24,7 @@ export class GitBookImportBudget {
 
   page(content: string, path: string) {
     this.check();
-    if (Buffer.byteLength(content) > 2 * 1024 * 1024)
+    if (Buffer.byteLength(content) > MAX_PAGE_CONTENT_BYTES)
       throw new ImportError({ code: 'import:limit', message: 'Expanded page exceeds 2 MiB; the draft was preserved.', details: { path } });
   }
 

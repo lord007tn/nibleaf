@@ -10,6 +10,8 @@ import { ConfigDirtyProvider, useSettingsDirtyGuard } from '@/components/project
 import { DeleteAccountSection, PersonalNotificationsSection, SessionsSection, SignInMethodsSection } from '@/components/settings/account-security';
 import { AccountTab } from '@/components/settings/account-tab';
 import { AppearanceTab } from '@/components/settings/appearance-tab';
+import { usePageTitle } from '@/hooks/use-page-title';
+import { pageTitle } from '@/lib/page-title';
 import { navFromIds } from '@/lib/section-nav';
 
 // Tab ids alone: `validateSearch` is in the router's eager chunk, which published
@@ -42,6 +44,7 @@ function WorkspaceSettingsPage() {
   const { tab } = Route.useSearch();
   const navigate = useNavigate({ from: Route.fullPath });
   const sectionItems = SECTIONS.map((item) => ({ value: item.id, label: t(item.labelKey) }));
+  usePageTitle(pageTitle(sectionItems.find((item) => item.value === tab)?.label, t('account.title')));
 
   return (
     <ConfigDirtyProvider report={reportDirty}>

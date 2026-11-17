@@ -197,7 +197,8 @@ it('keeps a server-rendered rich (HTML/MDX, math) article through hydration', as
   expect(recoverableErrors).toEqual([]);
   // Then how: the hook loaded the marked rich renderer once, before hydrating.
   expect(richRequests).toBe(1);
-  expect(serverBody?.closest('[data-hydration-module="markdown-rich"]')).not.toBeNull();
+  // KaTeX came as its own module, marked with the rich renderer (PUB-017).
+  expect(serverBody?.closest('[data-hydration-module~="markdown-rich"][data-hydration-module~="markdown-math"]')).not.toBeNull();
   expect(serverBody?.closest('[data-hydration-module="markdown"]')).not.toBeNull();
 }, 30_000);
 

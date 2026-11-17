@@ -10,7 +10,7 @@ import { notfound_backhome } from './paraglide/messages/notfound_backhome.js';
 import { notfound_badge } from './paraglide/messages/notfound_badge.js';
 import { notfound_body } from './paraglide/messages/notfound_body.js';
 import { notfound_title } from './paraglide/messages/notfound_title.js';
-import { getLocale, type MessageFn, subscribeLanguage, synchronizeDocumentLanguageFn } from './runtime';
+import { getLocale, type MessageFn, renderedLocale, subscribeLanguage, synchronizeDocumentLanguageFn } from './runtime';
 
 const standaloneMessages = {
   'common.loading': common_loading,
@@ -31,10 +31,6 @@ export const translateStandalone = (key: StandaloneMessageKey, locale = getLocal
   standaloneMessages[key](undefined, { locale });
 
 export const useStandaloneT = () => {
-  const locale = useSyncExternalStore(
-    subscribeLanguage,
-    () => getLocale() as Locale,
-    () => 'en' as Locale,
-  );
+  const locale = useSyncExternalStore(subscribeLanguage, () => getLocale() as Locale, renderedLocale);
   return useCallback((key: StandaloneMessageKey) => translateStandalone(key, locale), [locale]);
 };

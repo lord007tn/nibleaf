@@ -305,6 +305,46 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     ]);
   });
 
+  it('duplicates a page after itself without its comments or history, leaving sibling revisions alone', async () => {
+    const { project, branch, language } = await fixture();
+    const user = await db.prisma.user.create({ data: { name: 'Synthetic writer', email: `duplicate-${randomUUID()}@example.invalid` } });
+    userIds.push(user.id);
+    const scope = { branchId: branch.id, languageId: language.id };
+    const intro = await pages.createPage(project.id, {
+      title: 'Intro',
+      content: '# Intro\n\nStart here.',
+      config: { sidebarTitle: 'Start' },
+      ...scope,
+    });
+    const next = await pages.createPage(project.id, { title: 'Next', ...scope });
+    await db.prisma.comment.create({ data: { projectId: project.id, pageId: intro.id, userId: user.id, body: 'Synthetic note' } });
+    await pages.updatePage(project.id, intro.id, { content: '# Intro\n\nStart here today.' }, user.id);
+
+    const copy = await pages.duplicatePage(project.id, intro.id, 'en');
+
+    expect(copy).toMatchObject({ title: 'Intro (copy)', slug: 'intro-2', path: 'intro-2', content: '# Intro\n\nStart here today.', position: 1 });
+    expect(copy.config).toEqual({ sidebarTitle: 'Start' });
+    expect(await db.prisma.comment.count({ where: { pageId: copy.id } })).toBe(0);
+    expect(await db.prisma.pageRevision.count({ where: { pageId: copy.id } })).toBe(0);
+    const order = await db.prisma.page.findMany({ where: { projectId: project.id, parentId: null }, orderBy: { position: 'asc' } });
+    expect(order.map((page) => page.id)).toEqual([intro.id, copy.id, next.id]);
+    // The shifted sibling keeps its revision: a writer editing it is not interrupted.
+    expect(order.find((page) => page.id === next.id)?.updatedAt).toEqual(next.updatedAt);
+  });
+
+  it('serializes concurrent duplicates of one page into distinct addresses and positions', async () => {
+    const { project, branch, language } = await fixture();
+    const intro = await pages.createPage(project.id, { title: 'Intro', branchId: branch.id, languageId: language.id });
+    const results = await whileLocked(
+      (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR NO KEY UPDATE`,
+      () => [pages.duplicatePage(project.id, intro.id, 'en'), pages.duplicatePage(project.id, intro.id, 'en')],
+    );
+    expect(results.every((result) => result.status === 'fulfilled')).toBe(true);
+    const rows = await db.prisma.page.findMany({ where: { projectId: project.id }, orderBy: { position: 'asc' } });
+    expect(rows.map((page) => page.slug).sort()).toEqual(['intro', 'intro-2', 'intro-3']);
+    expect(new Set(rows.map((page) => page.position)).size).toBe(3);
+  });
+
   it('preserves a URL edit that commits between the content autosave read and write', async () => {
     const { project, branch, language } = await fixture();
     const page = await pages.createPage(project.id, { title: 'Intro', branchId: branch.id, languageId: language.id });

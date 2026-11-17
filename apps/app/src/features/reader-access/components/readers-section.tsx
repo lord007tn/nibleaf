@@ -12,7 +12,7 @@ import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
 import { useStore } from '@tanstack/react-form';
 import { Mail, RefreshCw, Search, Users } from 'lucide-react';
-import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { DirtyStateReporter } from '@/components/project-settings/shared';
 import { FormField } from '@/components/ui/form-field';
@@ -20,7 +20,7 @@ import type { ReaderAccessData } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { isolate } from '@/lib/bidi';
 import { useFormatters } from '@/lib/format';
-import { focusFirstInvalid, useSaveRegionForm } from '@/lib/forms/save-region';
+import { SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import type { SiteAdminState } from '@/lib/project-settings-access';
 import { useInviteManyReaders, useInviteOneReader, useResendInvitation, useRevokeReaderAccess, useSaveEmailDomains } from '../api/hooks';
@@ -214,7 +214,6 @@ function EmailDomainsForm({ projectId, data, status }: Props) {
   const t = useT();
   const problemText = useProblemText();
   const save = useSaveEmailDomains(projectId);
-  const formRef = useRef<HTMLFormElement>(null);
   const { disabled } = decisionProps(manageDecision(status));
   const source = useMemo(() => emailDomainsValues(data.readerEmailDomains), [data.readerEmailDomains]);
 
@@ -239,19 +238,17 @@ function EmailDomainsForm({ projectId, data, status }: Props) {
     const outcome = await submitDraft();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
-  useSaveRegionForm('reader-email-domains', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('reader-email-domains', {
+    isDirty: draft.isDirty,
+    isSubmitting: draft.isSaving,
+    submit,
+    discard: draft.discard,
+    settlement: draft.settlement,
+  });
 
   return (
-    <form
-      className="divide-y divide-border"
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!draft.isDirty) return;
-        void submit().then((outcome) => outcome === 'invalid' && focusFirstInvalid(formRef.current));
-      }}
-      ref={formRef}
-    >
+    <form className="divide-y divide-border" noValidate {...formProps}>
+      <SaveRegionSubmit />
       {/* Also tells the page these reader settings hold an edit, so they stay on screen if visibility changes. */}
       <DirtyStateReporter dirty={draft.isDirty || draft.isSaving} />
       <DraftConflicts conflicts={draft.conflicts} resolve={draft.resolveConflict} />

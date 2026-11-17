@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  aiAnswersControl,
   DEFAULT_MAX_RESULTS_RANGE,
   decisionProps,
   distributionText,
@@ -44,7 +43,6 @@ describe('searchValues', () => {
       maxResults: '12',
       hotkey: 'cmdk',
       versionFilterEnabled: true,
-      aiAnswers: false,
       aiConversationCapture: true,
       aiStarterQuestions: 'How do I start?\nWhere are the keys?',
       aiSupportUrl: '',
@@ -175,40 +173,6 @@ describe('access', () => {
   });
 });
 
-describe('aiAnswersControl', () => {
-  it('can be turned on with a working AI connection', () => {
-    expect(aiAnswersControl('available', false, 'admin')).toEqual({ decision: { kind: 'allowed' }, note: null, linkToSmartAi: false });
-  });
-
-  it('says what is missing, and links to Smart AI when the site can fix it', () => {
-    expect(aiAnswersControl('needsConnection', false, 'admin')).toEqual({
-      decision: { kind: 'denied', reason: 'settings.search.aiAnswers.needsConnection' },
-      note: null,
-      linkToSmartAi: true,
-    });
-    expect(aiAnswersControl('needsServer', false, 'admin')).toEqual({
-      decision: { kind: 'denied', reason: 'settings.search.aiAnswers.needsServer' },
-      note: null,
-      linkToSmartAi: false,
-    });
-  });
-
-  it('can always be turned off once on, with the missing piece as a note', () => {
-    expect(aiAnswersControl('needsConnection', true, 'admin')).toEqual({
-      decision: { kind: 'allowed' },
-      note: 'settings.search.aiAnswers.needsConnection',
-      linkToSmartAi: true,
-    });
-    expect(aiAnswersControl('pending', true, 'admin').decision).toEqual({ kind: 'allowed' });
-  });
-
-  it('stays locked without a word while unknown or for non-Admins', () => {
-    expect(aiAnswersControl('pending', false, 'admin').decision).toEqual({ kind: 'locked' });
-    expect(aiAnswersControl('available', true, 'pending')).toEqual({ decision: { kind: 'locked' }, note: null, linkToSmartAi: false });
-    expect(aiAnswersControl('needsConnection', false, 'notAdmin')).toEqual({ decision: { kind: 'locked' }, note: null, linkToSmartAi: false });
-  });
-});
-
 describe('index health', () => {
   const ready = { availability: { reason: null }, health: 'ready' as const };
 
@@ -281,5 +245,24 @@ describe('index health', () => {
   it('pages samples back once moved forward, and forward while there are more', () => {
     expect(samplePager(1, 'next')).toEqual({ canGoBack: false, canGoForward: true });
     expect(samplePager(2, null)).toEqual({ canGoBack: true, canGoForward: false });
+  });
+});
+
+describe('the AI answers switch', () => {
+  it('is never written by Search: AI answers has the only control', () => {
+    const configuration = {
+      maxResults: 12,
+      versionFilterEnabled: true,
+      aiAnswers: true,
+      aiConversationCapture: false,
+      aiStarterQuestions: [],
+      hotkey: 'cmdk' as const,
+      placeholder: null,
+    };
+    const baseline = searchValues(configuration);
+    expect(baseline).not.toHaveProperty('aiAnswers');
+    const { configuration: patch } = searchSaveRequests(baseline, { ...baseline, placeholder: 'Search the docs', aiConversationCapture: true });
+    expect(patch).toEqual({ placeholder: 'Search the docs', aiConversationCapture: true });
+    expect(patch).not.toHaveProperty('aiAnswers');
   });
 });

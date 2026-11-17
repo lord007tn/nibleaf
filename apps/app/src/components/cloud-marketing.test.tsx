@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { BLOG_ENTRIES } from '@/lib/blog';
 import { GitHubStarLink } from './cloud-marketing';
 import { CloudPage } from './marketing/cloud-page';
 import { availabilityNote, heroAvailabilityNote, isRollingOut, ROLLOUT_WORDING } from './marketing/copy/availability';
@@ -10,6 +9,7 @@ import { landingEn } from './marketing/copy/landing.en';
 import { LANDING_META } from './marketing/copy/landing-meta';
 import { ArabicLandingPage } from './marketing/landing/arabic-landing-page';
 import { LandingPage } from './marketing/landing/landing-page';
+import { LANDING_STORY_IDS } from './marketing/landing/landing-view';
 
 function markup(html: string) {
   const root = document.createElement('div');
@@ -31,13 +31,16 @@ describe('bilingual landing journey', () => {
     expect(root.querySelector('a[href="#main"]')).not.toBeNull();
     expect(root.querySelector(`a[href="${alternate}"][hreflang="${alternateLang}"]`)).not.toBeNull();
     expect(root.querySelector('main a[href="/sign-up"]')).not.toBeNull();
-    expect(root.querySelector('main a[href="/self-hosting"]')).not.toBeNull();
+    // Each language links to its own self-hosting and pricing pages (P2-MKT-002).
+    const prefix = lang === 'ar' ? '/ar' : '';
+    expect(root.querySelector(`main a[href="${prefix}/self-hosting"]`)).not.toBeNull();
+    expect(root.querySelector(`main a[href="${prefix}/pricing"]`)).not.toBeNull();
     expect(root.querySelector('#features')).not.toBeNull();
-    for (const feature of copy.features) {
+    for (const feature of copy.features.filter((candidate) => (LANDING_STORY_IDS as readonly string[]).includes(candidate.id))) {
       expect(root.querySelector(`#${feature.id} h2`)?.textContent).toBe(feature.title);
       if (feature.note) expect(root.querySelector(`#${feature.id}`)?.textContent).toContain(feature.note);
     }
-    expect(root.querySelectorAll('details')).toHaveLength(copy.faq.items.length);
+    expect(root.querySelectorAll('details')).toHaveLength(copy.faq.items.filter((item) => item.featured).length);
     for (const image of root.querySelectorAll('img')) {
       // The hero's desktop capture is decorative (aria-hidden); the phone capture beside it carries the description.
       if (image.closest('[aria-hidden="true"]')) {
@@ -50,20 +53,6 @@ describe('bilingual landing journey', () => {
     }
     expect(root.textContent).not.toMatch(/v0\.2\.0|next self-hosted release|Other SaaS|trusted by thousands|10,000 teams/i);
     expect(root.innerHTML).not.toMatch(/nibleaf-install\.sh|View Markdown|Copy Markdown/);
-  });
-
-  it.each([
-    ['en', LandingPage],
-    ['ar', ArabicLandingPage],
-  ] as const)('shows the newest same-language posts only (%s)', (lang, Page) => {
-    const root = markup(renderToStaticMarkup(<Page />));
-    const expected = BLOG_ENTRIES.filter((post) => (post.language ?? 'en') === lang).slice(0, 3);
-    const links = [...root.querySelectorAll('#from-the-blog article h3 a')];
-    expect(links.map((link) => link.getAttribute('href'))).toEqual(expected.map((post) => `/blog/${post.slug}`));
-    for (const link of links) expect(link.getAttribute('lang')).toBe(lang);
-    for (const post of BLOG_ENTRIES.filter((post) => (post.language ?? 'en') !== lang)) {
-      expect(root.querySelector(`#from-the-blog a[href="/blog/${post.slug}"]`)).toBeNull();
-    }
   });
 
   it('keeps CloudPage usable with the shared marketing shell', () => {
@@ -108,7 +97,6 @@ describe('availability honesty', () => {
     const caption = heroAvailabilityNote(lang);
     if (caption) expect(root.textContent).toContain(caption);
     else expect(root.textContent).not.toMatch(ROLLOUT_WORDING);
-    expect(root.textContent).toContain(availabilityNote('bringYourOwnKey', lang));
   });
 
   it.each([
@@ -156,9 +144,9 @@ describe('previews and secondary copy stay qualified', () => {
     if (isRollingOut('askAi')) expect(arabicAnswer?.a).toContain(availabilityNote('askAi', lang));
     else expect(arabicAnswer?.a).not.toMatch(ROLLOUT_WORDING);
     expect(copy.more.items.find((item) => item.icon === 'llms')?.body).toContain('llms-full.txt');
+    // How it works no longer renders on the landing page (P2-MKT-005); the AI stories keep their own notes.
     const text = markup(renderToStaticMarkup(<Page />)).textContent ?? '';
-    if (copy.howItWorks.note) expect(text).toContain(copy.howItWorks.note);
-    else expect(text).not.toMatch(ROLLOUT_WORDING);
+    if (!isRollingOut('askAi')) expect(text).not.toMatch(ROLLOUT_WORDING);
   });
 
   it('keeps unverified Cloud claims off the Cloud page', () => {

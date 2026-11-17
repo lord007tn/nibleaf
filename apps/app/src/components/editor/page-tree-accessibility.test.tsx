@@ -105,6 +105,43 @@ it('exposes a grouped tree with one tab stop, sibling metadata and a shared desc
   expect(document.getElementById(descriptions[0] ?? '')?.textContent).toContain('F2');
 });
 
+it('keeps group case and gives an untitled page a visible, named warning dot', async () => {
+  await render();
+  const group = pages[0];
+  const original = pages[2];
+  if (!group || !original) throw new Error('Missing fixture pages');
+  const emptyPage = { ...original, title: '' };
+  await act(async () =>
+    root.render(
+      <PageTreeDndProvider pages={[group, emptyPage]} languages={[{ id: 'en', label: 'English', collapsed: false }]} dir="ltr" onMove={vi.fn()}>
+        <SortablePageTree languageId="en" activeId={emptyPage.id} onSelect={vi.fn()} onSettings={vi.fn()} onAddChild={vi.fn()} />
+      </PageTreeDndProvider>,
+    ),
+  );
+  expect(row('guide').querySelector('button')?.className).not.toContain('uppercase');
+  const dot = row('config').querySelector('.bg-warning');
+  expect(dot?.getAttribute('aria-hidden')).toBe('true');
+  expect(dot?.className).toContain('bg-warning');
+  expect(row('config').textContent).toContain('Untitled');
+});
+
+it('reads a blank (whitespace-only) title as Untitled, with the warning dot', async () => {
+  await render();
+  const group = pages[0];
+  const original = pages[2];
+  if (!group || !original) throw new Error('Missing fixture pages');
+  const blank = { ...original, title: '   ' };
+  await act(async () =>
+    root.render(
+      <PageTreeDndProvider pages={[group, blank]} languages={[{ id: 'en', label: 'English', collapsed: false }]} dir="ltr" onMove={vi.fn()}>
+        <SortablePageTree languageId="en" activeId={blank.id} onSelect={vi.fn()} onSettings={vi.fn()} onAddChild={vi.fn()} />
+      </PageTreeDndProvider>,
+    ),
+  );
+  expect(row('config').textContent).toContain('Untitled');
+  expect(row('config').querySelector('.bg-warning')).not.toBeNull();
+});
+
 it('nests each language tree in the DOM, leaves header controls outside, and keeps independent roving focus and boundaries', async () => {
   await render('ltr', false, true);
   const trees = [...container.querySelectorAll<HTMLElement>('[role="tree"]')];

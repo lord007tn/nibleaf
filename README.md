@@ -92,9 +92,13 @@ Private customer documentation supports dedicated reader accounts, audience/page
   unknown states, and advisory limits without a payment or billing claim.
 - **Project add-ons and integrations** — audited optional capabilities, consent controls,
   encrypted write-only project credentials, and clear project-versus-instance ownership.
-- **Portable themes and read-only MCP** — Harbor, Manuscript, and Signal can be exchanged as
-  validated theme data or runnable Git repositories; scoped MCP keys expose project-bound reads.
-  MCP is off by default (`MCP_ENABLED=false`) until an operator enables it.
+- **Portable themes** — Harbor, Manuscript, and Signal can be exchanged as validated theme data
+  or runnable Git repositories.
+- **AI assistants over MCP** — ChatGPT, Claude, Claude Code, Cursor, and VS Code connect to one
+  website by signing in or with an expiring personal key, read its docs and analytics, draft and
+  translate pages, and publish only after a confirmed preview. Results link back to the dashboard
+  for review. MCP is off by default (`MCP_ENABLED=false`) until an operator enables it; see the
+  [guide](https://docs.nibleaf.com/product/ai-assistants).
 - **Multilingual & RTL** — 12 interface locale options (some strings still in English), arbitrary BCP-47 content languages,
   per-language page trees, RTL layout, `hreflang`, and localized dashboard / editor / site chrome.
 - **Custom domains & subdomains** — guided DNS + verification, wildcard project subdomains,

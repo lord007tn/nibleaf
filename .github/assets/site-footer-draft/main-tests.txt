@@ -1,0 +1,58 @@
+Regression: 'clears a stored <key> by sending ""' (features/site-footer/components/footer-settings.test.tsx)
+run against main's footer-section.tsx (c0e72c2d5), its mutation mocked with mutate() as main calls it, then against this branch.
+
+== main's component
+     × clears a stored copyright by sending "", trimmed with the rest 63ms
+     × clears a stored github by sending "", trimmed with the rest 19ms
+     × clears a stored x by sending "", trimmed with the rest 10ms
+     × clears a stored linkedin by sending "", trimmed with the rest 9ms
+AssertionError: expected { config: { footer: { …(4) } } } to strictly equal { config: { footer: { …(5) } } }
+AssertionError: expected { config: { footer: { …(4) } } } to strictly equal { config: { footer: { …(5) } } }
+AssertionError: expected { config: { footer: { …(4) } } } to strictly equal { config: { footer: { …(5) } } }
+AssertionError: expected { config: { footer: { …(4) } } } to strictly equal { config: { footer: { …(5) } } }
+      Tests  4 failed | 19 skipped (23)
+(main sends 4 footer keys: the cleared one is `undefined`, which JSON drops, so the server keeps the old value.)
+
+== this branch
+      Tests  4 passed | 19 skipped (23)
+
+Review round 2 (P2): 'a save whose follow-up refetch failed' (then in footer-settings.test.tsx), run against this PR's first head fa495036 and that round's fix.
+Round 3 replaced that fix and moved these cases into footer-settings.source.test.tsx (below).
+The PATCH stores the text, the project query is not refetched, then the text is cleared and saved.
+
+== fa495036
+     × a newly stored copyright, cleared next, is still sent as ""
+     × a newly stored x, cleared next, is still sent as ""
+AssertionError: expected { config: { footer: { …(2) } } } to strictly equal { config: { footer: { …(3) } } }
+(the cleared key is left out: its presence came only from the stale query, so the server keeps the text.)
+The two site/scope identity tests pass on both heads: they guard the fix's scope.
+
+== the fix
+      Tests  4 passed
+
+Review round 3 (P2a, P2b): features/site-footer/components/footer-settings.source.test.tsx, real queries and mutations over a stand-in API,
+run against 6c37f857 (the per-form presence record) and this fix (the project query as the only source).
+
+== 6c37f857
+     × P2a: a scope round trip after a failed refetch still clears what the save stored 162ms
+     × P2b: a fresh read without a text the form saved before is authoritative: another field’s save leaves it out 106ms
+AssertionError: expected '' to be 'Stored' // Object.is equality
+AssertionError: expected { x: 'https://x.com/handbook', …(1) } to strictly equal { copyright: '', …(2) }
+AssertionError: expected { copyright: '', …(2) } to strictly equal { x: 'https://x.com/handbook', …(1) }
+      Tests  2 failed | 7 skipped (9)
+(P2a: after the scope round trip the form reads the stale query, and the clear is left out; P2b: the old record re-adds a copyright a fresh read no longer has.)
+
+== the fix
+      Tests  9 passed (9)
+
+Review round 4 (finding 1, new contract): footer-settings.source.test.tsx, real queries and mutations over a stand-in API,
+run against cbaa0360 (round 3: full payload, presence from the cache) and this head (only the changed keys are sent).
+
+== cbaa0360
+     × finding 1: another writer's link that a read brings during the save survives a LinkedIn-only save after the refetch failed 125ms
+AssertionError: expected { copyright: '© New', x: '', …(2) } to strictly equal { linkedin: '/company/handbook' }
+(round 3 sends x: '' for a link the form shows blank after #750 confirmed the save's answer, deleting the other writer's link.
+The file's other cases also fail there, mostly because round 3 sent the whole footer.)
+
+== this head
+      Tests  15 passed (15)   (the LinkedIn-only save sends { linkedin } and the other writer's X survives)

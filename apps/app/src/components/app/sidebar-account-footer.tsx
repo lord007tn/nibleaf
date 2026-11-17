@@ -21,6 +21,7 @@ import { BookOpen, Bug, ChevronsUpDown, Keyboard, Languages, LogOut, Sparkles, U
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { InterfaceLanguageDialog } from '@/components/interface-language-dialog';
+import { docsUrl } from '@/lib/docs-url';
 import { GITHUB_URL } from '@/lib/links';
 import { authClient } from '@/services/auth-client';
 import { signOutDashboard } from '@/services/dashboard-session';
@@ -50,7 +51,6 @@ export const accountInitials = (user: { name?: string | null; email?: string | n
   return graphemes(local).slice(0, 2).join('').toUpperCase();
 };
 
-const helpUrl = (locale: string) => `https://docs.nibleaf.com/${locale === 'ar' ? 'ar/' : ''}`;
 const THEMES = [
   { value: 'light', label: 'settings.appearance.theme.light' },
   { value: 'dark', label: 'settings.appearance.theme.dark' },
@@ -168,7 +168,7 @@ export function SidebarAccountFooter() {
                   </DropdownMenuRadioGroup>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem render={<a href={helpUrl(locale)} rel="noopener noreferrer" target="_blank" />}>
+                <DropdownMenuItem render={<a href={docsUrl(locale)} rel="noopener noreferrer" target="_blank" />}>
                   <BookOpen className="size-4" />
                   {t('account.menu.help')}
                 </DropdownMenuItem>

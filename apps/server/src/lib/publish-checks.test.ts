@@ -1,5 +1,6 @@
 import { type AddonDeliveryPlanAssignment, projectAddonRowsForDelivery } from '@nibleaf/shared/addons';
-import { buildSnapshot, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { buildSnapshot, isPageTranslation, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { resolveSitePage } from '@nibleaf/shared/site-route';
 import { describe, expect, it } from 'vitest';
 import { collectPublishChecks } from './publish-checks';
 
@@ -67,6 +68,7 @@ describe('broken-internal-link', () => {
         code: 'broken-internal-link',
         severity: 'error',
         pageId: linking.id,
+        versionId: 'v1',
         languageCode: 'en',
         title: 'Introduction',
         path: 'guides/intro',
@@ -157,6 +159,21 @@ describe('broken-internal-link', () => {
       '[^1]: A footnote, not a link.',
     ].join('\n');
     expect(linkChecks(content)).toEqual(['/reference-missing', '/image-link-missing', '/card-attribute']);
+  });
+
+  it('names the docs version of each check, so same-address pages in two versions stay apart', () => {
+    const v1Guide = page({ path: 'guide', title: 'Guide', content: '[a](/gone)' });
+    const v2Guide = page({ path: 'guide', title: 'Guide', versionId: 'v2', content: '[a](/gone)' });
+    const found = codes(snapshot([v1Guide, v2Guide]), 'broken-internal-link').map((check) => [
+      check.pageId,
+      check.versionId,
+      check.path,
+      check.detail,
+    ]);
+    expect(found).toEqual([
+      [v1Guide.id, 'v1', 'guide', '/gone'],
+      [v2Guide.id, 'v2', 'guide', '/gone'],
+    ]);
   });
 
   it('keeps links inside their docs version', () => {
@@ -259,6 +276,52 @@ describe('stray-characters', () => {
   });
 });
 
+describe('video and embed checks', () => {
+  const content = [
+    '<iframe src="https://youtu.be/dQw4w9WgXcQ"></iframe>',
+    '',
+    '<iframe src="https://www.loom.com/share/0123456789abcdef0123456789abcdef" title="Walkthrough"></iframe>',
+    '',
+    '<iframe src="https://codepen.io/x" title="Pen"></iframe>',
+    '',
+    '<video controls src="http://cdn.example.com/a.mp4"></video>',
+  ].join('\n');
+
+  it('warns, without blocking, about an untitled video, a frame shown as a link and a video without a secure address', () => {
+    const checks = collectPublishChecks(snapshot([page({ path: 'a', content })]));
+    const embedChecks = checks.filter((check) => ['embed-untitled', 'embed-as-link', 'video-not-https'].includes(check.code));
+    expect(embedChecks.map((check) => [check.code, check.severity, check.detail])).toEqual([
+      ['embed-untitled', 'warning', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'],
+      ['embed-as-link', 'warning', 'https://codepen.io/x'],
+      ['video-not-https', 'warning', 'http://cdn.example.com/a.mp4'],
+    ]);
+    expect(checks.some((check) => check.severity === 'error')).toBe(false);
+  });
+
+  it('warns about an iframe with no closer in its block and a video poster from another site', () => {
+    const unclosed = [
+      '<iframe src="https://youtu.be/dQw4w9WgXcQ">',
+      '',
+      '## Install',
+      '',
+      '<video controls src="/api/public/assets/a.mp4" poster="https://images.example.com/a.jpg"></video>',
+    ].join('\n');
+    const checks = collectPublishChecks(snapshot([page({ path: 'a', content: unclosed })]));
+    const found = checks.filter((check) => ['embed-unclosed', 'video-poster-hidden'].includes(check.code));
+    expect(found.map((check) => [check.code, check.severity, check.detail])).toEqual([
+      ['embed-unclosed', 'warning', 'https://youtu.be/dQw4w9WgXcQ'],
+      ['video-poster-hidden', 'warning', 'https://images.example.com/a.jpg'],
+    ]);
+  });
+
+  it('skips hidden pages and accepts titled players and secure videos', () => {
+    expect(codes(snapshot([page({ path: 'a', content, hidden: true })]), 'embed-untitled')).toEqual([]);
+    const fine = '<iframe src="https://youtu.be/dQw4w9WgXcQ" title="Tour"></iframe>\n\n<video src="https://cdn.example.com/a.mp4"></video>';
+    const checks = collectPublishChecks(snapshot([page({ path: 'b', content: fine })]));
+    expect(checks.filter((check) => ['embed-untitled', 'embed-as-link', 'video-not-https'].includes(check.code))).toEqual([]);
+  });
+});
+
 describe('unreadable-slug', () => {
   it.each([
     ['empty', ''],
@@ -320,6 +383,114 @@ describe('duplicate-title', () => {
   });
 });
 
+describe('home-untranslated', () => {
+  const home = () => page({ path: 'get-started', title: 'Get started', translationKey: 'start', position: 0 });
+  const arabicFirst = () => page({ path: 'tags', title: 'كيف نضيف وسما', languageCode: 'ar', position: 0 });
+
+  it('warns once per language whose readers land on another page, on the home page, naming where they land', () => {
+    const checks = codes(
+      snapshot([home(), arabicFirst(), page({ path: 'intro', title: 'مقدمة', languageCode: 'ar', position: 3 })]),
+      'home-untranslated',
+    );
+    expect(checks).toEqual([expect.objectContaining({ title: 'Get started', path: 'get-started', languageCode: 'en', severity: 'warning' })]);
+    // Where they land, and what to change: the home page's translation key (or its path).
+    expect(JSON.parse(checks[0]?.detail ?? '')).toEqual({ language: 'ar', landing: 'كيف نضيف وسما', key: 'start', path: 'get-started' });
+    const keyless = codes(snapshot([page({ path: 'get-started', title: 'Get started', position: 0 }), arabicFirst()]), 'home-untranslated');
+    expect(JSON.parse(keyless[0]?.detail ?? '')).toMatchObject({ key: null, path: 'get-started' });
+  });
+
+  it('follows where the reader actually lands: a translated home anywhere in the list clears it', () => {
+    // The Arabic "Tags" page first, the translated home fifth: the reader opens the translation.
+    const translated = page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'start', position: 5 });
+    const site = snapshot([home(), arabicFirst(), page({ path: 'b', title: 'ب', languageCode: 'ar', position: 2 }), translated]);
+    expect(resolveSitePage(site, '', 'ar')?.page.id).toBe(translated.id);
+    expect(codes(site, 'home-untranslated')).toEqual([]);
+  });
+
+  it('warns exactly when the page Arabic readers land on is not a translation of the home page', () => {
+    const variants = [
+      [home(), arabicFirst()],
+      [home(), arabicFirst(), page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'start', position: 5 })],
+      [home(), arabicFirst(), page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'start', hidden: true, position: 5 })],
+      [home(), arabicFirst(), page({ path: 'get-started', title: 'ابدأ', languageCode: 'ar', position: 9 })],
+      [home(), arabicFirst(), page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'other', position: 5 })],
+    ];
+    for (const pages of variants) {
+      const site = snapshot(pages);
+      const landing = resolveSitePage(site, '', 'ar')?.page;
+      const lands = Boolean(landing && landing.languageCode === 'ar' && !isPageTranslation(pages[0] as SnapshotPage, landing));
+      expect(codes(site, 'home-untranslated').length > 0, pages.map((item) => item.path).join(',')).toBe(lands);
+    }
+  });
+
+  it('stays quiet when the home page has a translation (by key or by path), or the language has no pages', () => {
+    const byKey = page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'start', position: 5 });
+    expect(codes(snapshot([home(), arabicFirst(), byKey]), 'home-untranslated')).toEqual([]);
+    const byPath = page({ path: 'get-started', title: 'ابدأ', languageCode: 'ar', position: 5 });
+    expect(codes(snapshot([page({ path: 'get-started', title: 'Get started', position: 0 }), arabicFirst(), byPath]), 'home-untranslated')).toEqual(
+      [],
+    );
+    expect(codes(snapshot([home()]), 'home-untranslated')).toEqual([]);
+  });
+
+  it('counts a hidden translation as none, and skips a disabled language', () => {
+    const hidden = page({ path: 'ibda', title: 'ابدأ', languageCode: 'ar', translationKey: 'start', hidden: true, position: 5 });
+    expect(codes(snapshot([home(), arabicFirst(), hidden]), 'home-untranslated')).toHaveLength(1);
+    const disabled = snapshot([home(), arabicFirst()]);
+    disabled.project.languages = disabled.project.languages.map((language) => (language.code === 'ar' ? { ...language, enabled: false } : language));
+    expect(codes(disabled, 'home-untranslated')).toEqual([]);
+  });
+});
+
+describe('blog-root-group', () => {
+  const group = (title: string, extra: Partial<SnapshotPage> = {}) => page({ path: 'blog', title, kind: 'GROUP', position: 0, ...extra });
+
+  it('warns when a language opens on a section named like the importer’s "Blog"', () => {
+    const english = group('Blog', { id: 'blog-en' });
+    const arabic = group('المدونة', { id: 'blog-ar', languageCode: 'ar' });
+    const site = snapshot([
+      english,
+      arabic,
+      page({ path: 'blog/a', title: 'A', parentId: 'blog-en', position: 0 }),
+      page({ path: 'blog/b', title: 'ب', parentId: 'blog-ar', languageCode: 'ar', position: 0 }),
+    ]);
+    expect(codes(site, 'blog-root-group').map((check) => check.pageId)).toEqual(['blog-en', 'blog-ar']);
+  });
+
+  it('leaves a "Blog" section alone when it is not the first one, and any other first section', () => {
+    const guides = group('Guides', { id: 'guides' });
+    const blog = group('Blog', { id: 'blog', path: 'news', position: 1 });
+    const site = snapshot([
+      guides,
+      blog,
+      page({ path: 'blog/a', title: 'A', parentId: 'guides', position: 0 }),
+      page({ path: 'news/a', title: 'B', parentId: 'blog', position: 0 }),
+    ]);
+    expect(codes(site, 'blog-root-group')).toEqual([]);
+  });
+
+  it('reads the name readers see: a sidebar title wins over the stored title', () => {
+    const shownAsBlog = group('Docs', { id: 'shown-blog', config: { sidebarTitle: 'Blog' } });
+    expect(codes(snapshot([shownAsBlog, page({ path: 'blog/a', title: 'A', parentId: 'shown-blog' })]), 'blog-root-group')).toEqual([
+      expect.objectContaining({ pageId: 'shown-blog' }),
+    ]);
+    const renamed = group('Blog', { id: 'renamed', config: { sidebarTitle: 'Guides' } });
+    expect(codes(snapshot([renamed, page({ path: 'blog/a', title: 'A', parentId: 'renamed' })]), 'blog-root-group')).toEqual([]);
+  });
+});
+
+describe('home-untranslated with a home page at the site root', () => {
+  it('compares against the page the reader serves at the root, not the first page in the navigation', () => {
+    const first = page({ path: 'overview', title: 'Overview', position: 0 });
+    const root = page({ path: '', title: 'Welcome', translationKey: 'welcome', position: 5 });
+    const rootArabic = page({ path: '', title: 'مرحبا', languageCode: 'ar', translationKey: 'welcome', position: 0 });
+    const site = snapshot([first, root, rootArabic, page({ path: 'tags', title: 'الوسوم', languageCode: 'ar', position: 1 })]);
+    expect(resolveSitePage(site, '', 'en')?.page.id).toBe(root.id);
+    expect(resolveSitePage(site, '', 'ar')?.page.id).toBe(rootArabic.id);
+    expect(codes(site, 'home-untranslated')).toEqual([]);
+  });
+});
+
 describe('collectPublishChecks', () => {
   it('reports nothing for a clean site and skips disabled languages', () => {
     const site = snapshot([page({ path: 'start', title: 'Start' }), page({ path: 'setup', title: 'Setup', content: 'See [start](/start).' })]);
@@ -329,36 +500,21 @@ describe('collectPublishChecks', () => {
     expect(collectPublishChecks(disabled)).toEqual([]);
   });
 
-  it('lists errors first and stays linear on a large site', () => {
-    const site = (count: number): SiteSnapshot =>
+  // Its cost as the site grows is bounded in publish-checks.growth.test.ts.
+  it('lists errors first on a large site', () => {
+    const checks = collectPublishChecks(
       snapshot(
-        Array.from({ length: count }, (_, index) =>
+        Array.from({ length: 400 }, (_, index) =>
           page({
             path: `section-${index % 20}/page-${index}`,
             title: `Topic ${index}`,
             content: `[next](/section-${(index + 1) % 20}/page-${index + 1})\n\n![](/img-${index}.png)`,
           }),
         ),
-      );
-    /** Fastest of a few runs, so one slow tick on a shared CI core can't decide the result. */
-    const fastestMs = (input: SiteSnapshot, rounds: number): number => {
-      let fastest = Number.POSITIVE_INFINITY;
-      for (let round = 0; round < rounds; round += 1) {
-        const started = performance.now();
-        collectPublishChecks(input);
-        fastest = Math.min(fastest, performance.now() - started);
-      }
-      return fastest;
-    };
-    const small = site(100);
-    const large = site(400);
-    collectPublishChecks(small); // warm up the Markdown pipeline
-    const checks = collectPublishChecks(large);
+      ),
+    );
     expect(checks[0]).toEqual(expect.objectContaining({ code: 'broken-internal-link', severity: 'error' }));
     expect(checks.filter((check) => check.code === 'missing-alt')).toHaveLength(400);
-    // Like against like on the same machine: 4x the pages stays near 4x the
-    // time (quadratic work would be 16x), however slow the CI core is.
-    expect(fastestMs(large, 2)).toBeLessThanOrEqual(6 * fastestMs(small, 3) + 50);
   });
 });
 

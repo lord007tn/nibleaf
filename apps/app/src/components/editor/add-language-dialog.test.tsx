@@ -67,6 +67,49 @@ const optionFor = (code: string): HTMLElement => {
 };
 
 describe('AddLanguageDialog', () => {
+  it.each([
+    ['Arab', ['Arabic']],
+    // Tashkeel is optional in writing: a vowelled name finds the plain one.
+    ['العَرَبِيَّة', ['Arabic']],
+    ['العربية', ['Arabic']],
+    ['Brasil', ['Português (Brasil)']],
+    ['pt-B', ['Português (Brasil)']],
+    ['zzz', []],
+  ])('offers only prefix or word-start matches for %s as accessible options', async (search, expected) => {
+    await render();
+    const input = document.querySelector<HTMLInputElement>('[role="combobox"]');
+    if (!input) throw new Error('Combobox not rendered');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, search);
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const list = document.getElementById(input.getAttribute('aria-controls') ?? '');
+    if (!list) throw new Error('Listbox not controlled by combobox');
+    const options = [...list.querySelectorAll<HTMLElement>('[role="option"]')];
+    expect(options).toHaveLength(expected.length);
+    expected.forEach((name, index) => {
+      expect(options[index]?.textContent).toContain(name);
+    });
+    const active = input.getAttribute('aria-activedescendant');
+    if (expected.length) expect(document.getElementById(active ?? '')?.getAttribute('aria-selected')).toBe('true');
+    else expect(active).toBeNull();
+  });
+
+  it('adds the selected language with the keyboard while focus stays in the combobox', async () => {
+    await render();
+    const input = document.querySelector<HTMLInputElement>('[role="combobox"]');
+    if (!input) throw new Error('Combobox not rendered');
+    await act(async () => {
+      input.focus();
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, 'Arab');
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })));
+    expect(document.activeElement).toBe(input);
+    await act(async () => input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+    expect(mocks.mutateAsync).toHaveBeenCalledWith(expect.objectContaining({ code: 'ar', direction: 'RTL' }));
+  });
+
   it('stores the native name as the language label while keeping the English name searchable', async () => {
     const onCreated = await render();
 

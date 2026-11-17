@@ -1,0 +1,1563 @@
+{
+  "environment": "Component fixture: main's inline GitPipeline (602f2498e32f26f6686a63a24fca2ddfd45e25da) and this branch's features/site-git GitPipeline with the real design system, EN/AR catalogs and deployments queries; fictional site; every request answered by interception; not the signed-in dashboard, production, a repository, the worker or a deployment",
+  "base": "602f2498e32f26f6686a63a24fca2ddfd45e25da",
+  "head": "16e90470ccd8d435ba5d368d1a070f8526c7d284",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "pipeline-390.png",
+      "width": 390,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "states": {
+        "en-empty-before": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Not imported yet.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "No builds yet — publish from the editor to create one.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "Not published yet.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "9120cd561ccb910ceb9006c7ffd64b79fb1c49ceed420b46b4f2fcbe9ed6d42b"
+        },
+        "en-empty-after": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Not imported yet.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "No builds yet — publish from the editor to create one.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "Not published yet.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "9120cd561ccb910ceb9006c7ffd64b79fb1c49ceed420b46b4f2fcbe9ed6d42b"
+        },
+        "en-overflow-before": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last imported Nov 15, 2026, 11:30 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v60 failed — check the deployment log.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v3 · pages: 9",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "5c293fa05741ec35d5c50e825687fdb39eeeb59e47ba9273d592f4d1e54f4aad"
+        },
+        "en-overflow-after": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last imported Nov 15, 2026, 11:30 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v60 failed — check the deployment log.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v3 · pages: 9",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "5c293fa05741ec35d5c50e825687fdb39eeeb59e47ba9273d592f4d1e54f4aad"
+        },
+        "en-building-before": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last push sync Nov 15, 2026, 10:00 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "Building v8…",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10 text-primary",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v7 · pages: 6",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "2209634ae2fde810e75a5ad92ae0b63f225a21aca43899a8366c3b456fbfcbd8"
+        },
+        "en-building-after": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last push sync Nov 15, 2026, 10:00 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "Building v8…",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10 text-primary",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v7 · pages: 6",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "2209634ae2fde810e75a5ad92ae0b63f225a21aca43899a8366c3b456fbfcbd8"
+        },
+        "en-syncFailed-before": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Push sync failed Nov 15, 2026, 11:30 AM — fatal: <b>docs/</b> not found on branch main",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v9 failed — check the deployment log.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v8 · pages: 14",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "4308d274c1720683cfaa9db1a8152ffb676dc8898fef067f1983767a94e14c28"
+        },
+        "en-syncFailed-after": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Push sync failed Nov 15, 2026, 11:30 AM — fatal: <b>docs/</b> not found on branch main",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v9 failed — check the deployment log.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v8 · pages: 14",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "4308d274c1720683cfaa9db1a8152ffb676dc8898fef067f1983767a94e14c28"
+        },
+        "en-importing-before": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last imported Nov 15, 2026, 10:00 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": true,
+                "disabled": true,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v2 · pages: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v2 · pages: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "fc8c285bad53d0289ab364d0e6b208c3376543fe563978726980660616f59a4e"
+        },
+        "en-importing-after": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last imported Nov 15, 2026, 10:00 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": true,
+                "disabled": true,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v2 · pages: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v2 · pages: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "fc8c285bad53d0289ab364d0e6b208c3376543fe563978726980660616f59a4e"
+        },
+        "ar-empty-before": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "لم يتم الاستيراد بعد.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "لا عمليات بناء بعد — انشر من المحرر لإنشاء واحدة.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "لم ينشر بعد.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "d7b79197430fefe54c327e99c595f960d46cfb687ff2250d0debdd64d14a5203"
+        },
+        "ar-empty-after": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "لم يتم الاستيراد بعد.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "لا عمليات بناء بعد — انشر من المحرر لإنشاء واحدة.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "لم ينشر بعد.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "d7b79197430fefe54c327e99c595f960d46cfb687ff2250d0debdd64d14a5203"
+        },
+        "ar-overflow-before": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر استيراد 15�/11�/2026، 11:30 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "فشل الإصدار v60 — راجع سجل النشر.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v3 · الصفحات: 9",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "45b46641a7a1c5c7296c555df47b0f3b9d358c0b2b2279a577d95cfc04553202"
+        },
+        "ar-overflow-after": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر استيراد 15�/11�/2026، 11:30 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "فشل الإصدار v60 — راجع سجل النشر.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v3 · الصفحات: 9",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "45b46641a7a1c5c7296c555df47b0f3b9d358c0b2b2279a577d95cfc04553202"
+        },
+        "ar-building-before": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر مزامنة عبر الدفع 15�/11�/2026، 10:00 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "يجري بناء الإصدار v8…",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10 text-primary",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v7 · الصفحات: 6",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "87deab969638adbf0cd6285b6cc3571409df6c1e1fba08a590718a741a858b89"
+        },
+        "ar-building-after": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر مزامنة عبر الدفع 15�/11�/2026، 10:00 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "يجري بناء الإصدار v8…",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10 text-primary",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v7 · الصفحات: 6",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "87deab969638adbf0cd6285b6cc3571409df6c1e1fba08a590718a741a858b89"
+        },
+        "ar-syncFailed-before": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "فشلت مزامنة الدفع 15�/11�/2026، 11:30 ص — fatal: <b>docs/</b> not found on branch main",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "فشل الإصدار v9 — راجع سجل النشر.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v8 · الصفحات: 14",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "a70347553bff2826f7a6db33ea6d2c4d8b1baf8f88dfc2f3691b1d527d149918"
+        },
+        "ar-syncFailed-after": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "فشلت مزامنة الدفع 15�/11�/2026، 11:30 ص — fatal: <b>docs/</b> not found on branch main",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "فشل الإصدار v9 — راجع سجل النشر.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v8 · الصفحات: 14",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "a70347553bff2826f7a6db33ea6d2c4d8b1baf8f88dfc2f3691b1d527d149918"
+        },
+        "ar-importing-before": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر استيراد 15�/11�/2026، 10:00 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": true,
+                "disabled": true,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "v2 · الصفحات: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v2 · الصفحات: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "fdb08b1bf21919dddd06bd8f27389b542266489b8975533d15c060e11fbc1b06"
+        },
+        "ar-importing-after": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر استيراد 15�/11�/2026، 10:00 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": true,
+                "disabled": true,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "v2 · الصفحات: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v2 · الصفحات: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "fdb08b1bf21919dddd06bd8f27389b542266489b8975533d15c060e11fbc1b06"
+        }
+      }
+    },
+    {
+      "file": "pipeline-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "states": {
+        "en-empty-before": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Not imported yet.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "No builds yet — publish from the editor to create one.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "Not published yet.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "1e19da74f948dabf5b10e0062b74354e87db43cbd4528f87722883060466bd25"
+        },
+        "en-empty-after": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Not imported yet.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "No builds yet — publish from the editor to create one.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "Not published yet.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "1e19da74f948dabf5b10e0062b74354e87db43cbd4528f87722883060466bd25"
+        },
+        "en-overflow-before": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last imported Nov 15, 2026, 11:30 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v60 failed — check the deployment log.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v3 · pages: 9",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "a36cf2734f3c0f363ee49887b419887ffbd0f49bd572a90ef6605e7f0e4a8abd"
+        },
+        "en-overflow-after": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last imported Nov 15, 2026, 11:30 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v60 failed — check the deployment log.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v3 · pages: 9",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "a36cf2734f3c0f363ee49887b419887ffbd0f49bd572a90ef6605e7f0e4a8abd"
+        },
+        "en-building-before": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last push sync Nov 15, 2026, 10:00 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "Building v8…",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10 text-primary",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v7 · pages: 6",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "92744f6f44bab12272d4dc772088748c763ce51de2c6f578dd82caa2fbc8d71e"
+        },
+        "en-building-after": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last push sync Nov 15, 2026, 10:00 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "Building v8…",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10 text-primary",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v7 · pages: 6",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "92744f6f44bab12272d4dc772088748c763ce51de2c6f578dd82caa2fbc8d71e"
+        },
+        "en-syncFailed-before": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Push sync failed Nov 15, 2026, 11:30 AM — fatal: <b>docs/</b> not found on branch main",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v9 failed — check the deployment log.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v8 · pages: 14",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "484d7fa849deb106f683f3f115714b805328054f675155579b9ed6c1aa3f2f57"
+        },
+        "en-syncFailed-after": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Push sync failed Nov 15, 2026, 11:30 AM — fatal: <b>docs/</b> not found on branch main",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v9 failed — check the deployment log.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v8 · pages: 14",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "484d7fa849deb106f683f3f115714b805328054f675155579b9ed6c1aa3f2f57"
+        },
+        "en-importing-before": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last imported Nov 15, 2026, 10:00 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": true,
+                "disabled": true,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v2 · pages: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v2 · pages: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "be2a75082335bc6581f35de62b3e423ca5916c2e3ebba0f193713a996901c37e"
+        },
+        "en-importing-after": {
+          "dir": "ltr",
+          "steps": [
+            {
+              "label": "Import content",
+              "detail": "Last imported Nov 15, 2026, 10:00 AM",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "Import nowImporting…",
+                "busy": true,
+                "disabled": true,
+                "href": null
+              }
+            },
+            {
+              "label": "Build",
+              "detail": "v2 · pages: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": null
+            },
+            {
+              "label": "Live",
+              "detail": "v2 · pages: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "View site",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "be2a75082335bc6581f35de62b3e423ca5916c2e3ebba0f193713a996901c37e"
+        },
+        "ar-empty-before": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "لم يتم الاستيراد بعد.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "لا عمليات بناء بعد — انشر من المحرر لإنشاء واحدة.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "لم ينشر بعد.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "f8cd4b107b061e5f10ab02175734f06d9dcd376de44fac1daef75e5d71ff324a"
+        },
+        "ar-empty-after": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "لم يتم الاستيراد بعد.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "لا عمليات بناء بعد — انشر من المحرر لإنشاء واحدة.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "لم ينشر بعد.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-border bg-muted/40 text-muted-foreground",
+              "action": null
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "f8cd4b107b061e5f10ab02175734f06d9dcd376de44fac1daef75e5d71ff324a"
+        },
+        "ar-overflow-before": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر استيراد 15�/11�/2026، 11:30 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "فشل الإصدار v60 — راجع سجل النشر.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v3 · الصفحات: 9",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "9afce642d7a28b4b10bd77634d9fdcf72ce96db26999bedac647015670a546bc"
+        },
+        "ar-overflow-after": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر استيراد 15�/11�/2026، 11:30 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "فشل الإصدار v60 — راجع سجل النشر.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v3 · الصفحات: 9",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "9afce642d7a28b4b10bd77634d9fdcf72ce96db26999bedac647015670a546bc"
+        },
+        "ar-building-before": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر مزامنة عبر الدفع 15�/11�/2026، 10:00 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "يجري بناء الإصدار v8…",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10 text-primary",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v7 · الصفحات: 6",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "933f5b11921d7ec99281b715423b40f62c84382306eca5552df1c9d87c05d1d7"
+        },
+        "ar-building-after": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر مزامنة عبر الدفع 15�/11�/2026، 10:00 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "يجري بناء الإصدار v8…",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-primary/40 bg-primary/10 text-primary",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v7 · الصفحات: 6",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "933f5b11921d7ec99281b715423b40f62c84382306eca5552df1c9d87c05d1d7"
+        },
+        "ar-syncFailed-before": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "فشلت مزامنة الدفع 15�/11�/2026، 11:30 ص — fatal: <b>docs/</b> not found on branch main",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "فشل الإصدار v9 — راجع سجل النشر.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v8 · الصفحات: 14",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "1726bdf9b4cbcb802165a9498f5872daaccc8d47da6449626d2750e20749cc51"
+        },
+        "ar-syncFailed-after": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "فشلت مزامنة الدفع 15�/11�/2026، 11:30 ص — fatal: <b>docs/</b> not found on branch main",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": false,
+                "disabled": false,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "فشل الإصدار v9 — راجع سجل النشر.",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-destructive/40 bg-destructive/10 text-destructive",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v8 · الصفحات: 14",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "1726bdf9b4cbcb802165a9498f5872daaccc8d47da6449626d2750e20749cc51"
+        },
+        "ar-importing-before": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر استيراد 15�/11�/2026، 10:00 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": true,
+                "disabled": true,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "v2 · الصفحات: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v2 · الصفحات: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "3db65a1c10d546035c4b0072cfbf2b4664c3633823e949bdab6bf1d06c69359a"
+        },
+        "ar-importing-after": {
+          "dir": "rtl",
+          "steps": [
+            {
+              "label": "استيراد المحتوى",
+              "detail": "آخر استيراد 15�/11�/2026، 10:00 ص",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "استيراد الآنجار الاستيراد…",
+                "busy": true,
+                "disabled": true,
+                "href": null
+              }
+            },
+            {
+              "label": "البناء",
+              "detail": "v2 · الصفحات: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": null
+            },
+            {
+              "label": "منشور",
+              "detail": "v2 · الصفحات: 4",
+              "marker": "z-10 grid size-8 shrink-0 place-items-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+              "action": {
+                "name": "عرض الموقع",
+                "busy": false,
+                "disabled": false,
+                "href": "/sites/site-1"
+              }
+            }
+          ],
+          "overflow": false,
+          "requests": [
+            "GET /api/app/projects/site-1/deployments",
+            "GET /api/app/projects/site-1/deployments?status=READY"
+          ],
+          "screenshotSha256": "3db65a1c10d546035c4b0072cfbf2b4664c3633823e949bdab6bf1d06c69359a"
+        }
+      }
+    }
+  ],
+  "keyboard": [
+    {
+      "version": "before",
+      "imports": 1,
+      "focusedOnImport": true,
+      "sameUrl": true,
+      "requestsAfterPress": 0,
+      "pageErrors": []
+    },
+    {
+      "version": "after",
+      "imports": 1,
+      "focusedOnImport": true,
+      "sameUrl": true,
+      "requestsAfterPress": 0,
+      "pageErrors": []
+    }
+  ]
+}

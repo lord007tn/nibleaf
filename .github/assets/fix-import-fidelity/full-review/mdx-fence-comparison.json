@@ -1,0 +1,20 @@
+[
+  {
+    "revision": "main 93408093",
+    "source": "<CodeGroup>\n  ```md\n  ![Example](./example.png)\n  ```\n</CodeGroup>",
+    "mintlify": "```md\n![Example](./example.png)\n```",
+    "gitbook": "<CodeGroup>\n  ```md\n  ![Example](./example.png)\n  ```\n</CodeGroup>"
+  },
+  {
+    "revision": "branch dbccca62",
+    "source": "<CodeGroup>\n  ```md\n  ![Example](./example.png)\n  ```\n</CodeGroup>",
+    "mintlify": "```md\n![Example](https://assets.example.test/example.png)\n```",
+    "gitbook": "<CodeGroup>\n  ```md\n  ![Example](https://assets.example.test/example.png)\n  ```\n</CodeGroup>"
+  },
+  {
+    "revision": "after fix",
+    "source": "<CodeGroup>\n  ```md\n  ![Example](./example.png)\n  ```\n</CodeGroup>",
+    "mintlify": "```md\n![Example](./example.png)\n```",
+    "gitbook": "<CodeGroup>\n  ```md\n  ![Example](./example.png)\n  ```\n</CodeGroup>"
+  }
+]

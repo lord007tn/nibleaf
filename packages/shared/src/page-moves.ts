@@ -17,6 +17,18 @@ export interface PageStructureRow {
 
 export type PageStructureChange = Pick<PageStructureRow, 'id' | 'parentId' | 'position' | 'languageId'>;
 
+/** What a page tree's structure revision (`x-page-structure-revision`, the
+ * `expectedStructureRevision` precondition) is the SHA-256 of: the ID-sorted
+ * structural tuples of one branch. The server and the dashboard both hash this
+ * text, so it sorts by code unit, never by a locale's collation. */
+export function pageStructureRevisionSource(rows: readonly PageStructureRow[]): string {
+  return JSON.stringify(
+    [...rows]
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .map((page) => [page.id, page.parentId, page.branchId, page.languageId, page.position]),
+  );
+}
+
 /** The server validates tenant, parent and cycle invariants under its lock.
  * A missing/moved anchor cannot silently become a different destination.
  * Clients with an incomplete cache skip optimism when this returns null. */

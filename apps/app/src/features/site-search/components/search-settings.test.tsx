@@ -82,12 +82,12 @@ vi.mock('@/hooks/api', async () => {
     },
   };
 });
-vi.mock('@/hooks/api/workspace-ai', () => ({ useWorkspaceAi: () => ({ data: mocks.ai }) }));
+vi.mock('@/features/site-ai/api/hooks', () => ({ useSiteAi: () => ({ data: mocks.ai }) }));
 vi.mock('@/hooks/api/errors', () => ({ friendlyErrorMessage: () => 'Could not save' }));
 vi.mock('@/hooks/use-project-admin-status', () => ({ useProjectAdminStatus: () => ({ status: mocks.status, edit: 'edit' }) }));
 vi.mock('@tanstack/react-router', () => ({
-  Link: ({ children, className }: AnchorHTMLAttributes<HTMLAnchorElement> & { children: ReactNode }) => (
-    <a className={className} href="/settings?section=smartAi">
+  Link: ({ children, className, search }: AnchorHTMLAttributes<HTMLAnchorElement> & { children?: ReactNode; search?: { section?: string } }) => (
+    <a className={className} href={`/settings?section=${search?.section ?? ''}`}>
       {children}
     </a>
   ),
@@ -96,12 +96,24 @@ vi.mock('@tanstack/react-router', () => ({
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
 const project = { id: 'site-1' } as Project;
+/** AI answers on with Nibleaf AI, as `useSiteAi` returns it. */
 const aiReady = {
-  infrastructureConfigured: true,
-  selectedProvider: 'instance',
-  instanceConfigured: true,
-  instanceAnswersEnabled: true,
-  providers: [],
+  capabilities: {
+    managed: { available: true, reason: null, model: null, dailyAnswerLimit: 200 },
+    ownKey: { available: true, reason: null },
+    providers: [],
+    answers: { available: true, reason: null },
+  },
+  status: {
+    answersOn: true,
+    source: 'managed',
+    sourceReady: true,
+    connections: [],
+    published: { version: 3, at: null },
+    preparation: { state: 'ready', pages: 4, expectedPages: 4, at: null },
+    usage: { answersToday: 0, spent: 0, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' },
+  },
+  viewer: { canManage: true },
 };
 let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
@@ -246,6 +258,24 @@ describe('SearchSettings', () => {
     expect(region()).toBeNull();
   });
 
+  it('saves on Enter in a single-line field through the hidden default button, once, and sends nothing while clean', async () => {
+    const buttons = container.querySelectorAll<HTMLButtonElement>('form button[type="submit"]');
+    expect(buttons).toHaveLength(1);
+    const enter = buttons[0] as HTMLButtonElement;
+    expect(enter.hidden).toBe(true);
+    // The browser's implicit submission (Enter in a text field) clicks the form's default button.
+    await act(async () => enter.click());
+    expect(mocks.updateConfiguration).not.toHaveBeenCalled();
+    await type(input('settings.search.placeholder.label'), 'Find a guide');
+    await act(async () => {
+      enter.click();
+      enter.click();
+    });
+    expect(mocks.updateConfiguration).toHaveBeenCalledTimes(1);
+    expect(mocks.updateConfiguration).toHaveBeenCalledWith({ placeholder: 'Find a guide' });
+    expect(region()).toBeNull();
+  });
+
   it('discards every change, the switches included', async () => {
     const capture = controlFor('dashboard.ai.capture');
     await act(async () => capture.click());
@@ -257,11 +287,35 @@ describe('SearchSettings', () => {
     expect(input('settings.search.placeholder.label').value).toBe('');
   });
 
-  it('leaves a failed configuration save to its mutation, so the form adds no toast, and stays dirty', async () => {
+  it('reports a failed configuration save once, from the form, and stays dirty', async () => {
     mocks.updateConfiguration.mockRejectedValueOnce(new Error('PrismaClientKnownRequestError'));
     await type(input('settings.search.placeholder.label'), 'Find');
     await save();
+    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('Could not save');
+    expect(region()).not.toBeNull();
+  });
+
+  it('says nothing about a configuration save that fails after its form unmounted, through the real mutation (#767)', async () => {
+    await remountWithRealMutations();
+    let answer!: (response: Response) => void;
+    mocks.patchConfiguration.mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        answer = resolve;
+      }),
+    );
+    await type(input('settings.search.placeholder.label'), 'Find');
+    await save();
+    expect(mocks.patchConfiguration).toHaveBeenCalledOnce();
+    // Another section in its place, then back: a new form, with a new intent.
+    await act(async () => root.unmount());
+    root = createRoot(container);
+    await render();
+    await type(input('settings.search.placeholder.label'), 'Search the docs');
+    await act(async () => answer(failure(500)));
+    await vi.waitFor(() => expect(client.isMutating()).toBe(0));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     expect(mocks.toastError).not.toHaveBeenCalled();
+    expect(input('settings.search.placeholder.label').value).toBe('Search the docs');
     expect(region()).not.toBeNull();
   });
 
@@ -318,17 +372,16 @@ describe('SearchSettings', () => {
     expect(region()).not.toBeNull();
   });
 
-  it('says why grounded answers cannot be turned on, with the way to fix it', async () => {
-    await act(async () => root.unmount());
-    mocks.ai = { ...aiReady, instanceAnswersEnabled: false };
-    root = createRoot(container);
-    await render();
-    const answers = controlFor('settings.search.aiAnswers.label');
-    const toggle = answers.closest('[data-slot="settings-row"]')?.querySelector('[role="switch"]');
-    expect(toggle?.hasAttribute('data-disabled')).toBe(true);
-    const reason = container.querySelector('[data-slot="settings-row-reason"]');
-    expect(reason?.textContent).toContain('settings.search.aiAnswers.needsConnection');
-    expect(reason?.querySelector('a')?.textContent).toBe('settings.search.aiAnswers.openSmartAi');
+  it('shows where AI answers stand, read-only, with the way to the one switch on the AI answers page', async () => {
+    const row = [...container.querySelectorAll('[data-slot="settings-row"]')].find((item) => item.textContent?.includes('settings.ai'));
+    expect(row?.textContent).toContain('settings.ai.state.on');
+    expect(row?.textContent).toContain('settings.ai.switch.on');
+    // No switch here: AI answers has the only control that turns answers on or off.
+    expect(row?.querySelector('[role="switch"]')).toBeNull();
+    expect(container.textContent).not.toContain('settings.search.aiAnswers.label');
+    const manage = row?.querySelector('a');
+    expect(manage?.textContent).toBe('settings.search.aiAnswers.manage');
+    expect(manage?.getAttribute('href')).toBe('/settings?section=ai');
   });
 
   it('shows the page read-only to non-Admins, with one note saying why', async () => {

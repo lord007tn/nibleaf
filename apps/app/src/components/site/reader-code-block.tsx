@@ -3,6 +3,7 @@ import { siteContentT } from '@nibleaf/i18n/site-content';
 import { Check, Copy } from 'lucide-react';
 import { type ComponentProps, useRef, useState } from 'react';
 import { announce } from '@/components/site/reader-content-controls';
+import { scrollRegionProps, useRegionName, useScrollOverflow } from '@/components/site/scroll-region';
 
 /** A code block with a one-click copy button (Mintlify-style). When the fence
  *  carries a `title="…"` (lifted onto the child `<code>` by remarkCodeMeta), a
@@ -20,6 +21,10 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
   const cls = child?.props?.className ?? '';
   const lang = /language-([\w+#-]+)/.exec(cls)?.[1] ?? ownProps['data-lang'] ?? child?.props?.['data-lang'];
   const title = ownProps['data-title'] ?? child?.props?.['data-title'];
+  // A long line makes the <pre> a named region a keyboard can scroll, with a
+  // fade on the edge where the line continues.
+  const overflow = useScrollOverflow(ref);
+  const regionLabel = useRegionName(ref, overflow.overflow, 'code', locale);
   const copy = async () => {
     setCopied(false);
     setFailed(false);
@@ -38,11 +43,14 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
       type="button"
       onClick={copy}
       aria-label={copied ? t('copied') : t('copyCode')}
+      lang={locale}
       className={cn(
         // [direction:ltr] keeps `end-2` physical-right even inside an RTL page,
         // matching the force-LTR code content (else it collides with the badge).
         'reader-code-copy reader-control grid size-7 cursor-pointer place-items-center rounded-md text-white/50 transition-colors [direction:ltr] hover:bg-white/10 hover:text-white/90',
-        title ? '' : 'absolute end-2 top-2 z-10 opacity-0 focus-visible:opacity-100 group-hover:opacity-100',
+        // Always visible (P3-PUB-023): white/50 on the code panel is about 5:1,
+        // and hover brightens it.
+        title ? '' : 'absolute end-2 top-2 z-10',
       )}
     >
       {copied ? <Check className="size-3.5 text-emerald-400" /> : <Copy className="size-3.5" />}
@@ -59,7 +67,7 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
         <div className="flex items-center justify-between gap-3 border-white/[0.08] border-b bg-white/[0.04] px-4 py-2 [direction:ltr]">
           <span className="truncate font-mono text-[12px] text-white/60">{title}</span>
           <div className="flex shrink-0 items-center gap-2">
-            {lang ? <span className="font-mono text-[10px] text-white/50 uppercase">{lang}</span> : null}
+            {lang ? <span className="font-mono text-[10px] text-white/70 uppercase">{lang}</span> : null}
             {copyButton}
           </div>
         </div>
@@ -70,8 +78,19 @@ export function Pre({ locale, node: _node, ...props }: ComponentProps<'pre'> & {
         </>
       )}
       {/* Announced through the shared live region; the visible hint helps sighted readers copy by hand. */}
-      {failed ? <p className="reader-code-copy-failed px-4 py-2 text-sm text-white">{t('copyFailed')}</p> : null}
-      <pre dir="ltr" ref={ref} className={title ? undefined : 'reader-code-untitled'} {...props} />
+      {failed ? (
+        <p className="reader-code-copy-failed px-4 py-2 text-sm text-white" lang={locale}>
+          {t('copyFailed')}
+        </p>
+      ) : null}
+      <pre
+        dir="ltr"
+        ref={ref}
+        className={title ? undefined : 'reader-code-untitled'}
+        {...props}
+        data-region-name={title ?? lang}
+        {...scrollRegionProps(overflow, regionLabel)}
+      />
     </div>
   );
 }

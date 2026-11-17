@@ -1,3 +1,4 @@
+import { displayTitle } from '@nibleaf/shared/page-title';
 import { listBranches } from '@/actions/branches';
 import { getDeployment, getPendingChanges, listDeployments } from '@/actions/deployments';
 import { getExport, listExports } from '@/actions/exports';
@@ -41,7 +42,9 @@ export const listPageDtos = async (projectId: string, languageId?: string, versi
     versionId: page.branchId,
     languageId: page.languageId,
     kind: page.kind,
-    title: page.title,
+    // An untitled page reads "Untitled", flagged so a client knows it has no title yet.
+    title: displayTitle(page),
+    untitled: !page.title.trim(),
     slug: page.slug,
     path: page.path,
     icon: page.icon,
@@ -61,7 +64,9 @@ export const getPageDto = async (projectId: string, pageId: string) => {
     versionId: page.branchId,
     languageId: page.languageId,
     kind: page.kind,
-    title: page.title,
+    // An untitled page reads "Untitled", flagged so a client knows it has no title yet.
+    title: displayTitle(page),
+    untitled: !page.title.trim(),
     slug: page.slug,
     path: page.path,
     icon: page.icon,

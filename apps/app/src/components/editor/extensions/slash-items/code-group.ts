@@ -1,4 +1,5 @@
 import { Code2 } from 'lucide-react';
+import { insertBlockAtFirstItem } from './insert-items';
 import type { SlashItem } from './types';
 
 export const codeGroupSlashItems: SlashItem[] = [
@@ -9,11 +10,6 @@ export const codeGroupSlashItems: SlashItem[] = [
     glyph: '❐',
     keywords: ['code', 'group', 'tabs', 'languages'],
     command: ({ editor, range }) =>
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertContent({ type: 'mdxCodeGroup', content: [{ type: 'codeBlock', attrs: { language: 'bash' } }] })
-        .run(),
+      insertBlockAtFirstItem(editor, range, { type: 'mdxCodeGroup', content: [{ type: 'codeBlock', attrs: { language: 'bash' } }] }),
   },
 ];

@@ -1,5 +1,6 @@
 import type { Locale } from '@nibleaf/i18n';
 import { Badge as BadgeIcon, Columns3, MousePointerClick, PanelTop } from 'lucide-react';
+import { insertBlockAtFirstItem } from './insert-items';
 import { type SlashItem, scaffoldText } from './types';
 
 const columnContent = (count: number, locale: Locale) =>
@@ -16,15 +17,10 @@ export const layoutSlashItems: SlashItem[] = [
     glyph: '▥',
     keywords: ['columns', 'layout', 'grid'],
     command: ({ editor, range, locale }) =>
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertContent({
-          type: 'mdxColumns',
-          content: columnContent(2, locale),
-        })
-        .run(),
+      insertBlockAtFirstItem(editor, range, {
+        type: 'mdxColumns',
+        content: columnContent(2, locale),
+      }),
   },
   ...([3, 4] as const).map(
     (count): SlashItem => ({
@@ -33,13 +29,7 @@ export const layoutSlashItems: SlashItem[] = [
       icon: Columns3,
       glyph: `▥${count}`,
       keywords: ['columns', 'layout', 'grid'],
-      command: ({ editor, range, locale }) =>
-        editor
-          .chain()
-          .focus()
-          .deleteRange(range)
-          .insertContent({ type: 'mdxColumns', content: columnContent(count, locale) })
-          .run(),
+      command: ({ editor, range, locale }) => insertBlockAtFirstItem(editor, range, { type: 'mdxColumns', content: columnContent(count, locale) }),
     }),
   ),
   {

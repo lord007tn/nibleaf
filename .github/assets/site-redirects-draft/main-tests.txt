@@ -1,0 +1,59 @@
+# redirects-settings.test.tsx run against main's component
+# (origin/main 5eae6bf71: apps/app/src/components/project-settings/redirects-section.tsx).
+# Same file and assertions; only the import, and a mutate() shim for main's saveConfigSection, differ.
+#
+# Most failures are behaviour main never had (the page's save bar, Discard, the conflict notice, the
+# problem summary and focus, the empty state). The stale-Undo test saves with Enter, which main also
+# handles, and its PATCH is asserted first, so its failure is a real regression: after a save and its
+# refetch, a late click on main's Undo toast puts the deleted (generated) rule back into the saved draft.
+
+     × shows the stored rules in order, paths left to right in every locale, with no save bar
+     × with nothing stored, explains redirects and offers Add in an empty state
+     × Add, typing, Remove and Undo change only the draft; nothing is sent until Save
+     × removing a middle row keeps the neighbours' edits and order, and Undo puts it back in place
+     × removing the only row shows the empty state and moves focus to Add
+     × sends the whole list as typed: blank rows left out, queries, fragments, Unicode and order kept, chains not flattened
+     × Discard puts the saved rules back and retires a pending Undo
+     × a failed save keeps the draft and its Undo, says so once, claims no success, and can be retried
+     × a completed save retires the Undo: after the refetch, a late click restores nothing
+     × its own filtered echo, rendered before the save resolves, is not a conflict
+     × a newer edit and a row added during the save survive its echo and success, unsaved
+     × a half-filled row shows its problem once left, not while typing
+     × Enter with a half-filled row saves nothing (no other change slips through), focuses it and asks for a fix
+     × a cycle marks every rule in it; a problem in the summary takes focus to its field
+     × too many rules points at the rows past the limit
+     × clean, busy and invalid saves never announce Saved
+     × a different list while dirty keeps the draft whole and asks: Use theirs, or Keep mine
+     × a row removed after a conflict appeared is not restored once Use theirs is chosen
+     × another site starts clean; the first site's Undo and save never reach it
+⎯⎯⎯⎯⎯⎯ Failed Tests 19 ⎯⎯⎯⎯⎯⎯⎯
+      Tests  19 failed | 7 passed (26)
+
+# The stale-Undo regression in detail:
+ FAIL  redirects-settings.test.tsx (against main) > RedirectsSettings — saving > a completed save retires the Undo: after the refetch, a late click restores nothing
+AssertionError: expected [ [ '/guides/install', …(1) ], …(2) ] to deeply equal [ [ '/legacy', …(1) ], …(1) ]
+
+- Expected
++ Received
+
+@@ -1,7 +1,11 @@
+  [
+    [
++     "/guides/install",
++     "/get-started/install",
++   ],
++   [
+      "/legacy",
+      "https://archive.example.com/docs?ref=nib#top",
+    ],
+    [
+      "/دليل",
+
+ ❯ redirects-settings.test.tsx (against main):321:21
+    319|     // A click on the toast as it leaves.
+    320|     await clickUndo();
+    321|     expect(shown()).toEqual(rowsOf(SAVED.slice(1)));
+       |                     ^
+    322|     expect(mocks.updateProject).toHaveBeenCalledTimes(1);
+    323|   });
+

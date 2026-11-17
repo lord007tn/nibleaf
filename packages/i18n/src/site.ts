@@ -47,8 +47,12 @@ import { site_madewith } from './paraglide/messages/site_madewith.js';
 import { site_markdowncopyfailed } from './paraglide/messages/site_markdowncopyfailed.js';
 import { site_menu } from './paraglide/messages/site_menu.js';
 import { site_minreadcount } from './paraglide/messages/site_minreadcount.js';
+import { site_navshowall } from './paraglide/messages/site_navshowall.js';
+import { site_navshowless } from './paraglide/messages/site_navshowless.js';
 import { site_next } from './paraglide/messages/site_next.js';
 import { site_noanswergrounded } from './paraglide/messages/site_noanswergrounded.js';
+import { site_nositebody } from './paraglide/messages/site_nositebody.js';
+import { site_nositetitle } from './paraglide/messages/site_nositetitle.js';
 import { site_notfoundbody } from './paraglide/messages/site_notfoundbody.js';
 import { site_notfoundhome } from './paraglide/messages/site_notfoundhome.js';
 import { site_notfoundsearch } from './paraglide/messages/site_notfoundsearch.js';
@@ -60,6 +64,7 @@ import { site_openmenu } from './paraglide/messages/site_openmenu.js';
 import { site_pageunavailable } from './paraglide/messages/site_pageunavailable.js';
 import { site_previous } from './paraglide/messages/site_previous.js';
 import { site_privatetitle } from './paraglide/messages/site_privatetitle.js';
+import { site_quicklinks } from './paraglide/messages/site_quicklinks.js';
 import { site_raiseissue } from './paraglide/messages/site_raiseissue.js';
 import { site_reportabuse } from './paraglide/messages/site_reportabuse.js';
 import { site_screenshotcount } from './paraglide/messages/site_screenshotcount.js';
@@ -85,6 +90,7 @@ import { site_viewmarkdown } from './paraglide/messages/site_viewmarkdown.js';
 import type { SiteAccessMessageKey } from './site-access';
 import type { SiteChatMessageKey, SiteChatPluralKey } from './site-chat';
 import type { SiteContentMessageKey } from './site-content';
+import type { SitePageActionsMessageKey } from './site-page-actions';
 import type { SiteSearchMessageKey } from './site-search';
 
 /** Messages with {variables} keep Paraglide's generated input types, so a caller
@@ -120,9 +126,13 @@ const siteMessages = {
   previous: site_previous,
   next: site_next,
   onThisPage: site_onthispage,
+  navShowAll: site_navshowall,
+  navShowLess: site_navshowless,
   updated: site_updated,
   notPublishedTitle: site_notpublishedtitle,
   notPublishedBody: site_notpublishedbody,
+  noSiteTitle: site_nositetitle,
+  noSiteBody: site_nositebody,
   privateTitle: site_privatetitle,
   signOut: site_signout,
   signOutFailed: site_signoutfailed,
@@ -169,6 +179,7 @@ const siteMessages = {
   language: site_language,
   version: site_version,
   siteLinks: site_sitelinks,
+  quickLinks: site_quicklinks,
   docsSections: site_docssections,
   docsPages: site_docspages,
   notFoundTitle: site_notfoundtitle,
@@ -187,11 +198,18 @@ type SiteContractKey = Extract<MessageKey, `site.${string}`>;
  * (apps/app/src/lib/arabic-marketing-copy.ts) so it stays out of every reader's first load. */
 type SiteMarketingHeadKey = `arabic${'Landing' | 'Platforms'}${string}`;
 /** Reader keys `siteT` covers: all but those of the lazily loaded search dialog
- * (./site-search), article renderer (./site-content), AI chat panel (./site-chat)
+ * (./site-search), article renderer (./site-content), page actions
+ * (./site-page-actions), AI chat panel (./site-chat)
  * and private-site screen (./site-access). */
 export type SiteMessageKey = Exclude<
   SiteContractKey extends `site.${infer Key}` ? Key : never,
-  SiteSearchMessageKey | SiteContentMessageKey | SiteChatMessageKey | SiteChatPluralKey | SiteAccessMessageKey | SiteMarketingHeadKey
+  | SiteSearchMessageKey
+  | SiteContentMessageKey
+  | SitePageActionsMessageKey
+  | SiteChatMessageKey
+  | SiteChatPluralKey
+  | SiteAccessMessageKey
+  | SiteMarketingHeadKey
 >;
 type SiteVariableKey = keyof typeof siteVariableMessages;
 type SitePluralKey = keyof typeof sitePluralMessages;

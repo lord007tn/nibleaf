@@ -101,6 +101,8 @@ it('allows the long German header action and title to shrink and wrap', async ()
     expect(action?.classList.contains('h-7')).toBe(false);
     const title = [...document.querySelectorAll('span')].find((span) => span.textContent === 'Benachrichtigungen');
     expect(title?.classList.contains('[overflow-wrap:anywhere]')).toBe(true);
+    // P2-DASH-010: the popover is named by its title.
+    expect(document.querySelector('[data-slot="popover-content"]')?.getAttribute('aria-labelledby')).toBe(title?.id);
   } finally {
     await act(() => root.unmount());
     host.remove();

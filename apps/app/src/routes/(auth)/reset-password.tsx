@@ -1,12 +1,12 @@
-import { useT } from '@nibleaf/i18n/react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { KeyRound } from 'lucide-react';
 import { AuthLayout } from '@/layouts/auth';
+import { useAuthT } from '@/lib/auth-messages';
 
 export const Route = createFileRoute('/(auth)/reset-password')({ component: ResetPasswordPage });
 
 function ResetPasswordPage() {
-  const t = useT();
+  const t = useAuthT();
   return (
     <AuthLayout subtitle={t('auth.passwordless.subtitle')}>
       <div className="flex flex-col items-center rounded-xl border border-border bg-muted/40 px-5 py-6 text-center">

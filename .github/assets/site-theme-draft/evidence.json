@@ -1,0 +1,548 @@
+{
+  "environment": "Component fixture: the real Themes section (before: main; after: this branch) with the real design system, EN/AR catalogs, project query and mutations, the theme import and export mutations, ConfirmProvider and Sonner, in an editor-canvas frame; a fictional site and template; the project GET, PATCH (merged like the API) and template endpoints (on the shared theme functions) answered by interception; not the signed-in dashboard or production",
+  "baseline": "df4e66581544b727c096da3b845673216b84ddd7",
+  "head": "15d284aa8238e72f822207d80aaae074581f61af",
+  "uncommitted": [],
+  "swappedForBefore": [
+    "apps/app/src/components/project-settings/theme-section.tsx"
+  ],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "open-en-1440.jpg",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "preset": ["Signal"],
+        "invalid": [],
+        "focused": null,
+        "dialog": null,
+        "importResult": null,
+        "undoEnabled": false,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "preset": ["Signal"],
+        "invalid": [],
+        "focused": null,
+        "dialog": null,
+        "importResult": null,
+        "undoEnabled": false,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "open-en-390.jpg",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "ltr",
+        "preset": ["Signal"],
+        "invalid": [],
+        "focused": null,
+        "dialog": null,
+        "importResult": null,
+        "undoEnabled": false,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "ltr",
+        "preset": ["Signal"],
+        "invalid": [],
+        "focused": null,
+        "dialog": null,
+        "importResult": null,
+        "undoEnabled": false,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "open-ar-1440.jpg",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "preset": ["سيجنال"],
+        "invalid": [],
+        "focused": null,
+        "dialog": null,
+        "importResult": null,
+        "undoEnabled": false,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "preset": ["سيجنال"],
+        "invalid": [],
+        "focused": null,
+        "dialog": null,
+        "importResult": null,
+        "undoEnabled": false,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    },
+    {
+      "file": "open-ar-390.jpg",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "before": {
+        "dir": "rtl",
+        "preset": ["سيجنال"],
+        "invalid": [],
+        "focused": null,
+        "dialog": null,
+        "importResult": null,
+        "undoEnabled": false,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      },
+      "after": {
+        "dir": "rtl",
+        "preset": ["سيجنال"],
+        "invalid": [],
+        "focused": null,
+        "dialog": null,
+        "importResult": null,
+        "undoEnabled": false,
+        "toasts": [],
+        "saveBar": false,
+        "status": "",
+        "overflow": false,
+        "requests": [{ "call": "GET /api/app/projects/site-1" }],
+        "pageErrors": []
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1280.webm",
+      "locale": "en",
+      "width": 1280,
+      "theme": "light",
+      "requests": [
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": {
+            "config": {
+              "theme": {
+                "version": 1,
+                "preset": "manuscript",
+                "metadata": {
+                  "name": "Manuscript",
+                  "description": "An editorial reading shell with a horizontal chapter deck and focused long-form measure.",
+                  "author": "Nibleaf"
+                },
+                "colors": {
+                  "light": {
+                    "canvas": "#f9f5ec",
+                    "foreground": "#2a251f",
+                    "surface": "#fffcf6",
+                    "surfaceRaised": "#ffffff",
+                    "muted": "#f0e9dc",
+                    "mutedForeground": "#6a6157",
+                    "border": "#e2d9c9",
+                    "accent": "#9a4a2c",
+                    "accentForeground": "#ffffff",
+                    "focus": "#9a4a2c",
+                    "code": "#2b2521",
+                    "codeForeground": "#f3eadb",
+                    "info": "#42667f",
+                    "success": "#3c6d49",
+                    "warning": "#8f5b0c",
+                    "danger": "#a53a3a"
+                  },
+                  "dark": {
+                    "canvas": "#17140f",
+                    "foreground": "#f3ecdf",
+                    "surface": "#1f1b15",
+                    "surfaceRaised": "#28221b",
+                    "muted": "#2d261e",
+                    "mutedForeground": "#c3b6a3",
+                    "border": "#40362b",
+                    "accent": "#e39b7d",
+                    "accentForeground": "#24110a",
+                    "focus": "#f2ae91",
+                    "code": "#0f0d0b",
+                    "codeForeground": "#f2e8d9",
+                    "info": "#8fbadb",
+                    "success": "#8bc898",
+                    "warning": "#e8c073",
+                    "danger": "#ef9494"
+                  }
+                },
+                "layout": {
+                  "shell": "editorial",
+                  "density": "relaxed",
+                  "radius": "rounded",
+                  "contentWidth": "focused",
+                  "header": "inline",
+                  "sidebar": "soft",
+                  "navigation": "tree"
+                },
+                "components": {
+                  "codeBlocks": "dim",
+                  "callouts": "outline",
+                  "cards": "flat",
+                  "tabs": "pills",
+                  "tables": "rows"
+                }
+              }
+            }
+          }
+        },
+        {
+          "call": "PATCH /api/app/projects/site-1",
+          "body": {
+            "config": {
+              "theme": {
+                "version": 1,
+                "preset": "manuscript",
+                "metadata": {
+                  "name": "Manuscript",
+                  "description": "An editorial reading shell with a horizontal chapter deck and focused long-form measure.",
+                  "author": "Nibleaf"
+                },
+                "colors": {
+                  "light": {
+                    "canvas": "#f9f5ec",
+                    "foreground": "#2a251f",
+                    "surface": "#fffcf6",
+                    "surfaceRaised": "#ffffff",
+                    "muted": "#f0e9dc",
+                    "mutedForeground": "#6a6157",
+                    "border": "#e2d9c9",
+                    "accent": "#9a4a2c",
+                    "accentForeground": "#ffffff",
+                    "focus": "#9a4a2c",
+                    "code": "#2b2521",
+                    "codeForeground": "#f3eadb",
+                    "info": "#42667f",
+                    "success": "#3c6d49",
+                    "warning": "#8f5b0c",
+                    "danger": "#a53a3a"
+                  },
+                  "dark": {
+                    "canvas": "#17140f",
+                    "foreground": "#f3ecdf",
+                    "surface": "#1f1b15",
+                    "surfaceRaised": "#28221b",
+                    "muted": "#2d261e",
+                    "mutedForeground": "#c3b6a3",
+                    "border": "#40362b",
+                    "accent": "#e39b7d",
+                    "accentForeground": "#24110a",
+                    "focus": "#f2ae91",
+                    "code": "#0f0d0b",
+                    "codeForeground": "#f2e8d9",
+                    "info": "#8fbadb",
+                    "success": "#8bc898",
+                    "warning": "#e8c073",
+                    "danger": "#ef9494"
+                  }
+                },
+                "layout": {
+                  "shell": "editorial",
+                  "density": "relaxed",
+                  "radius": "rounded",
+                  "contentWidth": "focused",
+                  "header": "inline",
+                  "sidebar": "soft",
+                  "navigation": "tree"
+                },
+                "components": {
+                  "codeBlocks": "dim",
+                  "callouts": "outline",
+                  "cards": "flat",
+                  "tabs": "pills",
+                  "tables": "rows"
+                }
+              }
+            }
+          }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" },
+        {
+          "call": "POST /api/app/projects/site-1/theme-template/import",
+          "body": { "mode": "merge", "apply": false }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/theme-template/import",
+          "body": { "mode": "merge", "apply": true }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/theme-template/import",
+          "body": { "mode": "merge", "apply": true }
+        },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" },
+        { "call": "GET /api/app/projects/site-1" }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "opened: the stored Signal theme, no save bar",
+          "dir": "ltr",
+          "preset": ["Signal"],
+          "invalid": [],
+          "focused": null,
+          "dialog": null,
+          "importResult": null,
+          "undoEnabled": false,
+          "toasts": [],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Manuscript picked: the save bar shows",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": [],
+          "focused": "ManuscriptAn editorial layout with a chapter deck, a paper-like reading surface, and a focused long-form measure.Best for handbooks, learning centers, and narrative knowledge bases.",
+          "dialog": null,
+          "importResult": null,
+          "undoEnabled": true,
+          "toasts": [],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Undo: back on Signal, no save bar",
+          "dir": "ltr",
+          "preset": ["Signal"],
+          "invalid": [],
+          "focused": null,
+          "dialog": null,
+          "importResult": null,
+          "undoEnabled": false,
+          "toasts": [],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "a light text colour that fails contrast, left: marked",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": ["Canvas", "Foreground"],
+          "focused": "Surface",
+          "dialog": null,
+          "importResult": null,
+          "undoEnabled": true,
+          "toasts": [],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Ctrl+S refused before any request: \"Fix the highlighted fields\", focus on the colour",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": ["Canvas", "Foreground"],
+          "focused": "Canvas",
+          "dialog": null,
+          "importResult": null,
+          "undoEnabled": true,
+          "toasts": [],
+          "saveBar": true,
+          "status": "Fix the highlighted fields to save.",
+          "overflow": false
+        },
+        {
+          "step": "Undo: the text colour is back, nothing marked",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": [],
+          "focused": "Undo",
+          "dialog": null,
+          "importResult": null,
+          "undoEnabled": true,
+          "toasts": [],
+          "saveBar": true,
+          "status": "Fix the highlighted fields to save.",
+          "overflow": false
+        },
+        {
+          "step": "Ctrl+S, refused by the server: one error toast, the draft kept, no \"Saved\"",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": [],
+          "focused": "Undo",
+          "dialog": null,
+          "importResult": null,
+          "undoEnabled": true,
+          "toasts": ["Could not save"],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Ctrl+S again: saved and refetched, the theme alone sent; no save bar",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": [],
+          "focused": null,
+          "dialog": null,
+          "importResult": null,
+          "undoEnabled": false,
+          "toasts": [
+            "Draft theme saved. Publish when you are ready for readers to receive it.",
+            "Could not save"
+          ],
+          "saveBar": false,
+          "status": "Saved",
+          "overflow": false
+        },
+        {
+          "step": "appearance switched to dark: the save bar shows",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": [],
+          "focused": "Dark",
+          "dialog": null,
+          "importResult": null,
+          "undoEnabled": true,
+          "toasts": [
+            "Draft theme saved. Publish when you are ready for readers to receive it.",
+            "Could not save"
+          ],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Discard: back to light, no save bar",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": [],
+          "focused": null,
+          "dialog": null,
+          "importResult": null,
+          "undoEnabled": false,
+          "toasts": [
+            "Draft theme saved. Publish when you are ready for readers to receive it.",
+            "Could not save"
+          ],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Preview import: the proposed changes, nothing written",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": [],
+          "focused": null,
+          "dialog": null,
+          "importResult": "preview",
+          "undoEnabled": false,
+          "toasts": [
+            "Draft theme saved. Publish when you are ready for readers to receive it."
+          ],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Apply, refused by the server: the apply error, the text and preview kept",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": [],
+          "focused": null,
+          "dialog": null,
+          "importResult": "preview",
+          "undoEnabled": false,
+          "toasts": ["Could not apply the theme template"],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Apply with an unsaved preset: asks first",
+          "dir": "ltr",
+          "preset": ["Harbor"],
+          "invalid": [],
+          "focused": "Keep editing",
+          "dialog": "Discard unsaved changes?Your changes have not been saved.Keep editingDiscard changes",
+          "importResult": "preview",
+          "undoEnabled": true,
+          "toasts": ["Could not apply the theme template"],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Keep editing: nothing written, the draft kept",
+          "dir": "ltr",
+          "preset": ["Harbor"],
+          "invalid": [],
+          "focused": "Apply to draft",
+          "dialog": null,
+          "importResult": "preview",
+          "undoEnabled": true,
+          "toasts": ["Could not apply the theme template"],
+          "saveBar": true,
+          "status": "",
+          "overflow": false
+        },
+        {
+          "step": "Discard changes: applied at once; the clean draft shows the imported Manuscript",
+          "dir": "ltr",
+          "preset": ["Manuscript"],
+          "invalid": [],
+          "focused": "HarborA balanced reference layout with persistent navigation, a reading column, and a page outline.Best for product guides and reference libraries that need dependable three-column wayfinding.",
+          "dialog": null,
+          "importResult": "applied",
+          "undoEnabled": false,
+          "toasts": ["Theme template applied to the draft"],
+          "saveBar": false,
+          "status": "",
+          "overflow": false
+        }
+      ]
+    }
+  ]
+}

@@ -6,12 +6,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SettingsRow } from '@nibleaf/design-system/components/ui/settings-row';
 import { SettingsSection } from '@nibleaf/design-system/components/ui/settings-section';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
+import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { slugify } from '@nibleaf/shared/utils';
 import { useStore } from '@tanstack/react-form';
 import { Link } from '@tanstack/react-router';
 import { Ban } from 'lucide-react';
-import { type ReactNode, useCallback, useId, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useId, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { LanguageOptionLabel, Segmented, SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { FormField } from '@/components/ui/form-field';
@@ -20,24 +21,34 @@ import type { Language, Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { isolate } from '@/lib/bidi';
 import { validateOnBlurThenChange, withServerError } from '@/lib/forms/field-errors';
-import { focusFirstInvalid, SaveRegionProvider, useSaveRegionForm } from '@/lib/forms/save-region';
+import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useGeneralLanguages, useSaveGeneral } from '../api/hooks';
 import {
   GENERAL_ICON_CHOICES,
   type GeneralValues,
   generalValues,
-  isSlugTaken,
   nameProblem,
   normalizeBaseDomain,
   normalizeGeneral,
   orderLanguages,
+  type SlugProblem,
+  type SlugRefusal,
   siteAddressPreview,
   slugProblem,
+  slugRefusal,
   translationChooser,
 } from '../model/general';
 
 const baseDomain = normalizeBaseDomain(env.VITE_SITE_BASE_DOMAIN);
+
+/** What the address field says for each problem, found here or by the server. */
+const SLUG_MESSAGES = {
+  required: 'settings.general.url.error',
+  format: 'settings.general.url.error',
+  reserved: 'settings.general.url.reserved',
+  taken: 'settings.general.url.taken',
+} as const satisfies Record<SlugProblem | SlugRefusal, MessageKey>;
 
 /** The `dir` for text written in a content language, independent of the interface locale. */
 const dirOf = (language: Pick<Language, 'direction'> | undefined) => (language ? (language.direction === 'RTL' ? 'rtl' : 'ltr') : 'auto');
@@ -63,7 +74,6 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
   const source = useMemo(() => generalValues(project, languages), [project, languages]);
   const [selectedLanguageId, setSelectedLanguageId] = useState<string>();
   const selectedLanguage = extraLanguages.find((language) => language.id === selectedLanguageId) ?? extraLanguages[0];
-  const formRef = useRef<HTMLFormElement>(null);
 
   const { form, ...draft } = useServerDraftForm<GeneralValues>({
     identity: [project.id, 'general'],
@@ -77,11 +87,12 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
         outcome.failed();
         // A save for a site this form no longer shows must not touch it.
         if (!outcome.isCurrent()) return 'failed';
-        if (isSlugTaken(error)) {
+        const refusal = slugRefusal(error);
+        if (refusal) {
           // The refusal is about the address that was sent. If it has been
           // changed since, the new one hasn't been judged: leave it clean.
           if (form.state.values.slug !== value.slug) return 'failed';
-          form.setFieldMeta('slug', (meta) => withServerError(meta, t('settings.general.url.taken')));
+          form.setFieldMeta('slug', (meta) => withServerError(meta, t(SLUG_MESSAGES[refusal])));
           return 'invalid';
         }
         toast.error(friendlyErrorMessage(t, error, 'settings.saveError'));
@@ -98,22 +109,23 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
     const outcome = await submitDraft();
     return outcome === 'busy' ? 'failed' : outcome;
   }, [submitDraft]);
-  useSaveRegionForm('site-general', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  const formProps = useSaveRegionForm('site-general', {
+    isDirty: draft.isDirty,
+    isSubmitting: draft.isSaving,
+    submit,
+    discard: draft.discard,
+    settlement: draft.settlement,
+  });
 
   const required = (value: string) => (nameProblem(value) ? t('validation.required', { label: t('settings.general.name.label') }) : undefined);
-  const slugMessage = (value: string) => (slugProblem(value) ? t('settings.general.url.error') : undefined);
+  const slugMessage = (value: string) => {
+    const problem = slugProblem(value, project.slug);
+    return problem ? t(SLUG_MESSAGES[problem]) : undefined;
+  };
 
   return (
-    <form
-      className="me-auto flex w-full max-w-[47.5rem] flex-col gap-8"
-      noValidate
-      onSubmit={(event) => {
-        event.preventDefault();
-        if (!draft.isDirty) return;
-        void submit().then((outcome) => outcome === 'invalid' && focusFirstInvalid(formRef.current));
-      }}
-      ref={formRef}
-    >
+    <form className="me-auto flex w-full max-w-[47.5rem] flex-col gap-8" noValidate {...formProps}>
+      <SaveRegionSubmit />
       <PageHeader description={t('settings.general.summary')} title={t('settings.general.title')} />
 
       {draft.conflicts.length > 0 ? (

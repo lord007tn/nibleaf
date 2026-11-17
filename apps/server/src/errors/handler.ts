@@ -20,6 +20,8 @@ const codeForStatus = (status: number) => {
       return 'http:not_found' as const;
     case 409:
       return 'http:conflict' as const;
+    case 413:
+      return 'http:payload_too_large' as const;
     case 422:
       return 'http:unprocessable' as const;
     case 429:
@@ -35,6 +37,7 @@ export const errorMiddleware =
   (err: Error, ctx: Context): Response => {
     if (err instanceof AppError) {
       if (err.code === 'import:busy') ctx.header('Retry-After', '10');
+      if (err.code === 'publish:busy') ctx.header('Retry-After', '5');
       if (err.status >= 500) {
         logger.error({ err, code: err.code }, 'AppError (server)');
       } else {

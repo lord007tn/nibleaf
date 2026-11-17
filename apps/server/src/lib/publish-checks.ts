@@ -1,8 +1,12 @@
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { editor_newgroup } from '@nibleaf/i18n/messages/editor_newgroup';
 import { editor_untitled } from '@nibleaf/i18n/messages/editor_untitled';
-import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, pageContentFacts } from '@nibleaf/shared/publish-checks';
-import { publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { site_importblog } from '@nibleaf/i18n/messages/site_importblog';
+import { hasTextOutsideComments } from '@nibleaf/shared/markup-scan';
+import type { PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
+import { brokenLinkCheckEnabledForSnapshot, findBrokenInternalLinks, snapshotContentFacts } from '@nibleaf/shared/publish-checks';
+import { buildNavTree, defaultLanguage, isPageTranslation, publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/shared/site';
+import { firstPage, pagesForLanguage, pagesForVersion, resolveSitePage } from '@nibleaf/shared/site-route';
 
 /**
  * Pre-publish quality checks, computed from the exact draft snapshot the
@@ -15,25 +19,21 @@ import { publicLanguages, type SiteSnapshot, type SnapshotPage } from '@nibleaf/
  * One pass over the snapshot's pages with in-memory indexes: no queries, so a
  * 300-page site costs a few milliseconds.
  */
-type PublishCheckCode =
-  | 'broken-internal-link'
-  | 'missing-alt'
-  | 'untitled-page'
-  | 'stray-characters'
-  | 'unreadable-slug'
-  | 'empty-page'
-  | 'duplicate-title';
-
 export interface PublishCheck {
   code: PublishCheckCode;
   severity: 'error' | 'warning';
   pageId: string;
+  /** The docs version (branch) the page belongs to, so the dialog can tell
+   *  apart same-address pages in different versions. */
+  readonly versionId?: string;
   languageCode: string;
   title: string;
   path: string;
-  /** The evidence: the link, the image source, the stray text, the slug or the
-   *  path of the other page with the same title. Empty for an untitled or
-   *  empty page, where the page itself is the evidence. */
+  /** The evidence: the link, the image source, the stray text, the slug, the
+   *  path of the other page with the same title, the video or embed address, or
+   *  (`home-untranslated`) JSON naming where that language's readers land and the
+   *  home page's translation key and path. Empty for an untitled or empty page, or
+   *  a "Blog" section, where the page itself is the evidence. */
   detail: string;
   /** Why a link is broken, when it isn't a missing page: too long to serve. */
   reason?: 'path-too-long';
@@ -96,12 +96,60 @@ const isUnreadableSlug = (slug: string): boolean => {
   );
 };
 
-/** Whether anything but HTML/MDX comments and whitespace is left. Splits on
- *  the comments instead of stripping them: nothing here is rendered, it only
- *  decides whether a page is empty. */
-const hasBody = (content: string): boolean => content.split(/<!--[\s\S]*?-->|\{\/\*[\s\S]*?\*\/\}/).some((part) => part.trim().length > 0);
+/** Whether anything but HTML/MDX comments and whitespace is left: nothing here
+ *  is rendered, it only decides whether a page is empty. One forward read
+ *  (`hasTextOutsideComments`), the same answer as splitting on the comments. */
+const hasBody = hasTextOutsideComments;
 
 const SEVERITY_ORDER = { error: 0, warning: 1 } as const;
+
+/** The title the Ghost importer gives a site's posts ("Blog", "المدونة", …), in
+ *  every interface locale. */
+const IMPORTED_BLOG_TITLES = new Set<string>(
+  INTERFACE_LOCALES.map(({ code }) => site_importblog(undefined, { locale: code }).trim().normalize('NFC').toLocaleLowerCase()),
+);
+
+/**
+ * Checks about the site as readers enter it, in its default version:
+ * - `home-untranslated`: readers who open the site in another language land on
+ *   a page that isn't a translation of the home page. Where they land is asked
+ *   of the reader's own route resolution (`resolveSitePage` with an empty path),
+ *   so the warning clears exactly when the landing page changes. One per
+ *   language, on the home page; the detail is JSON with the language, the page
+ *   they land on, and the home page's translation key and path, so the dialog
+ *   can name the exact change.
+ * - `blog-root-group`: the first section of a language's navigation is the
+ *   importer's "Blog", so every docs page reads as a blog post in the sidebar
+ *   and the breadcrumbs.
+ */
+const siteStructureChecks = (
+  snapshot: SiteSnapshot,
+  served: ReadonlySet<string>,
+  add: (page: SnapshotPage, code: PublishCheckCode, detail?: string) => void,
+): void => {
+  const version = snapshot.project.versions.find((candidate) => candidate.isDefault);
+  if (!version) return;
+  const versionPages = pagesForVersion(snapshot, version);
+  const defaultCode = defaultLanguage(snapshot.project).code;
+  // The home page as the reader serves the site root: a visible page with an
+  // empty path wins over the first page in the navigation.
+  const home = resolveSitePage(snapshot, '', defaultCode, version.slug)?.page;
+  for (const code of served) {
+    const pages = pagesForLanguage(versionPages, code);
+    const nav = buildNavTree(pages, code);
+    const first = nav[0];
+    const firstGroup = first && first.kind === 'GROUP' ? pages.find((page) => page.id === first.id) : undefined;
+    // The name readers see in the sidebar (a sidebar title wins over the page
+    // title, as buildNavTree resolves it), on the group's own row.
+    if (firstGroup && first && IMPORTED_BLOG_TITLES.has(first.title.trim().normalize('NFC').toLocaleLowerCase())) add(firstGroup, 'blog-root-group');
+    if (!home || code === defaultCode) continue;
+    // Only a language with pages of its own: otherwise readers get the default language's home.
+    if (!firstPage(pages, code)) continue;
+    const landing = resolveSitePage(snapshot, '', code, version.slug)?.page;
+    if (!landing || landing.languageCode !== code || isPageTranslation(home, landing)) continue;
+    add(home, 'home-untranslated', JSON.stringify({ language: code, landing: landing.title, key: home.translationKey ?? null, path: home.path }));
+  }
+};
 
 /** Every check for the snapshot, errors first, then in page order. */
 export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
@@ -109,6 +157,8 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
   // Hidden pages and disabled languages are not published, so nothing on them can mislead a reader.
   const published = snapshot.pages.filter((page) => !page.hidden && served.has(page.languageCode));
   const linkSeverity = brokenLinkCheckEnabledForSnapshot(snapshot) ? 'error' : 'warning';
+  // Shared with findBrokenInternalLinks below, so each page is parsed once per snapshot.
+  const factsOf = snapshotContentFacts(snapshot);
   const brokenLinks = new Map<string, string[]>();
   const tooLong = new Set<string>();
   for (const { page, href, reason } of findBrokenInternalLinks(snapshot)) {
@@ -124,6 +174,7 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
       code,
       severity,
       pageId: page.id,
+      versionId: page.versionId,
       languageCode: page.languageCode,
       title: page.title,
       path: page.path,
@@ -149,10 +200,15 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
     // No shortcut for an empty page: every finding is still reported, so the
     // dialog can never hide a link the worker would block on.
     if (!hasBody(page.content)) add(page, 'empty-page');
-    const facts = pageContentFacts(page.content);
+    const facts = factsOf(page.content);
     addEach(page, 'broken-internal-link', brokenLinks.get(page.id) ?? [], linkSeverity);
     addEach(page, 'missing-alt', facts.imagesWithoutAlt);
     addEach(page, 'stray-characters', facts.strayText);
+    addEach(page, 'embed-untitled', facts.untitledEmbeds);
+    addEach(page, 'embed-as-link', facts.embedsAsLinks);
+    addEach(page, 'video-not-https', facts.insecureVideos);
+    addEach(page, 'embed-unclosed', facts.unclosedEmbeds);
+    addEach(page, 'video-poster-hidden', facts.hiddenPosters);
   }
   for (const siblings of siblingsByTitle.values()) {
     if (siblings.length < 2) continue;
@@ -161,6 +217,7 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
       add(page, 'duplicate-title', other?.path ?? '');
     }
   }
+  siteStructureChecks(snapshot, served, add);
 
   return checks.sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]).slice(0, MAX_CHECKS);
 }

@@ -9,9 +9,10 @@ import { useSwitcher } from '@/hooks/api';
 
 /**
  * Account settings shell (§5.4.4): personal, so no org chrome — a plain
- * "Account" header and a way back to the last organization.
+ * "Account" header and a way back to the last organization. Pages with no
+ * organization of their own (a dashboard not-found) use it with their own `title`.
  */
-export function AccountLayout({ children }: { children: ReactNode }) {
+export function AccountLayout({ children, title }: { children: ReactNode; title?: string }) {
   const t = useT();
   const switcher = useSwitcher();
   const landing = switcher.data?.landing;
@@ -20,7 +21,7 @@ export function AccountLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-20 flex h-12 min-w-0 items-center gap-3 border-border border-b bg-background/80 px-3 backdrop-blur sm:px-4">
         <NibleafMark aria-hidden className="size-6 shrink-0" />
-        <span className="font-semibold">{t('account.header')}</span>
+        <span className="font-semibold">{title ?? t('account.header')}</span>
         <div className="ms-auto min-w-0">
           {switcher.isPending ? (
             <Skeleton aria-hidden className="h-4 w-32" />

@@ -1,0 +1,1927 @@
+{
+  "environment": "Component fixture: main's ExportsSection (86e8cb74fe19eb3d6a87199ecd465ffb04812ded) and this branch's with the real design system, EN/AR catalogs, query hooks and export run mutations; fictional site and artifacts; every request answered by interception and the artifact file never served; not the signed-in dashboard, production, the worker, the scheduler or a real export file",
+  "base": "86e8cb74fe19eb3d6a87199ecd465ffb04812ded",
+  "head": "1f31746c2600beefecf17cac98d94692965439ed",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "en": {
+        "before-create": {
+          "dir": "ltr",
+          "create": "Create export",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "Create export",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-list": {
+          "dir": "ltr",
+          "create": "Cancel",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "before-pending": {
+          "dir": "ltr",
+          "create": "Cancel",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel",
+                  "busy": true,
+                  "disabled": true,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "before-refused": {
+          "dir": "ltr",
+          "create": "Cancel",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-create": {
+          "dir": "ltr",
+          "create": "Create export",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "Create export",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-list": {
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-pending": {
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-refused": {
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["Could not cancel the export."],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        }
+      },
+      "ar": {
+        "before-create": {
+          "dir": "rtl",
+          "create": "إنشاء تصدير",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "إنشاء تصدير",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-list": {
+          "dir": "rtl",
+          "create": "إلغاء",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "before-pending": {
+          "dir": "rtl",
+          "create": "إلغاء",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء",
+                  "busy": true,
+                  "disabled": true,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "before-refused": {
+          "dir": "rtl",
+          "create": "إلغاء",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-create": {
+          "dir": "rtl",
+          "create": "إنشاء تصدير",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "إنشاء تصدير",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-list": {
+          "dir": "rtl",
+          "create": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-pending": {
+          "dir": "rtl",
+          "create": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-refused": {
+          "dir": "rtl",
+          "create": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["تعذر إلغاء التصدير."],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "en": {
+        "before-create": {
+          "dir": "ltr",
+          "create": "Create export",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "Create export",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-list": {
+          "dir": "ltr",
+          "create": "Cancel",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "before-pending": {
+          "dir": "ltr",
+          "create": "Cancel",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel",
+                  "busy": true,
+                  "disabled": true,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "before-refused": {
+          "dir": "ltr",
+          "create": "Cancel",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-create": {
+          "dir": "ltr",
+          "create": "Create export",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "Create export",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-list": {
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-pending": {
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-refused": {
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+          "rows": [
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["Could not cancel the export."],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        }
+      },
+      "ar": {
+        "before-create": {
+          "dir": "rtl",
+          "create": "إنشاء تصدير",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "إنشاء تصدير",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "before-list": {
+          "dir": "rtl",
+          "create": "إلغاء",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "before-pending": {
+          "dir": "rtl",
+          "create": "إلغاء",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء",
+                  "busy": true,
+                  "disabled": true,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "before-refused": {
+          "dir": "rtl",
+          "create": "إلغاء",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-create": {
+          "dir": "rtl",
+          "create": "إنشاء تصدير",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "إنشاء تصدير",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": true,
+          "toasts": [],
+          "overflow": false,
+          "requests": []
+        },
+        "after-list": {
+          "dir": "rtl",
+          "create": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-pending": {
+          "dir": "rtl",
+          "create": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        },
+        "after-refused": {
+          "dir": "rtl",
+          "create": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+          "rows": [
+            {
+              "status": "قيد التشغيل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 16�/11�/2026، 9:10:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "إلغاء ملف Markdown ZIP, PDF 16�/11�/2026، 9:10:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "status": "نجح",
+              "details": "الإصدار المنشور v4 · 18 صفحة · أرشيف الدليل الليلي · 16�/11�/2026، 2:00:00 ص",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "ملف HTML ثابت ZIP · 8.1 ميبيبايت 16�/11�/2026، 2:00:00 ص",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "فشل",
+              "details": "الإصدار المنشور v4 · 18 صفحة · يدوي · 15�/11�/2026، 5:42:00 م",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["تعذر إلغاء التصدير."],
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/exports/run-3/cancel",
+              "body": null
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "timezone": "Africa/Lagos",
+      "requests": [
+        {
+          "call": "POST /api/app/projects/site-1/exports",
+          "body": { "formats": ["MARKDOWN", "PDF"] }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/exports",
+          "body": { "formats": ["MARKDOWN", "PDF"] }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/exports/run-4/cancel",
+          "body": null
+        },
+        {
+          "call": "POST /api/app/projects/site-1/exports/run-4/cancel",
+          "body": null
+        },
+        {
+          "call": "GET /api/app/projects/site-1/exports/run-2/artifacts/pdf/download"
+        }
+      ],
+      "downloads": [
+        {
+          "path": "/api/app/projects/site-1/exports/run-2/artifacts/pdf/file",
+          "suggestedFilename": "handbook-v4.pdf",
+          "failure": "canceled"
+        }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "one-time export: Markdown ZIP and PDF selected",
+          "dir": "ltr",
+          "create": "Create export",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "Create export",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requestsSoFar": 0
+        },
+        {
+          "step": "create pending",
+          "dir": "ltr",
+          "create": "Create export",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "Create export",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requestsSoFar": 1
+        },
+        {
+          "step": "create refused: toast, formats kept",
+          "dir": "ltr",
+          "create": "Create export",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "Create export",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": ["Couldn't start the export. Try again."],
+          "overflow": false,
+          "requestsSoFar": 1
+        },
+        {
+          "step": "create retried: queued",
+          "dir": "ltr",
+          "create": "Create export",
+          "rows": [
+            {
+              "status": null,
+              "details": null,
+              "buttons": [
+                {
+                  "accessibleName": "Create export",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            }
+          ],
+          "focusLost": false,
+          "toasts": [
+            "Export queued from the latest published revision.",
+            "Couldn't start the export. Try again."
+          ],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "history: the queued export on top",
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 4:36:55 AM",
+          "rows": [
+            {
+              "status": "pending",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 4:36:55 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 4:36:55 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [
+            "Export queued from the latest published revision.",
+            "Couldn't start the export. Try again."
+          ],
+          "overflow": false,
+          "requestsSoFar": 2
+        },
+        {
+          "step": "cancel pending: only that button is busy",
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 4:36:55 AM",
+          "rows": [
+            {
+              "status": "pending",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 4:36:55 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 4:36:55 AM",
+                  "busy": true,
+                  "disabled": false,
+                  "ariaDisabled": true,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [
+            "Export queued from the latest published revision.",
+            "Couldn't start the export. Try again."
+          ],
+          "overflow": false,
+          "requestsSoFar": 3
+        },
+        {
+          "step": "cancel refused: toast, still pending",
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 4:36:55 AM",
+          "rows": [
+            {
+              "status": "pending",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 4:36:55 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 4:36:55 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                }
+              ]
+            },
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [
+            "Could not cancel the export.",
+            "Export queued from the latest published revision."
+          ],
+          "overflow": false,
+          "requestsSoFar": 3
+        },
+        {
+          "step": "cancel retried: read back as cancelled",
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+          "rows": [
+            {
+              "status": "cancelled",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 4:36:55 AM",
+              "buttons": []
+            },
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": true,
+          "toasts": ["Could not cancel the export."],
+          "overflow": false,
+          "requestsSoFar": 4
+        },
+        {
+          "step": "download pressed twice: one link, one download started",
+          "dir": "ltr",
+          "create": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+          "rows": [
+            {
+              "status": "cancelled",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 4:36:55 AM",
+              "buttons": []
+            },
+            {
+              "status": "running",
+              "details": "Published v4 · 18 pages · Manual · 11/16/2026, 9:10:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "Cancel Markdown ZIP, PDF 11/16/2026, 9:10:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "succeeded",
+              "details": "Published v4 · 18 pages · Handbook nightly · 11/16/2026, 2:00:00 AM",
+              "buttons": [
+                {
+                  "accessibleName": "PDF · 2.4 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": true
+                },
+                {
+                  "accessibleName": "Static HTML ZIP · 8.1 MiB 11/16/2026, 2:00:00 AM",
+                  "busy": false,
+                  "disabled": false,
+                  "ariaDisabled": false,
+                  "focused": false
+                }
+              ]
+            },
+            {
+              "status": "failed",
+              "details": "Published v4 · 18 pages · Manual · 11/15/2026, 5:42:00 PM",
+              "buttons": []
+            }
+          ],
+          "focusLost": false,
+          "toasts": [],
+          "overflow": false,
+          "requestsSoFar": 5
+        }
+      ]
+    }
+  ]
+}

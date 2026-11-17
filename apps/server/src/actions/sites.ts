@@ -12,6 +12,7 @@ import {
 } from '@nibleaf/shared/addons';
 import type { PublishedAssetReferences } from '@nibleaf/shared/asset-references';
 import { pageDescription, pageExcerpt } from '@nibleaf/shared/markdown-text';
+import { displayTitle } from '@nibleaf/shared/page-title';
 import { isPublicMarkdownPage } from '@nibleaf/shared/public-markdown';
 import {
   buildNavTree,
@@ -31,6 +32,8 @@ import {
   type SnapshotProject,
   withOpenApiNav,
 } from '@nibleaf/shared/site';
+import { publishedSitePath, siteLanguagePrefix } from '@nibleaf/shared/site-language';
+import { sitePathLanguages } from '@nibleaf/shared/site-language-policy';
 import {
   activeLanguageCode,
   activeVersion,
@@ -44,8 +47,9 @@ import { getContext } from 'hono/context-storage';
 import { env } from '@/env';
 import { AppError, notFound } from '@/errors';
 import { readerQuestionStorage } from '@/lib/ai-search/conversation-archive';
-import { consumeAnswerQuota } from '@/lib/ai-search/quota';
+import { consumeAnswerQuota, recordAnswerServed } from '@/lib/ai-search/quota';
 import { answerPublishedSearch, answerSearchAvailable, publishedSearchAnswerHint, runPublishedSearch } from '@/lib/ai-search/runtime';
+import { publishedSections } from '@/lib/ai-search/sections';
 import { AssetReferenceAccess } from '@/lib/asset-reference-access';
 import { buildChangelogRss } from '@/lib/changelog-rss';
 import type { HonoEnv } from '@/lib/hono/context';
@@ -483,6 +487,7 @@ const getPublished = async (identifier: string): Promise<PublishedSite> => {
   const accessMode = live.accessMode;
   const project: PublicSnapshotProject = {
     ...overlaid,
+    languages: sitePathLanguages({ ...frozen, project: overlaid }),
     // Keep the legacy config flag coherent for older clients and SEO helpers,
     // while the database enum remains the authorization source of truth.
     config: { ...(overlaid.config ?? {}), visibility: accessMode === 'PUBLIC' ? 'public' : 'private' },
@@ -626,7 +631,7 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
     const categoryLanding = siblingPages
       .filter((candidate) => candidate.languageCode === page.languageCode && resolvePageCategory(candidate, siblingPages.length)?.title === category)
       .sort((a, b) => a.position - b.position)[0];
-    breadcrumbs.splice(-1, 0, { title: category, path: categoryLanding?.path ?? page.path });
+    breadcrumbs.splice(-1, 0, { title: category, path: categoryLanding?.path ?? page.path, section: true });
   }
 
   const servedLanguages = publicLanguages(snapshot.project.languages);
@@ -644,7 +649,12 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
       (p) => p.languageCode === l.code && p.kind === 'PAGE' && !p.hidden && p.config?.seo?.noindex !== true && isPageTranslation(page, p),
     );
     const languageIndexable = l.config?.seo?.allowIndex !== false;
-    return { code: l.code, isDefault: l.isDefault, path: currentPageIndexable && languageIndexable && sibling ? sibling.path : null };
+    return {
+      code: l.code,
+      isDefault: l.isDefault,
+      pathPrefix: l.pathPrefix,
+      path: currentPageIndexable && languageIndexable && sibling ? sibling.path : null,
+    };
   });
   return {
     // Same per-language chrome merge as getSite, applied for the language the
@@ -666,7 +676,8 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
       // truthful lower-bound publication date from their last modification.
       createdAt: page.createdAt ?? page.updatedAt,
       updatedAt: page.updatedAt,
-      title: page.title,
+      // The H1, document title, OG title and Markdown copy: never empty.
+      title: displayTitle(page),
       // Only an author-written summary is a visible lede. The derived excerpt
       // travels separately for SEO/social fallbacks, so the reader never renders
       // the page's own first paragraph twice.
@@ -677,6 +688,7 @@ const publishedPage = ({ snapshot }: PublishedSite, path: string, lang?: string,
       icon: page.icon,
       path: page.path,
       content: page.content,
+      imageDimensions: page.imageDimensions,
       headings: extractHeadings(page.content),
       // Per-page SEO + layout behaviour overrides (highest precedence in head()).
       config: page.config ?? null,
@@ -718,12 +730,21 @@ export const getSitePageMarkdown = async (identifier: string, path: string, lang
 
 const neighbour = (node?: NavNode) => (node ? { title: node.title, path: node.path } : null);
 
-const breadcrumbTrail = (pages: SnapshotPage[], page: SnapshotPage): Array<{ title: string; path: string }> => {
+/** One step of a page's trail. `section` marks a group or category: a heading in
+ *  the navigation, not a page of its own, so the reader shows it as text. Its
+ *  `path` would only lead to whichever page happens to come first under it. */
+interface Breadcrumb {
+  title: string;
+  path: string;
+  section?: true;
+}
+
+const breadcrumbTrail = (pages: readonly SnapshotPage[], page: SnapshotPage): Breadcrumb[] => {
   const byId = new Map(pages.map((p) => [p.id, p]));
-  const trail: Array<{ title: string; path: string }> = [];
+  const trail: Breadcrumb[] = [];
   let current: SnapshotPage | undefined = page;
   while (current) {
-    trail.unshift({ title: current.title, path: current.path });
+    trail.unshift({ title: displayTitle(current), path: current.path, ...(current.kind === 'GROUP' ? { section: true as const } : {}) });
     current = current.parentId ? byId.get(current.parentId) : undefined;
   }
   return trail;
@@ -826,7 +847,12 @@ export const searchSite = async (
     consentState: analytics.consentState ?? 'unknown',
     sessionId: analytics.sessionId,
     userAgent: headers.get('user-agent') ?? undefined,
-  }).catch(() => undefined);
+  }).catch((error) => {
+    logger.warn(
+      { projectId: snapshot.project.id, errorName: error instanceof Error ? error.name : 'UnknownError' },
+      'Reader search analytics failed',
+    );
+  });
   return {
     hits,
     searchId,
@@ -872,10 +898,13 @@ export const answerSite = async (identifier: string, query: string, lang?: strin
     languages: resolvePublishedSearchLanguages(snapshot),
     defaultLanguage: defaultLanguage(snapshot.project).code,
     pages: versionPages,
+    sections: publishedSections(versionPages, scope.deploymentId),
   }).catch((cause) => {
     if (cause instanceof AppError) throw cause;
     throw new AppError({ code: 'search:unavailable', message: 'AI answer generation is temporarily unavailable.', cause });
   });
+  // A reader who left (a cached answer returns without checking) got nothing: don't count it.
+  if (!getContext<HonoEnv>().req.raw.signal.aborted) await recordAnswerServed(snapshot.project.id);
   return { ...answer, quotaRemaining: quota.remaining };
 };
 
@@ -1053,6 +1082,7 @@ export const getSiteSitemap = async (identifier: string): Promise<SiteTextDocume
   const defaultCode = defaultLanguage(snapshot.project).code;
   // Languages whose own SEO disallows indexing are excluded entirely.
   const blockedLangs = new Set(snapshot.project.languages.filter((l) => l.config?.seo?.allowIndex === false).map((l) => l.code));
+  const pathLanguages = sitePathLanguages(snapshot);
   const urls = snapshot.pages
     .filter(
       (page) =>
@@ -1068,10 +1098,7 @@ export const getSiteSitemap = async (identifier: string): Promise<SiteTextDocume
       if (!pageVersion) {
         throw new Error(`Snapshot page ${page.id} references an unknown version.`);
       }
-      const versionPath = !pageVersion.isDefault ? `/${encodeURIComponent(pageVersion.slug)}` : '';
-      const pagePath = page.path ? `/${page.path}` : '';
-      const langQuery = page.languageCode !== defaultCode ? `?lang=${encodeURIComponent(page.languageCode)}` : '';
-      const loc = `${base}${versionPath}${pagePath}${langQuery}`;
+      const loc = `${base}${publishedSitePath(page.path, page.languageCode === defaultCode ? undefined : siteLanguagePrefix(page.languageCode, pathLanguages), pageVersion.isDefault ? undefined : pageVersion.slug)}`;
       const lastmod = isoTimestamp(page.updatedAt, 'page updatedAt');
       return `  <url><loc>${escapeXml(loc)}</loc><lastmod>${escapeXml(lastmod)}</lastmod></url>`;
     });
@@ -1184,6 +1211,20 @@ export const resolveDomainHost = async (host: string): Promise<string | null> =>
   }
   const project = await prisma.project.findFirst({ where: { slug }, select: { id: true }, orderBy: { createdAt: 'asc' } });
   return project?.id ?? null;
+};
+
+/** The id of the site served at `/sites/<slug>` on the platform host, so the app
+ *  edge can send an address written with the site's slug to the site. Only a
+ *  site anyone may read answers: public, not taken down, and live. A private
+ *  site (readers or workspace only), an unpublished one and an unknown slug all
+ *  get the same answer after the same single lookup, so a slug never tells
+ *  anyone that a site exists. */
+export const resolveSiteSlug = async (slug: string): Promise<string | null> => {
+  const clean = (slug ?? '').trim().toLowerCase();
+  if (!clean || clean.length > 128) return null;
+  const project = await prisma.project.findUnique({ where: { slug: clean }, select: { id: true, accessMode: true, takedownAt: true } });
+  if (project?.accessMode !== 'PUBLIC' || project.takedownAt) return null;
+  return (await loadLiveDeployment(project.id)) ? project.id : null;
 };
 
 /** Used only by the authenticated internal collector / direct API observer.

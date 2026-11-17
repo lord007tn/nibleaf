@@ -13,7 +13,10 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('MCP placement lock
   afterAll(async () => {
     if (!db) return;
     try {
-      if (organizationId) await db.prisma.organization.delete({ where: { id: organizationId } });
+      if (organizationId) {
+        await db.prisma.project.deleteMany({ where: { organizationId } });
+        await db.prisma.organization.delete({ where: { id: organizationId } });
+      }
     } finally {
       await db.prisma.$disconnect();
     }

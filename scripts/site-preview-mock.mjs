@@ -10,7 +10,12 @@
  *   preview-manuscript  theme preset "manuscript"
  *   preview-signal      theme preset "signal"
  *   preview-legacy      no `theme` config (legacy palette branch)
+ *   preview-answers     "harbor" with Ask AI available (the panel opens; no answer is requested)
  *   preview-private     "harbor", private, read by a signed-in reader
+ *   preview-brand       no `theme` config, brand colour #B96A3D (fails AA as text as authored, PUB-006)
+ *   preview-consent     "harbor" that asks for analytics consent (native, no third-party
+ *                       scripts) and offers Ask AI (the launcher; no answer is ever requested)
+ *   preview-unset       "harbor" whose owner never picked light or dark (follows the reader's device)
  *
  * Endpoints (mirroring apps/server/src/modules/public/sites/handlers.ts):
  *   GET  /api/public/sites/:id?lang=&version=            -> { data: SiteShell }
@@ -435,6 +440,64 @@ ${FENCE}
 - [x] سُجّلت نقطة نهاية إشعارات الويب
 - [ ] نُقل مفتاح الإنتاج إلى الخزنة
 - [ ] حُدّث جدول المناوبة`,
+    },
+  },
+  {
+    // Wide blocks (PUB-001, PUB-005): a table with long prose cells that must
+    // wrap to the column, a many-column table that still has to scroll, and a
+    // code line longer than any column.
+    group: 'reference',
+    slug: 'configuration',
+    icon: 'settings',
+    en: {
+      title: 'Configuration',
+      description: 'Every environment variable the Tidewater agent reads, with defaults.',
+      content: `The agent reads its settings from the environment at start-up.
+
+## Block components
+
+| Component | Purpose | Attributes |
+| --- | --- | --- |
+| \`Tabs\` | Groups alternatives side by side, one tab per operating system or language, and remembers the reader's choice across pages. | \`items\`, \`defaultValue\`, \`sync\` |
+| \`Steps\` | Numbers a procedure so the reader can keep their place while they switch between the docs and a terminal. | \`titleSize\` |
+| \`Callout\` | Draws attention to a warning, a tip or a note without breaking the reading flow of the surrounding section. | \`type\`, \`title\`, \`icon\` |
+
+## Environment variables
+
+| Variable | Required | Default | Scope | Example | Purpose |
+| --- | --- | --- | --- | --- | --- |
+| \`TIDEWATER_KEY\` | Yes | None | Agent and CLI | \`tw_live_9f3c\` | The [API key](/guides/authentication) the agent authenticates with. |
+| \`TIDEWATER_REGION\` | No | \`eu-west\` | Agent | \`me-central\` | Where shipment data is stored and processed. |
+| \`TIDEWATER_WEBHOOK_SECRET\` | No | Empty | Webhook receiver | \`whsec_51ab\` | Verifies the signature on every delivery. |
+
+${FENCE}bash title="start-agent.sh"
+TIDEWATER_KEY=tw_live_9f3c TIDEWATER_REGION=me-central TIDEWATER_WEBHOOK_SECRET=whsec_51ab npx @tidewater/agent start --port 8080 --log-level info
+${FENCE}`,
+    },
+    ar: {
+      title: 'الإعدادات',
+      description: 'كل متغيرات البيئة التي يقرؤها وكيل تايدووتر وقيمها الافتراضية.',
+      content: `يقرأ الوكيل إعداداته من البيئة عند بدء التشغيل.
+
+## مكوّنات الكتل
+
+| المكوّن | الغرض | الخصائص |
+| --- | --- | --- |
+| \`Tabs\` | يجمع البدائل جنبًا إلى جنب، تبويبًا لكل نظام تشغيل أو لغة، ويتذكر اختيار القارئ بين الصفحات. | \`items\`، \`defaultValue\`، \`sync\` |
+| \`Steps\` | يرقّم الإجراء ليحافظ القارئ على موضعه وهو ينتقل بين التوثيق والطرفية. | \`titleSize\` |
+| \`Callout\` | يلفت الانتباه إلى تحذير أو نصيحة أو ملاحظة دون أن يقطع تسلسل القراءة في القسم المحيط. | \`type\`، \`title\`، \`icon\` |
+
+## متغيرات البيئة
+
+| المتغير | إلزامي | الافتراضي | النطاق | مثال | الغرض |
+| --- | --- | --- | --- | --- | --- |
+| \`TIDEWATER_KEY\` | نعم | لا يوجد | الوكيل والأداة | \`tw_live_9f3c\` | [مفتاح الواجهة](/guides/authentication) الذي يصادق به الوكيل. |
+| \`TIDEWATER_REGION\` | لا | \`eu-west\` | الوكيل | \`me-central\` | مكان تخزين بيانات الشحنات ومعالجتها. |
+| \`TIDEWATER_WEBHOOK_SECRET\` | لا | فارغ | مستقبل الإشعارات | \`whsec_51ab\` | يتحقق من التوقيع على كل إرسال. |
+
+${FENCE}bash title="start-agent.sh"
+TIDEWATER_KEY=tw_live_9f3c TIDEWATER_REGION=me-central TIDEWATER_WEBHOOK_SECRET=whsec_51ab npx @tidewater/agent start --port 8080 --log-level info
+${FENCE}`,
     },
   },
   {
@@ -878,7 +941,7 @@ ${CURL_SHIPMENT}
     en: {
       title: 'Rate limits',
       description: 'Per-key request budgets and the headers that report them.',
-      content: `Limits are enforced per API key over a sliding sixty-second window.
+      content: `Limits are enforced per API key over a sliding sixty-second window. The bucket refills at $r = n / 60$ requests per second, where $n$ is the per-minute limit.
 
 | Key type | Requests per minute | Burst |
 | --- | --- | --- |
@@ -916,6 +979,93 @@ Need more headroom? Enterprise plans include dedicated capacity and per-endpoint
 <Note>
 هل تحتاج إلى سعة أكبر؟ تشمل خطط المؤسسات سعة مخصصة وحدودًا لكل نقطة نهاية.
 </Note>`,
+    },
+  },
+  // Authored iframes as Mintlify writes them: two allowlisted video players (a
+  // click-to-load facade on the reader), a frame from another site (a link), and a
+  // <video> with the autoplay attributes Mintlify pages often carry and a poster
+  // from another site (both dropped).
+  {
+    group: 'guides',
+    slug: 'video-tour',
+    icon: 'play',
+    en: {
+      title: 'Video tour',
+      description: 'A recorded tour of booking and tracking a shipment.',
+      content: `Watch the tour, then follow the walkthrough recorded for new team members.
+
+<Frame caption="Product tour">
+  <iframe
+    className="w-full aspect-video rounded-xl"
+    src="https://www.youtube.com/embed/M7lc1UVf-VE"
+    title="Tidewater product tour"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media"
+    allowFullScreen
+  ></iframe>
+</Frame>
+
+## Walkthrough
+
+<iframe src="https://www.loom.com/share/0123456789abcdef0123456789abcdef" title="Booking your first shipment"></iframe>
+
+## Live map
+
+Our partner hosts the live container map.
+
+<iframe src="https://maps.example.com/tidewater/live" title="Live container map"></iframe>
+
+## Tracking a shipment
+
+A short clip of the tracking screen, hosted with our other media.
+
+<video
+  controls
+  className="w-full aspect-video rounded-xl"
+  src="https://media.example.com/tidewater/tracking.mp4"
+  poster="https://posters.example.com/tidewater/tracking.jpg"
+  autoPlay
+  muted
+  loop
+></video>`,
+    },
+    ar: {
+      title: 'جولة بالفيديو',
+      description: 'جولة مسجلة لحجز شحنة وتتبعها.',
+      content: `شاهد الجولة، ثم تابع الشرح المسجل لأعضاء الفريق الجدد.
+
+<Frame caption="جولة في المنتج">
+  <iframe
+    className="w-full aspect-video rounded-xl"
+    src="https://www.youtube.com/embed/M7lc1UVf-VE"
+    title="جولة في تايدووتر"
+    allow="accelerometer; autoplay; clipboard-write; encrypted-media"
+    allowFullScreen
+  ></iframe>
+</Frame>
+
+## الشرح
+
+<iframe src="https://www.loom.com/share/0123456789abcdef0123456789abcdef" title="حجز أول شحنة"></iframe>
+
+## الخريطة المباشرة
+
+يستضيف شريكنا خريطة الحاويات المباشرة.
+
+<iframe src="https://maps.example.com/tidewater/live" title="خريطة الحاويات المباشرة"></iframe>
+
+## تتبع شحنة
+
+مقطع قصير لشاشة التتبع، مستضاف مع وسائطنا الأخرى.
+
+<video
+  controls
+  className="w-full aspect-video rounded-xl"
+  src="https://media.example.com/tidewater/tracking.mp4"
+  poster="https://posters.example.com/tidewater/tracking.jpg"
+  autoPlay
+  muted
+  loop
+></video>`,
     },
   },
 ];
@@ -960,18 +1110,27 @@ const THEME_META = {
 
 const PROJECTS = {
   'preview-harbor': { preset: 'harbor' },
+  'preview-language-collision': { preset: 'harbor', languageCollision: true },
   'preview-manuscript': { preset: 'manuscript' },
   'preview-signal': { preset: 'signal' },
   'preview-legacy': { preset: null },
+  'preview-answers': { preset: 'harbor', answers: true },
   // A private site whose reader is signed in; access can be revoked mid-session.
   'preview-private': { preset: 'harbor', visibility: 'private' },
+  'preview-brand': { preset: null, primaryColor: '#B96A3D' },
+  'preview-consent': { preset: 'harbor', consent: true, answers: true },
+  // No styling.theme: the reader follows the visitor's device (PUB-004).
+  'preview-unset': { preset: 'harbor', unsetAppearance: true },
 };
 
 /** Mutable test state, set through POST /__mock/control. */
 const control = { revoked: false };
 
-const projectConfig = (preset, visibility = 'public') => {
+const projectConfig = (preset, visibility = 'public', unsetAppearance = false) => {
   const config = { ...baseConfig(), visibility };
+  if (unsetAppearance) {
+    config.styling = {};
+  }
   if (preset) {
     config.theme = { version: 1, preset, metadata: THEME_META[preset] };
   } else {
@@ -1131,7 +1290,13 @@ const findPage = (path) => {
 
 const projectPayload = (id, preset, language) => {
   const languageConfig = LANGUAGE_CONFIG[language.code];
-  const config = projectConfig(preset, PROJECTS[id]?.visibility);
+  const config = projectConfig(preset, PROJECTS[id]?.visibility, PROJECTS[id]?.unsetAppearance);
+  if (PROJECTS[id]?.primaryColor) {
+    config.styling.primaryColor = PROJECTS[id].primaryColor;
+  }
+  if (PROJECTS[id]?.consent) {
+    config.analytics = { cookieConsent: true };
+  }
   return {
     id,
     name: SITE_NAME.en,
@@ -1148,7 +1313,7 @@ const siteShell = (id, preset, query) => {
   return {
     project: projectPayload(id, preset, language),
     nav: buildNav(language.code),
-    languages: LANGUAGES,
+    languages: LANGUAGES.map((item) => ({ ...item, pathPrefix: PROJECTS[id]?.languageCollision && item.code === 'ar' ? '~lang/ar' : item.code })),
     versions: VERSIONS,
     activeLanguage: language.code,
     activeVersion: version.slug,
@@ -1157,13 +1322,15 @@ const siteShell = (id, preset, query) => {
     generatedAt: GENERATED_AT,
     openapi: null,
     ...(PROJECTS[id]?.visibility === 'private' ? { signedIn: true } : {}),
+    ...(PROJECTS[id]?.answers ? { capabilities: { answer: true } } : {}),
   };
 };
 
 const sitePage = (id, preset, query) => {
   const language = resolveLanguage(query.get('lang'));
   const version = resolveVersion(query.get('version'));
-  const page = findPage(cleanPath(query.get('path')));
+  const collision = PROJECTS[id]?.languageCollision && cleanPath(query.get('path')) === 'ar/guide';
+  const page = collision ? PAGES[0] : findPage(cleanPath(query.get('path')));
   if (!page) return null;
   const lang = language.code;
   const index = PAGES.indexOf(page);
@@ -1180,7 +1347,7 @@ const sitePage = (id, preset, query) => {
       title: localized.title,
       description: localized.description,
       icon: page.icon ?? null,
-      path: pagePath(page),
+      path: collision ? 'ar/guide' : pagePath(page),
       content: localized.content,
       headings: extractHeadings(localized.content),
       config: page.tag ? { tag: page.tag } : null,
@@ -1189,7 +1356,12 @@ const sitePage = (id, preset, query) => {
     activeVersion: version.slug,
     versions: VERSIONS,
     languageConfig: LANGUAGE_CONFIG[lang],
-    languages: LANGUAGES.map((item) => ({ code: item.code, isDefault: item.isDefault, path: pagePath(page) })),
+    languages: LANGUAGES.map((item) => ({
+      code: item.code,
+      isDefault: item.isDefault,
+      path: collision ? 'ar/guide' : pagePath(page),
+      pathPrefix: PROJECTS[id]?.languageCollision && item.code === 'ar' ? '~lang/ar' : item.code,
+    })),
     breadcrumbs: [
       { title: group.title[lang], path: group.slug },
       { title: localized.title, path: pagePath(page) },
@@ -1211,6 +1383,11 @@ const SITE_ROUTE = /^\/api\/public\/sites\/([^/]+)(?:\/(.*))?$/;
 const server = createServer((req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`);
   const { pathname, searchParams } = url;
+
+  if (pathname === '/api/public/domains/resolve' && searchParams.get('host') === 'docs.localhost') {
+    json(res, 200, { data: { projectId: 'preview-harbor' } });
+    return;
+  }
 
   if (pathname.startsWith('/api/public/assets/')) {
     res.writeHead(200, { 'content-type': 'image/svg+xml; charset=utf-8', 'cache-control': 'no-store' });
@@ -1260,6 +1437,12 @@ const server = createServer((req, res) => {
         return;
       }
       json(res, 200, { data: page });
+      return;
+    }
+    if (rest === 'markdown') {
+      const page = sitePage(id, project.preset, searchParams);
+      res.writeHead(page ? 200 : 404, { 'content-type': 'text/markdown; charset=utf-8' });
+      res.end(page ? `# ${page.page.title}\n\n${page.page.content}\n` : 'Not found');
       return;
     }
     if (rest === 'search') {

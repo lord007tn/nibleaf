@@ -1,5 +1,6 @@
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@nibleaf/design-system/components/ui/sheet';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { blockDirection } from '@nibleaf/shared/script-direction';
 import { ExternalLink } from 'lucide-react';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
@@ -52,57 +53,23 @@ export function MobileNavDrawer({
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger ref={trigger} {...mobileNavTriggerProps(label, triggerLabel)} />
-      {/* Open from the reading-start edge: left in LTR, right in RTL (Arabic). */}
-      <SheetContent side={isRtl ? 'right' : 'left'} className="w-80 max-w-[calc(100vw-2rem)] p-0" dir={isRtl ? 'rtl' : 'ltr'} closeLabel={closeLabel}>
+      {/* Open from the reading-start edge: left in LTR, right in RTL (Arabic).
+          `data-site-drawer` lets the site theme give the drawer an accent shade
+          that reads on its raised surface (projectThemeCss, #726). */}
+      <SheetContent
+        side={isRtl ? 'right' : 'left'}
+        className="w-80 max-w-[calc(100vw-2rem)] p-0"
+        dir={isRtl ? 'rtl' : 'ltr'}
+        closeLabel={closeLabel}
+        data-site-drawer=""
+      >
         <SheetHeader className="sr-only">
           <SheetTitle>{label}</SheetTitle>
         </SheetHeader>
         <ScrollArea className="h-full">
           <div className="px-4 pt-12 pb-8">
-            {settings.length > 0 ? (
-              // From `sm` up the header shows these switchers itself.
-              <div className="mb-4 grid gap-3 border-border/60 border-b pb-4 sm:hidden" data-mobile-nav-settings="">
-                {/* The fallback reserves the settings' height so nothing jumps when they load. */}
-                <Suspense fallback={<div aria-hidden style={{ blockSize: `${settings.length * 4.25}rem` }} />}>
-                  <MobileNavSettings settings={settings} onChosen={() => setOpen(false)} />
-                </Suspense>
-              </div>
-            ) : null}
-            {navigationLinks.length > 0 ? (
-              <ul className="mb-4 space-y-0.5 border-border/60 border-b pb-4">
-                {navigationLinks.map((link) => (
-                  <li key={`${link.label}-${link.href}`}>
-                    <a
-                      href={link.href}
-                      target={link.external ? '_blank' : undefined}
-                      rel={link.external ? 'noreferrer' : undefined}
-                      aria-current={link.active ? 'page' : undefined}
-                      onClick={() => setOpen(false)}
-                      className={`flex min-h-11 items-center gap-1.5 rounded-lg px-2 py-2 font-medium text-sm transition-colors ${
-                        link.active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                      }`}
-                    >
-                      <span dir={blockDirection(link.label)}>{link.label}</span>
-                      {link.external ? <ExternalLink className="size-3" aria-hidden /> : null}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {cta ? (
-              <a
-                href={cta.href}
-                data-analytics-cta
-                data-analytics-placement="mobile-navbar"
-                target="_blank"
-                rel="noreferrer"
-                className="mb-5 flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-opacity hover:opacity-90"
-                onClick={() => setOpen(false)}
-              >
-                {cta.label}
-                <ExternalLink className="size-3.5" aria-hidden />
-              </a>
-            ) : null}
+            {/* The documentation first (PUB-011): the page tree used to start halfway down a
+                phone screen, under the language choice, the header links and the call to action. */}
             <SiteNav
               nodes={nodes}
               projectId={projectId}
@@ -112,6 +79,61 @@ export function MobileNavDrawer({
               toggleLabel={toggleLabel}
               label={navLabel}
             />
+            {settings.length > 0 || navigationLinks.length > 0 || cta ? (
+              <div
+                // Only the switchers: from `sm` up the header shows them, so the section goes too.
+                className={cn('mt-6 grid gap-4 border-border/60 border-t pt-4', navigationLinks.length === 0 && !cta && 'sm:hidden')}
+                data-mobile-nav-footer=""
+              >
+                {settings.length > 0 ? (
+                  // From `sm` up the header shows these switchers itself.
+                  <div className="grid gap-3 sm:hidden" data-mobile-nav-settings="">
+                    {/* The fallback reserves the settings' height so nothing jumps when they load. */}
+                    <Suspense fallback={<div aria-hidden style={{ blockSize: `${settings.length * 4.25}rem` }} />}>
+                      <MobileNavSettings settings={settings} onChosen={() => setOpen(false)} />
+                    </Suspense>
+                  </div>
+                ) : null}
+                {navigationLinks.length > 0 ? (
+                  <ul className="space-y-0.5">
+                    {navigationLinks.map((link) => (
+                      <li key={`${link.label}-${link.href}`}>
+                        <a
+                          href={link.href}
+                          target={link.external ? '_blank' : undefined}
+                          rel={link.external ? 'noreferrer' : undefined}
+                          aria-current={link.active ? 'page' : undefined}
+                          onClick={() => setOpen(false)}
+                          className={`flex min-h-11 items-center gap-1.5 rounded-lg px-2 py-2 font-medium text-sm transition-colors ${
+                            link.active ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                          }`}
+                        >
+                          <span dir={blockDirection(link.label)}>{link.label}</span>
+                          {link.external ? <ExternalLink className="size-3" aria-hidden /> : null}
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                {cta ? (
+                  <a
+                    href={cta.href}
+                    data-analytics-cta
+                    data-analytics-placement="mobile-navbar"
+                    target="_blank"
+                    rel="noreferrer"
+                    // Hover moves the fill towards the foreground, away from its label
+                    // (light text on a dark accent, dark on a light one), so the pair
+                    // gains contrast; fading the whole button dropped it below AA (#731).
+                    className="flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground text-sm transition-colors hover:bg-[color-mix(in_oklab,var(--primary)_85%,var(--foreground))]"
+                    onClick={() => setOpen(false)}
+                  >
+                    {cta.label}
+                    <ExternalLink className="size-3.5" aria-hidden />
+                  </a>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </ScrollArea>
       </SheetContent>

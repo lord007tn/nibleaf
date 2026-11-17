@@ -1,14 +1,19 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
+import { requestInterfaceLocale, withInterfaceLocale } from '@nibleaf/i18n/request-locale';
 import { clientIpFromForwardedFor } from '@nibleaf/shared/client-ip';
 import {
   canonicalPathFromMarkdownAlias,
   decodePublishedPathname,
   documentUrlForBase,
+  markdownAliasPath,
   markdownAlternateUrl,
   markdownDiscoveryLinkHeader,
 } from '@nibleaf/shared/markdown-discovery';
+import { type PathLanguage, publishedSitePath, siteLanguagePrefix } from '@nibleaf/shared/site-language';
+import { parseSiteLanguagePath } from '@nibleaf/shared/site-language-prefix';
+import { legacySiteLanguageTarget } from '@nibleaf/shared/site-language-redirect';
 import type { Register } from '@tanstack/react-router';
 import { createStartHandler, defaultStreamHandler, type RequestHandler } from '@tanstack/react-start/server';
 import { createServerEntry } from '@tanstack/react-start/server-entry';
@@ -245,6 +250,58 @@ async function resolveHost(host: string): Promise<string | null> {
   }
 }
 
+/** A site slug is a DNS label (`projectSlug` in @nibleaf/validators): anything
+ *  else can't name a site, so it is answered without a lookup or a cache entry. */
+const SITE_SLUG = /^[a-z0-9][a-z0-9-]{0,62}$/;
+/** Slug answers kept at once. Least recently used first out; expired entries go when read. */
+const SLUG_CACHE_LIMIT = 1000;
+const slugCache = new Map<string, { projectId: string | null; at: number }>();
+
+const rememberSlug = (slug: string, projectId: string | null): void => {
+  slugCache.delete(slug);
+  slugCache.set(slug, { projectId, at: Date.now() });
+  while (slugCache.size > SLUG_CACHE_LIMIT) {
+    const oldest = slugCache.keys().next().value;
+    if (oldest === undefined) break;
+    slugCache.delete(oldest);
+  }
+};
+
+/** The public, live site whose slug is `slug` (`/sites/<slug>` written by hand,
+ *  or copied from the dashboard), or null. Only a definite answer from the API
+ *  is cached; a failed lookup is tried again next time. */
+export async function resolveSiteSlug(slug: string): Promise<string | null> {
+  if (!SITE_SLUG.test(slug)) return null;
+  const hit = slugCache.get(slug);
+  if (hit) {
+    if (Date.now() - hit.at < TTL) {
+      // Read again: move it to the most recently used end.
+      slugCache.delete(slug);
+      slugCache.set(slug, hit);
+      return hit.projectId;
+    }
+    slugCache.delete(slug);
+  }
+  try {
+    const response = await got(`${SELF}/api/public/domains/slug?slug=${encodeURIComponent(slug)}`, {
+      headers: internalRequestHeaders(),
+      responseType: 'json',
+      retry: { limit: 0 },
+      throwHttpErrors: false,
+    });
+    const parsed = z.object({ data: z.object({ projectId: z.string().nullable().optional() }).optional() }).safeParse(response.body);
+    if (!response.ok || !parsed.success) return null;
+    const projectId = parsed.data.data?.projectId ?? null;
+    rememberSlug(slug, projectId);
+    return projectId;
+  } catch {
+    return null;
+  }
+}
+
+/** For tests: how many slug answers are kept. */
+export const slugCacheSize = (): number => slugCache.size;
+
 // ─── Published-site metadata (privacy + primary domain) ──────────────────────
 
 /** What the edge needs to know about a published site: whether its HTML may be
@@ -253,6 +310,7 @@ interface SiteMeta {
   /** Verified primary custom domain, when configured. */
   primaryDomain: string | null;
   isPrivate: boolean;
+  languages: PathLanguage[];
 }
 
 const siteMetaCache = new Map<string, { meta: SiteMeta | null; at: number }>();
@@ -262,15 +320,18 @@ const SITE_META_TTL = 60_000;
 /** Fetch (and TTL-cache) the site shell's metadata. Returns null when the site
  *  is unknown/unpublished/private-to-anonymous — callers must then behave
  *  conservatively (no cache header, no redirect). */
-async function resolveSiteMeta(projectId: string): Promise<SiteMeta | null> {
+async function resolveSiteMeta(projectId: string, fresh = false): Promise<SiteMeta | null> {
   const requestHasCredentials = Boolean(publishedRequestAuth.getStore()?.cookie || publishedRequestAuth.getStore()?.authorization);
-  const hit = requestHasCredentials ? undefined : siteMetaCache.get(projectId);
+  const hit = requestHasCredentials || fresh ? undefined : siteMetaCache.get(projectId);
   if (hit && Date.now() - hit.at < SITE_META_TTL) {
     return hit.meta;
   }
   // A cold reader burst shares only anonymous metadata. Each credentialed
   // request still resolves its own viewer-dependent result.
-  if (requestHasCredentials) return loadSiteMeta(projectId, true);
+  if (requestHasCredentials || fresh) {
+    if (fresh) siteMetaCache.delete(projectId);
+    return loadSiteMeta(projectId, requestHasCredentials);
+  }
   const existing = siteMetaRequests.get(projectId);
   if (existing) return existing;
   const pending = loadSiteMeta(projectId, false);
@@ -297,6 +358,7 @@ async function loadSiteMeta(projectId: string, requestHasCredentials: boolean): 
         .object({
           data: z
             .object({
+              languages: z.array(z.object({ code: z.string(), isDefault: z.boolean(), pathPrefix: z.string().optional() })).optional(),
               project: z
                 .object({
                   config: z.looseObject({ visibility: z.string().optional() }).nullable().optional(),
@@ -311,6 +373,7 @@ async function loadSiteMeta(projectId: string, requestHasCredentials: boolean): 
       if (project) {
         const primary = project.primaryDomain?.trim().toLowerCase() ?? '';
         meta = {
+          languages: parsed.success ? (parsed.data.data?.languages ?? []) : [],
           primaryDomain: primary || null,
           isPrivate: (project.config as { visibility?: string } | null)?.visibility === 'private',
         };
@@ -615,9 +678,17 @@ const APP_SECURITY_HEADERS = {
   'X-Frame-Options': 'SAMEORIGIN',
 } as const;
 
+/** HTML rendered in the visitor's interface locale depends on the locale cookie
+ *  and Accept-Language. It is already `private, no-store`; the Vary keeps any
+ *  cache that ignores that from serving it to a visitor in another language. */
+const varyOnInterfaceLocale = (headers: Headers): void => {
+  appendVary(headers, 'Cookie');
+  appendVary(headers, 'Accept-Language');
+};
+
 /** Custom server responses bypass Nitro route rules, so apply the same baseline
  *  here as a final wrapper. Preserve any stricter route-specific value. */
-async function withSecurityHeaders(response: Response | Promise<Response>, nonce: string): Promise<Response> {
+async function withSecurityHeaders(response: Response | Promise<Response>, nonce: string, localized: boolean): Promise<Response> {
   const res = await response;
   try {
     res.headers.set('x-nibleaf-revision', REVISION);
@@ -635,6 +706,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
       // A CSP nonce must be unique each time the policy is transmitted. Never
       // allow an intermediary to replay HTML and its nonce from a shared cache.
       res.headers.set('cache-control', 'private, no-store');
+      if (localized) varyOnInterfaceLocale(res.headers);
       return encodePublicRouteManifestResponse(res);
     }
     return res;
@@ -653,6 +725,7 @@ async function withSecurityHeaders(response: Response | Promise<Response>, nonce
       wrapped.headers.set('Content-Security-Policy', contentSecurityPolicy(nonce));
       if (nonce === '') return marketingHashResponse(encodePublicRouteManifestResponse(wrapped));
       wrapped.headers.set('cache-control', 'private, no-store');
+      if (localized) varyOnInterfaceLocale(wrapped.headers);
       return encodePublicRouteManifestResponse(wrapped);
     }
     return wrapped;
@@ -678,6 +751,19 @@ function withoutClientSiteOrigin(request: Request): Request {
 const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) => {
   const request = withoutClientSiteOrigin(incoming);
   const url = new URL(request.url);
+  const requestHasCredentials = request.headers.has('cookie') || request.headers.has('authorization');
+  // Reuse metadata inside this request only. Credentials never cross requests;
+  // a fresh access recheck also replaces this request's earlier public answer.
+  const metadata = new Map<string, Promise<SiteMeta | null>>();
+  const requestSiteMeta = (projectId: string, fresh = false) => {
+    if (fresh) metadata.delete(projectId);
+    let pending = metadata.get(projectId);
+    if (!pending) {
+      pending = resolveSiteMeta(projectId, fresh);
+      metadata.set(projectId, pending);
+    }
+    return pending;
+  };
   const host = effectiveRequestHost(request, url);
   const bare = host.split(':')[0] ?? '';
   const isCustomDomain = Boolean(host) && !ownHosts.has(host) && !ownHosts.has(bare);
@@ -699,6 +785,9 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
 
   // Stable `.md` aliases render the same published/marketing document as the
   // canonical HTML path. `/pricing.md` remains its dedicated product artifact.
+  // The path as the reader asked for it, before the alias below rewrites it:
+  // a redirect keeps the representation they asked for (`/guide.md` stays `.md`).
+  const requestedPathname = url.pathname;
   const markdownAliasCanonical = isGetLike && url.pathname !== '/pricing.md' ? canonicalPathFromMarkdownAlias(url.pathname) : null;
   let routedRequest = request;
   if (markdownAliasCanonical) {
@@ -725,14 +814,17 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
         const routedPath = siteMatch[2] || '/';
         const publicPath = decodePublishedPathname(routedPath);
         const requestOrigin = documentRequest.headers.get('x-nibleaf-site-origin');
-        const meta = await resolveSiteMeta(projectId);
+        const meta = await requestSiteMeta(projectId);
         const base = meta?.primaryDomain
           ? `https://${meta.primaryDomain}`
           : requestOrigin
             ? requestOrigin
             : `${documentUrl.origin}/sites/${projectId}`;
         if (publicPath === null) return siteMarkdownUnavailableResponse(base);
-        const proxied = await proxyPublishedMarkdown(projectId, publicPath, documentUrl.searchParams);
+        const parsed = parseSiteLanguagePath(publicPath, meta?.languages ?? []);
+        const search = new URLSearchParams(documentUrl.searchParams);
+        if (parsed.language) search.set('lang', parsed.language.code);
+        const proxied = await proxyPublishedMarkdown(projectId, parsed.path, search);
         if (!proxied?.ok) return siteMarkdownUnavailableResponse(base);
         const canonicalUrl = documentUrlForBase(base, routedPath, documentUrl.search);
         return withoutHeadBody(addMarkdownDiscovery(proxied.response, canonicalUrl, llmsUrlForBase(base)), documentRequest.method);
@@ -745,7 +837,7 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
       // the HTML never waits on a second, full Markdown render just to decide
       // this header.
       if (!rendered.markdownAlternate) return rendered.response;
-      const meta = await resolveSiteMeta(siteMatch[1]);
+      const meta = await requestSiteMeta(siteMatch[1]);
       if (!meta || meta.isPrivate) return rendered.response;
       const requestOrigin = documentRequest.headers.get('x-nibleaf-site-origin');
       const base = meta.primaryDomain
@@ -797,6 +889,51 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
   };
 
   const serve = async (): Promise<Response> => {
+    if (isGetLike) {
+      const match = /^\/sites\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
+      const projectId = isCustomDomain && !isAppOwnedPath(url.pathname) ? await resolveHost(bare) : match?.[1];
+      if (projectId && (isDocumentPath(url.pathname) || url.pathname.endsWith('/changelog/rss.xml'))) {
+        let meta = await requestSiteMeta(projectId);
+        const path = isCustomDomain ? url.pathname.slice(1) : (match?.[2] ?? '');
+        let target = legacySiteLanguageTarget({
+          path,
+          languages: meta?.languages ?? [],
+          basePath: isCustomDomain ? '' : `/sites/${projectId}`,
+          search: url.search,
+        });
+        // Never authorize a permanent redirect from shared/stale public metadata.
+        // A site may have become private since the anonymous metadata was cached.
+        if (target && !requestHasCredentials) {
+          meta = await requestSiteMeta(projectId, true);
+          target = legacySiteLanguageTarget({
+            path,
+            languages: meta?.languages ?? [],
+            basePath: isCustomDomain ? '' : `/sites/${projectId}`,
+            search: url.search,
+          });
+        }
+        if (meta?.isPrivate && !requestHasCredentials) target = null;
+        if (target) {
+          const migrated = new URL(target, url.origin);
+          const location = markdownAliasCanonical ? `${markdownAliasPath(migrated.pathname)}${migrated.search}` : target;
+          return new Response(null, {
+            status: 308,
+            headers: { location },
+          });
+        }
+        const parsed = parseSiteLanguagePath(path, meta?.languages ?? []);
+        if (parsed.language && parsed.path === 'changelog/rss.xml') {
+          const base = isCustomDomain ? `${url.protocol}//${host}` : `${url.origin}/sites/${projectId}`;
+          const proxied = await proxySeoDocument(
+            projectId,
+            'changelog/rss.xml',
+            `${base}${publishedSitePath('', parsed.language.isDefault ? undefined : siteLanguagePrefix(parsed.language.code, meta?.languages))}`,
+          );
+          return proxied?.ok ? withoutHeadBody(proxied.response, request.method) : seoUnavailableResponse('changelog/rss.xml');
+        }
+      }
+    }
+
     // Binary OG cards share the API's public-only gate on both URL surfaces.
     if (isGetLike) {
       const card = (isCustomDomain ? /^\/og\/(.*\.png)$/u : /^\/sites\/([^/]+)\/og\/(.*\.png)$/u).exec(url.pathname);
@@ -831,12 +968,36 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
         // Never consolidate the machine files (robots/sitemap/llms) — they were
         // handled above; a transient proxy failure must not turn into a 301.
         if (siteMatch?.[1] && !APP_SEO_FILE.test(url.pathname)) {
-          const meta = await resolveSiteMeta(siteMatch[1]);
+          const meta = await requestSiteMeta(siteMatch[1]);
           // Consolidate SEO equity: when a verified primary custom domain exists,
           // 301 the internal /sites/:id URL onto it. Loop-safe: on the primary
           // domain itself the request is a custom-domain request, not this branch.
-          if (meta?.primaryDomain && meta.primaryDomain !== bare) {
+          if (meta?.primaryDomain && (!meta.isPrivate || requestHasCredentials) && meta.primaryDomain !== bare) {
             return Response.redirect(`https://${meta.primaryDomain}${siteMatch[2] || '/'}${url.search}`, 301);
+          }
+          // `/sites/<slug>`: the site's name in the address rather than its id
+          // (what the dashboard showed before, and what people type). Send it to
+          // the site; from there its primary domain, if any, takes over.
+          if (!meta) {
+            let slug = siteMatch[1];
+            try {
+              slug = decodeURIComponent(slug);
+            } catch {
+              // A malformed escape is looked up as written (and matches no slug).
+            }
+            const projectId = await resolveSiteSlug(slug.toLowerCase());
+            if (projectId && projectId !== siteMatch[1]) {
+              // Everything after the slug as the reader wrote it, `.md` included.
+              const slugPrefix = `/sites/${siteMatch[1]}`;
+              const suffix = requestedPathname.startsWith(slugPrefix) ? requestedPathname.slice(slugPrefix.length) : (siteMatch[2] ?? '');
+              // Relative, so the browser keeps the scheme and host it used (behind a
+              // TLS proxy the server's own URL may say otherwise). Not cached: a slug
+              // can be renamed and then taken by another site.
+              return new Response(null, {
+                status: 301,
+                headers: { location: `/sites/${projectId}${suffix}${url.search}`, 'cache-control': 'no-store' },
+              });
+            }
           }
           return renderHtml(routedRequest);
         }
@@ -862,11 +1023,17 @@ const handleRequestInner: RequestHandler<Register> = async (incoming, ...rest) =
     if (!isAppOwnedPath(url.pathname)) {
       const projectId = await resolveHost(bare);
       if (projectId) {
-        const meta = await resolveSiteMeta(projectId);
+        const meta = await requestSiteMeta(projectId);
         // A secondary (non-primary) custom domain 301s onto the primary. Only
         // redirect when the hosts actually differ — never from the primary
         // itself, and never for the machine files handled above.
-        if (request.method === 'GET' && meta?.primaryDomain && meta.primaryDomain !== bare && !DOMAIN_SEO_FILE.test(url.pathname)) {
+        if (
+          request.method === 'GET' &&
+          meta?.primaryDomain &&
+          (!meta.isPrivate || requestHasCredentials) &&
+          meta.primaryDomain !== bare &&
+          !DOMAIN_SEO_FILE.test(url.pathname)
+        ) {
           return Response.redirect(`https://${meta.primaryDomain}${url.pathname}${url.search}`, 301);
         }
         url.pathname = `/sites/${projectId}${url.pathname === '/' ? '' : url.pathname}`;
@@ -911,6 +1078,20 @@ const crawlerProjectForRequest = async (request: Request): Promise<string | null
   return resolveHost(bare);
 };
 
+/** A marketing page, or its Markdown alias. Its language comes from the URL
+ *  (/ar), and its HTML and Markdown are shared-cached. */
+const MARKETING_DOCUMENT_PATHS = new Set(marketingSitemapEntries().map((entry) => entry.path));
+const isMarketingDocumentPath = (pathname: string): boolean => MARKETING_DOCUMENT_PATHS.has(canonicalPathFromMarkdownAlias(pathname) ?? pathname);
+
+/** A published reader document: any page on a custom domain, or /sites/:id on
+ *  the dashboard origin. It renders in each page's own language (#474, #481). */
+const isPublishedReaderRequest = (request: Request, url: URL): boolean => {
+  const host = effectiveRequestHost(request, url);
+  const bare = host.split(':')[0] ?? '';
+  if (ownHosts.has(host) || ownHosts.has(bare)) return /^\/sites\/[^/]/u.test(url.pathname);
+  return true;
+};
+
 const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
   if (new URL(request.url).pathname === '/health') {
     if (existsSync(DRAIN_FILE)) {
@@ -947,21 +1128,43 @@ const handleRequest: RequestHandler<Register> = async (request, ...rest) => {
     marketingSitemapEntries().some((entry) => entry.path === url.pathname);
   const nonce = marketing ? '' : randomBytes(18).toString('base64');
   const renderRequest = marketing && request.method === 'HEAD' ? new Request(request.url, { method: 'GET', headers: request.headers }) : request;
-  return ssrNonce.run(nonce, async () =>
-    withoutHeadBody(
-      await withSecurityHeaders(
-        observeCrawlerResponse(
-          request,
-          // The page route's internal Markdown flag never leaves the server,
-          // whichever path rendered the page (cloud origin, dotted paths, …).
-          Promise.resolve(handleRequestInner(renderRequest, ...rest)).then((response) => withoutMarkdownAlternateFlag(response).response),
-          crawlerProjectForRequest,
+  // Product pages (auth, dashboard, invitations) render in the visitor's
+  // interface language: the locale cookie, then Accept-Language, as the browser
+  // resolves it, so hydration never switches language or direction. The locale
+  // is scoped to this request. Marketing pages take their language from the URL
+  // and are shared-cached, and a published reader renders each page's own
+  // language, so both keep the base locale, as before.
+  const interfaceLocale = isMarketingDocumentPath(url.pathname) || isPublishedReaderRequest(request, url) ? null : requestInterfaceLocale(request);
+  const respond = () =>
+    ssrNonce.run(nonce, async () =>
+      withoutHeadBody(
+        await withSecurityHeaders(
+          observeCrawlerResponse(
+            request,
+            // The page route's internal Markdown flag never leaves the server,
+            // whichever path rendered the page (cloud origin, dotted paths, …).
+            Promise.resolve(handleRequestInner(renderRequest, ...rest)).then((response) => {
+              const stripped = withoutMarkdownAlternateFlag(response).response;
+              // Includes redirects produced by reader route loaders, not just
+              // the query migration above. Credentials must never share a 308.
+              if (stripped.status >= 300 && stripped.status < 400 && (request.headers.has('cookie') || request.headers.has('authorization'))) {
+                const isolated = new Response(stripped.body, stripped);
+                isolated.headers.set('Cache-Control', 'private, no-store');
+                appendVary(isolated.headers, 'Cookie');
+                appendVary(isolated.headers, 'Authorization');
+                return isolated;
+              }
+              return stripped;
+            }),
+            crawlerProjectForRequest,
+          ),
+          nonce,
+          interfaceLocale !== null,
         ),
-        nonce,
+        request.method,
       ),
-      request.method,
-    ),
-  );
+    );
+  return interfaceLocale ? withInterfaceLocale(interfaceLocale, url.origin, respond) : respond();
 };
 
 export default createServerEntry({ fetch: handleRequest });

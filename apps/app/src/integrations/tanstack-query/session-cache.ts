@@ -1,5 +1,6 @@
 import { CancelledError, type DefaultError, type QueryClient, type UseMutationOptions, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
+import { notifySessionCleared } from '@/lib/session-cleared';
 import { getSessionGeneration, type SessionCache, sessionOf } from './session-generation';
 
 function clearDashboardData(queryClient: QueryClient, session: SessionCache) {
@@ -7,6 +8,8 @@ function clearDashboardData(queryClient: QueryClient, session: SessionCache) {
   session.generation += 1;
   session.client = undefined;
   queryClient.clear();
+  // In-memory account data held outside the query cache registers to be dropped too.
+  notifySessionCleared();
   if (typeof window === 'undefined') return;
   try {
     for (const key of Object.keys(window.localStorage)) {

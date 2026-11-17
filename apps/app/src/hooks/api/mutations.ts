@@ -9,9 +9,7 @@ import type {
   CreateLanguageBody,
   CreatePageBody,
   CreateProjectBody,
-  GitbookImportBody,
   MarkNotificationsReadBody,
-  MintlifyImportBody,
   ProjectConfigUpdate,
   ReorderPagesBody,
   RotateApiKeyBody,
@@ -19,7 +17,6 @@ import type {
   UpdatePageBody,
   UpdateProjectAddonBody,
   UpdateProjectBody,
-  UpdateWorkspaceSettingsBody,
   UpsertOpenApiBody,
 } from '@nibleaf/validators';
 import { inferSafeInlineAssetContentType } from '@nibleaf/validators';
@@ -48,7 +45,6 @@ import type {
   PageNode,
   Project,
   ProjectAddon,
-  WorkspaceSettings,
 } from './types';
 
 export interface ProjectThemeImportResult {
@@ -100,14 +96,27 @@ export const useCreateProject = () => {
   });
 };
 
+/** Where a one-time secret goes: straight to the caller, never into the mutation cache. */
+export type DeliverSecret = (key: { id: string; secret: string }) => void;
+
+/** Hands the secret to `deliver` and returns the key without it, so neither the
+ *  cached mutation result nor its variables ever hold the secret. */
+const withoutSecret = ({ secret, ...key }: ApiKeySecret, deliver: DeliverSecret): ApiKey => {
+  deliver({ id: key.id, secret });
+  return key;
+};
+
 export const useCreateApiKey = (projectId: string) => {
   const queryClient = useQueryClient();
   const t = useT();
   return useMutation({
-    mutationFn: async (body: CreateApiKeyBody) =>
-      mutateData<ApiKeySecret>(
-        await api.app.projects[':projectId']['api-keys'].$post({ param: { projectId }, json: body }),
-        t('settings.apiKeys.createError'),
+    mutationFn: async ({ body, deliver }: { body: CreateApiKeyBody; deliver: DeliverSecret }) =>
+      withoutSecret(
+        await mutateData<ApiKeySecret>(
+          await api.app.projects[':projectId']['api-keys'].$post({ param: { projectId }, json: body }),
+          t('settings.apiKeys.createError'),
+        ),
+        deliver,
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
     meta: { errorMessage: t('settings.apiKeys.createError') },
@@ -118,10 +127,13 @@ export const useRotateApiKey = (projectId: string) => {
   const queryClient = useQueryClient();
   const t = useT();
   return useMutation({
-    mutationFn: async ({ id, body }: { id: string; body: RotateApiKeyBody }) =>
-      mutateData<ApiKeySecret>(
-        await api.app.projects[':projectId']['api-keys'][':id'].rotate.$post({ param: { projectId, id }, json: body }),
-        t('settings.apiKeys.rotateError'),
+    mutationFn: async ({ id, body, deliver }: { id: string; body: RotateApiKeyBody; deliver: DeliverSecret }) =>
+      withoutSecret(
+        await mutateData<ApiKeySecret>(
+          await api.app.projects[':projectId']['api-keys'][':id'].rotate.$post({ param: { projectId, id }, json: body }),
+          t('settings.apiKeys.rotateError'),
+        ),
+        deliver,
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.apiKeys.all(projectId) }),
     meta: { errorMessage: t('settings.apiKeys.rotateError') },
@@ -247,6 +259,26 @@ export const useCreatePage = (projectId: string, options?: { reportErrors?: bool
     onSuccess: (created) => {
       // The response is the full page: seed its detail so the editor can open it
       // without a second round trip.
+      qc.setQueryData(queryKeys.pages.detail(projectId, created.id), created);
+      void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
+      return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
+    },
+  });
+};
+
+/** Copy a page (a group without its pages) right after itself, with its content and settings. */
+export const useDuplicatePage = (projectId: string) => {
+  const qc = useQueryClient();
+  const t = useT();
+  return useMutation({
+    networkMode: 'always',
+    meta: { errorMessage: (error) => friendlyErrorMessage(t, error, 'editor.duplicateFailed') },
+    mutationFn: async (pageId: string) =>
+      mutateData<Page>(
+        await api.app.projects[':projectId'].pages[':id'].duplicate.$post({ param: { projectId, id: pageId } }),
+        'Could not duplicate the page.',
+      ),
+    onSuccess: (created) => {
       qc.setQueryData(queryKeys.pages.detail(projectId, created.id), created);
       void qc.invalidateQueries({ queryKey: queryKeys.deployments.changes(projectId) });
       return qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
@@ -870,50 +902,7 @@ const useSetProjectAddonEnabled = (projectId: string, action: 'activate' | 'deac
 export const useActivateProjectAddon = (projectId: string) => useSetProjectAddonEnabled(projectId, 'activate');
 export const useDeactivateProjectAddon = (projectId: string) => useSetProjectAddonEnabled(projectId, 'deactivate');
 
-/** Update workspace/site settings. Pass a projectId to write the SITE's own org
- *  settings (per-site workspace); omit it for the account view. */
-export const useUpdateWorkspaceSettings = (projectId?: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: UpdateWorkspaceSettingsBody) =>
-      projectId
-        ? mutateData<WorkspaceSettings>(
-            await api.app.projects[':projectId'].settings.$patch({ param: { projectId }, json: body }),
-            'Could not update settings.',
-          )
-        : mutateData<WorkspaceSettings>(await api.app.workspace.$patch({ json: body }), 'Could not update workspace settings.'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: projectId ? queryKeys.workspace.projectSettings(projectId) : queryKeys.workspace.settings() }),
-  });
-};
-
-/** Pull Markdown pages from the configured public Git provider (one-way import). */
-export const useImportFromGit = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async () =>
-      mutateData(await api.app.projects[':projectId'].settings.git.import.$post({ param: { projectId } }), 'Could not import from Git.'),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
-    },
-  });
-};
-
-/** Generate or rotate the push-to-deploy webhook secret (admin only). The
- *  secret is server-generated; the settings PATCH can never set it. */
-export const useRotateGitWebhookSecret = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async () =>
-      mutateData(
-        await api.app.projects[':projectId'].settings.git['webhook-secret'].$post({ param: { projectId } }),
-        'Could not rotate the webhook secret.',
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(projectId) }),
-  });
-};
-
-// ─── Content importers (Mintlify / Ghost) ────────────────────────────────────
+// ─── Content importers ───────────────────────────────────────────────────────
 
 /** Summary returned by the content importers (Mintlify, Ghost, …). */
 export interface ContentImportSummary {
@@ -923,56 +912,8 @@ export interface ContentImportSummary {
   assetsImported?: number;
   assetsSkipped?: number;
   warnings: string[];
+  fidelityIssues?: Array<{ kind: 'embed' | 'link'; page: string; reference: string }>;
 }
-
-/** One-way import of a public Mintlify GitHub docs repo (docs.json / mint.json). */
-export const useImportFromMintlify = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: MintlifyImportBody) =>
-      mutateData(
-        await api.app.projects[':projectId'].settings.import.mintlify.$post({ param: { projectId }, json: body }),
-        'Could not import from Mintlify.',
-      ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
-      // The importer may also fill empty project-config keys (branding, navbar, …).
-      qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
-    },
-  });
-};
-
-/** One-way import of a public GitBook Git Sync GitHub repo (.gitbook.yaml / SUMMARY.md). */
-export const useImportFromGitbook = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: GitbookImportBody) =>
-      mutateData(
-        await api.app.projects[':projectId'].settings.import.gitbook.$post({ param: { projectId }, json: body }),
-        'Could not import from GitBook.',
-      ),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) });
-      // Redirects from .gitbook.yaml may be written to the project config.
-      qc.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
-      qc.invalidateQueries({ queryKey: queryKeys.projects.all() });
-    },
-  });
-};
-
-/** One-way import of a Ghost JSON export (published posts + pages → Markdown). */
-export const useImportFromGhost = (projectId: string) => {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: async (body: Record<string, unknown>) =>
-      mutateData(
-        await api.app.projects[':projectId'].settings.import.ghost.$post({ param: { projectId }, json: body }),
-        'Could not import from Ghost.',
-      ),
-    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.pages.allForProject(projectId) }),
-  });
-};
 
 // ─── Notifications (bell inbox) ──────────────────────────────────────────────
 

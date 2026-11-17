@@ -2,32 +2,23 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
-import { useForm } from '@tanstack/react-form';
-import { ArrowUpRight, Check, CircleAlert, Copy, DownloadCloud, Eye, EyeOff, GitBranch, Globe, Hammer, Loader2, RefreshCw } from 'lucide-react';
+import { ArrowUpRight, Check, Copy, Eye, EyeOff, GitBranch, RefreshCw } from 'lucide-react';
 import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
-import { DirtyStateReporter, SettingsFormSkeleton } from '@/components/project-settings/shared';
+import { SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import { SecretInput } from '@/components/secret-input';
-import type { Deployment } from '@/hooks/api';
-import {
-  useBranches,
-  useDeployments,
-  useGitWorkflow,
-  useImportFromGit,
-  useLanguages,
-  useLiveDeployments,
-  useRotateGitWebhookSecret,
-  useUpdateWorkspaceSettings,
-  useWorkspaceSettings,
-} from '@/hooks/api';
-import { newestLiveDeployment } from '@/hooks/api/deployment-cache';
-import { useFormatters } from '@/lib/format';
+import { useWriteGitSettings } from '@/features/site-git/api/git-connection';
+import { GitConnectionForm } from '@/features/site-git/components/git-connection-form';
+import { GitPipeline } from '@/features/site-git/components/git-pipeline';
+import { useGitImportCommand } from '@/features/site-git/components/use-git-import';
+import { useGitSettingsWebhookRotateCommand } from '@/features/site-git/components/use-git-settings-webhook-rotate-command';
+import { type GitInstantChange, gitInstantPayload } from '@/features/site-git/model/git-instant-write';
+import { useGitWorkflow, useWorkspaceSettings } from '@/hooks/api';
 import { githubRepositoryPath } from '@/lib/git-repository';
 import { copyToClipboard } from '@/lib/invitations';
 import { GitWorkflow, type GitWorkflowPrefill } from './git-workflow';
@@ -90,138 +81,6 @@ const repoWebUrl = (git: GitConfig): string | null => {
   return null;
 };
 
-type StepTone = 'done' | 'active' | 'failed' | 'idle';
-
-function PipelineStep({
-  icon,
-  tone,
-  label,
-  detail,
-  action,
-  last,
-}: {
-  icon: ReactNode;
-  tone: StepTone;
-  label: string;
-  detail: string;
-  action?: ReactNode;
-  last?: boolean;
-}) {
-  return (
-    <div className="relative flex gap-3 pb-6 last:pb-0">
-      {!last ? <span className="absolute start-[15px] top-8 bottom-0 w-px bg-border" aria-hidden /> : null}
-      <span
-        className={cn(
-          'z-10 grid size-8 shrink-0 place-items-center rounded-full border',
-          tone === 'done' && 'border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-          tone === 'active' && 'border-primary/40 bg-primary/10 text-primary',
-          tone === 'failed' && 'border-destructive/40 bg-destructive/10 text-destructive',
-          tone === 'idle' && 'border-border bg-muted/40 text-muted-foreground',
-        )}
-      >
-        {icon}
-      </span>
-      {/* On a narrow screen the action drops below the text, and the detail wraps
-          instead of being cut off mid-word. */}
-      <div className="flex min-w-0 flex-1 flex-col items-start gap-2 pt-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-        <div className="min-w-0 leading-snug">
-          <div className="font-medium text-sm">{label}</div>
-          <div className="text-muted-foreground text-xs [overflow-wrap:anywhere] sm:truncate">{detail}</div>
-        </div>
-        {action}
-      </div>
-    </div>
-  );
-}
-
-/** Import → Build → Live, from real git metadata + deployment history. */
-function GitPipeline({ projectId, git, onImport, importing }: { projectId: string; git: GitConfig; onImport: () => void; importing: boolean }) {
-  const t = useT();
-  const { dateTime } = useFormatters();
-  const { data: deployments } = useDeployments(projectId);
-  // What's live comes from the live-only list too: the attempts list is the
-  // newest 50, which a run of failures can fill.
-  const { data: liveDeployments } = useLiveDeployments(projectId);
-  const latest: Deployment | undefined = deployments?.[0];
-  const latestReady = newestLiveDeployment(deployments, liveDeployments);
-
-  const buildTone: StepTone =
-    latest?.status === 'FAILED' ? 'failed' : latest?.status === 'PENDING' || latest?.status === 'BUILDING' ? 'active' : latest ? 'done' : 'idle';
-  const buildDetail =
-    latest?.status === 'PENDING' || latest?.status === 'BUILDING'
-      ? t('settings.git.pipeline.building', { version: latest.version })
-      : latest?.status === 'FAILED'
-        ? t('settings.git.pipeline.failed', { version: latest.version })
-        : latest
-          ? t('settings.git.pipeline.built', { version: latest.version, pages: latest.pagesCount })
-          : t('settings.git.pipeline.noBuilds');
-
-  // Prefer the push-webhook sync over the manual import when it is the more
-  // recent of the two (ISO timestamps compare lexicographically). A failed
-  // push sync never updates lastImportedAt, so it stays the latest and shows.
-  const pushSyncIsLatest = Boolean(git.lastSyncAt && (!git.lastImportedAt || git.lastSyncAt >= git.lastImportedAt));
-  const pushSyncFailed = pushSyncIsLatest && git.lastSyncStatus === 'failed';
-  const importTone: StepTone = pushSyncFailed ? 'failed' : git.lastImportedAt || git.lastSyncAt ? 'done' : 'idle';
-  const importDetail = pushSyncFailed
-    ? `${t('settings.git.pipeline.syncFailed', { when: dateTime(git.lastSyncAt ?? '') })}${git.lastSyncError ? ` — ${git.lastSyncError}` : ''}`
-    : pushSyncIsLatest
-      ? t('settings.git.pipeline.lastSync', { when: dateTime(git.lastSyncAt ?? '') })
-      : git.lastImportedAt
-        ? t('settings.git.import.lastImported', { when: dateTime(git.lastImportedAt) })
-        : t('settings.git.import.never');
-
-  return (
-    <SettingsSection title={t('settings.git.pipeline.title')}>
-      <div className="flex flex-col">
-        <PipelineStep
-          icon={pushSyncFailed ? <CircleAlert className="size-4" /> : <DownloadCloud className="size-4" />}
-          tone={importTone}
-          label={t('settings.git.pipeline.import')}
-          detail={importDetail}
-          action={
-            <Button size="sm" type="button" variant="outline" loading={importing} onClick={onImport} loadingText={t('settings.git.import.importing')}>
-              <DownloadCloud className="size-3.5" />
-              {t('settings.git.import.now')}
-            </Button>
-          }
-        />
-        <PipelineStep
-          icon={
-            latest?.status === 'FAILED' ? (
-              <CircleAlert className="size-4" />
-            ) : latest?.status === 'PENDING' || latest?.status === 'BUILDING' ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <Hammer className="size-4" />
-            )
-          }
-          tone={buildTone}
-          label={t('settings.git.pipeline.build')}
-          detail={buildDetail}
-        />
-        <PipelineStep
-          icon={latestReady ? <Check className="size-4" /> : <Globe className="size-4" />}
-          tone={latestReady ? 'done' : 'idle'}
-          label={t('settings.git.pipeline.live')}
-          detail={
-            latestReady
-              ? t('settings.git.pipeline.built', { version: latestReady.version, pages: latestReady.pagesCount })
-              : t('settings.git.pipeline.notLive')
-          }
-          action={
-            latestReady ? (
-              <Button nativeButton={false} size="sm" variant="outline" render={<a href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />}>
-                {t('settings.git.pipeline.viewSite')} <ArrowUpRight className="size-3.5 rtl:-scale-x-100" />
-              </Button>
-            ) : undefined
-          }
-          last
-        />
-      </div>
-    </SettingsSection>
-  );
-}
-
 /** Numbered badge for the webhook setup steps ("done" renders a check). */
 function StepBadge({ done, children }: { done?: boolean; children?: ReactNode }) {
   return (
@@ -255,8 +114,15 @@ function DeployOnPush({
   togglingAutoPublish: boolean;
 }) {
   const t = useT();
-  const rotateSecret = useRotateGitWebhookSecret(projectId);
   const [revealed, setRevealed] = useState(false);
+  // One rotation per press, outside every cache; reported only to this card, for this site and session.
+  const rotateSecret = useGitSettingsWebhookRotateCommand(projectId, {
+    rotated: () => {
+      setRevealed(true);
+      toast.success(t('settings.git.webhook.rotated'));
+    },
+    failed: (_error) => toast.error(t('settings.git.webhook.rotateError')),
+  });
   const [copying, setCopying] = useState(false);
   const [webhookOrigin, setWebhookOrigin] = useState('');
   useEffect(() => setWebhookOrigin(window.location.origin), []);
@@ -273,15 +139,6 @@ function DeployOnPush({
       toast.error(t('settings.git.webhook.copyError'));
     }
   };
-
-  const rotate = () =>
-    rotateSecret.mutate(undefined, {
-      onSuccess: () => {
-        setRevealed(true);
-        toast.success(t('settings.git.webhook.rotated'));
-      },
-      onError: (_error) => toast.error(t('settings.git.webhook.rotateError')),
-    });
 
   const instructions =
     git.provider === 'gitlab'
@@ -347,14 +204,14 @@ function DeployOnPush({
                     >
                       <Copy className="size-4" />
                     </Button>
-                    <Button loading={rotateSecret.isPending} onClick={rotate} type="button" variant="outline">
+                    <Button loading={rotateSecret.busy} onClick={() => void rotateSecret.press()} type="button" variant="outline">
                       <RefreshCw className="size-3.5" />
                       {t('settings.git.webhook.rotate')}
                     </Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
-                    <Button loading={rotateSecret.isPending} onClick={rotate} type="button" variant="outline">
+                    <Button loading={rotateSecret.busy} onClick={() => void rotateSecret.press()} type="button" variant="outline">
                       <RefreshCw className="size-3.5" />
                       {t('settings.git.webhook.generate')}
                     </Button>
@@ -394,94 +251,37 @@ export function GitTab({ projectId }: { projectId?: string }) {
   const [prefill, setPrefill] = useState<GitWorkflowPrefill | null>(null);
   const settings = useWorkspaceSettings(projectId);
   const { data } = settings;
-  const update = useUpdateWorkspaceSettings(projectId);
-  const importFromGit = useImportFromGit(projectId ?? '');
-  const { data: branches } = useBranches(projectId);
-  const { data: languages } = useLanguages(projectId);
-  const branchOptions: Array<{ value: string | null; label: string }> = [
-    { value: null, label: t('settings.git.defaultBranch') },
-    ...(branches ?? []).map((branch) => ({ value: branch.id, label: branch.name })),
-  ];
-  const languageOptions: Array<{ value: string | null; label: string }> = [
-    { value: null, label: t('settings.git.defaultLanguage') },
-    ...(languages ?? []).map((language) => ({ value: language.id, label: `${language.label} (${language.code})` })),
-  ];
+  // The manual import: one per site at a time, reported only into this panel (see useGitImportCommand).
+  const gitImport = useGitImportCommand(projectId ?? '');
+  // Any write to this site's `git` in flight, from this mount or an earlier one: the instant writes
+  // below and the repository form's save wait for each other (the PATCH replaces `git` whole).
+  const { write, pending: writing, isPending: writePending } = useWriteGitSettings(projectId ?? '');
   const git = { ...DEFAULTS, ...((data?.git ?? {}) as GitConfig) };
-  const [provider, setProvider] = useState<GitConfig['provider']>(git.provider ?? 'github');
   const connected = Boolean((data?.git as GitConfig | undefined)?.connected && (git.provider === 'git' ? git.cloneUrl : git.repo));
-  const isGitLab = provider === 'gitlab';
-  const isGenericGit = provider === 'git';
 
-  const save = (patch: Partial<GitConfig>, message?: string) =>
-    update.mutate(
-      {
-        git: {
-          provider,
-          repo: git.repo,
-          cloneUrl: git.cloneUrl,
-          instanceUrl: git.instanceUrl,
-          branch: git.branch,
-          path: git.path,
-          importBranchId: git.importBranchId,
-          importLanguageId: git.importLanguageId,
-          // The PATCH replaces `git` wholesale, so carry the flags a partial
-          // save must not flip (webhook fields are preserved server-side).
-          connected: git.connected,
-          autoPublish: git.autoPublish,
-          ...patch,
-        },
-      },
+  // The instant writes (auto publish, disconnect): the stored connection as the server returned it, with
+  // one change (`gitInstantPayload`), never the display defaults above or the repository form's draft.
+  // One that the person asked for waits out any other write to this site's `git`; the new connection
+  // taking over (`switchOff`) is sent regardless, as before.
+  const send = (change: GitInstantChange, message?: string) => {
+    if (!projectId) return;
+    write(
+      { projectId, git: gitInstantPayload(data?.git, change) },
       {
         onSuccess: () => message && toast.success(message),
         onError: (_error) => toast.error(t('settings.git.saveError')),
       },
     );
+  };
+  const save = (change: GitInstantChange, message?: string) => {
+    if (!writePending()) send(change, message);
+  };
 
   const runImport = () =>
-    importFromGit.mutate(undefined, {
-      onSuccess: (summary) => toast.success(t('settings.git.import.result', { imported: summary.imported, updated: summary.updated })),
-      onError: (_error) => toast.error(t('settings.git.import.error')),
+    gitImport.start({
+      succeeded: (summary) => toast.success(t('settings.git.import.result', { imported: summary.imported, updated: summary.updated })),
+      failed: (_error) => toast.error(t('settings.git.import.error')),
     });
-
-  const form = useForm({
-    defaultValues: {
-      repo: git.repo,
-      cloneUrl: git.cloneUrl,
-      instanceUrl: git.instanceUrl,
-      branch: git.branch,
-      path: git.path,
-      importBranchId: git.importBranchId,
-      importLanguageId: git.importLanguageId,
-    },
-    onSubmit: async ({ value }) =>
-      save(
-        {
-          provider,
-          repo: provider === 'git' ? undefined : value.repo.trim(),
-          cloneUrl: provider === 'git' ? value.cloneUrl.trim() : undefined,
-          instanceUrl: provider === 'gitlab' ? value.instanceUrl.trim() || 'https://gitlab.com' : undefined,
-          branch: value.branch.trim() || 'main',
-          path: value.path.trim(),
-          importBranchId: value.importBranchId || undefined,
-          importLanguageId: value.importLanguageId || undefined,
-          connected: true,
-        },
-        t('settings.git.repoSaved'),
-      ),
-  });
-
-  useEffect(() => {
-    setProvider(git.provider ?? 'github');
-    form.reset({
-      repo: git.repo,
-      cloneUrl: git.cloneUrl,
-      instanceUrl: git.instanceUrl,
-      branch: git.branch,
-      path: git.path,
-      importBranchId: git.importBranchId,
-      importLanguageId: git.importLanguageId,
-    });
-  }, [form, git.branch, git.cloneUrl, git.importBranchId, git.importLanguageId, git.instanceUrl, git.path, git.provider, git.repo]);
 
   if (settings.isPending) return <SettingsFormSkeleton />;
   if (settings.isError && !data) return <QueryErrorState onRetry={() => void settings.refetch()} retrying={settings.isFetching} />;
@@ -489,170 +289,13 @@ export function GitTab({ projectId }: { projectId?: string }) {
   const webUrl = repoWebUrl(git);
   const ProviderGlyph = git.provider === 'github' ? GithubIcon : GitBranch;
 
-  const connectForm = (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        form.handleSubmit();
-      }}
-    >
-      <form.Subscribe selector={(state) => !state.isDefaultValue}>
-        {(dirty) => <DirtyStateReporter dirty={dirty || provider !== (git.provider ?? 'github')} />}
-      </form.Subscribe>
-      <div className="mb-4 grid grid-cols-3 gap-2">
-        <Button
-          className="justify-start"
-          onClick={() => setProvider('github')}
-          type="button"
-          variant={provider === 'github' ? 'secondary' : 'outline'}
-        >
-          <GithubIcon className="size-4" />
-          GitHub
-        </Button>
-        <Button
-          className="justify-start"
-          onClick={() => setProvider('gitlab')}
-          type="button"
-          variant={provider === 'gitlab' ? 'secondary' : 'outline'}
-        >
-          <GitBranch className="size-4" />
-          GitLab
-        </Button>
-        <Button className="justify-start" onClick={() => setProvider('git')} type="button" variant={provider === 'git' ? 'secondary' : 'outline'}>
-          <GitBranch className="size-4" />
-          {t('settings.git.provider.git.name')}
-        </Button>
-      </div>
-
-      {isGitLab ? (
-        <form.Field name="instanceUrl">
-          {(field) => (
-            <div className="mb-4 flex flex-col gap-1.5">
-              <Label htmlFor="git-instance-url">{t('settings.git.instanceUrl')}</Label>
-              <Input
-                className="font-mono"
-                dir="ltr"
-                id="git-instance-url"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="https://gitlab.com"
-                value={field.state.value}
-              />
-            </div>
-          )}
-        </form.Field>
-      ) : null}
-
-      {isGenericGit ? (
-        <form.Field name="cloneUrl">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="git-clone-url">{t('settings.git.cloneUrl')}</Label>
-              <Input
-                className="font-mono"
-                dir="ltr"
-                id="git-clone-url"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="https://git.example.com/acme/docs.git"
-                value={field.state.value}
-              />
-            </div>
-          )}
-        </form.Field>
-      ) : (
-        <form.Field name="repo">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="git-repo">{t('settings.git.repoUrl')}</Label>
-              <Input
-                className="font-mono"
-                dir="ltr"
-                id="git-repo"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder={isGitLab ? 'group/project' : 'acme-inc/docs'}
-                value={field.state.value}
-              />
-            </div>
-          )}
-        </form.Field>
-      )}
-      <div className="mt-4 grid grid-cols-2 gap-4">
-        <form.Field name="branch">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="git-branch">{t('settings.git.productionBranch')}</Label>
-              <Input
-                className="font-mono"
-                dir="ltr"
-                id="git-branch"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="main"
-                value={field.state.value}
-              />
-            </div>
-          )}
-        </form.Field>
-        <form.Field name="path">
-          {(field) => (
-            <div className="flex flex-col gap-1.5">
-              <Label htmlFor="git-path">{t('settings.git.contentPath')}</Label>
-              <Input
-                className="font-mono"
-                dir="ltr"
-                id="git-path"
-                onChange={(e) => field.handleChange(e.target.value)}
-                placeholder="docs"
-                value={field.state.value}
-              />
-            </div>
-          )}
-        </form.Field>
-      </div>
-      {projectId ? (
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <form.Field name="importBranchId">
-            {(field) => (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="git-import-branch">{t('settings.git.importBranch')}</Label>
-                <Select items={branchOptions} onValueChange={(next) => field.handleChange(next ?? '')} value={field.state.value || null}>
-                  <SelectTrigger className="w-full font-mono" dir="ltr" id="git-import-branch">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent dir="ltr">
-                    {branchOptions.map((option) => (
-                      <SelectItem key={option.value ?? ''} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </form.Field>
-          <form.Field name="importLanguageId">
-            {(field) => (
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="git-import-language">{t('settings.git.importLanguage')}</Label>
-                <Select items={languageOptions} onValueChange={(next) => field.handleChange(next ?? '')} value={field.state.value || null}>
-                  <SelectTrigger className="w-full" id="git-import-language">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {languageOptions.map((option) => (
-                      <SelectItem key={option.value ?? ''} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-          </form.Field>
-        </div>
-      ) : null}
-      <div className="mt-5 flex items-center justify-between gap-3">
-        {connected ? (
+  const connectForm = projectId ? (
+    <GitConnectionForm
+      connected={connected}
+      disconnect={
+        connected ? (
           <Button
-            loading={update.isPending}
+            loading={writing}
             type="button"
             variant="destructive"
             onClick={async () => {
@@ -668,24 +311,12 @@ export function GitTab({ projectId }: { projectId?: string }) {
           >
             {t('settings.git.disconnect')}
           </Button>
-        ) : (
-          <span />
-        )}
-        <form.Subscribe selector={(state) => state.isSubmitting}>
-          {(isSubmitting) => (
-            <Button
-              loading={update.isPending || isSubmitting}
-              loadingText={t('common.saving')}
-              type="submit"
-              variant={connected ? 'outline' : 'default'}
-            >
-              {connected ? t('settings.git.save') : t('settings.git.connect')}
-            </Button>
-          )}
-        </form.Subscribe>
-      </div>
-    </form>
-  );
+        ) : null
+      }
+      git={data?.git}
+      projectId={projectId}
+    />
+  ) : null;
 
   const legacyControls = (
     <div className="flex flex-col gap-6">
@@ -718,13 +349,13 @@ export function GitTab({ projectId }: { projectId?: string }) {
         </div>
       </section>
 
-      {projectId ? <GitPipeline projectId={projectId} git={git} onImport={runImport} importing={importFromGit.isPending} /> : null}
+      {projectId ? <GitPipeline projectId={projectId} git={git} onImport={runImport} importing={gitImport.busy} /> : null}
       {projectId ? (
         <DeployOnPush
           projectId={projectId}
           git={git}
           onToggleAutoPublish={(next) => save({ autoPublish: next }, t('settings.git.webhook.autoPublishSaved'))}
-          togglingAutoPublish={update.isPending}
+          togglingAutoPublish={writing}
         />
       ) : null}
       <SettingsSection title={t('settings.git.settingsTitle')} description={t('settings.git.import.description')}>
@@ -769,7 +400,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
           </p>
         </div>
         {replaced ? (
-          <Button loading={update.isPending} onClick={() => void removeLegacy()} type="button" variant="outline">
+          <Button loading={writing} onClick={() => void removeLegacy()} type="button" variant="outline">
             {t('settings.git.legacy.remove')}
           </Button>
         ) : switchable ? (
@@ -790,7 +421,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
           <GitWorkflow
             onConnected={() => {
               // The new connection takes over: switch the legacy import off.
-              if (connected) save({ connected: false }, t('settings.git.legacy.switched'));
+              if (connected) send({ connected: false }, t('settings.git.legacy.switched'));
             }}
             prefill={prefill}
             projectId={projectId}

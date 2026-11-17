@@ -1,0 +1,103 @@
+{
+  "baselineHead": "4a3bb6501341daeb8454aed9a76ccd9b36f05e64",
+  "failed": 16,
+  "passed": 4,
+  "tests": [
+    {
+      "name": "council re-check at 4a3bb650: GitBook P1: preserves indented Markdown through conversion and link rewriting without reports",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: GitBook P1: preserves fenced Markdown through conversion and link rewriting without reports",
+      "status": "passed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: GitBook P1: preserves nested list code through conversion and link rewriting without reports",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: GitBook P1: preserves blockquote code through conversion and link rewriting without reports",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: GitBook P1: preserves quoted fence through conversion and link rewriting without reports",
+      "status": "passed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: GitBook P1: preserves indented HTML anchor through conversion and link rewriting without reports",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: GitBook P1: keeps literal images and space links out of post-conversion rewrites and reports",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: GitBook P2: retains top-level video src metadata (controls present: true)",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: GitBook P2: retains top-level video src metadata (controls present: false)",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: Mintlify P1: preserves indented Markdown through conversion and link rewriting without reports",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: Mintlify P1: preserves fenced Markdown through conversion and link rewriting without reports",
+      "status": "passed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: Mintlify P1: preserves nested list code through conversion and link rewriting without reports",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: Mintlify P1: preserves blockquote code through conversion and link rewriting without reports",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: Mintlify P1: preserves quoted fence through conversion and link rewriting without reports",
+      "status": "passed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: Mintlify P1: preserves indented HTML anchor through conversion and link rewriting without reports",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: Mintlify P1: keeps literal images and space links out of post-conversion rewrites and reports",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: Mintlify P2: retains top-level video src metadata (controls present: true)",
+      "status": "failed"
+    },
+    {
+      "name": "council re-check at 4a3bb650: Mintlify P2: retains top-level video src metadata (controls present: false)",
+      "status": "failed"
+    },
+    {
+      "name": "remoteImageSources council P1: gitbook leaves indented image code out of remote migration",
+      "status": "failed"
+    },
+    {
+      "name": "remoteImageSources council P1: mintlify leaves indented image code out of remote migration",
+      "status": "failed"
+    },
+    {
+      "name": "remoteImageSources does no asset lookup or migration for a code-only document",
+      "status": "skipped"
+    },
+    {
+      "name": "remoteImageSources does not discover literal images in fenced or inline code",
+      "status": "skipped"
+    },
+    {
+      "name": "remoteImageSources migrates a real image without rewriting the same URL in code or an ordinary link",
+      "status": "skipped"
+    },
+    {
+      "name": "remoteImageSources finds and deduplicates Markdown plus HTML/MDX image sources",
+      "status": "skipped"
+    }
+  ]
+}

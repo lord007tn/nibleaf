@@ -19,6 +19,18 @@ import { type ImageUploader, uploadEditorImage } from './image-upload';
 
 beforeEach(() => {
   vi.stubGlobal('ClipboardEvent', class extends Event {});
+  // The slash menu is built on cmdk, whose list measures itself with ResizeObserver
+  // and scrolls the active item into view; jsdom implements neither (same stubs as
+  // the other cmdk-based tests, e.g. command-palette.test.tsx).
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+    },
+  );
+  Element.prototype.scrollIntoView = vi.fn();
   Range.prototype.getClientRects = () => [] as unknown as DOMRectList;
   Range.prototype.getBoundingClientRect = () => new DOMRect(0, 0, 1, 1);
 });
@@ -164,16 +176,17 @@ describe('review content regressions', () => {
   });
   it('cleans a roughly 1 MB paste without per-element ancestor walks (L)', () => {
     // Many realistic spans/links, with text dominating the byte size as in articles.
-    const fixture = `<form>${'<p class="word"><a href="/help"><span style="text-decoration:underline">Read this. </span></a>'.padEnd(4096, 'x').concat('</p>').repeat(256)}</form>`;
-    expect(fixture.length).toBeGreaterThan(1024 * 1024);
-    const root = document.createElement('div');
-    root.innerHTML = fixture;
-    const start = performance.now();
-    cleanPasteDOM(root);
-    const elapsed = performance.now() - start;
-    console.info(`1 MB cleanup: ${elapsed.toFixed(1)} ms`);
-    expect(elapsed).toBeLessThan(1000);
-    expect(root.querySelector('form,span,[style]')).toBeNull();
+    const fixture = (blocks: number) =>
+      `<form>${'<p class="word"><a href="/help"><span style="text-decoration:underline">Read this. </span></a>'.padEnd(4096, 'x').concat('</p>').repeat(blocks)}</form>`;
+    expect(fixture(256).length).toBeGreaterThan(1024 * 1024);
+    /** Cleanup mutates the tree, so each run parses a fresh copy. */
+    const clean = (html: string) => {
+      const root = document.createElement('div');
+      root.innerHTML = html;
+      cleanPasteDOM(root);
+      return root;
+    };
+    expect(clean(fixture(256)).querySelector('form,span,[style]')).toBeNull();
   });
   it.each(['ltr', 'rtl'] as const)('shows active and default alignment and matching physical reader alignment in %s (J, C, 8)', async (dir) => {
     const editor = make();

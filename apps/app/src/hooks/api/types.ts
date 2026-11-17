@@ -2,6 +2,7 @@ import type { ReaderText } from '@/lib/reader-text';
 // UI-facing shapes for API responses. Dates arrive as ISO strings over JSON.
 
 import type { AddonAvailabilityState, AddonGroup, AddonId } from '@nibleaf/shared/addons';
+import type { PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
 import type { LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
 
 export type { AnalyticsRange, LanguageConfig, PageConfig, ProjectConfig } from '@nibleaf/validators';
@@ -63,7 +64,7 @@ export interface Project {
 /** The newest MCP audit event of a key or connected app. `operation` is the
  *  tool or resource name and `errorCode` the audit code when it failed; the
  *  dashboard turns both into one plain sentence. */
-export interface McpActivity {
+interface McpActivity {
   operation: string;
   outcome: string;
   errorCode?: string | null;
@@ -244,14 +245,18 @@ export interface PendingChange {
   deletions: number;
   lines: DeploymentDiffLine[];
   truncated: boolean;
+  /** A modified page's live address when the draft moved it (path or language). */
+  published?: { path: string; languageCode: string };
 }
 
 /** A pre-publish quality check on the draft being previewed. Warnings leave
  *  publishing allowed; an `error` blocks it (the publish would fail). */
 export interface PublishCheck {
-  code: 'broken-internal-link' | 'missing-alt' | 'untitled-page' | 'stray-characters' | 'unreadable-slug' | 'empty-page' | 'duplicate-title';
+  code: PublishCheckCode;
   severity: 'error' | 'warning';
   pageId: string;
+  /** The docs version (branch) of the page; absent from an older server. */
+  versionId?: string;
   languageCode: string;
   title: string;
   path: string;
@@ -414,7 +419,7 @@ export interface SiteShell {
   };
   nav: NavNode[];
   /** Only ENABLED languages — the server filters disabled ones out. */
-  languages: Array<{ code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean; enabled?: boolean }>;
+  languages: Array<{ code: string; label: string; direction: 'LTR' | 'RTL'; isDefault: boolean; enabled?: boolean; pathPrefix?: string }>;
   versions: Array<{ id: string; name: string; slug: string; isDefault: boolean }>;
   activeLanguage: string;
   activeVersion: string;
@@ -456,6 +461,7 @@ export interface SitePage {
     icon: string | null;
     path: string;
     content: string;
+    imageDimensions?: Record<string, { width: number; height: number }>;
     headings: Heading[];
     config: PageConfig | null;
   };
@@ -468,10 +474,11 @@ export interface SitePage {
   languageConfig: PublishedLanguageConfig | null;
   /** hreflang alternates: `path` is the page's URL in that language, or null
    *  when that language has no corresponding page (then it's omitted). */
-  languages: Array<{ code: string; isDefault: boolean; path: string | null }>;
+  languages: Array<{ code: string; isDefault: boolean; path: string | null; pathPrefix?: string }>;
   /** Reader-facing date and language names, formatted once on the server (see lib/reader-text.ts). */
   readerText?: ReaderText;
-  breadcrumbs: Array<{ title: string; path: string }>;
+  /** `section`: a group or category heading, shown as text rather than a link. */
+  breadcrumbs: Array<{ title: string; path: string; section?: true }>;
   prev: { title: string; path: string } | null;
   next: { title: string; path: string } | null;
 }

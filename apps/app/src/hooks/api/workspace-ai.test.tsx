@@ -6,11 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { useCreateProjectSearchReindex } from './project-search';
 import { queryKeys } from './query-keys';
-import { useSaveWorkspaceAiConnection, useSelectWorkspaceAi, useWorkspaceAiModels } from './workspace-ai';
+import { useSelectWorkspaceAi } from './workspace-ai';
 
 const mocks = vi.hoisted(() => ({
-  models: vi.fn(),
-  connection: vi.fn(),
   select: vi.fn(),
   reindex: vi.fn(),
   toastError: vi.fn(),
@@ -21,7 +19,7 @@ vi.mock('@/services/api', () => ({
       projects: {
         ':projectId': {
           settings: {
-            ai: { $patch: mocks.select, models: { $post: mocks.models }, connection: { $put: mocks.connection } },
+            ai: { $patch: mocks.select },
             search: { reindex: { $post: mocks.reindex } },
           },
         },
@@ -72,25 +70,13 @@ const settle = async (run: () => Promise<unknown>) => {
   await vi.waitFor(() => expect(mocks.toastError).toHaveBeenCalled());
 };
 
+// The key check and save are direct requests in features/site-ai (provider-key-form.credentials.test.tsx).
 describe('Smart AI requests report failures once, in plain words', () => {
-  it('says a key was refused, never what the provider answered', async () => {
-    mocks.models.mockResolvedValue(failure(400, 'integration:credentials_invalid'));
-    const models = await mountHook(() => useWorkspaceAiModels('project'));
-    await settle(() => models.current.mutateAsync({ providerId: 'openrouter', apiKey: 'sk-or-v1-secret' }));
-    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('settings.smartAi.invalidKey');
-  });
-
-  it('says the settings changed elsewhere on a conflict, and words other failures generally', async () => {
+  it('says the settings changed elsewhere on a conflict', async () => {
     mocks.select.mockResolvedValue(failure(409));
     const select = await mountHook(() => useSelectWorkspaceAi('project'));
     await settle(() => select.current.mutateAsync({ providerId: 'openrouter', answersEnabled: true }));
     expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('settings.smartAi.conflict');
-
-    mocks.toastError.mockClear();
-    mocks.connection.mockResolvedValue(failure(500));
-    const save = await mountHook(() => useSaveWorkspaceAiConnection('project'));
-    await settle(() => save.current.mutateAsync({ providerId: 'openrouter', answerModel: 'model', expectedRevision: 1 }));
-    expect(mocks.toastError).toHaveBeenCalledExactlyOnceWith('settings.smartAi.error');
   });
 });
 

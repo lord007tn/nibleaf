@@ -1,0 +1,127 @@
+{
+  "baselineHead": "dbccca6268b0a9d52daff66d7d258c01afd6fedd",
+  "failed": 22,
+  "passed": 8,
+  "tests": [
+    {
+      "name": "full review at dbccca62: GitBook 1: excludes foreign-language discovery without frontmatter: https://help.test/ar/hidden?lang=ar",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 1: excludes foreign-language discovery without frontmatter: https://help.test/ar/hidden",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 2: exact application destination wins over a conflicting source key and basename",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 2: reports an ambiguous basename without guessing",
+      "status": "passed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 3: decodes HTML query entities for Arabic and re-escapes the destination",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 4: keeps code-bearing label out of generated title attributes",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 4: keeps code-bearing caption out of generated title attributes",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 5: protects logical code lines with original delimiter bytes: CR",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 5: protects logical code lines with original delimiter bytes: CRLF",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 5: protects logical code lines with original delimiter bytes: mixed",
+      "status": "passed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 6: preserves a fenced image inside CodeGroup through conversion and asset rewriting",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 6 control: an indented literal fence does not protect following prose",
+      "status": "passed"
+    },
+    {
+      "name": "full review at dbccca62: GitBook 6 control: an indented false closer cannot expose code or hide following prose",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 1: excludes foreign-language discovery without frontmatter: https://help.test/ar/hidden?lang=ar",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 1: excludes foreign-language discovery without frontmatter: https://help.test/ar/hidden",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 2: exact application destination wins over a conflicting source key and basename",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 2: reports an ambiguous basename without guessing",
+      "status": "passed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 3: decodes HTML query entities for Arabic and re-escapes the destination",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 4: keeps code-bearing label out of generated title attributes",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 4: keeps code-bearing caption out of generated title attributes",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 5: protects logical code lines with original delimiter bytes: CR",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 5: protects logical code lines with original delimiter bytes: CRLF",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 5: protects logical code lines with original delimiter bytes: mixed",
+      "status": "passed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 6: preserves a fenced image inside CodeGroup through conversion and asset rewriting",
+      "status": "failed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 6 control: an indented literal fence does not protect following prose",
+      "status": "passed"
+    },
+    {
+      "name": "full review at dbccca62: Mintlify 6 control: an indented false closer cannot expose code or hide following prose",
+      "status": "failed"
+    },
+    {
+      "name": "remoteImageSources full-review 6: gitbook never migrates an image in an MDX component fence",
+      "status": "passed"
+    },
+    {
+      "name": "remoteImageSources full-review 6: mintlify never migrates an image in an MDX component fence",
+      "status": "passed"
+    },
+    {
+      "name": "mintlify importNodes slug collisions full-review 1: never imports foreign hidden content into English without frontmatter (?lang=ar)",
+      "status": "failed"
+    },
+    {
+      "name": "mintlify importNodes slug collisions full-review 1: never imports foreign hidden content into English without frontmatter ()",
+      "status": "failed"
+    }
+  ]
+}

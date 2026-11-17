@@ -1,4 +1,4 @@
-import { getLocale, subscribeLanguage } from '@nibleaf/i18n/locale-state';
+import { getLocale, renderedLocale, subscribeLanguage } from '@nibleaf/i18n/locale-state';
 import { useSyncExternalStore } from 'react';
 
 /**
@@ -8,7 +8,7 @@ import { useSyncExternalStore } from 'react';
  * language and the product-wide 0-9 numeral convention.
  */
 export function useFormatters() {
-  const locale = useSyncExternalStore(subscribeLanguage, getLocale, () => 'en');
+  const locale = useSyncExternalStore(subscribeLanguage, getLocale, renderedLocale);
   const tag = localeTag(locale);
   return {
     number: (value: number | bigint, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat(tag, options).format(value),

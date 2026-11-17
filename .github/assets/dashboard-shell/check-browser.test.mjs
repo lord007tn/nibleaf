@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { chromium } from 'playwright-core';
+import { hostKey, launchLocalOnlyBrowser } from '../../../tests/integration/lib/capture-env.mjs';
 
 // Manual integration regression: run only against the supplied local council seed.
 // COOKIE_FILE uses the same name=value lines as shots.mjs. This marks the fixture inbox read.
@@ -26,11 +26,9 @@ const projectId = projects.data?.find((project) => project.name === 'Acme API Re
 const secondId = projects.data?.find((project) => project.name === 'Help Center')?.id;
 assert(projectId && secondId, 'Run the supplied council seed first');
 const api = base;
-const browser = await chromium.launch({
-  executablePath:
-    process.env.CHROME ?? (process.platform === 'win32' ? `${process.env.ProgramFiles}/Google/Chrome/Application/chrome.exe` : undefined),
-  headless: true,
-});
+// Only the local fixture app is reachable (capture-env.mjs); anything else fails the run.
+const local = await launchLocalOnlyBrowser({ allowedHosts: [hostKey(base)] });
+const { browser } = local;
 const report = [];
 mkdirSync(`${dir}/video`, { recursive: true });
 const bounded = async (page, name) => {
@@ -205,7 +203,7 @@ try {
   report.push({ name: 'mark all read updates accessible names and persists zero unread', passed: true });
   await recovery.close();
 } finally {
-  await browser.close();
+  await local.close();
   writeFileSync(`${dir}/browser-checks.json`, JSON.stringify(report, null, 2));
 }
 console.log(JSON.stringify(report, null, 2));

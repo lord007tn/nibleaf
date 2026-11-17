@@ -1,9 +1,19 @@
 import { posix } from 'node:path';
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
+import { forwardIndexOf } from '@nibleaf/shared/markup-scan';
 import { parse as parseYaml } from 'yaml';
 import { ImportError } from '../../errors';
 import { GitBookImportBudget } from './gitbook-budget';
 import { liquidPairs, liquidTokens, stripHeadingEnd } from './gitbook-tokens';
+import {
+  decodeImportEntities,
+  type ImportFidelityIssue,
+  importContainerPrefix,
+  importEmbed,
+  isImportMediaUrl,
+  normalizeImportFidelity,
+} from './import-fidelity';
+import { importCodeLines, protectImportCode } from './import-markdown-code';
 import { markdownReferences, replaceImportReferences } from './import-references';
 
 /**
@@ -106,18 +116,8 @@ const tagAttributes = (source: string): Record<string, string> => {
 
 const htmlAttribute = (tag: string, name: string): string | undefined => {
   const value = Object.entries(tagAttributes(tag)).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1];
-  return value === undefined ? undefined : decodeEntities(value);
+  return value === undefined ? undefined : decodeImportEntities(value);
 };
-
-const decodeEntities = (value: string): string =>
-  value
-    .replace(/&#x([0-9a-f]+);/gi, (_match, hex: string) => String.fromCodePoint(Math.min(0x10_ff_ff, Number.parseInt(hex, 16))))
-    .replace(/&#(\d+);/g, (_match, decimal: string) => String.fromCodePoint(Math.min(0x10_ff_ff, Number(decimal))))
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;|&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&amp;/g, '&');
 
 /** decodeURIComponent that keeps malformed escapes (`100%`) as written. */
 export const safeDecodeUri = (value: string): string => {
@@ -135,7 +135,7 @@ const HTML_TAGS = new Set(
 );
 
 export const plainGitBookText = (value: string): string => {
-  const decoded = decodeEntities(value);
+  const decoded = decodeImportEntities(value);
   const closingNames = new Set([...decoded.matchAll(/<\/([A-Za-z][\w-]*)>/g)].map((match) => match[1]?.toLowerCase()));
   const text: string[] = [];
   for (let index = 0; index < decoded.length; index++) {
@@ -194,6 +194,7 @@ const KNOWN_TAGS = new Set([
   'update',
   'code',
   'embed',
+  'video',
   'file',
   'content-ref',
   'include',
@@ -214,6 +215,7 @@ export interface GitBookConversionContext {
 export interface GitBookConversionResult {
   content: string;
   warnings: string[];
+  issues: ImportFidelityIssue[];
 }
 
 /** `{% code title="x" %}` annotates the fence that follows it. Fences must be
@@ -222,10 +224,17 @@ const applyCodeAnnotations = (content: string): string => {
   const output: string[] = [];
   let fence: MarkdownFence | undefined;
   let pendingTitle: string | undefined;
-  for (const line of content.split('\n')) {
+  const codeLines = importCodeLines(content);
+  for (const [lineIndex, rawLine] of (content.match(/[^\r\n]*(?:\r\n|\r|\n)|[^\r\n]+$/g) ?? []).entries()) {
+    const ending = /(?:\r\n|\r|\n)$/.exec(rawLine)?.[0] ?? '';
+    const line = rawLine.slice(0, rawLine.length - ending.length);
     if (fence) {
-      output.push(line);
+      output.push(rawLine);
       if (closesMarkdownFence(line, fence, Number.POSITIVE_INFINITY)) fence = undefined;
+      continue;
+    }
+    if (codeLines[lineIndex] && !openingMarkdownFence(line, 3)) {
+      output.push(rawLine);
       continue;
     }
     const tokens = liquidTokens(line);
@@ -242,16 +251,16 @@ const applyCodeAnnotations = (content: string): string => {
       if (pendingTitle && !/\btitle\s*=/.test(line)) {
         const [, indent = '', marker = '', info = ''] = line.match(/^(\s*)(`{3,}|~{3,})(.*)$/) ?? [];
         const language = info.trim().split(/\s+/)[0] ?? '';
-        output.push(`${indent}${marker}${language || 'text'} title="${pendingTitle.replace(/"/g, "'")}"`);
+        output.push(`${indent}${marker}${language || 'text'} title="${pendingTitle.replace(/"/g, "'")}"${ending}`);
       } else {
-        output.push(line);
+        output.push(rawLine);
       }
       pendingTitle = undefined;
       continue;
     }
-    output.push(line);
+    output.push(rawLine);
   }
-  return output.join('\n');
+  return output.join('');
 };
 
 const replaceHtmlBlocks = (
@@ -352,11 +361,12 @@ const liftHeading = (body: string): { title?: string; body: string } => {
  */
 export const convertGitBookMarkdown = (source: string, context: GitBookConversionContext): GitBookConversionResult => {
   const warnings = new Set<string>();
-  const protectedCode = protectMarkdownCode(applyCodeAnnotations(source.replace(/\r\n/g, '\n')), {
-    maxFenceIndent: Number.POSITIVE_INFINITY,
-  });
+  const issues: ImportFidelityIssue[] = [];
+  const unmapped = (reference: string) => issues.push({ kind: 'embed', page: '', reference });
+  const protectedCode = protectImportCode(applyCodeAnnotations(source));
+  protectedCode.content = protectedCode.content.replace(/\r\n?/g, '\n');
   if (!protectedCode.content.includes('{%') && !protectedCode.content.includes('<')) {
-    return { content: protectedCode.restore(protectedCode.content.replace(/\n{3,}/g, '\n\n')).trim(), warnings: [] };
+    return { content: protectedCode.restore(normalizeImportFidelity(protectedCode.content, unmapped).trim()), warnings: [], issues };
   }
   const tokens = liquidTokens(protectedCode.content);
   const pairs = liquidPairs(tokens);
@@ -376,9 +386,25 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
   };
   const openapi = new Set(['swagger', 'openapi', 'openapi-operation', 'openapi-webhook', 'openapi-schemas']);
   let cursor = 0;
+  const nextLineEnd = forwardIndexOf(protectedCode.content, '\n');
+  const nextMediaLineEnd = forwardIndexOf(protectedCode.content, '\n');
+  let lineStart = 0;
+  let previousLine = '';
+  let lineEnd = nextLineEnd(0);
+  let containerPrefix = importContainerPrefix(protectedCode.content.slice(0, lineEnd < 0 ? undefined : lineEnd));
+  let mediaPrefixLine = -1;
+  let mediaPrefix = '';
+  let mediaContentStart = 0;
   for (let index = 0; index < tokens.length; index++) {
     const token = tokens[index];
     if (!token || token.start < cursor) continue;
+    while (lineEnd >= 0 && lineEnd < token.start) {
+      previousLine = protectedCode.content.slice(lineStart, lineEnd);
+      lineStart = lineEnd + 1;
+      lineEnd = nextLineEnd(lineStart);
+      containerPrefix = importContainerPrefix(protectedCode.content.slice(lineStart, lineEnd < 0 ? undefined : lineEnd));
+    }
+    const copiedStart = cursor;
     output.push(protectedCode.content.slice(cursor, token.start));
     cursor = token.end;
     const attributes = tagAttributes(token.attributes);
@@ -410,21 +436,58 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
       output.push(`\n<Card title="${attr(label)}" href="${attr(url)}"></Card>\n`);
       cursor = closing.end;
       index = pairIndex ?? index;
-    } else if (token.name === 'embed' || token.name === 'file') {
+    } else if (token.name === 'embed' || token.name === 'video' || token.name === 'file') {
       // Optional captions contain prose only, ending at the immediately following closer.
       const caption = pairIndex === index + 1 ? inner.trim() : '';
       if (pairIndex === index + 1 && closing) {
         cursor = closing.end;
         index = pairIndex;
       }
-      if (token.name === 'embed') {
-        const url = attributes.url ?? '';
-        if (url) {
-          const host = URL.canParse(url) ? new URL(url).hostname.replace(/^www\./, '') : url;
-          output.push(
-            `\n<Card title="${attr(caption ? plainGitBookText(caption) : host)}" href="${attr(url)}" icon="arrow-up-right-from-square"></Card>\n`,
-          );
+      if (token.name === 'embed' || token.name === 'video') {
+        const url = attributes.url ?? attributes.src ?? '';
+        const before = protectedCode.content.slice(Math.max(0, token.start - 600), token.start).trimEnd();
+        const preceding = before.slice(before.lastIndexOf('\n') + 1).slice(0, 300);
+        const title =
+          plainGitBookText(
+            attributes.title || caption || (preceding.includes('\uE000') || preceding.startsWith('{%') || preceding.startsWith('<') ? '' : preceding),
+          ) || 'Video';
+        const frame = importEmbed(
+          url,
+          title,
+          (reference) => {
+            if (!isImportMediaUrl(reference)) unmapped(reference);
+          },
+          token.name === 'video' ? 'video' : undefined,
+        );
+        const media = caption ? `<Frame caption="${attr(plainGitBookText(caption))}">\n\n${frame}\n\n</Frame>` : frame;
+        // Cache the continuation prefix once per source line, even when that
+        // line holds many embeds. A marker followed by prose keeps its item.
+        if (mediaPrefixLine !== lineStart) {
+          const marker = /^(?:[-*+]|\d{1,9}[.)]) +/.exec(
+            protectedCode.content.slice(lineStart + containerPrefix.length, lineEnd < 0 ? undefined : lineEnd),
+          )?.[0];
+          mediaPrefix = containerPrefix + ' '.repeat(marker?.length ?? 0);
+          mediaContentStart = lineStart + containerPrefix.length + (marker?.length ?? 0);
+          mediaPrefixLine = lineStart;
         }
+        const leadingText = protectedCode.content.slice(Math.max(copiedStart, mediaContentStart), token.start).trim();
+        if (mediaPrefix && (mediaContentStart === lineStart + containerPrefix.length || leadingText)) {
+          // The first prefix is already copied. Keep HTML block separators
+          // inside the container, reusing any blank lines the author supplied.
+          const blank = (line: string) => !line.trim() || line.trim() === mediaPrefix.trim();
+          if (leadingText) output.push(`\n${mediaPrefix.trimEnd()}\n${mediaPrefix}`);
+          else if (copiedStart <= lineStart && !blank(previousLine)) output.push(`\n${mediaPrefix}`);
+          output.push(media.replaceAll('\n', `\n${mediaPrefix}`));
+          const mediaLineEnd = nextMediaLineEnd(cursor);
+          const remainderEnd = mediaLineEnd < 0 ? protectedCode.content.length : mediaLineEnd;
+          while (cursor < remainderEnd && (protectedCode.content[cursor] === ' ' || protectedCode.content[cursor] === '\t')) cursor++;
+          if (cursor < remainderEnd) output.push(`\n${mediaPrefix.trimEnd()}\n${mediaPrefix}`);
+          else if (mediaLineEnd >= 0) {
+            const afterEnd = nextMediaLineEnd(mediaLineEnd + 1);
+            const after = protectedCode.content.slice(mediaLineEnd + 1, afterEnd < 0 ? undefined : afterEnd);
+            if (!blank(after)) output.push(`\n${mediaPrefix.trimEnd()}`);
+          }
+        } else output.push(block(media));
       } else {
         const src = attributes.src ?? '';
         if (src) {
@@ -520,7 +583,7 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
     });
 
   content = content.replace(/\n{3,}/g, '\n\n');
-  return { content: protectedCode.restore(content).trim(), warnings: [...warnings] };
+  return { content: protectedCode.restore(normalizeImportFidelity(content, unmapped).trim()), warnings: [...warnings], issues };
 };
 
 const GITBOOK_SPACE_LINK = /https?:\/\/app\.gitbook\.com\/(?:o\/[^/\s"'()<>]+\/)?s\/[A-Za-z0-9]+[^\s"'()<>]*/g;
@@ -528,7 +591,7 @@ const GITBOOK_SPACE_LINK = /https?:\/\/app\.gitbook\.com\/(?:o\/[^/\s"'()<>]+\/)
 /** Links into a GitBook space (`app.gitbook.com/s/<id>/…`), outside code. The
  * space id alone does not say which published site or page they mean. */
 export const findGitBookSpaceLinks = (content: string): string[] => {
-  const prose = protectMarkdownCode(content, { maxFenceIndent: Number.POSITIVE_INFINITY }).content;
+  const prose = protectImportCode(content).content;
   return [...new Set(prose.match(GITBOOK_SPACE_LINK) ?? [])];
 };
 

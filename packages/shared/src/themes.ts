@@ -355,6 +355,23 @@ export const contrastRatio = (foreground: string, background: string): number =>
   return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
 };
 
+/** Contrast of `color` on a `weight` tint of itself over `background`: the
+ * accent at that alpha, composited in sRGB as the browser does. The composite
+ * keeps fractional channels; rounding it to a hex first can lift 4.478:1 to
+ * 4.502:1 and pass a colour that falls short (WCAG's 4.5:1 is a strict floor). */
+const contrastOnTint = (color: string, background: string, weight: number): number => {
+  const fg = normalizeHex(color);
+  const bg = normalizeHex(background);
+  if (!/^#[0-9a-f]{6}$/i.test(fg) || !/^#[0-9a-f]{6}$/i.test(bg)) return contrastRatio(color, background);
+  const tint = [0.2126, 0.7152, 0.0722].reduce((sum, weightOfChannel, index) => {
+    const start = 1 + index * 2;
+    const value = Number.parseInt(bg.slice(start, start + 2), 16) * (1 - weight) + Number.parseInt(fg.slice(start, start + 2), 16) * weight;
+    return sum + weightOfChannel * channel(value);
+  }, 0);
+  const text = relativeLuminance(fg);
+  return (Math.max(text, tint) + 0.05) / (Math.min(text, tint) + 0.05);
+};
+
 export const contrastingText = (background: string): '#ffffff' | '#111318' =>
   contrastRatio('#ffffff', background) >= contrastRatio('#111318', background) ? '#ffffff' : '#111318';
 
@@ -368,23 +385,196 @@ const mixHex = (first: string, second: string, weight: number): string => {
   return `#${mixed.map((value) => value.toString(16).padStart(2, '0')).join('')}`;
 };
 
+const linearToSrgb = (value: number): number => 255 * (value <= 0.003_130_8 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055);
+
+const toOklab = (hex: string): [number, number, number] => {
+  const [r = 0, g = 0, b = 0] = [1, 3, 5].map((start) => channel(Number.parseInt(hex.slice(start, start + 2), 16)));
+  const l = Math.cbrt(0.412_221_470_8 * r + 0.536_332_536_3 * g + 0.051_445_992_9 * b);
+  const m = Math.cbrt(0.211_903_498_2 * r + 0.680_699_545_1 * g + 0.107_396_956_6 * b);
+  const s = Math.cbrt(0.088_302_461_9 * r + 0.281_718_837_6 * g + 0.629_978_700_5 * b);
+  return [
+    0.210_454_255_3 * l + 0.793_617_785 * m - 0.004_072_046_8 * s,
+    1.977_998_495_1 * l - 2.428_592_205 * m + 0.450_593_709_9 * s,
+    0.025_904_037_1 * l + 0.782_771_766_2 * m - 0.808_675_766 * s,
+  ];
+};
+
+/** sRGB channels (0–255) that may be fractional, as a mix computes them before any rounding. */
+export type RgbChannels = readonly [number, number, number];
+
+/** `color-mix(in oklab, <color> <share>, <other>)` for opaque colours: mixed in
+ * OKLab and converted back to sRGB, with each channel clipped to 0–255 and NOT
+ * rounded. Clipping is not the full CSS gamut mapping: a saturated brand mixed
+ * towards white can leave sRGB (72% #ff0000 computes red ≈ 264), and the browser
+ * maps that instead. The sampled Chromium check agrees on the colours it covers;
+ * it doesn't prove equivalence for every input. The browser keeps the fractional
+ * colour, so any pass/fail decision about a shipped mix is made on these
+ * channels; null when either input isn't a hex. */
+export const mixOklabChannels = (color: string, other: string, share: number): RgbChannels | null => {
+  const a = normalizeHex(color);
+  const b = normalizeHex(other);
+  if (!/^#[0-9a-f]{6}$/i.test(a) || !/^#[0-9a-f]{6}$/i.test(b)) return null;
+  const first = toOklab(a);
+  const second = toOklab(b);
+  const [L, A, B] = first.map((value, index) => value * share + (second[index] ?? 0) * (1 - share)) as [number, number, number];
+  const l = (L + 0.396_337_777_4 * A + 0.215_803_757_3 * B) ** 3;
+  const m = (L - 0.105_561_345_8 * A - 0.063_854_172_8 * B) ** 3;
+  const s = (L - 0.089_484_177_5 * A - 1.291_485_548 * B) ** 3;
+  return [
+    4.076_741_662_1 * l - 3.307_711_591_3 * m + 0.230_969_929_2 * s,
+    -1.268_438_004_6 * l + 2.609_757_401_1 * m - 0.341_319_396_5 * s,
+    -0.004_196_086_3 * l - 0.703_418_614_7 * m + 1.707_614_701 * s,
+  ].map((value) => Math.min(255, Math.max(0, linearToSrgb(value)))) as unknown as RgbChannels;
+};
+
+/** Channels as a `#rrggbb` hex, rounded: only for emitting a colour, never for deciding whether one reads. */
+export const channelsHex = (channels: RgbChannels): string => `#${channels.map((value) => Math.round(value).toString(16).padStart(2, '0')).join('')}`;
+
+/** `mixOklabChannels` rounded to a hex: the colour a replacement is emitted as. */
+export const mixOklab = (color: string, other: string, share: number): string => {
+  const channels = mixOklabChannels(color, other, share);
+  return channels ? channelsHex(channels) : color;
+};
+
+const hexChannels = (hex: string): RgbChannels => {
+  const value = normalizeHex(hex);
+  return [1, 3, 5].map((start) => Number.parseInt(value.slice(start, start + 2), 16)) as unknown as RgbChannels;
+};
+const channelsLuminance = ([r, g, b]: RgbChannels): number => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+
+/** WCAG contrast between two colours given as (possibly fractional) channels or hexes. */
+export const channelsContrast = (foreground: RgbChannels | string, background: RgbChannels | string): number => {
+  const first = channelsLuminance(typeof foreground === 'string' ? hexChannels(foreground) : foreground);
+  const second = channelsLuminance(typeof background === 'string' ? hexChannels(background) : background);
+  return (Math.max(first, second) + 0.05) / (Math.min(first, second) + 0.05);
+};
+
+/** Contrast of `color` as accent text on the canvas and on its own 10% tint
+ * (`bg-primary/10`), composited in sRGB without rounding (contrastOnTint). */
+export const accentTextContrast = (color: RgbChannels, canvas: string): { canvas: number; tint: number } => {
+  const background = hexChannels(canvas);
+  const tint = background.map((value, index) => value * (1 - ACCENT_TINT) + (color[index] ?? 0) * ACCENT_TINT) as unknown as RgbChannels;
+  return { canvas: channelsContrast(color, background), tint: channelsContrast(color, tint) };
+};
+
 /** Nudge `color` towards white or black until it reads against `background`.
  * Used for accents on the canvas (3:1, large UI) and for accent text drawn on
  * the always-dark code surface (4.5:1). Returns the input untouched when it
  * already passes so preset palettes stay exactly as authored. */
 export const readableOnBackground = (color: string, background: string, required = 4.5): string => {
   if (contrastRatio(color, background) >= required) return color;
+  // Towards white on dark backgrounds and black on light ones first; on a mid
+  // tone that side may never get there while the other does (#303030 on #999999).
   const target = relativeLuminance(background) < 0.35 ? '#ffffff' : '#000000';
-  for (const weight of [0.18, 0.3, 0.42, 0.56, 0.7, 0.85]) {
-    const mixed = mixHex(color, target, weight);
-    if (contrastRatio(mixed, background) >= required) return mixed;
+  const alternate = target === '#ffffff' ? '#000000' : '#ffffff';
+  for (const endpoint of [target, alternate]) {
+    for (const weight of [0.18, 0.3, 0.42, 0.56, 0.7, 0.85]) {
+      const mixed = mixHex(color, endpoint, weight);
+      if (contrastRatio(mixed, background) >= required) return mixed;
+    }
   }
-  return target;
+  return contrastRatio('#ffffff', background) >= contrastRatio('#000000', background) ? '#ffffff' : '#000000';
 };
 
 const readableAccent = (accent: string, canvas: string): string => readableOnBackground(accent, canvas, 3);
 
-export const resolveTheme = (config?: ThemeOwnedProjectConfig | null): ResolvedTheme => {
+/** The accent is also text: body links, breadcrumb eyebrows, the active TOC
+ * item, and the active nav item on its 10% accent tint (`bg-primary/10`). */
+export const ACCENT_TEXT_CONTRAST = 4.5;
+const ACCENT_TINT = 0.1;
+const accentTextPasses = (color: string, canvas: string): boolean =>
+  contrastRatio(color, canvas) >= ACCENT_TEXT_CONTRAST && contrastOnTint(color, canvas, ACCENT_TINT) >= ACCENT_TEXT_CONTRAST;
+
+/** The nearest shade of `accent` that reads as body text (WCAG AA, 4.5:1) on
+ * the canvas and on the accent's own tint: darker on a light canvas, lighter on
+ * a dark one, in small steps so the brand stays recognisable (PUB-006). An
+ * accent that already passes comes back unchanged. */
+export const readableAccentText = (accent: string, canvas: string): string => {
+  const color = normalizeHex(accent);
+  if (!/^#[0-9a-f]{6}$/i.test(color) || !/^#[0-9a-f]{6}$/i.test(normalizeHex(canvas))) return accent;
+  if (accentTextPasses(color, canvas)) return color;
+  // Towards white on dark canvases and black on light ones first; on a mid
+  // tone that side may never get there while the other does (#303030 on
+  // #999999 passes towards black, never towards white).
+  const target = relativeLuminance(canvas) < 0.35 ? '#ffffff' : '#000000';
+  const alternate = target === '#ffffff' ? '#000000' : '#ffffff';
+  for (const endpoint of [target, alternate]) {
+    for (let step = 1; step <= 40; step++) {
+      const shade = mixHex(color, endpoint, step / 40);
+      if (accentTextPasses(shade, canvas)) return shade;
+    }
+  }
+  // No shade reaches 4.5:1 on both the canvas and the tint (a canvas this mid
+  // can't hold AA text on its tint at all). The canvas is where text mostly
+  // sits, so it decides, and its contrast never drops below what was authored:
+  // an accent that already reads on the canvas stays as authored; otherwise the
+  // nearest shade that reads on the canvas alone; otherwise whichever of the
+  // accent and the two endpoints reads best on it.
+  if (contrastRatio(color, canvas) >= ACCENT_TEXT_CONTRAST) return color;
+  for (const endpoint of [target, alternate]) {
+    for (let step = 1; step <= 40; step++) {
+      const shade = mixHex(color, endpoint, step / 40);
+      if (contrastRatio(shade, canvas) >= ACCENT_TEXT_CONTRAST) return shade;
+    }
+  }
+  return [color, target, alternate].reduce((best, candidate) => (contrastRatio(candidate, canvas) > contrastRatio(best, canvas) ? candidate : best));
+};
+
+/** Text drawn on the accent (a button's label) that reaches AA: the palette's
+ * usual near-black or white when it does, otherwise pure black or white,
+ * whichever reads better. One of the two always reaches about 4.58:1, so the
+ * result never falls short where main's choice passed (#606060 shaded to
+ * #7c7c7c takes black at 5.03:1, not #111318 at 4.45:1). */
+export const readableOnAccent = (accent: string): string => {
+  const preferred = contrastingText(accent);
+  if (contrastRatio(preferred, accent) >= ACCENT_TEXT_CONTRAST) return preferred;
+  return contrastRatio('#ffffff', accent) >= contrastRatio('#000000', accent) ? '#ffffff' : '#000000';
+};
+
+/** The tint under the active item of a rail sidebar, which is drawn on the code
+ * surface: `color-mix(in oklab, var(--primary) 14%, transparent)` (styles.css,
+ * compact navigation). Mixing with transparent keeps the accent's own colour at
+ * 14% alpha, which the browser composites in sRGB (contrastOnTint). */
+const RAIL_ACTIVE_TINT = 0.14;
+
+/** The accent as text on the always-dark code surface (Signal's rail, solid
+ * callouts, code chrome) and on the rail's active-item tint. It starts from the
+ * owner's authored accent, never the canvas shade (readableAccentText darkens a
+ * light-mode accent, which only reads worse on a dark surface), nudged until it
+ * reads on the code surface as before; when that colour falls short on the
+ * tint, the nearest shade of it that reaches AA on both. */
+export const readableCodeAccent = (accent: string, code: string): string => {
+  const passes = (candidate: string) =>
+    contrastRatio(candidate, code) >= ACCENT_TEXT_CONTRAST && contrastOnTint(candidate, code, RAIL_ACTIVE_TINT) >= ACCENT_TEXT_CONTRAST;
+  const base = readableOnBackground(accent, code);
+  if (passes(base)) return base;
+  const target = relativeLuminance(code) < 0.35 ? '#ffffff' : '#000000';
+  const alternate = target === '#ffffff' ? '#000000' : '#ffffff';
+  for (const endpoint of [target, alternate]) {
+    for (let step = 1; step <= 40; step++) {
+      const shade = mixHex(base, endpoint, step / 40);
+      if (passes(shade)) return shade;
+    }
+  }
+  // A code surface no shade reaches AA on with its tint: keep what reads on the surface.
+  return base;
+};
+
+/** Make a resolved palette's accent safe as text, keeping what follows it (the
+ * focus ring when it was the accent, the text drawn on the accent) in step. */
+const textSafeAccent = (colors: ThemeColorTokens): void => {
+  const accent = readableAccentText(colors.accent, colors.canvas);
+  if (accent === normalizeHex(colors.accent)) return;
+  if (normalizeHex(colors.focus) === normalizeHex(colors.accent)) colors.focus = accent;
+  if (normalizeHex(colors.info) === normalizeHex(colors.accent)) colors.info = accent;
+  colors.accent = accent;
+  if (contrastRatio(colors.accentForeground, accent) < ACCENT_TEXT_CONTRAST) colors.accentForeground = readableOnAccent(accent);
+};
+
+/** Resolve a site's theme. Accents come back safe as text (see
+ * readableAccentText); `{ authoredAccent: true }` skips that, to show the
+ * owner what was adjusted. */
+export const resolveTheme = (config?: ThemeOwnedProjectConfig | null, options: { authoredAccent?: boolean } = {}): ResolvedTheme => {
   const id = config?.theme?.preset && THEME_PRESET_IDS.includes(config.theme.preset) ? config.theme.preset : 'harbor';
   const preset = THEME_PRESETS[id];
   const accent = config?.styling?.primaryColor ? normalizeHex(config.styling.primaryColor) : undefined;
@@ -415,6 +605,10 @@ export const resolveTheme = (config?: ThemeOwnedProjectConfig | null): ResolvedT
       dark.accentForeground = contrastingText(dark.accent);
       dark.focus = dark.accent;
     }
+  }
+  if (!options.authoredAccent) {
+    textSafeAccent(light);
+    textSafeAccent(dark);
   }
   return {
     id,

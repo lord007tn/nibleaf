@@ -24,7 +24,7 @@ import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { isolate } from '@/lib/bidi';
 import { useFormatters } from '@/lib/format';
 import { validateOnBlurThenChange, withServerError } from '@/lib/forms/field-errors';
-import { focusFirstInvalid, useSaveRegionForm } from '@/lib/forms/save-region';
+import { SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import type { SiteAdminState } from '@/lib/project-settings-access';
 import { useAudiencePages, useCreateAudience, useDeleteAudience, useEmergencyRevoke, useSaveJwtConfig, useTestJwt } from '../api/hooks';
@@ -74,7 +74,8 @@ export function AdvancedAccess(props: Props) {
       <p className="mt-1 max-w-prose text-muted-foreground text-sm">{t('settings.visibility.advanced.body')}</p>
       <CollapsibleContent className="mt-6 flex flex-col gap-10" keepMounted>
         <AudiencesSection {...props} />
-        <JwtSection {...props} onInvalid={reveal} />
+        {/* Per site: another site's section starts without this one's confirmation or its pending answer. */}
+        <JwtSection {...props} key={props.projectId} onInvalid={reveal} />
         <AuditSection {...props} />
       </CollapsibleContent>
     </Collapsible>
@@ -306,11 +307,10 @@ const JWT_FIELDS: ReadonlyArray<{
 function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid: () => void }) {
   const t = useT();
   const saveJwt = useSaveJwtConfig(projectId);
-  const formRef = useRef<HTMLFormElement>(null);
   const manage = decisionProps(manageDecision(status));
   const source = useMemo(() => jwtValues(data.jwt), [data.jwt]);
   // Set while the confirmation runs the save, so a failure shows in the dialog rather than a toast.
-  const confirming = useRef<{ failure: unknown } | null>(null);
+  const confirming = useRef<{ failure: unknown; savedAway?: boolean } | null>(null);
   const [confirmation, setConfirmation] = useState<{ impacts: JwtImpact[] }>();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const problemText = (field: JwtField, problem: JwtProblem | undefined) => {
@@ -336,6 +336,8 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
       try {
         await saveJwt.mutateAsync(request.body);
         outcome.succeeded(jwtSavedValues(request.body));
+        // Saved while React kept the dialog hidden: the draft reports the submit as failed, but it went through.
+        if (!outcome.isCurrent() && confirming.current) confirming.current.savedAway = true;
         return 'saved';
       } catch (error) {
         outcome.failed();
@@ -364,7 +366,14 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
     setConfirmOpen(true);
     return 'deferred';
   }, [baseline, form, save]);
-  useSaveRegionForm('reader-jwt', { isDirty: draft.isDirty, isSubmitting: draft.isSaving, submit, discard: draft.discard });
+  // Enter and Save both run `submit`, so a change to who can sign in always asks first.
+  const formProps = useSaveRegionForm('reader-jwt', {
+    isDirty: draft.isDirty,
+    isSubmitting: draft.isSaving,
+    submit,
+    discard: draft.discard,
+    settlement: draft.settlement,
+  });
 
   return (
     <SettingsSection
@@ -372,16 +381,8 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
       headingLevel={3}
       title={t('settings.authentication.reader.jwtTitle')}
     >
-      <form
-        className="divide-y divide-border"
-        noValidate
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!draft.isDirty) return;
-          void submit().then((outcome) => outcome === 'invalid' && focusFirstInvalid(formRef.current));
-        }}
-        ref={formRef}
-      >
+      <form className="divide-y divide-border" noValidate {...formProps}>
+        <SaveRegionSubmit />
         {/* Also tells the page these reader settings hold an edit, so they stay on screen if visibility changes. */}
         <DirtyStateReporter dirty={draft.isDirty || draft.isSaving} />
         <DraftConflicts conflicts={draft.conflicts} resolve={draft.resolveConflict} />
@@ -457,7 +458,9 @@ function JwtSection({ projectId, data, status, onInvalid }: Props & { onInvalid:
           confirming.current = { failure: null };
           try {
             const outcome = await save();
-            if (outcome === 'failed') throw confirming.current.failure ?? new Error('The JWT settings were not saved.');
+            // Saved while hidden: the dialog closes once shown again, with nothing else said.
+            if (outcome === 'failed' && !confirming.current.savedAway)
+              throw confirming.current.failure ?? new Error('The JWT settings were not saved.');
             if (outcome === 'saved') toast.success(t('settings.authentication.reader.jwtSaved'));
           } finally {
             confirming.current = null;

@@ -1,5 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { useT } from '@nibleaf/i18n/react';
+import { useAuthT } from '@/lib/auth-messages';
 
 /** A failed request is recoverable; it must never look like an empty account. */
 export function QueryErrorState({
@@ -13,7 +13,7 @@ export function QueryErrorState({
   onRetry: () => void;
   retrying?: boolean;
 }) {
-  const t = useT();
+  const t = useAuthT();
   return (
     <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert">
       <div>

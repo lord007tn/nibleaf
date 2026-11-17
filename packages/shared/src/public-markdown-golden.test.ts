@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
+import componentTour from './__fixtures__/markdown-export.664.component-tour.json';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 
 // Golden outputs for real authored content (a docs page, a blog post, the editor's round-trip
@@ -37,6 +38,9 @@ describe('public Markdown golden outputs', () => {
     const source = readFileSync(new URL(name, fixtures), 'utf8');
     const base = name.replace(/\.mdx$/, '');
     await expect(`${normalizePublicMarkdownContent(source)}\n`).toMatchFileSnapshot(`./__fixtures__/public-markdown/__golden__/${base}.md`);
-    await expect(portablePublicMdxMarkdown(source)).toMatchFileSnapshot(`./__fixtures__/public-markdown/__golden__/${base}.export.md`);
+    // Retain the old component-tour snapshot as the main hazard regression in
+    // the corpus. Its fixed output is reviewed separately, including full text.
+    if (base === 'component-tour') expect(portablePublicMdxMarkdown(source)).toBe(componentTour.pages[0]?.after);
+    else await expect(portablePublicMdxMarkdown(source)).toMatchFileSnapshot(`./__fixtures__/public-markdown/__golden__/${base}.export.md`);
   });
 });

@@ -5,6 +5,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PageNode } from '@/hooks/api/types';
+import type { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { PageSettingsDialog } from './page-settings-dialog';
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => mocks.translate }));
@@ -13,6 +14,8 @@ const mocks = vi.hoisted(() => ({
   confirm: vi.fn(),
   /** The page update request; each test decides when (and how) it settles. */
   update: vi.fn(),
+  /** The dialog's draft as the real hook last returned it, to read what a save left. */
+  draft: undefined as ReturnType<typeof useServerDraftForm> | undefined,
   success: vi.fn(),
   translate: vi.fn((key: string) => key),
   searchDescription: vi.fn((): { data?: { description: string; revision: string }; isPending: boolean; isFetching: boolean; isError: boolean } => ({
@@ -57,6 +60,17 @@ vi.mock('@nibleaf/design-system/components/ui/select', () => ({
   SelectItem: ({ value, children }: { value: string; children: ReactNode }) => <option value={value}>{children}</option>,
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
+vi.mock('@/lib/forms/use-server-draft', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/forms/use-server-draft')>();
+  return {
+    ...actual,
+    useServerDraftForm: ((...args: Parameters<typeof actual.useServerDraftForm>) => {
+      const draft = actual.useServerDraftForm(...args);
+      mocks.draft = draft as ReturnType<typeof useServerDraftForm>;
+      return draft;
+    }) as typeof actual.useServerDraftForm,
+  };
+});
 
 const page: PageNode = {
   id: 'page-a',
@@ -102,6 +116,59 @@ describe('page settings draft', () => {
     expect(document.querySelector<HTMLInputElement>('#page-title')?.value).toBe('Unsaved dialog title');
     await act(async () => render({ ...page, id: 'page-b', title: 'Other page' }));
     expect(document.querySelector<HTMLInputElement>('#page-title')?.value).toBe('Other page');
+  });
+
+  it('removes the numeric ordering control, preserves existing headings and order, and validates icon names', async () => {
+    const configured = { ...page, config: { category: 'Guides', categoryOrder: 7, categoryIcon: 'rocket' } };
+    await act(async () => root.render(<PageSettingsDialog onOpenChange={vi.fn()} open page={configured} projectId="project-a" />));
+    expect(document.querySelector('input[type="number"]')).toBeNull();
+    expect(document.querySelector('#page-language-reason')?.textContent).toBe('editor.pageSettings.oneLanguage');
+    const icon = document.querySelector<HTMLInputElement>('#page-category-icon');
+    if (!icon) throw new Error('Heading icon not rendered');
+    expect(icon.parentElement?.querySelector('svg')).not.toBeNull();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(icon, 'not-an-icon');
+      icon.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    expect(icon.getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById(icon.getAttribute('aria-describedby') ?? '')?.textContent).toBe('editor.pageSettings.invalidIcon');
+    const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.save'));
+    if (!save) throw new Error('Save not rendered');
+    await act(async () => save.click());
+    expect(mocks.update).not.toHaveBeenCalled();
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(icon, 'book-open');
+      icon.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    await act(async () => save.click());
+    expect(mocks.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.objectContaining({ config: expect.objectContaining({ category: 'Guides', categoryOrder: 7, categoryIcon: 'book-open' }) }),
+      }),
+    );
+  });
+
+  it('shows and focuses the icon field that blocks saving, from another tab and a closed "More options"', async () => {
+    await act(async () => root.render(<PageSettingsDialog onOpenChange={vi.fn()} open page={page} projectId="project-a" />));
+    const more = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.more'));
+    await act(async () => more?.click());
+    const icon = document.querySelector<HTMLInputElement>('#page-icon');
+    if (!icon) throw new Error('Icon field not rendered');
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(icon, 'not-an-icon');
+      icon.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    // Close "More options" and move to SEO, so the invalid field is unmounted.
+    await act(async () => more?.click());
+    const seo = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.tab.seo'));
+    await act(async () => seo?.click());
+    expect(document.querySelector('#page-icon')).toBeNull();
+    const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.save'));
+    await act(async () => save?.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(document.activeElement?.id).toBe('page-icon');
+    expect(document.activeElement?.getAttribute('aria-invalid')).toBe('true');
   });
 
   it.each([
@@ -335,5 +402,51 @@ describe('page settings draft', () => {
       expect(previewText()?.textContent).toBe(generated);
       expect(previewText()?.getAttribute('dir')).toBe('auto');
     });
+  });
+});
+
+describe('page settings: closing after a save', () => {
+  let container: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+  beforeEach(() => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    container = document.createElement('div');
+    document.body.append(container);
+    root = createRoot(container);
+    mocks.update.mockReset();
+  });
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  });
+
+  it('closes only over a settled draft: a title someone else saved during the save keeps it open with the sent one', async () => {
+    const close = vi.fn();
+    const render = (nextPage: PageNode) => root.render(<PageSettingsDialog onOpenChange={close} open page={nextPage} projectId="project-a" />);
+    await act(async () => render(page));
+    const title = () => document.querySelector<HTMLInputElement>('#page-title');
+    await act(async () => {
+      const input = title();
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(input, 'Sent');
+      input?.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const saving = deferred<UpdateResult>();
+    mocks.update.mockReturnValueOnce(saving.promise);
+    const save = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('editor.pageSettings.save'));
+    await act(async () => save?.click());
+    // Someone else's title reaches the page while the save is in flight.
+    await act(async () => render({ ...page, title: 'Theirs', updatedAt: '2026-10-15T00:02:00Z' }));
+    await act(async () => saving.resolve(saved));
+
+    const closed = close.mock.calls.some(([open]) => open === false);
+    const settled = !mocks.draft?.isDirty && mocks.draft?.conflicts.length === 0;
+    // Closing resets the draft, so it may only close when nothing is left to save or resolve.
+    expect(closed).toBe(settled);
+    if (!closed) {
+      expect(title()?.value).toBe('Sent');
+      mocks.update.mockResolvedValueOnce(saved);
+      await act(async () => save?.click());
+      expect(mocks.update).toHaveBeenLastCalledWith(expect.objectContaining({ body: expect.objectContaining({ title: 'Sent' }) }));
+    }
   });
 });

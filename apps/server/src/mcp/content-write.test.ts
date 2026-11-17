@@ -1,12 +1,14 @@
 import { InMemoryTransport, type JSONRPCMessage, LATEST_PROTOCOL_VERSION, McpServer } from '@modelcontextprotocol/server';
 import type { MemberRole } from '@nibleaf/shared/constants';
 import { MCP_SCOPES, type McpScope } from '@nibleaf/shared/mcp';
+import { MAX_PAGE_CONTENT_BYTES } from '@nibleaf/shared/page-limits';
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppError } from '@/errors';
 import type { HonoEnv } from '@/lib/hono/context';
 import { registerContentSurface } from './content';
 import { nearIdenticalTitles, registerContentWriteSurface } from './content-write';
+import { MAX_MCP_MARKDOWN_BYTES } from './markdown';
 import type { McpPrincipal } from './types';
 
 type PageRow = {
@@ -587,6 +589,17 @@ describe('write audit durability', () => {
     );
     expect(response.isError).not.toBe(true);
     expect(response.structuredContent).toMatchObject({ ok: true, meta: { auditPending: true } });
+    // The saved draft's answer still links back to it.
+    expect(response.structuredContent.data.reviewUrl).toBe('https://app.example.test/app/projects/project-1/editor?page=page-new-1');
+    await client.close();
+  });
+
+  it('keeps the publish dialog link when settling the preview audit fails', async () => {
+    mocks.auditSettle.mockRejectedValueOnce(new Error('audit down'));
+    const client = await connect(makePrincipal());
+    const response = await client.call('preview_publish');
+    expect(response.structuredContent).toMatchObject({ ok: true, meta: { auditPending: true } });
+    expect(response.structuredContent.data.publishDialogUrl).toBe('https://app.example.test/app/projects/project-1/editor?publish=true');
     await client.close();
   });
 });
@@ -696,10 +709,16 @@ describe('clientRequestId idempotency', () => {
       revision: (first.structuredContent.data.page as { revision: string }).revision,
       status: 'created',
     });
-    // The stored replay record is compact: no title or content.
+    // Both answers link to the page in the editor: rebuilt from the bound website, token-free.
+    const reviewUrl = 'https://app.example.test/app/projects/project-1/editor?page=page-new-1';
+    expect(first.structuredContent.data.reviewUrl).toBe(reviewUrl);
+    expect(second.structuredContent.data.reviewUrl).toBe(reviewUrl);
+    // The stored replay record is compact: no title, content or links.
     const stored = JSON.stringify([...state.records.values()].map((record) => record.result));
     expect(stored).not.toContain('Refunds');
     expect(stored).not.toContain('How refunds work');
+    expect(stored).not.toContain('reviewUrl');
+    expect(stored).not.toContain('https://');
     expect(lastAudit()).toMatchObject({ outcome: 'replayed', clientRequestId: 'draft-refunds-1', target: { type: 'page', id: 'page-new-1' } });
     await client.close();
   });
@@ -945,6 +964,45 @@ describe('update_page', () => {
     });
     expect(unchanged.structuredContent.data).toMatchObject({ changed: false });
     expect(mocks.updatePage).toHaveBeenCalledOnce();
+    await client.close();
+  });
+});
+
+describe('page content size cap through MCP', () => {
+  const tooLarge = () =>
+    new AppError({
+      code: 'page:too_large',
+      message: 'This page is too large (2 MB maximum). Split it into smaller pages.',
+      details: { bytes: MAX_PAGE_CONTENT_BYTES + 1, limit: MAX_PAGE_CONTENT_BYTES },
+    });
+
+  it('never sends a body over the page cap: its own Markdown limit is far below it', () => {
+    expect(MAX_MCP_MARKDOWN_BYTES).toBeLessThan(MAX_PAGE_CONTENT_BYTES);
+  });
+
+  it('writes a draft as a create and an edit as an update, so the cap rules apply to each', async () => {
+    const client = await connect(makePrincipal());
+    await client.call('create_page_draft', { title: 'New', markdown: 'Body' });
+    expect(mocks.createPage).toHaveBeenCalledWith('project-1', expect.objectContaining({ content: 'Body' }), 'user-1');
+    // A page stored over the cap (before the cap existed) can be shrunk through MCP:
+    // the update is measured against the stored body, not refused for its size.
+    (state.pages[0] as PageRow).content = 'x'.repeat(3 * 1024 * 1024);
+    const shrink = await client.call('update_page', { pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', markdown: 'Short' });
+    expect(shrink.isError).not.toBe(true);
+    expect(mocks.updatePage).toHaveBeenCalledWith('project-1', 'page-1', { content: 'Short' }, 'user-1', expect.anything());
+    expect(mocks.createPage).toHaveBeenCalledOnce();
+    await client.close();
+  });
+
+  it('reports a refused write as page:too_large, not retryable', async () => {
+    const client = await connect(makePrincipal());
+    mocks.createPage.mockRejectedValueOnce(tooLarge());
+    const created = await client.call('create_page_draft', { title: 'New', markdown: 'Body' });
+    expect(created.structuredContent.error).toMatchObject({ code: 'page:too_large', retryable: false, message: expect.stringContaining('2 MB') });
+    mocks.updatePage.mockRejectedValueOnce(tooLarge());
+    const updated = await client.call('update_page', { pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', markdown: 'More' });
+    expect(updated.structuredContent.error).toMatchObject({ code: 'page:too_large', retryable: false });
+    expect(lastAudit()).toMatchObject({ outcome: 'failed', errorCode: 'page:too_large' });
     await client.close();
   });
 });
@@ -1314,8 +1372,11 @@ describe('preview and publish', () => {
       blocking: false,
       canPublish: true,
       publishedSiteUrl: 'https://docs.docs.example.test',
+      // Opens the dashboard's publish dialog; the link alone publishes nothing and carries no token.
+      publishDialogUrl: 'https://app.example.test/app/projects/project-1/editor?publish=true',
       contentTrust: 'untrusted',
     });
+    expect(String(data.publishDialogUrl)).not.toContain(String(data.previewToken));
     expect(String(data.notice)).toContain('project-wide');
     expect(String(data.nextStep)).toContain('explicitly approve');
     expect(data.previewToken).toMatch(/^v1\./);
@@ -1392,8 +1453,13 @@ describe('preview and publish', () => {
       poll: { tool: 'get_deployment', arguments: { id: 'deployment-1' } },
     });
     expect(lastAudit()).toMatchObject({ operation: 'publish_changes', outcome: 'succeeded', target: { type: 'deployment', id: 'deployment-1' } });
+    const deploymentUrl = 'https://app.example.test/app/projects/project-1/publishes/deployment-1';
+    expect(published.structuredContent.data.deploymentUrl).toBe(deploymentUrl);
     const replay = await client.call('publish_changes', args);
-    expect(replay.structuredContent).toMatchObject({ meta: { replayed: true }, data: { deploymentId: 'deployment-1', replayed: true } });
+    expect(replay.structuredContent).toMatchObject({
+      meta: { replayed: true },
+      data: { deploymentId: 'deployment-1', replayed: true, deploymentUrl },
+    });
     expect(mocks.createDeployment).toHaveBeenCalledOnce();
     // The same token cannot publish again: the new deployment changed the state it was bound to.
     const reuse = await client.call('publish_changes', { confirm: true, previewToken });
@@ -1484,6 +1550,58 @@ describe('preview and publish', () => {
     await client.close();
   });
 
+  it('publishes a change that is only to navigation groups, which lists no page', async () => {
+    // Pending changes list pages only; a renamed or removed group shows as
+    // `upToDate: false` with no listed page.
+    mocks.getPendingChanges.mockImplementation(async () => ({
+      hasBaseline: true,
+      upToDate: false,
+      lastVersion: 1,
+      lastPublishedAt: null,
+      changes: [],
+      redirectIssues: [],
+    }));
+    const client = await connect(makePrincipal());
+    const data = await preview(client);
+    expect(data).toMatchObject({ canPublish: true, counts: { total: 0 } });
+    expect(String(data.nextStep)).toContain('site navigation');
+    const published = await client.call('publish_changes', { confirm: true, previewToken: data.previewToken });
+    expect(published.structuredContent.error?.code).toBeUndefined();
+    expect(mocks.createDeployment).toHaveBeenCalledOnce();
+    await client.close();
+  });
+
+  it('discloses navigation changes alongside page changes', async () => {
+    mocks.getPendingChanges.mockImplementation(async () => ({
+      hasBaseline: true,
+      upToDate: false,
+      groupsChanged: true,
+      lastVersion: 1,
+      lastPublishedAt: null,
+      changes: [
+        {
+          id: 'page-1',
+          title: 'Install',
+          path: 'install',
+          languageCode: 'en',
+          kind: 'PAGE',
+          status: 'modified',
+          fields: ['content'],
+          additions: 1,
+          deletions: 0,
+          lines: [],
+          truncated: false,
+        },
+      ],
+      redirectIssues: [],
+    }));
+    const client = await connect(makePrincipal());
+    const data = await preview(client);
+    expect(data).toMatchObject({ canPublish: true, counts: { total: 1 } });
+    expect(String(data.nextStep)).toContain('site navigation also changes');
+    await client.close();
+  });
+
   it('reports nothing to publish and enforces the hourly publish budget', async () => {
     mocks.env.MCP_PUBLISH_RATE_LIMIT_PER_HOUR = 1;
     const client = await connect(makePrincipal());
@@ -1540,5 +1658,55 @@ describe('title similarity', () => {
     ['دليل التثبيت', 'دليل التثبيت.', true],
   ])('%s ~ %s → %s', (left, right, expected) => {
     expect(nearIdenticalTitles(left, right)).toBe(expected);
+  });
+});
+
+describe('untitled pages through MCP', () => {
+  it('creates an untitled PAGE from an explicit empty title, as the dashboard does', async () => {
+    const client = await connect(makePrincipal());
+    const response = await client.call('create_page_draft', { title: '', markdown: 'Body' });
+    expect(response.isError).not.toBe(true);
+    expect(mocks.createPage).toHaveBeenCalledWith('project-1', expect.objectContaining({ kind: 'PAGE', title: '' }), expect.anything());
+    // Untitled pages are not "possible duplicates" of each other.
+    expect((response.structuredContent.data as { possibleDuplicates: unknown[] }).possibleDuplicates).toEqual([]);
+    await client.close();
+  });
+
+  it('still asks for a title when none is given, and always for a GROUP', async () => {
+    const client = await connect(makePrincipal());
+    const missing = await client.call('create_page_draft', { markdown: 'Body' });
+    expect(missing.structuredContent.error?.message).toContain('provide a title argument');
+    const group = await client.call('create_page_draft', { title: ' ', kind: 'GROUP' });
+    expect(group.structuredContent.error).toMatchObject({ code: 'validation:failed', message: expect.stringContaining('GROUP needs a title') });
+    expect(mocks.createPage).not.toHaveBeenCalled();
+    await client.close();
+  });
+
+  it('clears a PAGE title but never a GROUP name', async () => {
+    state.pages.push(page({ id: 'group-1', kind: 'GROUP', title: 'Guides', slug: 'guides' }));
+    const client = await connect(makePrincipal());
+    const cleared = await client.call('update_page', { pageId: 'page-1', expectedRevision: '2026-11-02T00:00:00.000Z', title: '' });
+    expect(cleared.isError).not.toBe(true);
+    expect(mocks.updatePage).toHaveBeenCalledWith(
+      'project-1',
+      'page-1',
+      expect.objectContaining({ title: '' }),
+      expect.anything(),
+      expect.anything(),
+    );
+    mocks.updatePage.mockClear();
+    const group = await client.call('update_page', { pageId: 'group-1', expectedRevision: '2026-11-02T00:00:00.000Z', title: '' });
+    expect(group.structuredContent.error?.message).toContain('GROUP needs a title');
+    expect(mocks.updatePage).not.toHaveBeenCalled();
+    await client.close();
+  });
+
+  it('reads an untitled page as "Untitled", flagged untitled', async () => {
+    const first = state.pages[0] as { title: string };
+    first.title = '';
+    const client = await connect(makePrincipal());
+    const read = await client.call('get_page', { pageId: 'page-1' });
+    expect(read.structuredContent.data).toMatchObject({ id: 'page-1', title: 'Untitled', untitled: true });
+    await client.close();
   });
 });

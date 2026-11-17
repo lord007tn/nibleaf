@@ -47,7 +47,7 @@ vi.mock('@/hooks/api', () => ({
 }));
 vi.mock('@/hooks/api/organization-query-options', () => ({ organizationUsageQueryOptions: (id: string) => ({ queryKey: ['usage', id] }) }));
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: vi.fn() }));
-vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', subscribeLanguage: () => () => undefined }));
+vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'en', renderedLocale: () => 'en', subscribeLanguage: () => () => undefined }));
 
 import { Route } from './billing';
 

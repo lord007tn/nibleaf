@@ -1,3 +1,4 @@
+import { MAX_PAGE_CONTENT_BYTES } from '@nibleaf/shared/page-limits';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getGitHubTextFile } from './github';
 
@@ -26,6 +27,17 @@ describe('getGitHubTextFile', () => {
 
     await expect(getGitHubTextFile('acme', 'docs', 'main', 'missing.mdx')).resolves.toBeNull();
   });
+});
+
+it('caps a repository file at the shared page size, in bytes', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async (url: string) => new Response(url.endsWith('limit.md') ? 'x'.repeat(MAX_PAGE_CONTENT_BYTES) : 'é'.repeat(MAX_PAGE_CONTENT_BYTES / 2 + 1)),
+    ),
+  );
+  await expect(getGitHubTextFile('acme', 'docs', 'main', 'limit.md')).resolves.toHaveLength(MAX_PAGE_CONTENT_BYTES);
+  await expect(getGitHubTextFile('acme', 'docs', 'main', 'accents.md')).rejects.toMatchObject({ code: 'import:limit' });
 });
 
 it('cancels oversized decoded text before consuming the remaining stream', async () => {

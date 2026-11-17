@@ -1,9 +1,11 @@
 import { STARTER_GETTING_STARTED_CONTENT, STARTER_GETTING_STARTED_ICON, STARTER_GETTING_STARTED_TITLE } from '@nibleaf/auth/starter-content';
 import { Prisma, prisma } from '@nibleaf/database';
+import { importedPageIcon } from '@nibleaf/shared/page-icons';
+import { exceedsUtf8Bytes, MAX_PAGE_CONTENT_BYTES } from '@nibleaf/shared/page-limits';
 import { type PageConfig, pageConfigSchema } from '@nibleaf/validators';
 import { getDefaultBranch } from '../branches';
 import { getDefaultLanguage } from '../languages';
-import { createPage } from '../pages';
+import { assertPageContentFits, createPage } from '../pages';
 import { CLEANUP_TRANSACTION, isCleanupLockTimeout, limitCleanupLockWait } from './cleanup-locks';
 
 /**
@@ -148,13 +150,23 @@ export const ensureGroupPage = async (
     parentId: group.parentId,
     languageId,
     branchId,
-    ...(group.icon !== undefined ? { icon: group.icon } : {}),
+    // Only icons the reader draws; an unknown one is dropped, never an import failure.
+    ...(group.icon !== undefined ? { icon: importedPageIcon(group.icon) } : {}),
     ...(group.position !== undefined ? { position: group.position } : {}),
   });
   return created.id;
 };
 
 export type UpsertOutcome = 'imported' | 'updated';
+
+/** An imported config with its category icon kept only when the reader draws
+ *  it (or the page already had it). */
+const withImportedCategoryIcon = (config: PageConfig, existing?: string): PageConfig => {
+  if (config.categoryIcon === undefined) return config;
+  const { categoryIcon, ...rest } = config;
+  const kept = importedPageIcon(categoryIcon, existing);
+  return kept ? { ...rest, categoryIcon: kept } : rest;
+};
 
 export interface ImportedPage {
   parentId: string | null;
@@ -177,31 +189,40 @@ export const upsertLeafPage = async (target: ImportTarget, page: ImportedPage): 
 
 /** {@link upsertLeafPage} that also returns the row id, for importers whose
  * pages have child pages of their own (GitBook nests pages under pages). */
-export const upsertPage = async (target: ImportTarget, page: ImportedPage): Promise<{ outcome: UpsertOutcome; id: string }> => {
+export const upsertPage = async (target: ImportTarget, page: ImportedPage): Promise<{ outcome: UpsertOutcome; id: string }> =>
+  persistPage(target, page);
+
+/** Reserve addresses without replacing an existing body until all destinations are known. */
+export const reserveImportPage = async (target: ImportTarget, page: Omit<ImportedPage, 'content'>) => persistPage(target, page);
+
+const persistPage = async (
+  target: ImportTarget,
+  page: Omit<ImportedPage, 'content'> & { content?: string },
+): Promise<{ outcome: UpsertOutcome; id: string }> => {
   const { projectId, branchId, languageId } = target;
   // Scoped to kind PAGE so a leaf import can never overwrite a sibling GROUP
   // row that happens to carry the same slug — the create path below (via
   // uniqueSiblingSlug in createPage) suffixes the slug instead.
   const found = await prisma.page.findFirst({
     where: { projectId, branchId, languageId, parentId: page.parentId, slug: page.slug, kind: 'PAGE' },
-    select: { id: true, config: true },
+    select: { id: true, config: true, icon: true },
   });
   if (found) {
     const parsedConfig = pageConfigSchema.safeParse(found.config);
     const existingConfig: PageConfig = parsedConfig.success ? parsedConfig.data : {};
-    await prisma.page.update({
-      where: { id: found.id },
-      data: {
-        title: page.title,
-        content: page.content,
-        ...(page.description !== undefined ? { description: page.description } : {}),
-        ...(page.icon !== undefined ? { icon: page.icon } : {}),
-        ...(page.config !== undefined ? { config: { ...existingConfig, ...page.config } } : {}),
-        ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
-        ...(page.position !== undefined ? { position: page.position } : {}),
-        ...(page.hidden !== undefined ? { hidden: page.hidden } : {}),
-      },
-    });
+    const config = page.config && withImportedCategoryIcon(page.config, existingConfig.categoryIcon);
+    const data = {
+      title: page.title,
+      ...(page.content !== undefined ? { content: page.content } : {}),
+      ...(page.description !== undefined ? { description: page.description } : {}),
+      // Only icons the reader draws (or the one the page already had); others are dropped.
+      ...(page.icon !== undefined ? { icon: importedPageIcon(page.icon, found.icon) } : {}),
+      ...(config !== undefined ? { config: { ...existingConfig, ...config } } : {}),
+      ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
+      ...(page.position !== undefined ? { position: page.position } : {}),
+      ...(page.hidden !== undefined ? { hidden: page.hidden } : {}),
+    };
+    await updateImportPage(target, found.id, data, page.content);
     return { outcome: 'updated', id: found.id };
   }
   const created = await createPage(projectId, {
@@ -212,12 +233,32 @@ export const upsertPage = async (target: ImportTarget, page: ImportedPage): Prom
     languageId,
     branchId,
     ...(page.description !== undefined ? { description: page.description } : {}),
-    ...(page.icon !== undefined ? { icon: page.icon } : {}),
-    ...(page.config !== undefined ? { config: page.config } : {}),
+    ...(page.icon !== undefined ? { icon: importedPageIcon(page.icon) } : {}),
+    ...(page.config !== undefined ? { config: withImportedCategoryIcon(page.config) } : {}),
     ...(page.translationKey !== undefined ? { translationKey: page.translationKey } : {}),
     ...(page.position !== undefined ? { position: page.position } : {}),
   });
   // createPage has no visibility input; hidden pages are flagged right after.
   if (page.hidden) await prisma.page.update({ where: { id: created.id }, data: { hidden: true } });
   return { outcome: 'imported', id: created.id };
+};
+
+/** Content writes keep the editor's size rule, including legacy oversized pages. */
+export const writeImportPageContent = async (target: ImportTarget, id: string, content: string): Promise<void> => {
+  await updateImportPage(target, id, { content }, content);
+};
+
+const updateImportPage = async (target: ImportTarget, id: string, data: Prisma.PageUpdateInput, content?: string) => {
+  const where = { id, projectId: target.projectId, branchId: target.branchId, languageId: target.languageId };
+  if (content === undefined || !exceedsUtf8Bytes(content, MAX_PAGE_CONTENT_BYTES)) {
+    await prisma.page.update({ where, data });
+    return;
+  }
+  await prisma.$transaction(async (tx) => {
+    const [stored] = await tx.$queryRaw<Array<{ content: string }>>`
+      SELECT content FROM "page" WHERE id = ${id} AND "projectId" = ${target.projectId}
+      AND "branchId" = ${target.branchId} AND "languageId" = ${target.languageId} FOR NO KEY UPDATE`;
+    assertPageContentFits(content, stored?.content);
+    await tx.page.update({ where, data });
+  });
 };

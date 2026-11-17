@@ -30,7 +30,9 @@ it('demote, then roll back: the previous release sees only the new, lower role',
 it('remove from the website, then roll back: no membership, no listed site, no access', async()=>{
   await expect(projects.assertProjectAccess(ids.removedId!, ids.siteId!)).rejects.toMatchObject({ status: 404 });
   expect((await projects.listProjects(ids.removedId!)).map((p:{id:string})=>p.id)).not.toContain(ids.siteId);
-  expect(await prisma.member.count({ where: { userId: ids.removedId } })).toBe(0);
+  if (process.env.LEGACY_ROLLBACK_FLOOR === '1')
+    expect(await prisma.projectMember.count({ where: { projectId: ids.siteId, userId: ids.removedId } })).toBe(0);
+  else expect(await prisma.member.count({ where: { userId: ids.removedId } })).toBe(0);
   results.removedHasAccess = false;
 });
 it('create a website, then roll back: the previous release reads it by its org partition', async()=>{
@@ -38,9 +40,9 @@ it('create a website, then roll back: the previous release reads it by its org p
   expect(access.role).toBe('owner');
   expect(access.organizationId).toBe(ids.createdOrganizationId);
   const [row] = await prisma.$queryRaw<Array<{ tenant: string }>>`SELECT "dataTenantId" AS tenant FROM project WHERE id = ${ids.createdSiteId}`;
-  expect(row?.tenant).toBe(ids.createdOrganizationId);
+  expect(row?.tenant).toBe(process.env.LEGACY_ROLLBACK_FLOOR === '1' ? ids.createdDataTenantId : ids.createdOrganizationId);
   // The previous release's one-website lookup by organization finds it.
-  expect((await prisma.project.findUnique({ where: { organizationId: ids.createdOrganizationId } }))?.id).toBe(ids.createdSiteId);
+  expect((await prisma.project.findFirst({ where: { organizationId: ids.createdOrganizationId } }))?.id).toBe(ids.createdSiteId);
   results.createdPartitionMatches = true;
 });
 it('delete a website, then roll back: the previous release erases site and org together', async()=>{

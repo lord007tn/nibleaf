@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const database = vi.hoisted(() => ({
   page: { findFirst: vi.fn(), findMany: vi.fn() },
+  project: { findUnique: vi.fn() },
+  language: { findMany: vi.fn() },
   transaction: vi.fn(),
   inTransaction: false,
   parsesUnderLock: 0,
@@ -18,8 +20,17 @@ vi.mock('mdast-util-from-markdown', async (original) => {
     },
   };
 });
-vi.mock('@nibleaf/database', () => ({ Prisma: { JsonNull: null }, prisma: { page: database.page, $transaction: database.transaction } }));
+vi.mock('@nibleaf/database', () => ({
+  Prisma: { JsonNull: null },
+  prisma: { page: database.page, project: database.project, language: database.language, $transaction: database.transaction },
+}));
 vi.mock('./platform-events', () => ({ logFirstContentEdit: vi.fn() }));
+// The real size rule, with a cap a test can lower so it needs only a small body.
+const sizeCap = vi.hoisted(() => ({ bytes: undefined as number | undefined }));
+vi.mock('@nibleaf/shared/page-limits', async (original) => {
+  const real = await original<typeof import('@nibleaf/shared/page-limits')>();
+  return { ...real, oversizedPageContent: (next: string, stored?: string) => real.oversizedPageContent(next, stored, sizeCap.bytes) };
+});
 vi.mock('./branches', () => ({
   getDefaultBranch: async () => ({ id: 'main' }),
   assertBranchInProject: async (_projectId: string, id: string) => ({ id }),
@@ -89,7 +100,10 @@ const seed = (initial: Row[], published = true) => {
   let live = published ? snapshot() : null;
   const matches = (page: Row, where: Record<string, unknown>) =>
     Object.entries(where).every(([key, value]) => {
-      if (key === 'id' && value && typeof value === 'object' && 'not' in value) return page.id !== value.not;
+      if (key === 'id' && value && typeof value === 'object') {
+        if ('not' in value) return page.id !== value.not;
+        if ('in' in value) return (value.in as string[]).includes(page.id);
+      }
       return page[key as keyof Row] === value;
     });
   const findFirst = async ({ where }: { where: Record<string, unknown> }) => pages.find((page) => matches(page, where)) ?? null;
@@ -140,6 +154,8 @@ const seed = (initial: Row[], published = true) => {
     language: { findMany: vi.fn().mockResolvedValue([language('en'), language('ar')]) },
     deployment: { findFirst: vi.fn().mockImplementation(async () => (live ? { snapshot: structuredClone(live) } : null)) },
   };
+  database.project.findUnique.mockImplementation(tx.project.findUnique);
+  database.language.findMany.mockImplementation(tx.language.findMany);
   database.page.findFirst.mockImplementation(findFirst);
   database.page.findMany.mockImplementation(tx.page.findMany);
   database.transaction.mockImplementation(async (work) => {
@@ -297,6 +313,7 @@ describe('page address preservation through page actions', () => {
   });
   beforeEach(() => {
     vi.clearAllMocks();
+    sizeCap.bytes = undefined;
     database.inTransaction = false;
     database.parsesUnderLock = 0;
   });
@@ -316,6 +333,26 @@ describe('page address preservation through page actions', () => {
     );
     expect(state.tx.deployment.findFirst).toHaveBeenCalledWith({ where: { projectId: 'project', status: 'READY' }, orderBy: { version: 'desc' } });
     expect(validateSnapshotRedirects(state.snapshot()).issues).toEqual([]);
+  });
+
+  it('skips and reports a linking page whose rewritten links would cross the size cap, and still renames', async () => {
+    // The real rule at a 64 KiB cap: the same behaviour as at 2 MiB, with a small body.
+    const cap = 64 * 1024;
+    sizeCap.bytes = cap;
+    const links = '[x](/a) '.repeat(10);
+    // Exactly at the cap: each rewritten link adds 18 bytes and would cross it.
+    const atCap = `${links}\n\n${'y'.repeat(cap - links.length - 2)}`;
+    const state = seed(
+      [pageFixture('target', 'a'), { ...pageFixture('big'), content: atCap }, { ...pageFixture('small'), content: '[x](/a)' }],
+      false,
+    );
+    expect(await updatePage('project', 'target', { slug: 'much-longer-address' })).toMatchObject({
+      path: 'much-longer-address',
+      linksUpdated: 1,
+      documentsSkipped: 1,
+    });
+    expect(state.pages().find((page) => page.id === 'big')?.content).toBe(atCap);
+    expect(state.pages().find((page) => page.id === 'small')?.content).toBe('[x](/much-longer-address)');
   });
 
   it('relinks an unpublished page without creating a redirect', async () => {

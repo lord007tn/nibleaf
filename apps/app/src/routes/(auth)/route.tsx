@@ -17,6 +17,8 @@ const isFirstPublishSignUp = (pathname: string, searchStr: string) =>
 // than the session refresh: the new member landed on an empty dashboard and the
 // invitation was dropped.
 export const Route = createFileRoute('/(auth)')({
+  // <html lang dir> follows the interface language (lib/root-document.ts).
+  staticData: { interfaceLocale: true },
   beforeLoad: async ({ location }) => {
     // An MCP OAuth request lands here when Better Auth wants a (fresh) sign-in;
     // Better Auth continues the flow after it, so never redirect to /app, and

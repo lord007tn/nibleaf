@@ -7,9 +7,10 @@
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-import type { MessageKey } from '@nibleaf/i18n';
-
-type Translator = (key: MessageKey, vars?: Record<string, string | number>) => string;
+/** Only the keys these validators read, so a page's scoped translator (the
+ *  auth pages' AUTH_MESSAGES) can be passed as well as the dashboard's useT. */
+type FormMessageKey = 'validation.required' | 'validation.emailRequired' | 'validation.emailInvalid';
+type Translator = (key: FormMessageKey, vars?: Record<string, string | number>) => string;
 
 export const required =
   (label = 'This field', t?: Translator) =>

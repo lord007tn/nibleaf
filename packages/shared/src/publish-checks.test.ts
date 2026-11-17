@@ -1,7 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { documentationComponentContractEntries } from './documentation-component-contract';
-import { buildInboundPageLinkMap, findBrokenInternalLinks, findInboundPageLinks, pageContentFacts } from './publish-checks';
+import { offsetInRanges } from './page-content-facts';
+import {
+  buildInboundPageLinkMap,
+  buildInboundPageLinkMapAsync,
+  findBrokenInternalLinks,
+  findInboundPageLinks,
+  pageContentFacts,
+  snapshotContentFacts,
+} from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
+
+// Some tests here work through large generated case sets or whole documentation
+// corpora. On a loaded CI runner such tests have taken ~28x as long as on a laptop
+// (5.5 s against 0.19 s), past Vitest's 5 s default, so the file gets an explicit
+// timeout. Their cost stays linear; the *.growth.test.ts files pin that.
+vi.setConfig({ testTimeout: 60_000 });
 
 let sequence = 0;
 const page = (overrides: Partial<SnapshotPage> & Pick<SnapshotPage, 'path'>): SnapshotPage => {
@@ -49,6 +63,110 @@ describe('inbound draft page links', () => {
   const target = () => page({ id: 'target', path: 'guide', kind: 'GROUP' });
   const child = () => page({ id: 'child', parentId: 'target', path: 'guide/setup', content: '[self](/guide/setup)' });
 
+  it('keeps mixed async results identical, capped and ordered across slices', async () => {
+    const snapshot = site([
+      target(),
+      child(),
+      page({ id: 'ar-child', path: 'guide/setup', languageCode: 'ar' }),
+      page({ id: 'ar-source', path: 'ar-source', languageCode: 'ar', content: '[Arabic](/guide/setup)' }),
+      page({ id: 'v2-target', path: 'setup', versionId: 'v2' }),
+      page({ id: 'v2-source', path: 'source', versionId: 'v2', content: '[Own](https://docs.example.test/v2/setup)' }),
+      page({ path: 'ignored', content: '`[code](/guide)`\n\n<!-- [comment](/guide) -->\n\n[external](https://foreign.test/guide)' }),
+      page({ path: 'guide/relative', content: '[Relative](setup.md#section)' }),
+      ...Array.from({ length: 27 }, (_, i) =>
+        page({
+          id: `mixed-${i}`,
+          path: `mixed-${i}`,
+          hidden: i % 2 === 0,
+          content:
+            i % 3 === 0
+              ? '<Card href="/old">Setup</Card>'
+              : i % 3 === 1
+                ? '[Ref][setup]\n\n[setup]: /guide/setup'
+                : '<a href="https://docs.example.test/guide/setup">Setup</a>',
+        }),
+      ),
+    ]);
+    snapshot.project.config = { redirects: [{ from: '/old', to: '/guide/setup' }] };
+    snapshot.project.languages.push({ code: 'ar', label: 'Arabic', direction: 'RTL', isDefault: false, config: null });
+    snapshot.project.versions.push({ id: 'v2', name: 'v2', slug: 'v2', isDefault: false });
+    const origins = ['https://docs.example.test'];
+    let clock = 0;
+    let yields = 0;
+    const result = await buildInboundPageLinkMapAsync(snapshot, origins, {
+      now: () => {
+        clock += 5;
+        return clock;
+      },
+      yieldToEventLoop: async () => {
+        yields++;
+      },
+    });
+    expect(result).toEqual(buildInboundPageLinkMap(snapshot, origins));
+    expect(yields).toBeGreaterThan(1);
+    expect(result.get('target')?.total).toBe(28);
+    expect(result.get('target')?.pages).toHaveLength(20);
+    expect(result.get('target')?.pages[0]?.path).toBe('guide/relative');
+    expect(result.get('ar-child')?.pages.map(({ id }) => id)).toEqual(['ar-source']);
+    expect(result.get('v2-target')?.pages.map(({ id }) => id)).toEqual(['v2-source']);
+  });
+
+  it('yields by elapsed work rather than a fixed number of pages, without wall-clock assertions', async () => {
+    for (const pageMs of [2, 7]) {
+      let clock = 0;
+      let lastYield = 0;
+      const slices: number[] = [];
+      const snapshot = site(Array.from({ length: 100 }, (_, i) => page({ path: `timed-${i}` })));
+      for (const source of snapshot.pages)
+        Object.defineProperty(source, 'content', {
+          get: () => {
+            clock += pageMs;
+            return 'Body.';
+          },
+        });
+      await buildInboundPageLinkMapAsync(snapshot, [], {
+        sliceMs: 25,
+        now: () => clock,
+        yieldToEventLoop: async () => {
+          slices.push(clock - lastYield);
+          lastYield = clock;
+        },
+      });
+      expect(slices.length).toBeGreaterThan(1);
+      // An indivisible page can cross the budget by at most its own cost.
+      for (const slice of slices) {
+        expect(slice).toBeGreaterThanOrEqual(25);
+        expect(slice).toBeLessThan(25 + pageMs);
+      }
+      expect(clock - lastYield).toBeLessThan(25);
+    }
+  });
+
+  it('stops at a chunk boundary on abort and never returns a partial map', async () => {
+    const controller = new AbortController();
+    let parsed = 0;
+    const snapshot = site(Array.from({ length: 100 }, (_, i) => page({ path: `abort-${i}` })));
+    for (const source of snapshot.pages)
+      Object.defineProperty(source, 'content', {
+        get: () => {
+          parsed++;
+          return 'Body.';
+        },
+      });
+    await expect(
+      buildInboundPageLinkMapAsync(snapshot, [], {
+        signal: controller.signal,
+        now: () => parsed * 10,
+        yieldToEventLoop: async () => {
+          controller.abort();
+        },
+      }),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+    expect(parsed).toBe(3);
+    await expect(buildInboundPageLinkMapAsync(snapshot, [], { signal: controller.signal })).rejects.toMatchObject({ name: 'AbortError' });
+    expect(parsed).toBe(3);
+  });
+
   it('counts absolute URLs only on trusted hosts and leaves publish checks unchanged', () => {
     const snapshot = site([
       target(),
@@ -85,7 +203,23 @@ describe('inbound draft page links', () => {
       child(),
     ]);
     expect(buildInboundPageLinkMap(snapshot).get('target')?.total).toBe(0);
+    expect(findBrokenInternalLinks(snapshot)).toEqual([]);
     expect(pageContentFacts('Cache sentinel for a large inbound scan.')).toBe(sentinel);
+  });
+
+  it('parses each content once per snapshot, and again for a new snapshot only from the shared cache', () => {
+    const content = `Per-snapshot facts ${Math.random()}.`;
+    const first = site([page({ path: 'a', content }), page({ path: 'b', content })]);
+    const facts = snapshotContentFacts(first)(content);
+    expect(snapshotContentFacts(first)(content)).toBe(facts);
+    // A small site's facts also go to the shared cache, so another snapshot reuses them.
+    expect(snapshotContentFacts(site([page({ path: 'c', content })]))(content)).toBe(facts);
+    // A large one keeps its own, without adding to the shared cache.
+    const large = `Large per-snapshot facts ${Math.random()}.`;
+    const big = site(Array.from({ length: 2001 }, (_, i) => page({ path: `big-${i}`, content: i === 0 ? large : `Big ${i}.` })));
+    const bigFacts = snapshotContentFacts(big)(large);
+    expect(snapshotContentFacts(big)(large)).toBe(bigFacts);
+    expect(pageContentFacts(large)).not.toBe(bigFacts);
   });
 
   it("keeps a trusted absolute URL's own version and language instead of inheriting the source context", () => {
@@ -158,7 +292,9 @@ describe('inbound draft page links', () => {
     expect(result.pages.at(-1)?.id).toBe('source-19');
   });
 
-  it('bounds 300-page repeat-open cost using the existing content cache', () => {
+  // Correctness only: this parses 300 pages, which can pass Vitest's 5 s default
+  // on a loaded CI runner. Its cost is measured serially in publish-checks.growth.test.ts.
+  it('opens a 300-page site twice with the same answer (its cost: publish-checks.growth.test.ts)', { timeout: 30_000 }, () => {
     const snapshot = site([
       ...Array.from({ length: 298 }, (_, i) =>
         page({
@@ -170,20 +306,8 @@ describe('inbound draft page links', () => {
       child(),
     ]);
     snapshot.project.config = { redirects: [{ from: '/old-setup', to: '/guide/setup' }] };
-    const coldStart = performance.now();
     expect(findInboundPageLinks(snapshot, 'target').total).toBe(298);
-    const coldMs = performance.now() - coldStart;
-    let warmMs = Number.POSITIVE_INFINITY;
-    for (let round = 0; round < 3; round++) {
-      const start = performance.now();
-      expect(findInboundPageLinks(snapshot, 'target').total).toBe(298);
-      warmMs = Math.min(warmMs, performance.now() - start);
-    }
-    // Generous on shared CI cores; this catches accidentally re-parsing every
-    // body on repeat opens, while reporting both measured costs for review.
-    expect(warmMs).toBeLessThan(coldMs / 2 + 50);
-    expect(warmMs).toBeLessThan(500);
-    console.info(`inbound links: 300 pages, cold ${coldMs.toFixed(1)} ms, warm ${warmMs.toFixed(1)} ms`);
+    expect(findInboundPageLinks(snapshot, 'target').total).toBe(298);
   });
 });
 
@@ -326,5 +450,53 @@ describe('over-long links', () => {
     expect(findBrokenInternalLinks(snapshot).map(({ href: link, reason }) => ({ length: link.length, reason }))).toEqual([
       { length: href.length, reason: 'path-too-long' },
     ]);
+  });
+});
+
+describe('offsets inside skipped HTML ranges', () => {
+  const everyRange = (ranges: { start: number; end: number }[], offset: number) =>
+    ranges.some((range) => offset >= range.start && offset < range.end);
+
+  it('answers like checking every range, with unsorted, nested and overlapping ranges', () => {
+    // An unclosed context runs to the end of the page, so it can overlap later, shorter ranges.
+    const ranges = [
+      { start: 40, end: 45 },
+      { start: 5, end: 10 },
+      { start: 20, end: 100 },
+      { start: 30, end: 35 },
+      { start: 10, end: 12 },
+    ];
+    const inRange = offsetInRanges(ranges);
+    for (let offset = -1; offset <= 101; offset++) expect(inRange(offset), `offset ${offset}`).toBe(everyRange(ranges, offset));
+  });
+
+  it('answers like checking every range for generated ranges', () => {
+    let seed = 7;
+    const next = (limit: number) => {
+      seed = (seed * 1_103_515_245 + 12_345) % 2_147_483_648;
+      return seed % limit;
+    };
+    for (let round = 0; round < 50; round++) {
+      const ranges = Array.from({ length: next(12) }, () => {
+        const start = next(200);
+        return { start, end: start + next(60) };
+      });
+      const inRange = offsetInRanges(ranges);
+      for (let offset = 0; offset < 260; offset++) expect(inRange(offset)).toBe(everyRange(ranges, offset));
+    }
+  });
+
+  it('finds nothing when there are no ranges', () => {
+    expect(offsetInRanges([])(0)).toBe(false);
+  });
+});
+
+describe('embed checks next to raw HTML contexts', () => {
+  it('skips a video inside a title and checks the ones after it', () => {
+    const facts = pageContentFacts(
+      '<title>t</title>\n\n<video src="http://a.example.com/1.mp4"></video>\n\n<title><video src="http://b.example.com/2.mp4"></video></title>\n\n<video src="http://c.example.com/3.mp4"></video>\n',
+      false,
+    );
+    expect(facts.insecureVideos).toEqual(['http://a.example.com/1.mp4', 'http://c.example.com/3.mp4']);
   });
 });

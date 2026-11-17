@@ -176,11 +176,18 @@ const buttonNamed = (scope: ParentNode | null | undefined, name: string) =>
   [...(scope?.querySelectorAll('button') ?? [])].find((b) => b.textContent?.includes(name));
 const saveButton = () => buttonNamed(region(), 'common.save');
 const save = () => act(async () => saveButton()?.click());
-/** Enter in a field: the browser submits the field's form. */
-const pressEnterIn = (el: HTMLElement) =>
+/**
+ * Enter in a field: the key reaches the field's form, then the browser's
+ * implicit submission clicks that form's default button (if it has one).
+ */
+const pressEnterIn = (el: HTMLElement, init: KeyboardEventInit = {}) =>
   act(async () => {
-    el.closest('form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init }));
+    el.closest('form')?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
+/** The save bar's polite status; it stays mounted after the bar hides, as the page's last live region. */
+const barStatus = () => [...container.querySelectorAll('[role="status"]')].at(-1)?.textContent;
 const pressCtrlS = () =>
   act(async () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 's', ctrlKey: true, bubbles: true, cancelable: true }));
@@ -429,6 +436,107 @@ describe('AddonsSettings', () => {
     });
   });
 
+  describe('Enter in a field', () => {
+    const template = () => inputFor('settings.addons.editUrl.label');
+    const editSuggestions = addonById('edit-suggestions');
+    const savedTemplate = (urlTemplate: string, revision: number): ProjectAddon => ({ ...editSuggestions, config: { urlTemplate }, revision });
+
+    it('gives each add-on form one hidden default button, so Enter submits it', () => {
+      for (const form of container.querySelectorAll('form')) {
+        const submits = form.querySelectorAll<HTMLButtonElement>('button[type="submit"]');
+        expect(submits).toHaveLength(1);
+        expect(submits[0]?.hidden).toBe(true);
+      }
+    });
+
+    it('saves only the add-on it was pressed in, through the bar, and does not call the page saved while another holds an edit', async () => {
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      await type(privacy, 'https://acme.test/privacy');
+      await type(template(), 'https://github.com/acme/docs/edit/main/{path}');
+      mocks.update.mockResolvedValueOnce(savedTemplate('https://github.com/acme/docs/edit/main/{path}', 3));
+      await pressEnterIn(template());
+      expect(mocks.update).toHaveBeenCalledTimes(1);
+      expect(mocks.update).toHaveBeenCalledWith({
+        addonId: 'edit-suggestions',
+        body: { config: { urlTemplate: 'https://github.com/acme/docs/edit/main/{path}' }, expectedRevision: 2 },
+      });
+      expect(barStatus()).toBe('forms.unsavedChanges');
+      // The consent banner's edit is untouched and still waits for Save.
+      expect(privacy.value).toBe('https://acme.test/privacy');
+      expect(region()).not.toBeNull();
+    });
+
+    it('leaves Save and Ctrl+S saving every changed add-on', async () => {
+      await type(inputFor('site.analyticsConsentPrivacy'), 'https://acme.test/privacy');
+      await type(template(), 'https://github.com/acme/docs/edit/main/{path}');
+      mocks.update
+        .mockResolvedValueOnce(savedTemplate('https://github.com/acme/docs/edit/main/{path}', 3))
+        .mockResolvedValueOnce(savedConsent('https://acme.test/privacy', { revision: 2 }));
+      await pressCtrlS();
+      expect(mocks.update.mock.calls.map(([call]) => call.addonId).sort()).toEqual(['consent-banner', 'edit-suggestions']);
+      expect(region()).toBeNull();
+      expect(barStatus()).toBe('common.saved');
+    });
+
+    it('sends nothing for an invalid address, focuses it and says what to fix', async () => {
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      await type(privacy, 'acme.test/privacy');
+      await act(async () => template().focus());
+      await pressEnterIn(privacy);
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(privacy.getAttribute('aria-invalid')).toBe('true');
+      expect(document.activeElement).toBe(privacy);
+      expect(barStatus()).toBe('forms.fixHighlighted');
+    });
+
+    it('claims nothing for a clean form, a refused save, or a save already running', async () => {
+      await pressEnterIn(template());
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(barStatus()).toBe('');
+
+      mocks.update.mockRejectedValueOnce(new Error('nope'));
+      await type(template(), 'https://github.com/acme/docs/edit/main/{path}');
+      await pressEnterIn(template());
+      expect(mocks.toastError).toHaveBeenCalledWith('Could not save');
+      expect(barStatus()).toBe('');
+      expect(region()).not.toBeNull();
+
+      const pending = deferred<ProjectAddon>();
+      mocks.update.mockReturnValueOnce(pending.promise);
+      await pressEnterIn(template());
+      await pressEnterIn(template());
+      expect(mocks.update).toHaveBeenCalledTimes(2);
+      expect(barStatus()).toBe('');
+      await act(async () => pending.resolve(savedTemplate('https://github.com/acme/docs/edit/main/{path}', 3)));
+      expect(barStatus()).toBe('common.saved');
+    });
+
+    it('does not save on Enter with a modifier or while an IME composes', async () => {
+      await type(template(), 'https://github.com/acme/docs/edit/main/{path}');
+      for (const init of [{ shiftKey: true }, { ctrlKey: true }, { altKey: true }, { metaKey: true }, { isComposing: true }]) {
+        await pressEnterIn(template(), init);
+      }
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(region()).not.toBeNull();
+    });
+
+    it('waits for a switch flip in flight, then sends the revision it produced', async () => {
+      const pendingToggle = deferred<ProjectAddon>();
+      mocks.deactivate.mockReturnValueOnce(pendingToggle.promise);
+      await act(async () => switchFor('settings.addons.consent.title').click());
+      const privacy = inputFor('site.analyticsConsentPrivacy');
+      await type(privacy, 'https://acme.test/privacy');
+      mocks.update.mockResolvedValueOnce(savedConsent('https://acme.test/privacy', { enabled: false, status: 'inactive', revision: 3 }));
+      await pressEnterIn(privacy);
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(barStatus()).toBe('');
+      await act(async () => pendingToggle.resolve({ ...consent, enabled: false, status: 'inactive', revision: 2 }));
+      await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+      expect(mocks.update).toHaveBeenCalledWith(consentBody('https://acme.test/privacy', 2));
+      expect(barStatus()).toBe('common.saved');
+    });
+  });
+
   describe('server changes while editing', () => {
     it('flags a field someone else changed, keeps the edit, and keeps the flag through a refetch of another field', async () => {
       const privacy = inputFor('site.analyticsConsentPrivacy');
@@ -526,6 +634,34 @@ describe('AddonsSettings', () => {
       await act(async () => pendingToggle.resolve({ ...consent, enabled: false, status: 'inactive', revision: 2 }));
       await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
       expect(mocks.update).toHaveBeenCalledWith(consentBody('https://acme.test/privacy', 2));
+    });
+
+    it('sends nothing for a settings save still waiting on a switch flip when the page goes away (#767)', async () => {
+      const pendingToggle = deferred<ProjectAddon>();
+      mocks.deactivate.mockReturnValueOnce(pendingToggle.promise);
+      await act(async () => switchFor('settings.addons.consent.title').click());
+      await type(inputFor('site.analyticsConsentPrivacy'), 'https://acme.test/privacy');
+      await save();
+      await act(async () => root.render(null));
+      await act(async () => pendingToggle.resolve({ ...consent, enabled: false, status: 'inactive', revision: 2 }));
+      await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
+      expect(mocks.update).not.toHaveBeenCalled();
+      expect(mocks.toastError).not.toHaveBeenCalled();
+    });
+
+    it('says nothing about a settings save that fails after the page went away (#767)', async () => {
+      const pendingSave = deferred<ProjectAddon>();
+      mocks.update.mockReturnValueOnce(pendingSave.promise);
+      await type(inputFor('site.analyticsConsentPrivacy'), 'https://acme.test/privacy');
+      await save();
+      expect(mocks.update).toHaveBeenCalledTimes(1);
+      await act(async () => root.render(page()));
+      await act(async () => root.render(null));
+      await act(async () => root.render(page()));
+      await act(async () => pendingSave.reject(new Error('offline')));
+      expect(mocks.toastError).not.toHaveBeenCalled();
+      // The new page's switch is not locked by the old save.
+      expect(switchFor('settings.addons.consent.title').getAttribute('aria-disabled')).not.toBe('true');
     });
 
     it('sends the revision the switch produced when settings are saved after it', async () => {

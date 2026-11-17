@@ -1,0 +1,100 @@
+{
+  "baselineHead": "4a3bb6501341daeb8454aed9a76ccd9b36f05e64",
+  "failed": 15,
+  "passed": 8,
+  "tests": [
+    {
+      "name": "CodeRabbit fidelity follow-up already fixed: GitBook excludes quoted inline code from derived titles",
+      "status": "passed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up already fixed: Mintlify excludes quoted inline code from derived titles",
+      "status": "passed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up already fixed: GitBook keeps a standalone indented provider link byte for byte",
+      "status": "passed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up already fixed: Mintlify keeps a standalone indented provider link byte for byte",
+      "status": "passed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up discovers and rewrites the same hidden page on a configured application origin",
+      "status": "failed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up resolves encoded and plain segments to the same page: guides/café",
+      "status": "failed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up resolves encoded and plain segments to the same page: guides/مرحبا",
+      "status": "failed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up resolves encoded and plain segments to the same page: guides/%broken",
+      "status": "failed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up maps an extensionless GitBook video through the shared guarded media path",
+      "status": "failed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up rejects unsafe extensionless video: http://media.example.test/recordings/123",
+      "status": "passed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up rejects unsafe extensionless video: //media.example.test/recordings/123",
+      "status": "passed"
+    },
+    {
+      "name": "CodeRabbit fidelity follow-up rejects unsafe extensionless video: https://youtu.be\\abcdefghijk",
+      "status": "passed"
+    },
+    {
+      "name": "capture Redis preflight before any worker or lock refuses an unset or invalid Redis DB: undefined",
+      "status": "failed"
+    },
+    {
+      "name": "capture Redis preflight before any worker or lock refuses an unset or invalid Redis DB: ",
+      "status": "failed"
+    },
+    {
+      "name": "capture Redis preflight before any worker or lock refuses an unset or invalid Redis DB: 0",
+      "status": "failed"
+    },
+    {
+      "name": "capture Redis preflight before any worker or lock refuses an unset or invalid Redis DB: -1",
+      "status": "failed"
+    },
+    {
+      "name": "capture Redis preflight before any worker or lock refuses an unset or invalid Redis DB: 1.5",
+      "status": "failed"
+    },
+    {
+      "name": "capture Redis preflight before any worker or lock refuses an unset or invalid Redis DB: NaN",
+      "status": "failed"
+    },
+    {
+      "name": "capture Redis preflight before any worker or lock refuses an unset or invalid Redis DB: 9007199254740992",
+      "status": "failed"
+    },
+    {
+      "name": "capture Redis preflight before any worker or lock refuses a Redis DB different from the explicitly allocated capture DB",
+      "status": "failed"
+    },
+    {
+      "name": "capture Redis preflight before any worker or lock accepts the explicitly allocated capture Redis DB",
+      "status": "passed"
+    },
+    {
+      "name": "mintlify importNodes slug collisions CodeRabbit: configured APP_URL discovers and rewrites a hidden page in the full import",
+      "status": "failed"
+    },
+    {
+      "name": "GitBook with real PostgreSQL and the app CodeRabbit: shared route helper accepts page text without recorded-only media",
+      "status": "failed",
+      "assertion": "AssertionError: expected 'The entry is `init.lua`.' to contain '<iframe src=\"https://www.youtube-noco…'"
+    }
+  ]
+}

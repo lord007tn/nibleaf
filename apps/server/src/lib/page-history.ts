@@ -1,12 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { type Page, Prisma } from '@nibleaf/database';
-import {
-  exceedsUtf8Bytes,
-  PAGE_HISTORY_IDLE_MS,
-  PAGE_HISTORY_INTERVAL_MS,
-  PAGE_HISTORY_MAX_BYTES,
-  PAGE_REVISION_MAX_BYTES,
-} from '@nibleaf/shared/page-history';
+import { PAGE_HISTORY_IDLE_MS, PAGE_HISTORY_INTERVAL_MS, PAGE_HISTORY_MAX_BYTES, PAGE_REVISION_MAX_BYTES } from '@nibleaf/shared/page-history';
+import { exceedsUtf8Bytes } from '@nibleaf/shared/page-limits';
 import { badRequest } from '@/errors';
 
 /** Caller holds the page row lock. Throttling, insertion, pruning and the page

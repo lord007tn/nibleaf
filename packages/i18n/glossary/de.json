@@ -1,0 +1,261 @@
+{
+  "terms": {
+    "site": {
+      "translation": "Website",
+      "note": "Immer „Website“, nie „Seite“ (das ist eine einzelne Seite) oder „Projekt“. Komposita mit Bindestrich: Website-Einstellungen, Website-Name."
+    },
+    "organization": {
+      "translation": "Organisation",
+      "note": "Nie „Arbeitsbereich“ oder „Workspace“."
+    },
+    "page": {
+      "translation": "Seite"
+    },
+    "group": {
+      "translation": "Gruppe"
+    },
+    "page-tree": {
+      "translation": "Seitenbaum"
+    },
+    "publish": {
+      "translation": "veröffentlichen; Veröffentlichung (Substantiv)",
+      "short": "Veröffentlichen"
+    },
+    "draft": {
+      "translation": "Entwurf"
+    },
+    "unpublished-changes": {
+      "translation": "unveröffentlichte Änderungen"
+    },
+    "preview": {
+      "translation": "Vorschau"
+    },
+    "live-site": {
+      "translation": "Live-Website"
+    },
+    "reader": {
+      "translation": "Leser",
+      "note": "Nur für Personen, die die veröffentlichte Website lesen. Nicht für die Rolle „Betrachter“."
+    },
+    "member": {
+      "translation": "Mitglied"
+    },
+    "people": {
+      "translation": "Personen"
+    },
+    "invitation": {
+      "translation": "Einladung",
+      "short": "Einladen",
+      "note": "Button: „Einladen“."
+    },
+    "join-link": {
+      "translation": "Beitrittslink"
+    },
+    "role": {
+      "translation": "Rolle"
+    },
+    "role-owner": {
+      "translation": "Inhaber"
+    },
+    "role-admin": {
+      "translation": "Admin",
+      "note": "Rollenname. Nicht „Administrator“, das ist der Serverbetreiber."
+    },
+    "role-editor": {
+      "translation": "Redakteur",
+      "note": "Rollenname; der Bildschirm heißt „Editor“."
+    },
+    "role-viewer": {
+      "translation": "Betrachter",
+      "note": "Nicht „Leser“, das sind die Leser der Website."
+    },
+    "server-admin": {
+      "translation": "Serveradministrator",
+      "note": "Wer den selbst gehosteten Server betreibt."
+    },
+    "account": {
+      "translation": "Konto"
+    },
+    "sign-in": {
+      "translation": "anmelden, registrieren, abmelden",
+      "short": "Anmelden"
+    },
+    "settings": {
+      "translation": "Einstellungen"
+    },
+    "general": {
+      "translation": "Allgemein"
+    },
+    "appearance": {
+      "translation": "Darstellung"
+    },
+    "theme": {
+      "translation": "Design",
+      "note": "Hell-/Dunkelmodus: „heller/dunkler Modus“."
+    },
+    "custom-domain": {
+      "translation": "eigene Domain"
+    },
+    "domain": {
+      "translation": "Domain, Adresse"
+    },
+    "redirect": {
+      "translation": "Weiterleitung"
+    },
+    "visibility": {
+      "translation": "Sichtbarkeit; Zugriff"
+    },
+    "add-on": {
+      "translation": "Add-on"
+    },
+    "integration": {
+      "translation": "Integration"
+    },
+    "webhook": {
+      "translation": "Webhook"
+    },
+    "api-key": {
+      "translation": "API-Schlüssel"
+    },
+    "token": {
+      "translation": "Token"
+    },
+    "branch": {
+      "translation": "Branch",
+      "note": "Git-Fachwort, nicht „Zweig“."
+    },
+    "sync": {
+      "translation": "Synchronisierung; synchronisieren",
+      "short": "Sync"
+    },
+    "import": {
+      "translation": "Import; importieren"
+    },
+    "export": {
+      "translation": "Export; exportieren"
+    },
+    "language": {
+      "translation": "Sprache",
+      "note": "Ausgangssprache = Quellsprache."
+    },
+    "ask-ai": {
+      "translation": "KI fragen",
+      "note": "Funktionsname, überall gleich."
+    },
+    "ai-assistant": {
+      "translation": "KI-Assistent"
+    },
+    "smart-ai": {
+      "translation": "Smart AI",
+      "note": "Funktionsname, bleibt unverändert."
+    },
+    "analytics": {
+      "translation": "Analysen"
+    },
+    "page-views": {
+      "translation": "Seitenaufrufe"
+    },
+    "visits": {
+      "translation": "Besuche"
+    },
+    "searches": {
+      "translation": "Suchanfragen",
+      "short": "Suchen"
+    },
+    "feedback": {
+      "translation": "Feedback"
+    },
+    "period": {
+      "translation": "Zeitraum"
+    },
+    "compare": {
+      "translation": "mit dem vorherigen Zeitraum vergleichen",
+      "short": "Vergleichen"
+    },
+    "web-vitals": {
+      "translation": "Web Vitals (Hauptinhalt erscheint, Reagiert auf Klicks, Layout bleibt stabil)"
+    },
+    "ai-crawlers": {
+      "translation": "KI-Crawler; KI-Sichtbarkeit"
+    },
+    "plan": {
+      "translation": "Tarif"
+    },
+    "usage": {
+      "translation": "Nutzung"
+    },
+    "billing": {
+      "translation": "Abrechnung"
+    },
+    "notifications": {
+      "translation": "Benachrichtigungen"
+    },
+    "history": {
+      "translation": "Verlauf"
+    },
+    "version": {
+      "translation": "Version"
+    },
+    "restore": {
+      "translation": "wiederherstellen",
+      "short": "Wiederherstellen"
+    },
+    "promote": {
+      "translation": "in Main übernehmen",
+      "short": "Übernehmen"
+    },
+    "rollback": {
+      "translation": "zurücksetzen",
+      "short": "Zurücksetzen"
+    },
+    "checks": {
+      "translation": "Prüfungen vor der Veröffentlichung",
+      "short": "Prüfungen",
+      "note": "Button je Prüfung: „Beheben“."
+    },
+    "danger-zone": {
+      "translation": "Gefahrenzone"
+    },
+    "delete": {
+      "translation": "löschen (in den Papierkorb)",
+      "short": "Löschen"
+    },
+    "trash": {
+      "translation": "Papierkorb"
+    },
+    "delete-permanently": {
+      "translation": "endgültig löschen"
+    },
+    "remove": {
+      "translation": "entfernen"
+    },
+    "save": {
+      "translation": "speichern; gespeichert; ungespeicherte Änderungen",
+      "short": "Speichern"
+    },
+    "cancel": {
+      "translation": "abbrechen",
+      "short": "Abbrechen"
+    },
+    "copy": {
+      "translation": "kopieren; kopiert",
+      "short": "Kopieren"
+    },
+    "self-hosted": {
+      "translation": "selbst gehostet"
+    },
+    "dashboard": {
+      "translation": "Dashboard"
+    },
+    "editor-screen": {
+      "translation": "Editor"
+    },
+    "component": {
+      "translation": "Komponente; Block"
+    },
+    "callout": {
+      "translation": "Hinweisbox"
+    }
+  },
+  "style": "Formelle Anrede mit „Sie“, nie „du“; Buttons als Infinitiv („Speichern“, „Website erstellen“). Anführungszeichen „…“, Gedankenstrich – mit Leerzeichen, Auslassungspunkte …. Zahl und Einheit mit Leerzeichen (10 MB, 30 Tage), Dezimalkomma. Fehler: „… konnte nicht … werden. Versuchen Sie es erneut.“"
+}

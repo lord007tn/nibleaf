@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 import { PassThrough } from 'node:stream';
+import { siteT } from '@nibleaf/i18n/site';
+import { siteContentT } from '@nibleaf/i18n/site-content';
 import { act, type ReactNode } from 'react';
-import { hydrateRoot, type Root } from 'react-dom/client';
+import { createRoot, hydrateRoot, type Root } from 'react-dom/client';
 import { renderToPipeableStream } from 'react-dom/server';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { SitePage } from '@/hooks/api/types';
@@ -149,7 +151,7 @@ describe('language fallback notice', () => {
       await renderPage(data, { ...shell('fr'), languages: [...(shell('fr').languages ?? []), { code: 'fr', direction: 'LTR' }] })
     ).querySelector('[role="note"]');
     expect(note?.getAttribute('lang')).toBe('fr');
-    expect(note?.querySelector('a')?.getAttribute('href')).toBe('/sites/docs/next/blog/add-new-reservation-2?lang=ar');
+    expect(note?.querySelector('a')?.getAttribute('href')).toBe('/sites/docs/ar/next/blog/add-new-reservation-2');
   });
 
   it.each([
@@ -234,6 +236,166 @@ const fakeIntl = (tag: string, { supports = true } = {}) => {
   });
   return fake;
 };
+
+describe('everything around a fallback article follows the reader (#481)', () => {
+  const ar = siteT('ar');
+  const fallback = () =>
+    page({
+      page: {
+        ...page().page,
+        headings: [{ id: 'open', text: 'Open the calendar', depth: 2 }],
+        config: { mode: 'default', tags: ['Hotels'] },
+      },
+      breadcrumbs: [
+        { title: 'Reservations', path: 'reservations', section: true },
+        { title: 'Front desk', path: 'front-desk' },
+        { title: 'Add a new reservation', path: 'blog/add-new-reservation-2' },
+      ],
+      prev: { title: 'Find a guest', path: 'find-a-guest' },
+      next: { title: 'Cancel a reservation', path: 'cancel-a-reservation' },
+    });
+
+  it('labels the outline, breadcrumbs, tags and pager in Arabic, right to left, around the English article', async () => {
+    const view = await renderPage(fallback(), shell('ar'));
+    const crumbs = view.querySelector(`nav[aria-label="${ar('breadcrumb')}"]`);
+    expect(crumbs?.getAttribute('lang')).toBe('ar');
+    expect(crumbs?.getAttribute('dir')).toBe('rtl');
+    const tags = view.querySelector(`ul[aria-label="${ar('tags')}"]`);
+    expect(tags?.getAttribute('lang')).toBe('ar');
+    expect(tags?.querySelector('li')?.getAttribute('lang')).toBe('en');
+    const outline = view.querySelector('[data-theme-region="mobile-toc"] > summary');
+    expect(outline?.textContent).toBe(ar('onThisPage'));
+    expect(outline?.getAttribute('lang')).toBe('ar');
+    // Inside the mobile outline: the nav is named in Arabic and marked so; its headings stay English.
+    const mobileNav = view.querySelector('[data-theme-region="mobile-toc"] nav');
+    expect(mobileNav?.getAttribute('aria-label')).toBe(ar('onThisPage'));
+    expect(mobileNav?.getAttribute('lang')).toBe('ar');
+    expect(mobileNav?.getAttribute('dir')).toBe('rtl');
+    expect(mobileNav?.querySelector('ul')?.getAttribute('lang')).toBe('en');
+    expect(mobileNav?.querySelector('ul')?.getAttribute('dir')).toBe('ltr');
+    const pager = view.querySelector('[data-theme-region="pager"]');
+    expect(pager?.getAttribute('lang')).toBe('ar');
+    expect(pager?.textContent).toContain(ar('previous'));
+    expect(pager?.textContent).toContain(ar('next'));
+    // Titles of pages keep their own language inside the Arabic chrome.
+    expect([...(pager?.querySelectorAll('[lang="en"]') ?? [])].map((title) => title.textContent)).toEqual(['Find a guest', 'Cancel a reservation']);
+    // The desktop outline: an Arabic label over the English headings.
+    const desktop = view.querySelector('[data-theme-region="toc"] nav');
+    expect(desktop?.getAttribute('aria-label')).toBe(ar('onThisPage'));
+    expect(desktop?.querySelector('ul')?.getAttribute('lang')).toBe('en');
+    expect(desktop?.querySelector('ul')?.getAttribute('dir')).toBe('ltr');
+  });
+
+  it('labels the page actions in Arabic, right to left, and copies the English page it shows', async () => {
+    const fetchMock = vi.fn(async () => new Response('# Add a new reservation', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: vi.fn(async () => undefined) } });
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    try {
+      await act(async () =>
+        root.render(
+          <SiteReaderContext.Provider value={shell('ar')}>
+            <SitePageView projectId="docs" lang="ar" data={page()} />
+          </SiteReaderContext.Provider>,
+        ),
+      );
+      const actions = host.querySelector('[data-page-actions]');
+      expect(actions?.getAttribute('lang')).toBe('ar');
+      expect(actions?.getAttribute('dir')).toBe('rtl');
+      const copy = host.querySelector<HTMLButtonElement>('[data-page-actions] button');
+      expect(copy).not.toBeNull();
+      await act(async () => copy?.click());
+      // The Markdown twin of the English page shown, not ?lang=ar (which answers 404).
+      expect(fetchMock).toHaveBeenCalledWith('/sites/docs/blog/add-new-reservation-2.md', expect.anything());
+    } finally {
+      act(() => root.unmount());
+      host.remove();
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it.each([
+    ['a private site', 'private', null],
+    ['a noindex page', 'public', { seo: { noindex: true } }],
+  ] as const)('offers no page actions on %s, so nothing private is copied or sent to an AI', async (_case, visibility, pageConfig) => {
+    const base = page();
+    const data = page({
+      project: { ...base.project, config: { ...base.project.config, visibility } },
+      page: { ...base.page, config: pageConfig } as SitePage['page'],
+    });
+    const view = await renderPage(data, shell('en'));
+    expect(view.querySelector('h1')).not.toBeNull();
+    expect(view.querySelector('[data-page-actions]')).toBeNull();
+  });
+
+  it('keeps the reader in Arabic on the next page they open', async () => {
+    const view = await renderPage(fallback(), shell('ar'));
+    const hrefs = [...view.querySelectorAll(`nav[aria-label="${ar('breadcrumb')}"] a, [data-theme-region="pager"] a`)].map((link) =>
+      link.getAttribute('href'),
+    );
+    expect(hrefs).toEqual(['/sites/docs/ar/front-desk', '/sites/docs/ar/find-a-guest', '/sites/docs/ar/cancel-a-reservation']);
+  });
+
+  it('shows a section (group or category) in the breadcrumbs as text, not a link to its first page', async () => {
+    const view = await renderPage(fallback(), shell('en'));
+    const crumbs = view.querySelector('nav[aria-label] ol');
+    expect([...(crumbs?.querySelectorAll('li') ?? [])].map((crumb) => crumb.textContent?.replace('/', '').trim())).toEqual([
+      'Reservations',
+      'Front desk',
+    ]);
+    expect([...(crumbs?.querySelectorAll('a') ?? [])].map((link) => link.textContent)).toEqual(['Front desk']);
+  });
+
+  it('marks labels the reader generates inside the article as Arabic, and leaves authored titles English', async () => {
+    const content = [
+      '<Expandable>\n\nNested fields.\n\n</Expandable>',
+      '<Accordion title="Authored question">\n\nAnswer.\n\n</Accordion>',
+      '<Tabs>\n<Tab>\n\nOne\n\n</Tab>\n<Tab title="Second">\n\nTwo\n\n</Tab>\n</Tabs>',
+    ].join('\n\n');
+    const data = page({ page: { ...page().page, content } });
+    await (await import('@/lib/reader-hydration-modules')).loadArticleRenderer(content);
+    const view = await renderPage(data, shell('ar'));
+    const ar = siteContentT('ar');
+    const generated = [...view.querySelectorAll('article [lang="ar"]')].map((label) => [label.textContent, label.getAttribute('dir')]);
+    expect(generated).toEqual(
+      expect.arrayContaining([
+        [ar('showProperties'), 'rtl'],
+        [`${ar('tab')} 1`, 'rtl'],
+      ]),
+    );
+    // Authored titles are content: no reader language on them.
+    for (const authored of ['Authored question', 'Second']) {
+      const element = [...view.querySelectorAll('article button, article span')].find((node) => node.textContent === authored);
+      expect(element?.closest('[lang]')?.getAttribute('lang'), authored).toBe('en');
+    }
+  }, 60_000);
+
+  it('keeps links in the article in Arabic and labels its controls in Arabic', async () => {
+    const content = ['See [the front desk](/front-desk).', '## Open the calendar', '```js\nopen();\n```'].join('\n\n');
+    const data = page({ page: { ...page().page, content } });
+    await (await import('@/lib/reader-hydration-modules')).loadArticleRenderer(content);
+    const view = await renderPage(data, shell('ar'));
+    expect(view.querySelector('article a[href*="front-desk"]')?.getAttribute('href')).toBe('/sites/docs/ar/front-desk');
+    const sectionLink = view.querySelector('button.reader-section-link');
+    expect(sectionLink?.getAttribute('lang')).toBe('ar');
+    expect(sectionLink?.getAttribute('aria-label')).toBe(siteContentT('ar')('copySectionLink'));
+    expect(view.querySelector(`button[aria-label="${siteContentT('ar')('copyCode')}"]`)?.getAttribute('lang')).toBe('ar');
+  }, 60_000);
+
+  it('adds no language attributes when the article is in the reader’s language', async () => {
+    const view = await renderPage(fallback(), shell('en'));
+    for (const selector of [
+      'nav[aria-label] ol',
+      '[data-theme-region="pager"]',
+      '[data-theme-region="toc"] ul',
+      '[data-theme-region="mobile-toc"] > summary',
+    ])
+      expect(view.querySelector(selector)?.hasAttribute('lang'), selector).toBe(false);
+    expect(view.querySelector('[data-theme-region="pager"] a')?.getAttribute('href')).toBe('/sites/docs/find-a-guest');
+  });
+});
 
 describe('reader text formatted on the server', () => {
   // The article renderer's first import is cold (Markdown, highlighting) and, on

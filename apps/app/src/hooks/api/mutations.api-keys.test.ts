@@ -6,12 +6,19 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { useRevokeConnectedApp } from './mcp-oauth';
-import { useRevokeApiKey } from './mutations';
+import { useCreateApiKey, useRevokeApiKey, useRotateApiKey } from './mutations';
 import { queryKeys } from './query-keys';
 import { apiKeysQueryOptions, connectedAppsQueryOptions } from './query-options';
 import type { ApiKey, ApiKeyList, ConnectedApp } from './types';
 
-const mocks = vi.hoisted(() => ({ revokeKey: vi.fn(), revokeApp: vi.fn(), listKeys: vi.fn(), listApps: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  revokeKey: vi.fn(),
+  revokeApp: vi.fn(),
+  listKeys: vi.fn(),
+  listApps: vi.fn(),
+  createKey: vi.fn(),
+  rotateKey: vi.fn(),
+}));
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@/services/api', () => ({
@@ -19,7 +26,7 @@ vi.mock('@/services/api', () => ({
     app: {
       projects: {
         ':projectId': {
-          'api-keys': { $get: mocks.listKeys, ':id': { $delete: mocks.revokeKey } },
+          'api-keys': { $get: mocks.listKeys, $post: mocks.createKey, ':id': { $delete: mocks.revokeKey, rotate: { $post: mocks.rotateKey } } },
           'connected-apps': { $get: mocks.listApps, ':id': { $delete: mocks.revokeApp } },
         },
       },
@@ -95,6 +102,30 @@ describe('optimistic revoke of MCP credentials', () => {
     await act(async () => root.render(createElement(QueryClientProvider, { client: queryClient }, createElement(Probe))));
     return ref;
   };
+
+  it.each([
+    ['create', () => useCreateApiKey(projectId), { body: { name: 'Laptop', preset: 'read_only' as const, expiresInDays: 90 } }],
+    ['rotate', () => useRotateApiKey(projectId), { id: key.id, body: { scopes: ['mcp:connect' as const], expiresInDays: 90 } }],
+  ] as const)('%s hands the one-time secret to the caller and never caches it', async (_name, useHook, variables) => {
+    const secret = 'plm_live_never_cached_0123456789';
+    const answer = () => new Response(JSON.stringify({ data: { ...key, id: 'key-new', secret } }), { status: 200 });
+    mocks.createKey.mockImplementation(async () => answer());
+    mocks.rotateKey.mockImplementation(async () => answer());
+    const mutation = await mount(useHook as () => unknown);
+    const deliver = vi.fn();
+    let result: unknown;
+    await act(async () => {
+      result = await (mutation.current as { mutateAsync: (input: object) => Promise<unknown> }).mutateAsync({ ...variables, deliver });
+    });
+    expect(deliver).toHaveBeenCalledWith({ id: 'key-new', secret });
+    expect(JSON.stringify(result)).not.toContain(secret);
+    const cached = queryClient
+      .getMutationCache()
+      .getAll()
+      .map((entry) => JSON.stringify({ data: entry.state.data, variables: entry.state.variables }));
+    expect(cached.length).toBeGreaterThan(0);
+    for (const entry of cached) expect(entry).not.toContain(secret);
+  });
 
   it('marks a key revoked at once, then puts it back and keeps the plain error when the call fails', async () => {
     queryClient.setQueryData(queryKeys.apiKeys.all(projectId), keyList);

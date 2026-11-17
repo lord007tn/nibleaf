@@ -1,4 +1,5 @@
 import { BookOpen } from 'lucide-react';
+import { insertBlockAtFirstItem } from './insert-items';
 import type { SlashItem } from './types';
 
 export const relatedSlashItems: SlashItem[] = [
@@ -9,22 +10,17 @@ export const relatedSlashItems: SlashItem[] = [
     glyph: '↗',
     keywords: ['related', 'content', 'navigation', 'resources'],
     command: ({ editor, range }) =>
-      editor
-        .chain()
-        .focus()
-        .deleteRange(range)
-        .insertContent({
-          type: 'mdxRelatedContent',
-          attrs: { title: '' },
-          content: [
-            {
-              type: 'mdxRelatedCard',
-              attrs: { title: '', description: '', href: '', icon: '' },
-              content: [{ type: 'paragraph' }],
-            },
-          ],
-        })
-        .run(),
+      insertBlockAtFirstItem(editor, range, {
+        type: 'mdxRelatedContent',
+        attrs: { title: '' },
+        content: [
+          {
+            type: 'mdxRelatedCard',
+            attrs: { title: '', description: '', href: '', icon: '' },
+            content: [{ type: 'paragraph' }],
+          },
+        ],
+      }),
   },
   {
     titleKey: 'editor.slash.relatedCard.title',

@@ -93,3 +93,31 @@ export function prefetchRouteData<TQueryFnData, TError, TData, TQueryKey extends
   // missing; a failure surfaces through the component's own query, not here.
   void queryClient.ensureQueryData(options).catch(() => undefined);
 }
+
+/**
+ * Load data a page needs in its server-rendered HTML, like the published
+ * reader (apps/app/DATA_LOADING.md): awaited on the server and in the browser,
+ * and returned as loader data, which the router dehydrates, so the first
+ * client render starts from the same answer (pass it to the query as
+ * `initialData`). It is not retried and gives up after `timeoutMs` (aborting
+ * the request when the query passes its signal on), so a slow or stalled API
+ * can't hold the page: a failure or a timeout returns null and the page falls
+ * back to its own query.
+ *
+ * It lives here although only split route loaders call it: in a module of its
+ * own, or beside the query factories, the bundler moves TanStack Query's core
+ * helpers into an extra chunk on published docs pages (measured +0.2 KiB gzip).
+ */
+export async function loadRouteData<TQueryFnData, TError, TData, TQueryKey extends QueryKey>(
+  queryClient: QueryClient,
+  options: EnsureQueryDataOptions<TQueryFnData, TError, TData, TQueryKey>,
+  timeoutMs = 1500,
+): Promise<TData | null> {
+  const deadline = AbortSignal.timeout(timeoutMs);
+  const timedOut = new Promise<null>((resolve) => deadline.addEventListener('abort', () => resolve(null), { once: true }));
+  const loaded = queryClient.ensureQueryData({ ...options, retry: false }).catch(() => null);
+  const result = await Promise.race([loaded, timedOut]);
+  // Gave up waiting: cancel the request (the query's signal aborts the fetch).
+  if (deadline.aborted) void queryClient.cancelQueries({ queryKey: options.queryKey, exact: true });
+  return result;
+}

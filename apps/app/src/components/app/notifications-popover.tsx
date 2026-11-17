@@ -5,7 +5,7 @@ import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { useLocale, useT } from '@nibleaf/i18n/react';
 import { useNavigate } from '@tanstack/react-router';
 import { Bell } from 'lucide-react';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { FailureDetails, failureMessageKey } from '@/components/failure-message';
 import { QueryErrorState } from '@/components/query-error-state';
 import { useMarkNotificationsRead, useNotifications, useUnreadNotificationCount } from '@/hooks/api';
@@ -85,6 +85,7 @@ export function NotificationsPopover() {
   const { number } = useFormatters();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
+  const titleId = useId();
   // "This organization / All": defaults to All so nothing is hidden by surprise.
   const currentOrganizationId = useSwitcherControls()?.current.organizationId;
   const [scope, setScope] = useState<'organization' | 'all'>('all');
@@ -131,9 +132,11 @@ export function NotificationsPopover() {
           </Button>
         }
       />
-      <PopoverContent align="end" className="w-90 gap-0 p-0">
+      <PopoverContent align="end" aria-labelledby={titleId} className="w-90 gap-0 p-0">
         <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-border border-b px-4 py-2.5">
-          <span className="min-w-0 font-semibold text-sm [overflow-wrap:anywhere]">{t('notifications.title')}</span>
+          <span className="min-w-0 font-semibold text-sm [overflow-wrap:anywhere]" id={titleId}>
+            {t('notifications.title')}
+          </span>
           <Button
             className="h-auto min-w-0 max-w-full shrink px-2 text-xs [overflow-wrap:anywhere]"
             disabled={!hasUnread}

@@ -1,6 +1,13 @@
+import { MAX_PAGE_CONTENT_BYTES } from '@nibleaf/shared/page-limits';
 import { afterEach, expect, it, vi } from 'vitest';
 import { GitBookImportBudget } from './gitbook-budget';
 import { expandGitBookIncludes } from './gitbook-markdown';
+
+// Some tests here work through large generated case sets or whole documentation
+// corpora. On a loaded CI runner such tests have taken ~28x as long as on a laptop
+// (5.5 s against 0.19 s), past Vitest's 5 s default, so the file gets an explicit
+// timeout. Their cost stays linear; the *.growth.test.ts files pin that.
+vi.setConfig({ testTimeout: 60_000 });
 
 afterEach(() => vi.useRealTimers());
 
@@ -52,5 +59,9 @@ it('stops expansion before accumulating all include replacements', async () => {
 
 it('bounds each expanded page independently of cumulative work', () => {
   const budget = new GitBookImportBudget();
-  expect(() => budget.page('x'.repeat(2 * 1024 * 1024 + 1), 'big.md')).toThrow(/Expanded page/);
+  // The same cap as every other page write, measured in UTF-8 bytes.
+  expect(MAX_PAGE_CONTENT_BYTES).toBe(2 * 1024 * 1024);
+  expect(() => budget.page('x'.repeat(MAX_PAGE_CONTENT_BYTES), 'limit.md')).not.toThrow();
+  expect(() => budget.page('x'.repeat(MAX_PAGE_CONTENT_BYTES + 1), 'big.md')).toThrow(/Expanded page/);
+  expect(() => budget.page('ع'.repeat(MAX_PAGE_CONTENT_BYTES / 2 + 1), 'arabic.md')).toThrow(/Expanded page/);
 });

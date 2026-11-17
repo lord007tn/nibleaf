@@ -1,6 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { blockDirection } from '@nibleaf/shared/script-direction';
-import { AlignLeft } from 'lucide-react';
+import { AlignLeft, ChevronDown } from 'lucide-react';
 import { type CSSProperties, useEffect, useState } from 'react';
 
 type TocHeading = { id: string; text: string; depth: number };
@@ -16,19 +16,59 @@ export function selectActiveHeading(headings: { id: string; top: number }[], thr
   return active;
 }
 
-export function MobileTableOfContents({ headings, label }: { headings: TocHeading[]; label: string }) {
+type LanguageAttributes = { lang?: string; dir?: 'ltr' | 'rtl' };
+
+/** `labelLanguage`: the reader's `lang`/`dir` for the label (the summary and
+ *  the outline's name), and `itemsLanguage` the article's for its headings, when
+ *  the two differ, as on a fallback page. */
+export function MobileTableOfContents({
+  headings,
+  label,
+  labelLanguage,
+  itemsLanguage,
+}: {
+  headings: TocHeading[];
+  label: string;
+  labelLanguage?: LanguageAttributes;
+  itemsLanguage?: LanguageAttributes;
+}) {
   if (!headings.some((heading) => heading.depth <= 3)) return null;
   return (
-    <details className="mb-6 rounded-lg border border-border xl:hidden" data-theme-region="mobile-toc">
-      <summary className="min-h-11 cursor-pointer px-4 py-3 font-medium text-sm">{label}</summary>
+    <details className="group mb-6 rounded-lg border border-border xl:hidden" data-theme-region="mobile-toc">
+      {/* The browser's own ▶ marker is hidden (it's unstyled and doesn't follow the text direction); the chevron sits at the end in both directions. */}
+      <summary
+        className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 font-medium text-sm [&::-webkit-details-marker]:hidden"
+        {...labelLanguage}
+      >
+        <span className="flex items-center gap-2">
+          <AlignLeft className="size-3.5 text-muted-foreground rtl:-scale-x-100" aria-hidden />
+          {label}
+        </span>
+        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden />
+      </summary>
       <div className="max-h-[50dvh] overflow-y-auto px-4 pb-3">
-        <TableOfContents headings={headings} label={label} mobile />
+        <TableOfContents headings={headings} label={label} mobile labelLanguage={labelLanguage} itemsLanguage={itemsLanguage} />
       </div>
     </details>
   );
 }
 
-export function TableOfContents({ headings, label, mobile = false }: { headings: TocHeading[]; label: string; mobile?: boolean }) {
+/** `itemsLanguage`: the article's `lang`/`dir` for the headings listed, when it
+ *  differs from the reader's; `labelLanguage`: the reader's for the outline's own
+ *  name, where it sits inside the article (the mobile outline). */
+export function TableOfContents({
+  headings,
+  label,
+  mobile = false,
+  labelLanguage,
+  itemsLanguage,
+}: {
+  headings: TocHeading[];
+  label: string;
+  mobile?: boolean;
+  labelLanguage?: LanguageAttributes;
+  itemsLanguage?: LanguageAttributes;
+}) {
   const items = headings.filter((heading) => heading.depth <= 3);
   const key = items.map((heading) => heading.id).join('|');
   const [activeId, setActiveId] = useState('');
@@ -73,6 +113,7 @@ export function TableOfContents({ headings, label, mobile = false }: { headings:
   return (
     <nav
       aria-label={label}
+      {...labelLanguage}
       data-theme-component="toc"
       className={cn(
         !mobile && 'sticky top-[calc(var(--site-header-h,4rem)+3rem)] max-h-[calc(100vh-var(--site-header-h,4rem)-4rem)] overflow-y-auto',
@@ -84,7 +125,7 @@ export function TableOfContents({ headings, label, mobile = false }: { headings:
           {label}
         </div>
       ) : null}
-      <ul className="space-y-0.5 text-sm" data-theme-region="toc-list">
+      <ul className="space-y-0.5 text-sm" data-theme-region="toc-list" {...itemsLanguage}>
         {items.map((heading) => {
           const active = activeId === heading.id;
           return (

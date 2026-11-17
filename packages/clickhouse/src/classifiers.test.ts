@@ -122,18 +122,3 @@ it('keeps punctuation around redacted emails and handles several per token', () 
   expect(normalizeSearchTerm('<x@y.io>,<z@w.io>')).toBe('<[email]>,<[email]>');
   expect(normalizeSearchTerm('@scope/pkg and user@host')).toBe('@scope/pkg and user@host');
 });
-it('redacts in linear time on adversarial input', () => {
-  const adversarial = [
-    `"${'\\"'.repeat(20_000)}`,
-    `${'a'.repeat(40_000)}@`,
-    `${'@'.repeat(40_000)}.`,
-    `${'a.'.repeat(20_000)}@x`,
-    'a@'.repeat(20_000),
-    `x@${'b'.repeat(40_000)}`,
-  ];
-  for (const input of adversarial) {
-    const started = performance.now();
-    normalizeSearchTerm(input);
-    expect(performance.now() - started).toBeLessThan(250);
-  }
-});

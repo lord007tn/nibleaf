@@ -1,0 +1,117 @@
+{
+  "outsideAttempts": 0,
+  "profiles": [
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "projectId": "cmwe3187o0001psyoj0f5msjf",
+      "saved": "<https://www.youtube.com/watch?v=M7lc1UVf-VE&t=30>",
+      "editorRequests": 716,
+      "editorOffSiteRequests": [],
+      "publishOffSiteRequests": [],
+      "readerRequestsBeforePlay": 88,
+      "readerOffSiteRequestsBeforePlay": [],
+      "requestsMadeByPlay": []
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "projectId": "cmwe31fxm0007psyopdmkvlnc",
+      "saved": "<https://www.youtube.com/watch?v=M7lc1UVf-VE&t=30>",
+      "editorRequests": 717,
+      "editorOffSiteRequests": [],
+      "publishOffSiteRequests": [],
+      "readerRequestsBeforePlay": 87,
+      "readerOffSiteRequestsBeforePlay": [],
+      "requestsMadeByPlay": []
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "projectId": "cmwe31mpa000dpsyo42808nag",
+      "saved": "<https://www.youtube.com/watch?v=M7lc1UVf-VE&t=30>",
+      "editorRequests": 719,
+      "editorOffSiteRequests": [],
+      "publishOffSiteRequests": [],
+      "readerRequestsBeforePlay": 89,
+      "readerOffSiteRequestsBeforePlay": [],
+      "requestsMadeByPlay": []
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "projectId": "cmwe31tg8000jpsyo70fjdson",
+      "saved": "<https://www.youtube.com/watch?v=M7lc1UVf-VE&t=30>",
+      "editorRequests": 720,
+      "editorOffSiteRequests": [],
+      "publishOffSiteRequests": [],
+      "readerRequestsBeforePlay": 88,
+      "readerOffSiteRequestsBeforePlay": [],
+      "requestsMadeByPlay": []
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "projectId": "cmwe32b1m000ppsyol63ishqj",
+      "saved": "<Frame caption=\"From sign-up to first publish\">\n  <iframe src=\"https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30\" title=\"Tidewater product tour\"></iframe>\n</Frame>",
+      "editorRequests": 715,
+      "editorOffSiteRequests": [],
+      "publishOffSiteRequests": [],
+      "readerRequestsBeforePlay": 89,
+      "readerOffSiteRequestsBeforePlay": [],
+      "requestsMadeByPlay": [
+        "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30&autoplay=1"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "projectId": "cmwe32ki9000vpsyomrw8wln5",
+      "saved": "<Frame caption=\"From sign-up to first publish\">\n  <iframe src=\"https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30\" title=\"Tidewater product tour\"></iframe>\n</Frame>",
+      "editorRequests": 715,
+      "editorOffSiteRequests": [],
+      "publishOffSiteRequests": [],
+      "readerRequestsBeforePlay": 89,
+      "readerOffSiteRequestsBeforePlay": [],
+      "requestsMadeByPlay": [
+        "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30&autoplay=1"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "projectId": "cmwe32t1f0011psyo6vzps1me",
+      "saved": "<Frame caption=\"من التسجيل إلى أول نشر\">\n  <iframe src=\"https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30\" title=\"جولة في المنتج\"></iframe>\n</Frame>",
+      "editorRequests": 719,
+      "editorOffSiteRequests": [],
+      "publishOffSiteRequests": [],
+      "readerRequestsBeforePlay": 90,
+      "readerOffSiteRequestsBeforePlay": [],
+      "requestsMadeByPlay": [
+        "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30&autoplay=1"
+      ]
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "projectId": "cmwe3322t0017psyo8s2fl8gs",
+      "saved": "<Frame caption=\"من التسجيل إلى أول نشر\">\n  <iframe src=\"https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30\" title=\"جولة في المنتج\"></iframe>\n</Frame>",
+      "editorRequests": 718,
+      "editorOffSiteRequests": [],
+      "publishOffSiteRequests": [],
+      "readerRequestsBeforePlay": 90,
+      "readerOffSiteRequestsBeforePlay": [],
+      "requestsMadeByPlay": [
+        "https://www.youtube-nocookie.com/embed/M7lc1UVf-VE?start=30&autoplay=1"
+      ]
+    }
+  ]
+}

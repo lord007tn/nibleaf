@@ -37,6 +37,10 @@
     "test": {
       "dependsOn": ["^build"],
       "outputs": ["coverage/**"]
+    },
+    "test:growth": {
+      "dependsOn": ["^build"],
+      "cache": false
     }
   }
 }

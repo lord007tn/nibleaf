@@ -133,10 +133,11 @@ function Button({
       aria-busy={loading || undefined}
       className={cn(
         buttonVariants({ variant, size, className }),
-        canLoad && "data-loading:cursor-progress data-loading:disabled:opacity-100",
-        // A reason keeps the button focusable, so it's `aria-disabled` rather
-        // than `:disabled`, and it keeps pointer events for the tooltip.
-        hasReason && "aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+        // A focusable disabled button (a reason, or `focusableWhenDisabled`) is
+        // `aria-disabled` rather than `:disabled`: it still looks disabled, and
+        // keeps pointer events for its tooltip.
+        "aria-disabled:cursor-not-allowed aria-disabled:opacity-50",
+        canLoad && "data-loading:cursor-progress data-loading:disabled:opacity-100 data-loading:aria-disabled:opacity-100"
       )}
       disabled={disabled || loading || hasReason}
       {...props}

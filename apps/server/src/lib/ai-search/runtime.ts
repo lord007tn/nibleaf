@@ -1,4 +1,3 @@
-import { prisma } from '@nibleaf/database';
 import { createLogger } from '@nibleaf/logger';
 import { getQdrantClient, type QdrantFilter, type QdrantScoredPoint } from '@nibleaf/qdrant';
 import {
@@ -25,7 +24,9 @@ import { resolveWorkspaceAi, type WorkspaceAiRuntime, workspaceAnswerProvider, w
 import { isPageTranslation, type SnapshotPage } from '@nibleaf/shared/site';
 import { z } from 'zod';
 import { env } from '@/env';
+import type { SectionResolver } from '@/lib/ai-search/sections';
 import { LruCache, TtlCache } from '@/lib/lru';
+import { configuredIndexServing, findCurrentIndexRun, indexRunServesAnswers } from './readiness';
 
 const log = createLogger({ component: 'ai-search' });
 const retrievalCache = new TtlCache<string, HybridChunkHit[]>(500, env.SEARCH_CACHE_TTL_MS);
@@ -50,55 +51,6 @@ export const publishedSearchAnswerHint = (projectId: string, deploymentId: strin
   return hint.available;
 };
 
-/** How long one reading of the alias's target is trusted. */
-const INDEX_CHECK_MS = 30_000;
-/** A failed reading is retried sooner, so a brief Qdrant outage pauses AI answers only briefly. */
-const INDEX_RETRY_MS = 5000;
-let indexCheck: { at: number; ttl: number; serving: Promise<boolean> } | undefined;
-let lastServed: string | null | undefined;
-
-/** Whether the read alias serves the collection this instance is configured
- * for (its alias, collection version and vector size). After an embedding
- * change the new collection is filled while the alias still serves the old
- * one; querying it with the new vectors would fail. Until the operator
- * reindexes and switches the alias, search keeps its keyword results and AI
- * answers pause instead. A failed reading also counts as not serving. */
-const configuredIndexServing = async (): Promise<boolean> => {
-  const client = qdrant;
-  if (!client) return false;
-  const now = Date.now();
-  if (!indexCheck || now - indexCheck.at >= indexCheck.ttl) {
-    const check: NonNullable<typeof indexCheck> = { at: now, ttl: INDEX_CHECK_MS, serving: Promise.resolve(false) };
-    check.serving = client.servedCollection().then(
-      (served) => {
-        if (served !== lastServed) {
-          lastServed = served;
-          const context = { alias: client.alias, served, configured: client.collection };
-          if (served === client.collection) log.info(context, 'Hybrid search is serving the configured collection');
-          else if (served === null) log.info(context, 'No hybrid search collection yet; the first index job creates it');
-          else
-            log.error(
-              context,
-              'Hybrid search and AI answers are paused: the search alias serves a collection built for other embedding settings. Reindex every site, then switch the alias to the configured collection (docs: self-hosting/search-ai, "Change the embedding model").',
-            );
-        }
-        return served === client.collection;
-      },
-      (error: unknown) => {
-        // Fail closed (keyword results, no AI answers), and read again soon.
-        check.ttl = INDEX_RETRY_MS;
-        log.warn(
-          { alias: client.alias, configured: client.collection, error: error instanceof Error ? error.message : 'unknown error' },
-          'Could not read the search alias; hybrid search and AI answers are paused until the next check',
-        );
-        return false;
-      },
-    );
-    indexCheck = check;
-  }
-  return indexCheck.serving;
-};
-
 const indexedChunkPayloadSchema = z.object({
   project_id: z.string(),
   deployment_id: z.string(),
@@ -113,6 +65,9 @@ const indexedChunkPayloadSchema = z.object({
   description: z.string().default(''),
   heading: z.string().default(''),
   heading_path: z.array(z.string()).default([]),
+  // Recorded since section anchors; points indexed before have none. A value
+  // that is not a usable id is ignored rather than dropping the whole point.
+  anchor: z.string().optional().catch(undefined),
   content: z.string(),
   content_hash: z.string(),
   direction: z.enum(['ltr', 'rtl']),
@@ -140,20 +95,7 @@ const readAnswerAvailability = async (projectId?: string, deploymentId?: string)
   const runtime = await resolveWorkspaceAi(projectId);
   if (!runtime?.answersEnabled) return false;
   if (!deploymentId) return true;
-  // Only runs built with the current embedding settings indexed the collection
-  // being served; a newer run for other settings (before a rollback) does not count.
-  const latestRun = await prisma.searchIndexRun.findFirst({
-    where: {
-      projectId,
-      deploymentId,
-      schemaVersion: env.QDRANT_COLLECTION_VERSION,
-      embeddingModel: env.SEARCH_EMBEDDING_MODEL,
-      vectorSize: env.SEARCH_EMBEDDING_DIMENSIONS,
-    },
-    orderBy: { createdAt: 'desc' },
-    select: { status: true, indexedChunks: true },
-  });
-  return latestRun?.status === 'READY' && latestRun.indexedChunks > 0;
+  return indexRunServesAnswers(await findCurrentIndexRun(projectId, deploymentId, { status: true, indexedChunks: true }));
 };
 
 export const filterForSearchScope = (scope: SearchScope): QdrantFilter | null => {
@@ -198,6 +140,7 @@ export const chunkFromPoint = (point: QdrantScoredPoint, scope: SearchScope): Hy
     description: payload.description,
     heading: payload.heading,
     headingPath: payload.heading_path,
+    ...(payload.anchor ? { anchor: payload.anchor } : {}),
     content: payload.content,
     contentHash: payload.content_hash,
     language: scope.language,
@@ -259,6 +202,7 @@ const retrieveHybrid = async (
     },
     signal,
   );
+  signal?.throwIfAborted();
   const chunks = rerankHybridChunks(
     query,
     points.flatMap((point) => {
@@ -274,6 +218,10 @@ export interface SearchRuntimeResult {
   hits: SearchHit[];
   runtime: 'legacy' | 'legacy-fallback' | 'shadow' | 'hybrid';
 }
+
+// Readiness, workspace lookup, embedding and retrieval share this budget. The
+// keyword lane does not depend on any of them, including on a cold instance.
+const READER_HYBRID_BUDGET_MS = 80;
 
 export const runPublishedSearch = async (
   scope: SearchScope,
@@ -308,16 +256,28 @@ export const runPublishedSearch = async (
     })().catch(() => log.warn({ projectId: scope.projectId }, 'hybrid search shadow request failed'));
     return { hits: legacyHits, runtime: 'shadow' };
   }
-  // Keyword results, without paying to embed a query the serving index cannot answer.
-  if (!qdrant || !(await configuredIndexServing())) return { hits: await legacy(), runtime: 'legacy-fallback' };
-  const provider = await resolveWorkspaceAi(scope.projectId).catch(() => null);
-  if (!provider) return { hits: await legacy(), runtime: 'legacy-fallback' };
-  try {
-    const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), signal, provider);
-    // A newly published deployment can be served before its async index job
-    // finishes. Keep ordinary search working during that window and recovery.
-    if (result.chunks.length === 0) return { hits: await legacy(), runtime: 'legacy-fallback' };
-    // Normalized like the keyword index for this language (accent folding included).
+  signal?.throwIfAborted();
+  const controller = new AbortController();
+  const hybridSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+  const deadline = performance.now() + READER_HYBRID_BUDGET_MS;
+  const expired = () => hybridSignal.aborted || performance.now() >= deadline;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<null>((resolve) => {
+    hybridSignal.addEventListener('abort', () => resolve(null), { once: true });
+    timer = setTimeout(() => controller.abort(), READER_HYBRID_BUDGET_MS);
+  });
+  const keyword = Promise.resolve().then(legacy);
+  // A hybrid answer never waits on, or fails with, the keyword lane: its result
+  // (or its error) only matters when it becomes the answer below.
+  keyword.catch(() => undefined);
+  const hybrid = (async () => {
+    // Check after each uncancellable lookup so a late readiness/configuration
+    // response cannot start an embedding request after the reader has moved on.
+    if (!qdrant || !(await configuredIndexServing()) || expired()) return null;
+    const provider = await resolveWorkspaceAi(scope.projectId);
+    if (!provider || expired()) return null;
+    const result = await retrieveHybrid(scope, query, Math.max(limit * 4, 24), hybridSignal, provider);
+    if (expired() || result.chunks.length === 0) return null;
     const language = oramaLanguageForCode(scope.language);
     const terms = readerSearchTerms(query, language);
     const scored = result.chunks.map((hit) => ({
@@ -328,17 +288,28 @@ export const runPublishedSearch = async (
       ),
     }));
     const floor = readerRelevanceFloor(Math.max(0, ...scored.map((hit) => hit.score)));
-    return {
-      hits: collapseChunkHits(
-        scored.filter((hit) => hit.score >= floor),
-        limit,
-        query,
-      ),
-      runtime: 'hybrid',
-    };
-  } catch {
-    log.error({ projectId: scope.projectId }, 'hybrid search failed; using rollback runtime');
-    return { hits: await legacy(), runtime: 'legacy-fallback' };
+    const hits = collapseChunkHits(
+      scored.filter((hit) => hit.score >= floor),
+      limit,
+      query,
+    );
+    // A vector result trimmed to nothing must not hide keyword typo matches.
+    return expired() || hits.length === 0 ? null : hits;
+  })().catch(() => {
+    if (!hybridSignal.aborted) log.error({ projectId: scope.projectId }, 'hybrid search failed; using rollback runtime');
+    return null;
+  });
+  try {
+    const hybridHits = await Promise.race([hybrid, timeout]);
+    signal?.throwIfAborted();
+    if (hybridHits !== null) return { hits: hybridHits, runtime: 'hybrid' };
+    // The caller's signal, not the hybrid lane's (which the deadline aborted).
+    const keywordHits = await (signal ? untilAborted(keyword, signal) : keyword);
+    signal?.throwIfAborted();
+    return { hits: keywordHits, runtime: 'legacy-fallback' };
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
   }
 };
 
@@ -618,14 +589,16 @@ export const answerPublishedSearch = async (
   scope: SearchScope,
   query: string,
   signal?: AbortSignal,
-  context?: ChatLanguageContext,
+  /** `sections` resolves each source to a section of its published page (see
+   * `publishedSections`); sources it leaves out are never given to the model. */
+  context?: ChatLanguageContext & { sections?: SectionResolver },
 ): Promise<GroundedAnswer & { cacheHit: boolean }> => {
   const runtime = await resolveWorkspaceAi(scope.projectId);
   if (!qdrant || !runtime?.answersEnabled || !(await configuredIndexServing())) throw new Error('AI answers are not configured.');
   const cacheKey = searchCacheKey(
     scope,
     query,
-    `answer-v4-${runtime.revision}-${env.QDRANT_COLLECTION_VERSION}-${runtime.embeddingModel}-${runtime.answerModel}-${context?.languages.join(',')}`,
+    `answer-v5-${runtime.revision}-${env.QDRANT_COLLECTION_VERSION}-${runtime.embeddingModel}-${runtime.answerModel}-${context?.languages.join(',')}`,
   );
   const cached = answerCache.get(cacheKey);
   if (cached) return { ...cached, cacheHit: true };
@@ -634,10 +607,11 @@ export const answerPublishedSearch = async (
     ? await retrieveChatLanguages(scope, query, runtime, context, { language, signal })
     : await retrieveChatContext(scope, query, runtime, { signal });
   const provider = workspaceAnswerProvider(runtime);
+  const sections = context?.sections;
   const answer = await generateGroundedAnswer(
     provider,
     query,
-    retrieval.chunks,
+    sections ? retrieval.chunks.flatMap((chunk) => sections(chunk) ?? []) : retrieval.chunks,
     retrieval.confidence,
     language,
     signal,

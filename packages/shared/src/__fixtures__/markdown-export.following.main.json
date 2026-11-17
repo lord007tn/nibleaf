@@ -1,0 +1,1125 @@
+{
+  "revision": "2cf12d3fe325057c586fd1f6abd05247a1af6813",
+  "cases": [
+    {
+      "name": "<script>BODY</script> / root / indented code",
+      "source": "BEFORE\n\n<script>BODY</script>\n    <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "BEFORE\n\n\n    &lt;img onerror=\"FOLLOW()\"&gt;",
+        "BEFORE\n\n<script>BODY</script>\n    <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / root / fence",
+      "source": "BEFORE\n\n<script>BODY</script>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~",
+      "outputs": [
+        "BEFORE\n\n\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~",
+        "BEFORE\n\n<script>BODY</script>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / root / paragraph",
+      "source": "BEFORE\n\n<script>BODY</script>\nFOLLOW paragraph",
+      "outputs": [
+        "BEFORE\n\n\nFOLLOW paragraph",
+        "BEFORE\n\n<script>BODY</script>\nFOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / root / list item",
+      "source": "BEFORE\n\n<script>BODY</script>\n- FOLLOW item",
+      "outputs": [
+        "BEFORE\n\n\n- FOLLOW item",
+        "BEFORE\n\n<script>BODY</script>\n- FOLLOW item"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / root / ordered item",
+      "source": "BEFORE\n\n<script>BODY</script>\n2. FOLLOW item",
+      "outputs": [
+        "BEFORE\n\n\n2. FOLLOW item",
+        "BEFORE\n\n<script>BODY</script>\n2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / root / heading",
+      "source": "BEFORE\n\n<script>BODY</script>\n# FOLLOW heading",
+      "outputs": [
+        "BEFORE\n\n\n# FOLLOW heading",
+        "BEFORE\n\n<script>BODY</script>\n# FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / root / setext heading",
+      "source": "BEFORE\n\n<script>BODY</script>\nFOLLOW heading\n---",
+      "outputs": [
+        "BEFORE\n\n\nFOLLOW heading\n---",
+        "BEFORE\n\n<script>BODY</script>\nFOLLOW heading\n---"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote / indented code",
+      "source": "> BEFORE\n> \n> <script>BODY</script>\n>     <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "> BEFORE\n> \n> \n>     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "> BEFORE\n> \n> <script>BODY</script>\n>     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote / fence",
+      "source": "> BEFORE\n> \n> <script>BODY</script>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+      "outputs": [
+        "> BEFORE\n> \n> \n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+        "> BEFORE\n> \n> <script>BODY</script>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote / paragraph",
+      "source": "> BEFORE\n> \n> <script>BODY</script>\n> FOLLOW paragraph",
+      "outputs": [
+        "> BEFORE\n> \n> \n> FOLLOW paragraph",
+        "> BEFORE\n> \n> <script>BODY</script>\n> FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote / list item",
+      "source": "> BEFORE\n> \n> <script>BODY</script>\n> - FOLLOW item",
+      "outputs": [
+        "> BEFORE\n> \n> \n> - FOLLOW item",
+        "> BEFORE\n> \n> <script>BODY</script>\n> - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote / ordered item",
+      "source": "> BEFORE\n> \n> <script>BODY</script>\n> 2. FOLLOW item",
+      "outputs": [
+        "> BEFORE\n> \n> \n> 2. FOLLOW item",
+        "> BEFORE\n> \n> <script>BODY</script>\n> 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote / heading",
+      "source": "> BEFORE\n> \n> <script>BODY</script>\n> # FOLLOW heading",
+      "outputs": [
+        "> BEFORE\n> \n> \n> # FOLLOW heading",
+        "> BEFORE\n> \n> <script>BODY</script>\n> # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote / setext heading",
+      "source": "> BEFORE\n> \n> <script>BODY</script>\n> FOLLOW heading\n> ---",
+      "outputs": [
+        "> BEFORE\n> \n> \n> FOLLOW heading\n> ---",
+        "> BEFORE\n> \n> <script>BODY</script>\n> FOLLOW heading\n> ---"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / list / indented code",
+      "source": "- BEFORE\n  \n  <script>BODY</script>\n      <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "- BEFORE\n  \n  \n      &lt;img onerror=\"FOLLOW()\"&gt;",
+        "- BEFORE\n  \n  <script>BODY</script>\n      <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / list / fence",
+      "source": "- BEFORE\n  \n  <script>BODY</script>\n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~",
+      "outputs": [
+        "- BEFORE\n  \n  \n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~",
+        "- BEFORE\n  \n  <script>BODY</script>\n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / list / paragraph",
+      "source": "- BEFORE\n  \n  <script>BODY</script>\n  FOLLOW paragraph",
+      "outputs": [
+        "- BEFORE\n  \n  \n  FOLLOW paragraph",
+        "- BEFORE\n  \n  <script>BODY</script>\n  FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / list / list item",
+      "source": "- BEFORE\n  \n  <script>BODY</script>\n  - FOLLOW item",
+      "outputs": [
+        "- BEFORE\n  \n  \n  - FOLLOW item",
+        "- BEFORE\n  \n  <script>BODY</script>\n  - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / list / ordered item",
+      "source": "- BEFORE\n  \n  <script>BODY</script>\n  2. FOLLOW item",
+      "outputs": [
+        "- BEFORE\n  \n  \n  2. FOLLOW item",
+        "- BEFORE\n  \n  <script>BODY</script>\n  2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / list / heading",
+      "source": "- BEFORE\n  \n  <script>BODY</script>\n  # FOLLOW heading",
+      "outputs": [
+        "- BEFORE\n  \n  \n  # FOLLOW heading",
+        "- BEFORE\n  \n  <script>BODY</script>\n  # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / list / setext heading",
+      "source": "- BEFORE\n  \n  <script>BODY</script>\n  FOLLOW heading\n  ---",
+      "outputs": [
+        "- BEFORE\n  \n  \n  FOLLOW heading\n  ---",
+        "- BEFORE\n  \n  <script>BODY</script>\n  FOLLOW heading\n  ---"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote-in-list / indented code",
+      "source": "- > BEFORE\n  > \n  > <script>BODY</script>\n  >     <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  >     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "- > BEFORE\n  > \n  > <script>BODY</script>\n  >     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote-in-list / fence",
+      "source": "- > BEFORE\n  > \n  > <script>BODY</script>\n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~",
+        "- > BEFORE\n  > \n  > <script>BODY</script>\n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote-in-list / paragraph",
+      "source": "- > BEFORE\n  > \n  > <script>BODY</script>\n  > FOLLOW paragraph",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > FOLLOW paragraph",
+        "- > BEFORE\n  > \n  > <script>BODY</script>\n  > FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote-in-list / list item",
+      "source": "- > BEFORE\n  > \n  > <script>BODY</script>\n  > - FOLLOW item",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > - FOLLOW item",
+        "- > BEFORE\n  > \n  > <script>BODY</script>\n  > - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote-in-list / ordered item",
+      "source": "- > BEFORE\n  > \n  > <script>BODY</script>\n  > 2. FOLLOW item",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > 2. FOLLOW item",
+        "- > BEFORE\n  > \n  > <script>BODY</script>\n  > 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote-in-list / heading",
+      "source": "- > BEFORE\n  > \n  > <script>BODY</script>\n  > # FOLLOW heading",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > # FOLLOW heading",
+        "- > BEFORE\n  > \n  > <script>BODY</script>\n  > # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / quote-in-list / setext heading",
+      "source": "- > BEFORE\n  > \n  > <script>BODY</script>\n  > FOLLOW heading\n  > ---",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > FOLLOW heading\n  > ---",
+        "- > BEFORE\n  > \n  > <script>BODY</script>\n  > FOLLOW heading\n  > ---"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / component / indented code",
+      "source": "<Note>\n\nBEFORE\n\n<script>BODY</script>\n    <img onerror=\"FOLLOW()\">\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n>     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "> BEFORE\n>\n> <script>BODY</script>\n>     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / component / fence",
+      "source": "<Note>\n\nBEFORE\n\n<script>BODY</script>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+        "> BEFORE\n>\n> <script>BODY</script>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / component / paragraph",
+      "source": "<Note>\n\nBEFORE\n\n<script>BODY</script>\nFOLLOW paragraph\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> FOLLOW paragraph",
+        "> BEFORE\n>\n> <script>BODY</script>\n> FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / component / list item",
+      "source": "<Note>\n\nBEFORE\n\n<script>BODY</script>\n- FOLLOW item\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> - FOLLOW item",
+        "> BEFORE\n>\n> <script>BODY</script>\n> - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / component / ordered item",
+      "source": "<Note>\n\nBEFORE\n\n<script>BODY</script>\n2. FOLLOW item\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> 2. FOLLOW item",
+        "> BEFORE\n>\n> <script>BODY</script>\n> 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / component / heading",
+      "source": "<Note>\n\nBEFORE\n\n<script>BODY</script>\n# FOLLOW heading\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> # FOLLOW heading",
+        "> BEFORE\n>\n> <script>BODY</script>\n> # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<script>BODY</script> / component / setext heading",
+      "source": "<Note>\n\nBEFORE\n\n<script>BODY</script>\nFOLLOW heading\n---\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> FOLLOW heading\n> ---",
+        "> BEFORE\n>\n> <script>BODY</script>\n> FOLLOW heading\n> ---"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / root / indented code",
+      "source": "BEFORE\n\n<style>BODY</style>\n    <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "BEFORE\n\n\n    &lt;img onerror=\"FOLLOW()\"&gt;",
+        "BEFORE\n\n<style>BODY</style>\n    <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / root / fence",
+      "source": "BEFORE\n\n<style>BODY</style>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~",
+      "outputs": [
+        "BEFORE\n\n\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~",
+        "BEFORE\n\n<style>BODY</style>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / root / paragraph",
+      "source": "BEFORE\n\n<style>BODY</style>\nFOLLOW paragraph",
+      "outputs": [
+        "BEFORE\n\n\nFOLLOW paragraph",
+        "BEFORE\n\n<style>BODY</style>\nFOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / root / list item",
+      "source": "BEFORE\n\n<style>BODY</style>\n- FOLLOW item",
+      "outputs": [
+        "BEFORE\n\n\n- FOLLOW item",
+        "BEFORE\n\n<style>BODY</style>\n- FOLLOW item"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / root / ordered item",
+      "source": "BEFORE\n\n<style>BODY</style>\n2. FOLLOW item",
+      "outputs": [
+        "BEFORE\n\n\n2. FOLLOW item",
+        "BEFORE\n\n<style>BODY</style>\n2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / root / heading",
+      "source": "BEFORE\n\n<style>BODY</style>\n# FOLLOW heading",
+      "outputs": [
+        "BEFORE\n\n\n# FOLLOW heading",
+        "BEFORE\n\n<style>BODY</style>\n# FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / root / setext heading",
+      "source": "BEFORE\n\n<style>BODY</style>\nFOLLOW heading\n---",
+      "outputs": [
+        "BEFORE\n\n\nFOLLOW heading\n---",
+        "BEFORE\n\n<style>BODY</style>\nFOLLOW heading\n---"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote / indented code",
+      "source": "> BEFORE\n> \n> <style>BODY</style>\n>     <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "> BEFORE\n> \n> \n>     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "> BEFORE\n> \n> <style>BODY</style>\n>     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote / fence",
+      "source": "> BEFORE\n> \n> <style>BODY</style>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+      "outputs": [
+        "> BEFORE\n> \n> \n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+        "> BEFORE\n> \n> <style>BODY</style>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote / paragraph",
+      "source": "> BEFORE\n> \n> <style>BODY</style>\n> FOLLOW paragraph",
+      "outputs": [
+        "> BEFORE\n> \n> \n> FOLLOW paragraph",
+        "> BEFORE\n> \n> <style>BODY</style>\n> FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote / list item",
+      "source": "> BEFORE\n> \n> <style>BODY</style>\n> - FOLLOW item",
+      "outputs": [
+        "> BEFORE\n> \n> \n> - FOLLOW item",
+        "> BEFORE\n> \n> <style>BODY</style>\n> - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote / ordered item",
+      "source": "> BEFORE\n> \n> <style>BODY</style>\n> 2. FOLLOW item",
+      "outputs": [
+        "> BEFORE\n> \n> \n> 2. FOLLOW item",
+        "> BEFORE\n> \n> <style>BODY</style>\n> 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote / heading",
+      "source": "> BEFORE\n> \n> <style>BODY</style>\n> # FOLLOW heading",
+      "outputs": [
+        "> BEFORE\n> \n> \n> # FOLLOW heading",
+        "> BEFORE\n> \n> <style>BODY</style>\n> # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote / setext heading",
+      "source": "> BEFORE\n> \n> <style>BODY</style>\n> FOLLOW heading\n> ---",
+      "outputs": [
+        "> BEFORE\n> \n> \n> FOLLOW heading\n> ---",
+        "> BEFORE\n> \n> <style>BODY</style>\n> FOLLOW heading\n> ---"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / list / indented code",
+      "source": "- BEFORE\n  \n  <style>BODY</style>\n      <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "- BEFORE\n  \n  \n      &lt;img onerror=\"FOLLOW()\"&gt;",
+        "- BEFORE\n  \n  <style>BODY</style>\n      <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / list / fence",
+      "source": "- BEFORE\n  \n  <style>BODY</style>\n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~",
+      "outputs": [
+        "- BEFORE\n  \n  \n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~",
+        "- BEFORE\n  \n  <style>BODY</style>\n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / list / paragraph",
+      "source": "- BEFORE\n  \n  <style>BODY</style>\n  FOLLOW paragraph",
+      "outputs": [
+        "- BEFORE\n  \n  \n  FOLLOW paragraph",
+        "- BEFORE\n  \n  <style>BODY</style>\n  FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / list / list item",
+      "source": "- BEFORE\n  \n  <style>BODY</style>\n  - FOLLOW item",
+      "outputs": [
+        "- BEFORE\n  \n  \n  - FOLLOW item",
+        "- BEFORE\n  \n  <style>BODY</style>\n  - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / list / ordered item",
+      "source": "- BEFORE\n  \n  <style>BODY</style>\n  2. FOLLOW item",
+      "outputs": [
+        "- BEFORE\n  \n  \n  2. FOLLOW item",
+        "- BEFORE\n  \n  <style>BODY</style>\n  2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / list / heading",
+      "source": "- BEFORE\n  \n  <style>BODY</style>\n  # FOLLOW heading",
+      "outputs": [
+        "- BEFORE\n  \n  \n  # FOLLOW heading",
+        "- BEFORE\n  \n  <style>BODY</style>\n  # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / list / setext heading",
+      "source": "- BEFORE\n  \n  <style>BODY</style>\n  FOLLOW heading\n  ---",
+      "outputs": [
+        "- BEFORE\n  \n  \n  FOLLOW heading\n  ---",
+        "- BEFORE\n  \n  <style>BODY</style>\n  FOLLOW heading\n  ---"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote-in-list / indented code",
+      "source": "- > BEFORE\n  > \n  > <style>BODY</style>\n  >     <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  >     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "- > BEFORE\n  > \n  > <style>BODY</style>\n  >     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote-in-list / fence",
+      "source": "- > BEFORE\n  > \n  > <style>BODY</style>\n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~",
+        "- > BEFORE\n  > \n  > <style>BODY</style>\n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote-in-list / paragraph",
+      "source": "- > BEFORE\n  > \n  > <style>BODY</style>\n  > FOLLOW paragraph",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > FOLLOW paragraph",
+        "- > BEFORE\n  > \n  > <style>BODY</style>\n  > FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote-in-list / list item",
+      "source": "- > BEFORE\n  > \n  > <style>BODY</style>\n  > - FOLLOW item",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > - FOLLOW item",
+        "- > BEFORE\n  > \n  > <style>BODY</style>\n  > - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote-in-list / ordered item",
+      "source": "- > BEFORE\n  > \n  > <style>BODY</style>\n  > 2. FOLLOW item",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > 2. FOLLOW item",
+        "- > BEFORE\n  > \n  > <style>BODY</style>\n  > 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote-in-list / heading",
+      "source": "- > BEFORE\n  > \n  > <style>BODY</style>\n  > # FOLLOW heading",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > # FOLLOW heading",
+        "- > BEFORE\n  > \n  > <style>BODY</style>\n  > # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / quote-in-list / setext heading",
+      "source": "- > BEFORE\n  > \n  > <style>BODY</style>\n  > FOLLOW heading\n  > ---",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > FOLLOW heading\n  > ---",
+        "- > BEFORE\n  > \n  > <style>BODY</style>\n  > FOLLOW heading\n  > ---"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / component / indented code",
+      "source": "<Note>\n\nBEFORE\n\n<style>BODY</style>\n    <img onerror=\"FOLLOW()\">\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n>     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "> BEFORE\n>\n> <style>BODY</style>\n>     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / component / fence",
+      "source": "<Note>\n\nBEFORE\n\n<style>BODY</style>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+        "> BEFORE\n>\n> <style>BODY</style>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / component / paragraph",
+      "source": "<Note>\n\nBEFORE\n\n<style>BODY</style>\nFOLLOW paragraph\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> FOLLOW paragraph",
+        "> BEFORE\n>\n> <style>BODY</style>\n> FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / component / list item",
+      "source": "<Note>\n\nBEFORE\n\n<style>BODY</style>\n- FOLLOW item\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> - FOLLOW item",
+        "> BEFORE\n>\n> <style>BODY</style>\n> - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / component / ordered item",
+      "source": "<Note>\n\nBEFORE\n\n<style>BODY</style>\n2. FOLLOW item\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> 2. FOLLOW item",
+        "> BEFORE\n>\n> <style>BODY</style>\n> 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / component / heading",
+      "source": "<Note>\n\nBEFORE\n\n<style>BODY</style>\n# FOLLOW heading\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> # FOLLOW heading",
+        "> BEFORE\n>\n> <style>BODY</style>\n> # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<style>BODY</style> / component / setext heading",
+      "source": "<Note>\n\nBEFORE\n\n<style>BODY</style>\nFOLLOW heading\n---\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> FOLLOW heading\n> ---",
+        "> BEFORE\n>\n> <style>BODY</style>\n> FOLLOW heading\n> ---"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / root / indented code",
+      "source": "BEFORE\n\n<iframe>BODY</iframe>\n    <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "BEFORE\n\n\n    &lt;img onerror=\"FOLLOW()\"&gt;",
+        "BEFORE\n\n<iframe>BODY</iframe>\n    <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / root / fence",
+      "source": "BEFORE\n\n<iframe>BODY</iframe>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~",
+      "outputs": [
+        "BEFORE\n\n\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~",
+        "BEFORE\n\n<iframe>BODY</iframe>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / root / paragraph",
+      "source": "BEFORE\n\n<iframe>BODY</iframe>\nFOLLOW paragraph",
+      "outputs": [
+        "BEFORE\n\n\nFOLLOW paragraph",
+        "BEFORE\n\n<iframe>BODY</iframe>\nFOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / root / list item",
+      "source": "BEFORE\n\n<iframe>BODY</iframe>\n- FOLLOW item",
+      "outputs": [
+        "BEFORE\n\n\n- FOLLOW item",
+        "BEFORE\n\n<iframe>BODY</iframe>\n- FOLLOW item"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / root / ordered item",
+      "source": "BEFORE\n\n<iframe>BODY</iframe>\n2. FOLLOW item",
+      "outputs": [
+        "BEFORE\n\n\n2. FOLLOW item",
+        "BEFORE\n\n<iframe>BODY</iframe>\n2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / root / heading",
+      "source": "BEFORE\n\n<iframe>BODY</iframe>\n# FOLLOW heading",
+      "outputs": [
+        "BEFORE\n\n\n# FOLLOW heading",
+        "BEFORE\n\n<iframe>BODY</iframe>\n# FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / root / setext heading",
+      "source": "BEFORE\n\n<iframe>BODY</iframe>\nFOLLOW heading\n---",
+      "outputs": [
+        "BEFORE\n\n\nFOLLOW heading\n---",
+        "BEFORE\n\n<iframe>BODY</iframe>\nFOLLOW heading\n---"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote / indented code",
+      "source": "> BEFORE\n> \n> <iframe>BODY</iframe>\n>     <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "> BEFORE\n> \n> \n>     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "> BEFORE\n> \n> <iframe>BODY</iframe>\n>     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote / fence",
+      "source": "> BEFORE\n> \n> <iframe>BODY</iframe>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+      "outputs": [
+        "> BEFORE\n> \n> \n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+        "> BEFORE\n> \n> <iframe>BODY</iframe>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote / paragraph",
+      "source": "> BEFORE\n> \n> <iframe>BODY</iframe>\n> FOLLOW paragraph",
+      "outputs": [
+        "> BEFORE\n> \n> \n> FOLLOW paragraph",
+        "> BEFORE\n> \n> <iframe>BODY</iframe>\n> FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote / list item",
+      "source": "> BEFORE\n> \n> <iframe>BODY</iframe>\n> - FOLLOW item",
+      "outputs": [
+        "> BEFORE\n> \n> \n> - FOLLOW item",
+        "> BEFORE\n> \n> <iframe>BODY</iframe>\n> - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote / ordered item",
+      "source": "> BEFORE\n> \n> <iframe>BODY</iframe>\n> 2. FOLLOW item",
+      "outputs": [
+        "> BEFORE\n> \n> \n> 2. FOLLOW item",
+        "> BEFORE\n> \n> <iframe>BODY</iframe>\n> 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote / heading",
+      "source": "> BEFORE\n> \n> <iframe>BODY</iframe>\n> # FOLLOW heading",
+      "outputs": [
+        "> BEFORE\n> \n> \n> # FOLLOW heading",
+        "> BEFORE\n> \n> <iframe>BODY</iframe>\n> # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote / setext heading",
+      "source": "> BEFORE\n> \n> <iframe>BODY</iframe>\n> FOLLOW heading\n> ---",
+      "outputs": [
+        "> BEFORE\n> \n> \n> FOLLOW heading\n> ---",
+        "> BEFORE\n> \n> <iframe>BODY</iframe>\n> FOLLOW heading\n> ---"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / list / indented code",
+      "source": "- BEFORE\n  \n  <iframe>BODY</iframe>\n      <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "- BEFORE\n  \n  \n      &lt;img onerror=\"FOLLOW()\"&gt;",
+        "- BEFORE\n  \n  <iframe>BODY</iframe>\n      <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / list / fence",
+      "source": "- BEFORE\n  \n  <iframe>BODY</iframe>\n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~",
+      "outputs": [
+        "- BEFORE\n  \n  \n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~",
+        "- BEFORE\n  \n  <iframe>BODY</iframe>\n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / list / paragraph",
+      "source": "- BEFORE\n  \n  <iframe>BODY</iframe>\n  FOLLOW paragraph",
+      "outputs": [
+        "- BEFORE\n  \n  \n  FOLLOW paragraph",
+        "- BEFORE\n  \n  <iframe>BODY</iframe>\n  FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / list / list item",
+      "source": "- BEFORE\n  \n  <iframe>BODY</iframe>\n  - FOLLOW item",
+      "outputs": [
+        "- BEFORE\n  \n  \n  - FOLLOW item",
+        "- BEFORE\n  \n  <iframe>BODY</iframe>\n  - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / list / ordered item",
+      "source": "- BEFORE\n  \n  <iframe>BODY</iframe>\n  2. FOLLOW item",
+      "outputs": [
+        "- BEFORE\n  \n  \n  2. FOLLOW item",
+        "- BEFORE\n  \n  <iframe>BODY</iframe>\n  2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / list / heading",
+      "source": "- BEFORE\n  \n  <iframe>BODY</iframe>\n  # FOLLOW heading",
+      "outputs": [
+        "- BEFORE\n  \n  \n  # FOLLOW heading",
+        "- BEFORE\n  \n  <iframe>BODY</iframe>\n  # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / list / setext heading",
+      "source": "- BEFORE\n  \n  <iframe>BODY</iframe>\n  FOLLOW heading\n  ---",
+      "outputs": [
+        "- BEFORE\n  \n  \n  FOLLOW heading\n  ---",
+        "- BEFORE\n  \n  <iframe>BODY</iframe>\n  FOLLOW heading\n  ---"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote-in-list / indented code",
+      "source": "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  >     <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  >     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  >     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote-in-list / fence",
+      "source": "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~",
+        "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote-in-list / paragraph",
+      "source": "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > FOLLOW paragraph",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > FOLLOW paragraph",
+        "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote-in-list / list item",
+      "source": "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > - FOLLOW item",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > - FOLLOW item",
+        "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote-in-list / ordered item",
+      "source": "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > 2. FOLLOW item",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > 2. FOLLOW item",
+        "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote-in-list / heading",
+      "source": "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > # FOLLOW heading",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > # FOLLOW heading",
+        "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / quote-in-list / setext heading",
+      "source": "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > FOLLOW heading\n  > ---",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > \n  > FOLLOW heading\n  > ---",
+        "- > BEFORE\n  > \n  > <iframe>BODY</iframe>\n  > FOLLOW heading\n  > ---"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / component / indented code",
+      "source": "<Note>\n\nBEFORE\n\n<iframe>BODY</iframe>\n    <img onerror=\"FOLLOW()\">\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n>     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "> BEFORE\n>\n> <iframe>BODY</iframe>\n>     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / component / fence",
+      "source": "<Note>\n\nBEFORE\n\n<iframe>BODY</iframe>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+        "> BEFORE\n>\n> <iframe>BODY</iframe>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / component / paragraph",
+      "source": "<Note>\n\nBEFORE\n\n<iframe>BODY</iframe>\nFOLLOW paragraph\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> FOLLOW paragraph",
+        "> BEFORE\n>\n> <iframe>BODY</iframe>\n> FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / component / list item",
+      "source": "<Note>\n\nBEFORE\n\n<iframe>BODY</iframe>\n- FOLLOW item\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> - FOLLOW item",
+        "> BEFORE\n>\n> <iframe>BODY</iframe>\n> - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / component / ordered item",
+      "source": "<Note>\n\nBEFORE\n\n<iframe>BODY</iframe>\n2. FOLLOW item\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> 2. FOLLOW item",
+        "> BEFORE\n>\n> <iframe>BODY</iframe>\n> 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / component / heading",
+      "source": "<Note>\n\nBEFORE\n\n<iframe>BODY</iframe>\n# FOLLOW heading\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> # FOLLOW heading",
+        "> BEFORE\n>\n> <iframe>BODY</iframe>\n> # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<iframe>BODY</iframe> / component / setext heading",
+      "source": "<Note>\n\nBEFORE\n\n<iframe>BODY</iframe>\nFOLLOW heading\n---\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n>\n> FOLLOW heading\n> ---",
+        "> BEFORE\n>\n> <iframe>BODY</iframe>\n> FOLLOW heading\n> ---"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / root / indented code",
+      "source": "BEFORE\n\n<div onclick=\"run()\">BODY</div>\n    <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "BEFORE\n\n&lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n    &lt;img onerror=\"FOLLOW()\"&gt;",
+        "BEFORE\n\n<div onclick=\"run()\">BODY</div>\n    <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / root / fence",
+      "source": "BEFORE\n\n<div onclick=\"run()\">BODY</div>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~",
+      "outputs": [
+        "BEFORE\n\n&lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~",
+        "BEFORE\n\n<div onclick=\"run()\">BODY</div>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / root / paragraph",
+      "source": "BEFORE\n\n<div onclick=\"run()\">BODY</div>\nFOLLOW paragraph",
+      "outputs": [
+        "BEFORE\n\n&lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\nFOLLOW paragraph",
+        "BEFORE\n\n<div onclick=\"run()\">BODY</div>\nFOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / root / list item",
+      "source": "BEFORE\n\n<div onclick=\"run()\">BODY</div>\n- FOLLOW item",
+      "outputs": [
+        "BEFORE\n\n&lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n- FOLLOW item",
+        "BEFORE\n\n<div onclick=\"run()\">BODY</div>\n- FOLLOW item"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / root / ordered item",
+      "source": "BEFORE\n\n<div onclick=\"run()\">BODY</div>\n2. FOLLOW item",
+      "outputs": [
+        "BEFORE\n\n&lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n2. FOLLOW item",
+        "BEFORE\n\n<div onclick=\"run()\">BODY</div>\n2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / root / heading",
+      "source": "BEFORE\n\n<div onclick=\"run()\">BODY</div>\n# FOLLOW heading",
+      "outputs": [
+        "BEFORE\n\n&lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n# FOLLOW heading",
+        "BEFORE\n\n<div onclick=\"run()\">BODY</div>\n# FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / root / setext heading",
+      "source": "BEFORE\n\n<div onclick=\"run()\">BODY</div>\nFOLLOW heading\n---",
+      "outputs": [
+        "BEFORE\n\n&lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\nFOLLOW heading\n---",
+        "BEFORE\n\n<div onclick=\"run()\">BODY</div>\nFOLLOW heading\n---"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote / indented code",
+      "source": "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n>     <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "> BEFORE\n> \n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n>     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n>     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote / fence",
+      "source": "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+      "outputs": [
+        "> BEFORE\n> \n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+        "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote / paragraph",
+      "source": "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> FOLLOW paragraph",
+      "outputs": [
+        "> BEFORE\n> \n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> FOLLOW paragraph",
+        "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote / list item",
+      "source": "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> - FOLLOW item",
+      "outputs": [
+        "> BEFORE\n> \n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> - FOLLOW item",
+        "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote / ordered item",
+      "source": "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> 2. FOLLOW item",
+      "outputs": [
+        "> BEFORE\n> \n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> 2. FOLLOW item",
+        "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote / heading",
+      "source": "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> # FOLLOW heading",
+      "outputs": [
+        "> BEFORE\n> \n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> # FOLLOW heading",
+        "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote / setext heading",
+      "source": "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> FOLLOW heading\n> ---",
+      "outputs": [
+        "> BEFORE\n> \n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> FOLLOW heading\n> ---",
+        "> BEFORE\n> \n> <div onclick=\"run()\">BODY</div>\n> FOLLOW heading\n> ---"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / list / indented code",
+      "source": "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n      <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "- BEFORE\n  \n  &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n      &lt;img onerror=\"FOLLOW()\"&gt;",
+        "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n      <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / list / fence",
+      "source": "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~",
+      "outputs": [
+        "- BEFORE\n  \n  &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~",
+        "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  ~~~html\n  <img onerror=\"FOLLOW()\">\n  ~~~"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / list / paragraph",
+      "source": "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  FOLLOW paragraph",
+      "outputs": [
+        "- BEFORE\n  \n  &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  FOLLOW paragraph",
+        "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / list / list item",
+      "source": "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  - FOLLOW item",
+      "outputs": [
+        "- BEFORE\n  \n  &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  - FOLLOW item",
+        "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / list / ordered item",
+      "source": "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  2. FOLLOW item",
+      "outputs": [
+        "- BEFORE\n  \n  &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  2. FOLLOW item",
+        "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / list / heading",
+      "source": "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  # FOLLOW heading",
+      "outputs": [
+        "- BEFORE\n  \n  &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  # FOLLOW heading",
+        "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / list / setext heading",
+      "source": "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  FOLLOW heading\n  ---",
+      "outputs": [
+        "- BEFORE\n  \n  &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  FOLLOW heading\n  ---",
+        "- BEFORE\n  \n  <div onclick=\"run()\">BODY</div>\n  FOLLOW heading\n  ---"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote-in-list / indented code",
+      "source": "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  >     <img onerror=\"FOLLOW()\">",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  >     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  >     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote-in-list / fence",
+      "source": "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~",
+        "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > ~~~html\n  > <img onerror=\"FOLLOW()\">\n  > ~~~"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote-in-list / paragraph",
+      "source": "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > FOLLOW paragraph",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  > FOLLOW paragraph",
+        "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote-in-list / list item",
+      "source": "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > - FOLLOW item",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  > - FOLLOW item",
+        "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote-in-list / ordered item",
+      "source": "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > 2. FOLLOW item",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  > 2. FOLLOW item",
+        "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote-in-list / heading",
+      "source": "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > # FOLLOW heading",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  > # FOLLOW heading",
+        "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / quote-in-list / setext heading",
+      "source": "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > FOLLOW heading\n  > ---",
+      "outputs": [
+        "- &gt; BEFORE\n  > \n  > &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n  > FOLLOW heading\n  > ---",
+        "- > BEFORE\n  > \n  > <div onclick=\"run()\">BODY</div>\n  > FOLLOW heading\n  > ---"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / component / indented code",
+      "source": "<Note>\n\nBEFORE\n\n<div onclick=\"run()\">BODY</div>\n    <img onerror=\"FOLLOW()\">\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n>     &lt;img onerror=\"FOLLOW()\"&gt;",
+        "> BEFORE\n>\n> <div onclick=\"run()\">BODY</div>\n>     <img onerror=\"FOLLOW()\">"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / component / fence",
+      "source": "<Note>\n\nBEFORE\n\n<div onclick=\"run()\">BODY</div>\n~~~html\n<img onerror=\"FOLLOW()\">\n~~~\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~",
+        "> BEFORE\n>\n> <div onclick=\"run()\">BODY</div>\n> ~~~html\n> <img onerror=\"FOLLOW()\">\n> ~~~"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / component / paragraph",
+      "source": "<Note>\n\nBEFORE\n\n<div onclick=\"run()\">BODY</div>\nFOLLOW paragraph\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> FOLLOW paragraph",
+        "> BEFORE\n>\n> <div onclick=\"run()\">BODY</div>\n> FOLLOW paragraph"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / component / list item",
+      "source": "<Note>\n\nBEFORE\n\n<div onclick=\"run()\">BODY</div>\n- FOLLOW item\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> - FOLLOW item",
+        "> BEFORE\n>\n> <div onclick=\"run()\">BODY</div>\n> - FOLLOW item"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / component / ordered item",
+      "source": "<Note>\n\nBEFORE\n\n<div onclick=\"run()\">BODY</div>\n2. FOLLOW item\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> 2. FOLLOW item",
+        "> BEFORE\n>\n> <div onclick=\"run()\">BODY</div>\n> 2. FOLLOW item"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / component / heading",
+      "source": "<Note>\n\nBEFORE\n\n<div onclick=\"run()\">BODY</div>\n# FOLLOW heading\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> # FOLLOW heading",
+        "> BEFORE\n>\n> <div onclick=\"run()\">BODY</div>\n> # FOLLOW heading"
+      ]
+    },
+    {
+      "name": "<div onclick=\"run()\">BODY</div> / component / setext heading",
+      "source": "<Note>\n\nBEFORE\n\n<div onclick=\"run()\">BODY</div>\nFOLLOW heading\n---\n\n</Note>",
+      "outputs": [
+        "> BEFORE\n>\n> &lt;div onclick=\"run()\"&gt;BODY&lt;/div&gt;\n> FOLLOW heading\n> ---",
+        "> BEFORE\n>\n> <div onclick=\"run()\">BODY</div>\n> FOLLOW heading\n> ---"
+      ]
+    }
+  ]
+}

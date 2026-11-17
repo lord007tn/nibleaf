@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { markdownLineKinds } from '@nibleaf/shared/markdown-code';
 import { stripMarkdownLinks } from '@nibleaf/shared/utils';
 import { lightStemArabicToken, normalizeArabicSearchText } from './arabic';
 import type { SearchHit } from './index';
@@ -118,15 +119,52 @@ const extractCode = (value: string): { prose: string; code: string[] } => {
 const restoreCode = (value: string, code: readonly string[]): string =>
   value.replace(CODE_PLACEHOLDER, (_, index: string) => ` ${code[Number(index)] ?? ''} `);
 
+/** Code spans are already held out, so their literal pipes stay untouched. */
+const cleanTableRows = (lines: string[]): string[] => {
+  const cells = (line: string) => {
+    const row = line.trim();
+    const parts: string[] = [];
+    let start = 0;
+    let backslashes = 0;
+    for (let index = 0; index < row.length; index += 1) {
+      const char = row[index];
+      if (char === '|' && backslashes % 2 === 0) {
+        parts.push(row.slice(start, index));
+        start = index + 1;
+      }
+      backslashes = char === '\\' ? backslashes + 1 : 0;
+    }
+    parts.push(row.slice(start));
+    // Only an unescaped border produces an empty outer cell during the split.
+    if (row.startsWith('|') && parts.length > 1) parts.shift();
+    if (start === row.length && row.endsWith('|') && parts.length > 1) parts.pop();
+    return parts;
+  };
+  const separator = (line: string) => line.includes('|') && /^[\s|:-]+$/.test(line) && cells(line).every((cell) => /^\s*:?-{3,}:?\s*$/.test(cell));
+  let table = false;
+  return lines.map((line, index) => {
+    if (separator(line)) return '';
+    // A persisted chunk can start halfway through a table, after its header.
+    if (separator(lines[index + 1] ?? '') || /^\s*\|.*\|\s*$/.test(line)) table = true;
+    if (!line.includes('|') || !line.trim()) table = false;
+    // A table may start on the list item's opening line (`- | Name | ...`).
+    return table
+      ? cells(line.trim().replace(/^(?:[-*+]|\d+[.)])[ \t]+(?=\|)/, ''))
+          .map((cell) => cell.trim().replace(/\\\|/g, '|'))
+          .join(' · ')
+      : line;
+  });
+};
+
 export const cleanSearchText = (value: string): string => {
   const { prose, code } = extractCode(value);
   const lines = withoutComments(prose)
     .split('\n')
     .map((line) => {
       const markers = line.trim().replace(/[ \t]/g, '');
-      return markers.length >= 3 && /^[-*_]+$/.test(markers) ? '' : line;
+      return markers === '$$' || (markers.length >= 3 && /^[-*_]+$/.test(markers)) ? '' : line;
     });
-  const cleaned = stripMarkdownLinks(lines.join('\n'))
+  const cleaned = stripMarkdownLinks(cleanTableRows(lines).join('\n'))
     // MDX and HTML are layout. CLI placeholders such as <name> stay readable.
     // Attributes are bounded, so an unclosed tag can't make the scan quadratic.
     // Code is held out above, so this only ever strips markup from prose.
@@ -136,12 +174,19 @@ export const cleanSearchText = (value: string): string => {
   const prosePass = cleaned
     .replace(/\[!\w+\]/g, ' ')
     .replace(/(^|\s)\\[-*+]\s*(?:\d+[-.)]\s*)?/gm, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .replace(/^(?:>\s*|[-*+]\s+)/gm, '')
+    .replace(/^ {0,3}#{1,6}[ \t]+(.*)$/gm, (_, heading: string) =>
+      heading
+        .trimEnd()
+        .replace(/[ \t]#+$/, '')
+        .trimEnd(),
+    )
+    .replace(/^[ \t]*(?:>\s*|[-*+]\s+)/gm, '')
     .replace(/^[ \t]*\d+[.)][ \t]+/gm, '')
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/~~([^~]+)~~/g, '$1')
-    .replace(/(^|\s)[*_]([^*_\n]+)[*_](?=\s|$)/g, '$1$2');
+    .replace(/(^|[^\p{L}\p{M}\p{N}_])__([^_\n]+)__(?=$|[^\p{L}\p{M}\p{N}_])/gu, '$1$2')
+    .replace(/(^|[^\p{L}\p{M}\p{N}_])[*_]([^*_\n]+)[*_](?=$|[^\p{L}\p{M}\p{N}_])/gu, '$1$2')
+    .replace(/(^|[^\\])(\${1,2})(?=\S)([^$\n]*?[^\s$\\])\2(?!\d)/g, '$1$3');
   // Code comes back verbatim, after every prose rule has run.
   return restoreCode(prosePass, code)
     .replace(/\s+/g, ' ')
@@ -165,6 +210,11 @@ export interface SearchChunkSource {
   path: string;
   description: string;
   headings: string[];
+  /** The headings the reader renders, at the source lines where they are written,
+   * with their DOM ids (`readerSections` from `@nibleaf/shared/reader-headings`,
+   * the parser the reader's renderer and the citation check share). Sections are
+   * cut at these lines and record these ids. */
+  sections?: ReadonlyArray<{ line: number; depth: number; id: string }>;
   content: string;
   icon?: string;
   language: string;
@@ -180,6 +230,11 @@ export interface SearchChunk {
   description: string;
   heading: string;
   headingPath: string[];
+  /** DOM id of the section this chunk is in, as the published page renders it:
+   * its heading's, or for an h5/h6 its nearest h1–h4 ancestor's (the levels the
+   * reader's table of contents and section links use). Absent at the top of a
+   * page, before any heading, and for pages indexed without the reader's sections. */
+  anchor?: string;
   content: string;
   contentHash: string;
   language: string;
@@ -312,37 +367,79 @@ const markdownHeading = (line: string): { level: number; text: string } | null =
 interface Section {
   heading: string;
   headingPath: string[];
+  /** 1–6; 0 for the text before the first heading. */
+  level: number;
+  /** The DOM id of the section (see SearchChunk.anchor); unknown without the reader's sections. */
+  anchor?: string;
   body: string;
 }
 
-const markdownSections = (content: string): Section[] => {
+const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)[ \t]*$/;
+
+/** A source line's heading text: an ATX heading's (up to three spaces of indent)
+ * or, for a setext heading, the line itself. */
+const headingText = (line: string): string => {
+  const atx = markdownHeading(line.replace(/^ {1,3}(?=#)/, ''));
+  return cleanSearchText(atx ? atx.text : line.trim());
+};
+
+/** Splits a page into sections at its headings. With the reader's sections
+ * (`readerSections` from `@nibleaf/shared/reader-headings`), it cuts exactly at the
+ * lines the reader renders as headings and records their ids: an h5 or h6 takes its
+ * nearest h1–h4 ancestor's, the levels the reader links to. Without them, it finds
+ * ATX headings itself. Either way fenced code (any fence length, nested fences
+ * included) and the lines of an HTML block are never headings: the shared
+ * scanner decides. */
+const markdownSections = (content: string, given?: SearchChunkSource['sections']): Section[] => {
+  const lines = content.split('\n').map((line) => line.replace(/\r$/, ''));
+  const kinds = markdownLineKinds(lines);
+  const atLine = given ? new Map(given.map((section) => [section.line, section])) : undefined;
   const sections: Section[] = [];
   const headingPath: string[] = [];
+  const anchors: (string | undefined)[] = [];
   let heading = '';
+  let level = 0;
+  let anchor: string | undefined;
   let body: string[] = [];
-  let fenced = false;
   const flush = () => {
     const value = body.join('\n').trim();
     // Imported docs may put a complete definition in a heading with no body.
-    if (value || heading) sections.push({ heading, headingPath: headingPath.filter(Boolean), body: value || heading });
+    if (value || heading)
+      sections.push({ heading, headingPath: headingPath.filter(Boolean), level, ...(anchor ? { anchor } : {}), body: value || heading });
     body = [];
   };
-  for (const line of content.split(/\r?\n/)) {
-    if (/^\s*(```|~~~)/.test(line)) fenced = !fenced;
-    const match = fenced ? null : markdownHeading(line);
-    if (!match) {
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index] ?? '';
+    const rendered = atLine?.get(index);
+    const own = atLine ? undefined : kinds[index] !== 'prose' ? null : markdownHeading(line);
+    if (!rendered && !own) {
       body.push(line);
       continue;
     }
     flush();
-    const level = match.level;
-    heading = cleanSearchText(match.text);
+    level = rendered ? rendered.depth : (own?.level ?? 0);
+    heading = rendered ? headingText(line) : cleanSearchText(own?.text ?? '');
     headingPath.length = Math.max(0, level - 1);
     headingPath[level - 1] = heading;
+    anchors.length = Math.max(0, level - 1);
+    anchor = rendered ? (level <= 4 ? rendered.id : anchors.findLast((ancestor) => ancestor !== undefined)) : undefined;
+    anchors[level - 1] = anchor;
+    // A setext heading's underline is part of the heading, not of its section's text.
+    if (rendered && SETEXT_UNDERLINE.test(lines[index + 1] ?? '') && !markdownHeading(line.replace(/^ {1,3}(?=#)/, ''))) index += 1;
   }
   flush();
-  return sections.length > 0 ? sections : [{ heading: '', headingPath: [], body: content }];
+  return sections.length > 0 ? sections : [{ heading: '', headingPath: [], level: 0, body: content }];
 };
+
+/** Heading text compared the way both sides agree on: the chunker reads raw
+ * Markdown headings, the reader strips inline Markdown, so only letters and
+ * digits count (any script), case-folded. */
+export const sectionHeadingKey = (text: string): string =>
+  text
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
 
 const splitSection = (body: string, maxChars: number, overlapChars: number): string[] => {
   if (body.length <= maxChars) return [body];
@@ -380,7 +477,7 @@ export const chunkSearchDocument = (
   const maxChars = options.maxChars ?? 1400;
   const overlapChars = Math.min(options.overlapChars ?? 180, Math.floor(maxChars / 3));
   let ordinal = 0;
-  return markdownSections(source.content).flatMap((section) =>
+  return markdownSections(source.content, source.sections).flatMap((section) =>
     splitSection(section.body, maxChars, overlapChars).map((content) => {
       // Hash every field that enters the dense embedding. Metadata-only fields
       // (path/icon/visibility) can then update in place without paying for a new
@@ -396,6 +493,7 @@ export const chunkSearchDocument = (
         description: source.description,
         heading: section.heading,
         headingPath: section.headingPath,
+        ...(section.anchor ? { anchor: section.anchor } : {}),
         content,
         contentHash,
         language: source.language,

@@ -1,0 +1,31 @@
+{
+  "sameAsEnglish": [
+    "settings_banner_linkurl_placeholder",
+    "settings_addons_editurl_placeholder",
+    "settings_addons_issueurl_placeholder",
+    "settings_members_emailplaceholder",
+    "settings_usage_unit_byte",
+    "settings_usage_unit_mib",
+    "settings_usage_unit_gib",
+    "settings_exports_workflow_size_kib",
+    "settings_exports_workflow_size_mib",
+    "settings_exports_workflow_size_gib",
+    "settings_account_email_placeholder",
+    "settings_integrations_provider_publicgit",
+    "settings_integrations_provider_plausible",
+    "settings_integrations_provider_qdrant",
+    "settings_integrations_provider_postmark",
+    "settings_integrations_provider_maxio",
+    "settings_integrations_provider_minio",
+    "settings_integrations_provider_amazons3",
+    "settings_integrations_provider_cloudflarer2",
+    "settings_integrations_provider_backblazeb2",
+    "settings_integrations_placeholder_slack",
+    "settings_integrations_placeholder_discord",
+    "settings_integrations_placeholder_zapier",
+    "settings_ai_source_managed",
+    "settings_joinlinks_domainplaceholder",
+    "settings_group_ai"
+  ],
+  "pending": []
+}

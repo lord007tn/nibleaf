@@ -5,7 +5,7 @@ import {
   type DocumentationComponentDefinition,
 } from '@nibleaf/shared/documentation-components';
 import { portablePublicMdxMarkdown } from '@nibleaf/shared/public-markdown-content';
-import { markdownTemplate, mdxIndexTemplate } from '@nibleaf/shared/theme-repository-templates';
+import { markdownScanTemplate, markdownTemplate, mdxIndexTemplate } from '@nibleaf/shared/theme-repository-templates';
 import { Editor, type Node as TiptapNode } from '@tiptap/core';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -336,6 +336,7 @@ describe('documentation component contract', () => {
  */
 describe('exported theme repository templates', () => {
   const markdown = markdownTemplate();
+  const markdownScan = markdownScanTemplate();
   const index = mdxIndexTemplate();
   const between = (source: string, start: string, end: string) => {
     const from = source.indexOf(start);
@@ -355,7 +356,10 @@ describe('exported theme repository templates', () => {
     const defaults = new Set(defaultSchema.tagNames ?? []);
     // `mermaid` is synthesized by the Nibleaf reader only; the template has no Mermaid support.
     const components = new Set([...READER_TAGS, 'mermaid']);
-    const reader = (sanitizeSchema.tagNames ?? []).filter((tag) => !defaults.has(tag) && !components.has(tag));
+    // Known gap: the exported template renders no videos or embeds yet (its
+    // pipeline has no iframe rewrite or player), so it does not allow them.
+    const readerOnly = new Set(['video', 'track', 'mdxembed']);
+    const reader = (sanitizeSchema.tagNames ?? []).filter((tag) => !defaults.has(tag) && !components.has(tag) && !readerOnly.has(tag));
     expect(reader).toEqual(['u']);
     expect(sorted(template)).toEqual(sorted(reader));
   });
@@ -385,7 +389,9 @@ describe('exported theme repository templates', () => {
     expect(renames).toEqual(
       component((candidate) => candidate.reader.tag !== candidate.tag.toLowerCase()).map((candidate) => [candidate.tag, candidate.reader.tag]),
     );
-    const selfClosing = /\.replace\(\/<\(([\w|]+)\)\\b\(\[\^>\]\*\)\\\/>\/gi/.exec(markdown)?.[1]?.split('|');
+    // The self-closing expansion lives in the generated src/lib/markdown-scan.ts.
+    expect(markdown).toContain('expandSelfClosingComponents(');
+    const selfClosing = /const opener = \/<\(([\w|]+)\)\\b\/gi;/.exec(markdownScan)?.[1]?.split('|');
     expect(sorted(selfClosing ?? [])).toEqual(sorted(component((candidate) => candidate.selfClosing).map((candidate) => candidate.tag)));
   });
 

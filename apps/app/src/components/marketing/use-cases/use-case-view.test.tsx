@@ -53,7 +53,8 @@ describe.each(pages)('%s use-case pages', (lang, Page, copies, alternate, altern
 
     const main = root.querySelector('main') as HTMLElement;
     expect(main.querySelectorAll('a[href="/sign-up"]').length).toBeGreaterThanOrEqual(2);
-    expect(main.querySelectorAll('a[href="/self-hosting"]').length).toBeGreaterThanOrEqual(2);
+    // Arabic pages link to the Arabic self-hosting page (P2-MKT-002).
+    expect(main.querySelectorAll(`a[href="${lang === 'ar' ? '/ar/self-hosting' : '/self-hosting'}"]`).length).toBeGreaterThanOrEqual(2);
     expect(main.querySelector('a[href="/sign-up"]')?.textContent).toBe(copy.hero.primaryCta.label);
 
     for (const problem of copy.problems.items) expect(main.textContent).toContain(problem.body);

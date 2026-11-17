@@ -1,0 +1,45 @@
+{
+  "label": "before",
+  "unknown-en-1440": {
+    "status": 404,
+    "chain": ["http://localhost:4310/sites/no-such-site-here"],
+    "finalUrl": "http://localhost:4310/sites/no-such-site-here",
+    "title": "Not published yet",
+    "heading": "Not published yet"
+  },
+  "unknown-en-390": {
+    "status": 404,
+    "chain": ["http://localhost:4310/sites/no-such-site-here"],
+    "finalUrl": "http://localhost:4310/sites/no-such-site-here",
+    "title": "Not published yet",
+    "heading": "Not published yet"
+  },
+  "unknown-ar-1440": {
+    "status": 404,
+    "chain": ["http://localhost:4310/sites/no-such-site-here?lang=ar"],
+    "finalUrl": "http://localhost:4310/sites/no-such-site-here?lang=ar",
+    "title": "لم يُنشر بعد",
+    "heading": "لم يُنشر بعد"
+  },
+  "slug-en-1440": {
+    "status": 404,
+    "chain": ["http://localhost:4310/sites/joodpms"],
+    "finalUrl": "http://localhost:4310/sites/joodpms",
+    "title": "Not published yet",
+    "heading": "Not published yet"
+  },
+  "slug-en-390": {
+    "status": 404,
+    "chain": ["http://localhost:4310/sites/joodpms"],
+    "finalUrl": "http://localhost:4310/sites/joodpms",
+    "title": "Not published yet",
+    "heading": "Not published yet"
+  },
+  "slug-ar-1440": {
+    "status": 404,
+    "chain": ["http://localhost:4310/sites/joodpms?lang=ar"],
+    "finalUrl": "http://localhost:4310/sites/joodpms?lang=ar",
+    "title": "لم يُنشر بعد",
+    "heading": "لم يُنشر بعد"
+  }
+}

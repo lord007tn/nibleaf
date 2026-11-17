@@ -12,7 +12,7 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Eye, Rocket } from 'lucide-react';
-import { type CSSProperties, Fragment, type ReactNode, useId, useState } from 'react';
+import { type CSSProperties, Fragment, type ReactNode, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { NotificationsPopover } from '@/components/app/notifications-popover';
 import { OrganizationSwitcher } from '@/components/app/org-switcher/organization-switcher';
@@ -21,11 +21,18 @@ import { ProjectSidebar } from '@/components/app/project-sidebar';
 import { ShellSearchButton } from '@/components/app/shell-search-button';
 import { DeployPipeline, type PublishPage } from '@/components/project/deploy-pipeline';
 import { PublishModal } from '@/components/project/publish-modal';
+import { PublishLauncherContext } from '@/features/publish/components/publish-launcher';
+import { sitePreviewLink } from '@/features/site-preview/components/site-preview-link';
+import { previewsDraft } from '@/features/site-preview/model/preview-target';
+import { isSectionId } from '@/features/site-settings/model/ids';
+import { sectionLabelKey } from '@/features/site-settings/model/sections';
 import { useDeployments, useOrganizationOfProject, usePendingChanges, useProject } from '@/hooks/api';
 import type { Project } from '@/hooks/api/types';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { useProjectAdminStatus } from '@/hooks/use-project-admin-status';
 import { useRecordVisitEffect } from '@/hooks/use-record-visit';
 import type { FirstPublishAttribution } from '@/lib/first-publish-activation';
+import { pageTitle } from '@/lib/page-title';
 
 /** Top-bar status badge + Publish button. Publishing happens through the modal → pipeline flow.
  *  `initialPublishOpen` opens the publish modal on mount (deep link: editor?publish=true). */
@@ -34,13 +41,27 @@ export function PublishControl({
   initialPublishOpen = false,
   beforePublish,
   currentPage,
+  openRequest = 0,
+  compact = false,
 }: {
   project: Project;
   currentPage?: PublishPage;
   initialPublishOpen?: boolean;
   beforePublish?: () => Promise<void> | Promise<boolean>;
+  /** Each increment asks to open the publish sheet (see `usePublishLauncher`). */
+  openRequest?: number;
+  /** Phones: the button keeps its icon and count; its name stays "Publish". */
+  compact?: boolean;
 }) {
   const [publishOpen, setPublishOpen] = useState(initialPublishOpen);
+  // Only a request made while this control is mounted opens the sheet: one
+  // made before it remounted (a page visited in between) is not replayed.
+  const handledRequest = useRef(openRequest);
+  useEffect(() => {
+    if (openRequest <= handledRequest.current) return;
+    handledRequest.current = openRequest;
+    setPublishOpen(true);
+  }, [openRequest]);
   const [deployOpen, setDeployOpen] = useState(false);
   const [publishedAttribution, setPublishedAttribution] = useState<FirstPublishAttribution | null>(null);
   const [publishedDeploymentId, setPublishedDeploymentId] = useState<string | null>(null);
@@ -61,9 +82,13 @@ export function PublishControl({
   const changeCount = pending.data?.changes.length ?? 0;
   const latest = deployments.data?.[0];
   const building = latest?.status === 'PENDING' || latest?.status === 'BUILDING';
+  // A change only to navigation groups or site settings lists no page, but the
+  // site is still not up to date: show that too instead of hiding the work.
+  const siteChangesOnly = changeCount === 0 && pending.data?.hasBaseline === true && pending.data.upToDate === false;
   // The number on the button is the site's unpublished-change count. Say what it
   // means on hover, and to keyboard and screen-reader users as the description.
-  const countLabel = changeCount > 0 ? t('editor.unpublishedCount', { count: changeCount }) : undefined;
+  const countLabel =
+    changeCount > 0 ? t('editor.unpublishedCount', { count: changeCount }) : siteChangesOnly ? t('editor.unpublishedSiteChanges') : undefined;
 
   return (
     <div className="flex items-center gap-2">
@@ -93,11 +118,13 @@ export function PublishControl({
         size="sm"
       >
         <Rocket className="size-3.5" />
-        <span>{building ? t('project.publishing') : t('project.publish')}</span>
+        <span className={compact ? 'hidden sm:inline' : undefined}>{building ? t('project.publishing') : t('project.publish')}</span>
         {changeCount > 0 ? (
           <span aria-hidden className="rounded-full bg-primary-foreground/20 px-1.5 text-xs tabular-nums">
             {changeCount}
           </span>
+        ) : siteChangesOnly ? (
+          <span aria-hidden className="size-1.5 rounded-full bg-primary-foreground" data-site-changes="" />
         ) : null}
       </Button>
       {countLabel ? (
@@ -155,29 +182,45 @@ function sectionKeysFromPathname(pathname: string): MessageKey[] {
   return [];
 }
 
+/** The tab title's first part for a site page: the settings section, the
+ *  analytics tab, the page, or Overview. */
+function pageTitleKey(pathname: string, sectionKeys: readonly MessageKey[], settingsSection: unknown): MessageKey {
+  if (/\/editor\/?$/.test(pathname)) return 'project.editor';
+  if (/\/settings\/?$/.test(pathname) && isSectionId(settingsSection)) return sectionLabelKey(settingsSection);
+  return sectionKeys.at(-1) ?? 'project.overview';
+}
+
 /** The per-site shell: a left sidebar (switcher + sections + account) with a slim
- *  content header. Publishing lives ONLY in the editor (Mintlify-style); the
- *  dashboard header just offers a live-site preview. */
+ *  content header. The header offers Preview and Publish on every site page
+ *  (P1-DASH-005): unpublished changes are never only visible in the editor.
+ *  The editor and the draft preview render their own Publish. */
 export function ProjectLayout({ projectId, children }: { projectId: string; children: ReactNode }) {
   const t = useT();
   const { data: project } = useProject(projectId);
   // The website implies its org (§5.4.2): the switcher shows it and it becomes the last org.
   const { organization } = useOrganizationOfProject(project?.organizationId);
   useRecordVisitEffect({ projectId: project ? projectId : undefined });
-  const previewEnabled = project ? project.config?.addons?.previewDeployments !== false : false;
+  const previewDraft = previewsDraft(project);
+  const previewLink = sitePreviewLink(projectId, previewDraft, t);
   // The editor is a focused, full-screen workspace (Mintlify-style): it renders
   // its OWN chrome (top bar + page-tree sidebar) and hides the dashboard nav.
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const settingsSection = useRouterState({ select: (s) => (s.location.search as { section?: unknown } | undefined)?.section });
   const sectionKeys = sectionKeysFromPathname(pathname);
+  usePageTitle(pageTitle(t(pageTitleKey(pathname, sectionKeys, settingsSection)), project?.name));
   // The draft preview marks its own article area as the skip target, past its page list.
   const pageOwnsSkipTarget = /\/preview\/?$/.test(pathname);
+  const [publishRequest, setPublishRequest] = useState(0);
+  // The draft preview has Publish in its own bar; one per screen.
+  const headerPublish = project && !pageOwnsSkipTarget;
+  const launcher = useMemo(() => (headerPublish ? () => setPublishRequest((count) => count + 1) : null), [headerPublish]);
   if (pathname.endsWith('/editor')) {
     return <div className="h-screen overflow-hidden">{children}</div>;
   }
 
   return (
     <SidebarProvider style={{ '--sidebar-width': '18rem', '--header-height': '3rem' } as CSSProperties}>
-      <ProjectSidebar orgSlug={organization?.slug} projectId={projectId} />
+      <ProjectSidebar orgSlug={organization?.slug} previewDraft={previewDraft} projectId={projectId} />
       <SidebarInset as="div">
         <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center min-w-0 gap-2 border-border border-b bg-background/80 px-3 sm:px-4 backdrop-blur">
           <SidebarTrigger className="-ms-1" label={t('nav.toggleSidebar')} />
@@ -213,30 +256,20 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
               })}
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ms-auto flex shrink-0 items-center gap-2">
+          <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">
             <ShellSearchButton />
             <NotificationsPopover />
-            <Button
-              nativeButton={false}
-              render={
-                previewEnabled ? (
-                  <Link aria-label={t('project.previewDraftAria')} params={{ projectId }} to="/app/projects/$projectId/preview" />
-                ) : (
-                  // biome-ignore lint/a11y/useAnchorContent: content is merged from the Button children via Base UI's render prop
-                  <a aria-label={t('project.previewLiveAria')} href={`/sites/${projectId}`} rel="noreferrer" target="_blank" />
-                )
-              }
-              size="sm"
-              variant="outline"
-            >
-              <Eye aria-hidden className="size-3.5" /> <span className="hidden sm:inline">{t('project.preview')}</span>
+            {/* Phones give the site name the room: Preview moves into the sidebar there. */}
+            <Button className="hidden sm:inline-flex" nativeButton={false} render={previewLink} size="sm" variant="outline">
+              <Eye aria-hidden className="size-3.5" /> <span>{t('project.preview')}</span>
             </Button>
+            {headerPublish ? <PublishControl compact openRequest={publishRequest} project={project} /> : null}
           </div>
         </header>
         {/* The page's one main landmark, after the header. The draft preview puts
             the skip target on its own article area instead. */}
         <main className="flex-1 outline-none" id={pageOwnsSkipTarget ? undefined : 'main-content'} tabIndex={pageOwnsSkipTarget ? undefined : -1}>
-          {children}
+          <PublishLauncherContext value={launcher}>{children}</PublishLauncherContext>
         </main>
       </SidebarInset>
     </SidebarProvider>

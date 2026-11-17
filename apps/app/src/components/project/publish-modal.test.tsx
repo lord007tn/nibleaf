@@ -28,7 +28,7 @@ const { mutate, showError, preflight, refreshPreflight, retryMembers, domains } 
   refreshPreflight: vi.fn(),
   retryMembers: vi.fn(),
 }));
-vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
+vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
 vi.mock('sonner', () => ({ toast: { error: showError } }));
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, params, search, ...props }: { to: string; params: { projectId: string }; search: Record<string, string>; children: ReactNode }) => (
@@ -50,6 +50,12 @@ const pendingChange = {
   truncated: false,
 };
 vi.mock('@/hooks/api', () => ({
+  useBranches: () => ({
+    data: [
+      { id: 'v1', name: 'Stable' },
+      { id: 'v2', name: 'Next' },
+    ],
+  }),
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useDomains: () => domains,
   usePublish: () => ({ isPending: false, mutate }),
@@ -108,6 +114,30 @@ describe('publish draft barrier', () => {
   afterEach(async () => {
     await act(async () => root.unmount());
     container.remove();
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    { base: '', domains: [], expected: 'http://localhost:3000/sites/project-1' },
+    { base: '*.docs.example.test.', domains: [], expected: 'https://docs.docs.example.test' },
+    {
+      base: 'docs.example.test',
+      domains: [{ domain: 'docs.example.com', verified: true, isPrimary: true, dnsStatus: 'VERIFIED', sslStatus: 'PROVISIONING' }],
+      expected: 'https://docs.docs.example.test',
+    },
+    {
+      base: 'docs.example.test',
+      domains: [{ domain: 'docs.example.com', verified: true, isPrimary: true, dnsStatus: 'VERIFIED', sslStatus: 'ACTIVE' }],
+      expected: 'https://docs.example.com',
+    },
+  ])('shows the same first-publish destination as Overview: $expected', async (fixture) => {
+    vi.stubEnv('VITE_SITE_BASE_DOMAIN', fixture.base);
+    domains.data = fixture.domains;
+    preflight.hasBaseline = false;
+    const site = { ...project, id: 'project-1', slug: 'docs', readyPublishes: 0 };
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={site} />));
+    const addresses = [...document.querySelectorAll('[dir="ltr"]')].map((element) => element.textContent?.trim());
+    expect(addresses).toContain(fixture.expected);
   });
 
   it.each([
@@ -186,6 +216,17 @@ describe('publish draft barrier', () => {
     expect(isUnavailable(publishButton())).toBe(false);
   });
 
+  it('passes cached branch names to checks from different versions', async () => {
+    preflight.checks = [
+      check({ code: 'broken-internal-link', severity: 'error', versionId: 'v1', pageId: 'page-1', detail: '/gone' }),
+      check({ code: 'broken-internal-link', severity: 'error', versionId: 'v2', pageId: 'page-2', detail: '/gone' }),
+    ];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const fixes = [...document.querySelectorAll('[data-testid="publish-checks"] a')];
+    expect(fixes.map((link) => link.querySelector('bdi')?.textContent)).toEqual(['editor.branch.trigger', 'editor.branch.trigger']);
+    expect(fixes.map((link) => new URL(link.getAttribute('href') ?? '', 'https://app.test').searchParams.get('page'))).toEqual(['page-1', 'page-2']);
+  });
+
   it('lists warnings by type with a summary and still publishes', async () => {
     preflight.checks = [
       check({}),
@@ -197,11 +238,11 @@ describe('publish draft barrier', () => {
     expect(checks?.textContent).toContain('publish.checks.warningCount · publish.checks.stillAllowed');
     const groups = [...(checks?.querySelectorAll('h4') ?? [])].map((heading) => heading.textContent);
     expect(groups).toEqual(['publish.checks.untitledPage', 'publish.checks.missingAlt']);
-    // Both images on one page are one row with both sources.
-    const rows = checks?.querySelectorAll('[data-slot="data-list-item"]');
-    expect(rows).toHaveLength(2);
-    expect(rows?.[1]?.textContent).toContain('/diagram.png');
-    expect(rows?.[1]?.textContent).toContain('/screenshot.png');
+    // Each image is its own thing to fix, with its own Fix; with no error, every group is open.
+    const rows = [...(checks?.querySelectorAll('[data-slot="data-list-item"]') ?? [])].filter((row) => !row.closest('[hidden]'));
+    expect(rows).toHaveLength(3);
+    expect(rows[1]?.textContent).toContain('/diagram.png');
+    expect(rows[2]?.textContent).toContain('/screenshot.png');
 
     const publish = publishButton();
     expect(isUnavailable(publish)).toBe(false);
@@ -245,12 +286,74 @@ describe('publish draft barrier', () => {
     const fix = [...document.querySelectorAll<HTMLAnchorElement>('[data-testid="publish-checks"] a')].find(
       (link) => link.textContent === 'publish.checks.fix',
     );
-    expect(fix?.getAttribute('href')).toBe('/app/projects/project-a/editor?page=page-b');
-    expect(fix?.getAttribute('aria-label')).toBe('publish.checks.fixLabel');
+    // The editor contract (@nibleaf/shared/publish-check-codes): the page, the check and the exact evidence.
+    expect(fix?.getAttribute('href')).toBe('/app/projects/project-a/editor?page=page-b&fix=broken-internal-link&fixTarget=%2Fconfiguration');
+    expect(fix?.getAttribute('aria-label')).toBe('publish.checks.fixProblem');
     // jsdom cannot follow a link; the router handles it in the app.
     fix?.addEventListener('click', (event) => event.preventDefault());
     await act(async () => fix?.click());
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  // P1-ED-002: two problems on one page had two identical "Fix <page>" buttons.
+  it('gives every Fix its own name and target, with the evidence encoded', async () => {
+    preflight.checks = [
+      check({ code: 'broken-internal-link', severity: 'error', detail: '/configuration' }),
+      check({ code: 'broken-internal-link', severity: 'error', detail: '/a?b=1&c#d' }),
+      check({ code: 'untitled-page', detail: '' }),
+    ];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const fixes = [...document.querySelectorAll<HTMLAnchorElement>('[data-testid="publish-checks"] a')];
+    const hrefs = fixes.map((link) => new URL(link.getAttribute('href') ?? '', 'https://app.test').searchParams);
+    expect(hrefs.map((params) => [params.get('fix'), params.get('fixTarget')])).toEqual([
+      ['broken-internal-link', '/configuration'],
+      ['broken-internal-link', '/a?b=1&c#d'],
+      ['untitled-page', null],
+    ]);
+  });
+
+  it('leads with the errors: warning groups start collapsed to their name and count while an error remains', async () => {
+    preflight.checks = [check({ code: 'broken-internal-link', severity: 'error', detail: '/configuration' }), check({}), check({ detail: '/b.png' })];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const groups = [...document.querySelectorAll<HTMLElement>('[data-check-group]')];
+    const toggle = (group: HTMLElement) => group.querySelector<HTMLButtonElement>('button[aria-expanded]');
+    expect(groups.map((group) => [group.dataset.checkGroup, toggle(group)?.getAttribute('aria-expanded')])).toEqual([
+      ['broken-internal-link', 'true'],
+      ['missing-alt', 'false'],
+    ]);
+    const warnings = groups[1] as HTMLElement;
+    expect(warnings.querySelector('h4')?.textContent).toBe('publish.checks.missingAlt');
+    expect(toggle(warnings)?.textContent).toBe('publish.checks.show');
+    await act(async () => toggle(warnings)?.click());
+    expect(toggle(warnings)?.getAttribute('aria-expanded')).toBe('true');
+    expect([...warnings.querySelectorAll('[data-slot="data-list-item"]')].filter((row) => !row.closest('[hidden]'))).toHaveLength(2);
+  });
+
+  // Sol review of #616: fixing the last error left the warnings folded.
+  it('opens the warning groups again once the last error is fixed', async () => {
+    preflight.checks = [check({ code: 'broken-internal-link', severity: 'error', detail: '/configuration' }), check({})];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const warningToggle = () =>
+      document.querySelector<HTMLElement>('[data-check-group="missing-alt"]')?.querySelector<HTMLButtonElement>('button[aria-expanded]');
+    expect(warningToggle()?.getAttribute('aria-expanded')).toBe('false');
+    // The re-check after the fix: only the warning is left.
+    preflight.checks = [check({})];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    expect(warningToggle()?.getAttribute('aria-expanded')).toBe('true');
+    expect(isUnavailable(publishButton())).toBe(false);
+  });
+
+  it('keeps Publish and Cancel outside the one scroll region, with no scroller inside it', async () => {
+    preflight.checks = [check({}), check({ code: 'untitled-page', detail: '' })];
+    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
+    const body = document.querySelector('[data-testid="publish-body"]');
+    expect(body?.className).toContain('overflow-y-auto');
+    expect(body?.contains(publishButton())).toBe(false);
+    expect(body?.querySelector('[data-slot="scroll-area"], [class*="overflow-y-auto"], [class*="max-h-"]')).toBeNull();
+    // Checks come before the list of changes.
+    const checks = body?.querySelector('[data-testid="publish-checks"]');
+    const changes = document.getElementById('publish-changes-heading');
+    expect(checks && changes && checks.compareDocumentPosition(changes) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it.each(['admin', 'owner'])('links %s directly to the Redirects subsection', async (role) => {

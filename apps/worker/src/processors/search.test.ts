@@ -258,6 +258,19 @@ describe('hybrid search differential indexing jobs', () => {
     jobSequence = 0;
   });
 
+  it('titles an untitled page in its own language in the search payload', async () => {
+    const pages = mocks.deployment.snapshot.pages;
+    const arabic = pages[0] as { title: string };
+    const original = arabic.title;
+    arabic.title = '';
+    try {
+      await handleSearchJobs(job('index-deployment'));
+      expect(firstUpsertedPoint()).toMatchObject({ payload: { page_id: 'page-ar', title: 'صفحة بدون عنوان' } });
+    } finally {
+      arabic.title = original;
+    }
+  });
+
   it('embeds only visible pages and stamps deterministic tenant/deployment/language/private payloads', async () => {
     await expect(handleSearchJobs(job('index-deployment'))).resolves.toMatchObject({ indexed: 1, embedded: 1, reused: 0 });
     const point = firstUpsertedPoint();
@@ -383,6 +396,23 @@ describe('hybrid search differential indexing jobs', () => {
       ],
     });
     expect(JSON.stringify(mocks.deletePoints.mock.calls)).not.toContain('tenant-b');
+  });
+
+  it('records the section each chunk opens, and adds it to a point indexed before anchors without a new embedding', async () => {
+    await handleSearchJobs(job('index-deployment'));
+    const point = firstUpsertedPoint();
+    // The reader's own id for "## التثبيت" (github-slugger keeps Arabic letters).
+    expect(point.payload).toMatchObject({ heading: 'التثبيت', anchor: 'التثبيت' });
+    const { anchor: _anchor, ...indexedBefore } = point.payload as Record<string, unknown>;
+    mocks.currentPoints = [{ id: point.id, payload: indexedBefore }];
+    mocks.embed.mockClear();
+    mocks.upsert.mockClear();
+    mocks.replacePayload.mockClear();
+
+    await expect(handleSearchJobs(job('index-deployment'))).resolves.toMatchObject({ embedded: 0, metadataUpdated: 1, unchanged: 0 });
+    expect(mocks.embed).not.toHaveBeenCalled();
+    expect(mocks.upsert).not.toHaveBeenCalled();
+    expect(mocks.replacePayload).toHaveBeenCalledWith(point.id, expect.objectContaining({ anchor: 'التثبيت' }), expect.anything());
   });
 
   it('can delete tenant data even when no embedding credential is configured', async () => {

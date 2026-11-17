@@ -45,6 +45,7 @@ import {
 describe('page translation keys', () => {
   it('allows absence or null and rejects blank values for creates and updates', () => {
     expect(createPageBody.safeParse({ title: 'Intro' }).success).toBe(true);
+    expect(createPageBody.safeParse({ title: '' }).success).toBe(true);
     expect(createPageBody.safeParse({ title: 'Intro', translationKey: null }).success).toBe(true);
     expect(createPageBody.safeParse({ title: 'Intro', translationKey: '   ' }).success).toBe(false);
     expect(createPageBody.parse({ title: 'Intro', translationKey: '  intro  ' }).translationKey).toBe('intro');
@@ -370,11 +371,9 @@ describe('addDomainBody', () => {
   });
 
   it('stays fast on long runs of whitespace and dots', () => {
-    const hostile = `a${' '.repeat(50_000)}.${' '.repeat(50_000)}`.repeat(4);
-    const started = performance.now();
-    const value = normalizeDomainInput(hostile);
-    expect(performance.now() - started).toBeLessThan(200);
-    expect(addDomainBody.safeParse({ domain: hostile }).success).toBe(false);
+    const hostile = (n: number) => `a${' '.repeat(n)}.${' '.repeat(n)}`.repeat(4);
+    const value = normalizeDomainInput(hostile(50_000));
+    expect(addDomainBody.safeParse({ domain: hostile(50_000) }).success).toBe(false);
     expect(value.length).toBeLessThanOrEqual(2048);
   });
 
@@ -474,6 +473,56 @@ describe('gitConfigSchema', () => {
     expect(gitConfigSchema.safeParse({ provider: 'git', cloneUrl: 'https://token@git.example.com/acme/docs.git' }).success).toBe(false);
     expect(gitConfigSchema.safeParse({ provider: 'git', cloneUrl: 'https://git.example.com/acme/docs.git?access_token=secret' }).success).toBe(false);
     expect(gitConfigSchema.safeParse({ provider: 'gitlab', repo: 'acme/docs', instanceUrl: 'https://token@gitlab.example.com' }).success).toBe(false);
+  });
+
+  // A malformed URL used to throw from the http(s) refinement (z.url() does not stop it), so the route answered 500.
+  const urlFields = [
+    { field: 'cloneUrl', max: 500, base: { provider: 'git' }, valid: 'https://git.example.com/acme/docs.git' },
+    { field: 'instanceUrl', max: 200, base: { provider: 'gitlab', repo: 'acme/docs' }, valid: 'https://gitlab.example.com' },
+  ] as const;
+  const refused: unknown[] = [
+    '',
+    ' ',
+    '\t',
+    '\n',
+    'not a url',
+    'git.example.com/acme/docs.git',
+    '//git.example.com/acme/docs.git',
+    'https://',
+    'http://[::1',
+    'git@github.com:acme/docs.git',
+    'ssh://git@git.example.com/acme/docs.git',
+    'git://git.example.com/acme/docs.git',
+    'file:///etc/passwd',
+    'javascript:alert(1)',
+    'java\tscript:alert(1)',
+    'data:text/plain,docs',
+    'HTTPS://token:x@git.example.com/acme/docs.git',
+    'https://to\nken@git.example.com/acme/docs.git',
+    'https://git.example.com/acme/docs.git?private_token=secret',
+    'https://git.example.com/acme/docs.git#main',
+    null,
+    42,
+    {},
+    [],
+  ];
+
+  it.each(urlFields)('$field: refuses blank, malformed, over-long and hostile values without throwing', ({ field, max, base, valid }) => {
+    const overLong = `${valid}/${'a'.repeat(max)}`.slice(0, max + 1);
+    for (const value of [...refused, overLong, ' '.repeat(max + 1)]) {
+      const result = gitConfigSchema.safeParse({ ...base, [field]: value });
+      expect(result.success, JSON.stringify(value)).toBe(false);
+      expect(result.error?.issues.map((issue) => issue.path)).toEqual(result.error?.issues.map(() => [field]));
+    }
+  });
+
+  it.each(urlFields)('$field: an http(s) value up to the limit is kept as sent, and the field stays optional', ({ field, max, base, valid }) => {
+    const atLimit = `${valid}/${'a'.repeat(max)}`.slice(0, max);
+    for (const value of [valid, valid.replace('https:', 'http:'), atLimit]) {
+      expect(gitConfigSchema.parse({ ...base, [field]: value })).toEqual({ ...base, [field]: value });
+    }
+    expect(gitConfigSchema.parse(base)).toEqual(base);
+    expect(gitConfigSchema.parse({ ...base, [field]: undefined })).toEqual({ ...base, [field]: undefined });
   });
 });
 

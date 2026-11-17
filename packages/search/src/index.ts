@@ -1,8 +1,10 @@
+import { replaceMarkdownImages, replaceMarkdownLinksWithLabels } from '@nibleaf/shared/markup-scan';
+import { replaceHtmlTags } from '@nibleaf/shared/reader-rich';
 import { create, insertMultiple, type Orama, search } from '@orama/orama';
 import { lightStemArabicToken, normalizeArabicMorphologyText, normalizeArabicSearchText } from './arabic';
 import { cleanSearchText } from './hybrid';
 import { keys } from './keys';
-import { readerRelevanceFloor, readerRelevanceScore, readerSearchFields, readerSearchTerms } from './reader-relevance';
+import { readerRelevanceFloor, readerRelevanceScore, readerSearchFields, readerSearchTerms, readerTypoRelevanceScore } from './reader-relevance';
 import { foldSearchText, oramaTokenizerConfig } from './tokenizer';
 
 export * from './analytics';
@@ -135,8 +137,14 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
   });
   indexLanguages.set(db, language);
   indexDocuments.set(db, new Map(docs.map((doc) => [doc.id, doc])));
-  readerDocuments.set(db, new Map(docs.map((doc) => [doc.id, { fields: readerSearchFields(doc, language), text: cleanSearchText(doc.content) }])));
-  const searchable = (value: string) => (language === 'arabic' ? normalizeArabicSearchText(value) : value);
+  const readerDocs = new Map(docs.map((doc) => [doc.id, { fields: readerSearchFields(doc, language), text: cleanSearchText(doc.content) }]));
+  readerDocuments.set(db, readerDocs);
+  const searchable = (value: string, clean = cleanSearchText(value)) => {
+    // Keep existing source tokens (including code/URLs), and add visible words
+    // that markup can bind into a different token, such as __publish__.
+    const text = clean === value ? value : `${value}\n${clean}`;
+    return language === 'arabic' ? normalizeArabicSearchText(text) : text;
+  };
   const morphological = (value: string) => (language === 'arabic' ? normalizeArabicMorphologyText(value) : '');
   if (docs.length > 0) {
     await insertMultiple(
@@ -146,7 +154,7 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
         searchTitle: searchable(doc.title),
         searchDescription: searchable(doc.description),
         searchHeadings: searchable(doc.headings),
-        searchContent: searchable(doc.content),
+        searchContent: searchable(doc.content, readerDocs.get(doc.id)?.text),
         morphologyTitle: morphological(doc.title),
         morphologyDescription: morphological(doc.description),
         morphologyHeadings: morphological(doc.headings),
@@ -159,7 +167,7 @@ export const createDocIndex = async (docs: SearchDoc[], language: OramaLanguage 
 
 export interface SearchOptions {
   limit?: number;
-  /** Published keyword search requires lexical evidence and never uses edit-distance padding. */
+  /** Published keyword search ranks lexical evidence first, then validated one-edit matches. */
   relevance?: 'reader';
   /** Maximum Levenshtein distance. The effective distance is reduced for short
    * tokens to avoid noisy matches such as API -> app. */
@@ -244,15 +252,38 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
   const limit = options.limit ?? 12;
   const candidateLimit = Math.min(Math.max(limit * 2, 24), 64);
   const directLimit = Math.max(limit, candidateLimit);
-  const readerHits = (ids: string[]): SearchHit[] => {
+  const readerHits = async (ids: string[]): Promise<SearchHit[]> => {
     const terms = readerSearchTerms(rawQuery, language);
     const candidates = ids.map((id) => ({ id, score: readerRelevanceScore(terms, readerDocuments.get(db)?.get(id)?.fields ?? []) }));
     const floor = readerRelevanceFloor(Math.max(0, ...candidates.map((hit) => hit.score)));
-    return candidates
+    const lexical = candidates
       .filter((hit) => hit.score >= floor)
       .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
       .slice(0, limit)
       .map(({ id, score }) => toSearchHit(db, id, score, rawQuery, arabic, readerDocuments.get(db)?.get(id)?.text ?? '', language));
+    if (lexical.length >= limit || options.tolerance === 0 || ![...terms].some((word) => word.length >= 5)) return lexical;
+
+    const approximate = await search(db, {
+      term: query,
+      properties: EXACT_PROPERTIES,
+      tolerance: 1,
+      boost: EXACT_BOOST,
+      limit: candidateLimit,
+    });
+    const lexicalIds = new Set(lexical.map((hit) => hit.id));
+    const typos = approximate.hits
+      .map((hit) => String(hit.document.id))
+      .filter((id) => !lexicalIds.has(id))
+      .map((id) => ({ id, score: readerTypoRelevanceScore(terms, readerDocuments.get(db)?.get(id)?.fields ?? []) }));
+    const typoFloor = readerRelevanceFloor(Math.max(0, ...typos.map((hit) => hit.score)));
+    return lexical.concat(
+      typos
+        .filter((hit) => hit.score >= typoFloor)
+        .sort((left, right) => right.score - left.score || left.id.localeCompare(right.id))
+        .slice(0, limit - lexical.length)
+        // Keep typo scores below the lexical floor (0.5) for score consumers.
+        .map(({ id, score }) => toSearchHit(db, id, score / 10, rawQuery, arabic, readerDocuments.get(db)?.get(id)?.text ?? '', language)),
+    );
   };
 
   // Preserve the single-channel behavior and scores for every non-Arabic
@@ -343,21 +374,32 @@ export const searchDocs = async (db: DocIndex, term: string, options: SearchOpti
 const SNIPPET_RADIUS = 90;
 const ARABIC_SNIPPET_WORD = /[\u0621-\u063a\u0640-\u065f\u0670\u0671\u06d6-\u06ed]+/gu;
 
+/** A run of whitespace from a line start, then a list bullet or ordered marker.
+ *  The marker part is optional so a run without one is consumed (and kept as it
+ *  is) in one step: trying each line start inside the run would read the same
+ *  run again from every one of them, and fail the same way. */
+const LIST_MARKER = /^\s*(?:([-*+]|\d+\.)\s+)?/gm;
+/** A run of whitespace from a line start, then a thematic break or setext
+ *  underline (`---`, `===`), optional for the same reason. */
+const THEMATIC_BREAK = /^\s*(?:([-=*_]\s*){3,}$)?/gm;
+
 /** Strip common Markdown/MDX syntax so a search snippet reads as clean prose
- *  instead of showing literal `# heading`, `**bold**`, fenced code, etc. */
+ *  instead of showing literal `# heading`, `**bold**`, fenced code, etc. Every
+ *  step reads the text in linear time (it can be a whole 2 MiB page). */
 export function stripMarkdown(src: string): string {
-  return src
+  const withoutCode = src
     .replace(/```[\s\S]*?```/g, ' ') // fenced code blocks
     .replace(/~~~[\s\S]*?~~~/g, ' ')
-    .replace(/`([^`]+)`/g, '$1') // inline code
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ') // images
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1') // links → text
-    .replace(/<\/?[A-Za-z][^>]*>/g, ' ') // html / MDX component tags
+    .replace(/`([^`]+)`/g, '$1'); // inline code
+  // Images, then links → text (`/!\[[^\]]*\]\([^)]*\)/g`, `/\[([^\]]+)\]\([^)]*\)/g`).
+  const withoutLinks = replaceMarkdownLinksWithLabels(replaceMarkdownImages(withoutCode, ' '));
+  // HTML / MDX component tags, read in one pass (shared with the reader's detection).
+  return replaceHtmlTags(withoutLinks, ' ')
     .replace(/\[!\w+\]/g, ' ') // admonition markers ([!NOTE])
     .replace(/^\s{0,3}#{1,6}\s+/gm, '') // ATX headings
     .replace(/^\s{0,3}>\s?/gm, '') // blockquote markers
-    .replace(/^\s*([-*+]|\d+\.)\s+/gm, '') // list bullets / ordered markers
-    .replace(/^\s*([-=*_]\s*){3,}$/gm, ' ') // hr / setext underlines
+    .replace(LIST_MARKER, (run, marker) => (marker === undefined ? run : '')) // list bullets / ordered markers
+    .replace(THEMATIC_BREAK, (run, mark) => (mark === undefined ? run : ' ')) // hr / setext underlines
     .replace(/[*~]{1,3}/g, '') // emphasis markers (preserve underscores in code-like identifiers)
     .replace(/\|/g, ' ') // table pipes
     .replace(/\s+/g, ' ')
@@ -383,7 +425,7 @@ function snippetWindow(haystack: string, start: number, end: number, anchor: num
 
 /** Build a short snippet centered on the first occurrence of the query. */
 function makeSnippet(content: string, query: string, arabic = false, clean = false, language: OramaLanguage = 'english'): string {
-  const haystack = clean ? content : stripMarkdown(content);
+  const haystack = clean ? content : cleanSearchText(content);
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   const normalizedText = normalizeArabicSearchText(haystack.toLowerCase());
   const foldedText = foldSearchText(normalizedText, language);

@@ -94,6 +94,7 @@ const mount = async (request?: { id: number; question?: string; source: 'deep_li
           <Panel
             projectId={projectId}
             lang="en"
+            defaultLanguage="en"
             version={siteVersion}
             direction="ltr"
             config={null}
@@ -164,9 +165,10 @@ describe('chat panel', () => {
     mocks.chat.messages = [text('u1', 'user', question)];
     await deliver('nibleaf.chat.error', { code: 'conversation_limit' });
     await render();
-    // The notice's button, not the header's plain "New chat".
-    expect(button('New chat')).toHaveLength(2);
-    await act(async () => button('New chat').at(-1)?.click());
+    // The notice's button; the header's "New chat" is an icon button named by aria-label.
+    expect(button('New chat')).toHaveLength(1);
+    expect(document.querySelectorAll('header button[aria-label="New chat"]')).toHaveLength(1);
+    await act(async () => button('New chat')[0]?.click());
     expect(mocks.chat.clear).toHaveBeenCalledOnce();
     // Not sent on its own: it may refer to the conversation the new chat lacks.
     expect(mocks.chat.sendMessage).toHaveBeenCalledOnce();
@@ -257,7 +259,7 @@ describe('chat panel', () => {
     vi.mocked(Element.prototype.scrollIntoView).mockClear();
     await deliver('nibleaf.chat.followups', { turnId: ANSWER_ID, questions: ['Can I install it offline?'] });
     await render();
-    expect(document.querySelector('[aria-live="polite"]')?.textContent).toBe('Suggested next questions added.');
+    expect(document.querySelector('.sr-only[aria-live="polite"]')?.textContent).toBe('Suggested next questions added.');
     expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
     // Back at the bottom, new content is followed again.
     log.scrollTop = 1600;
@@ -338,9 +340,9 @@ describe('chat panel', () => {
     await deliver('nibleaf.chat.final', { ...finalFor(conversationId), citations: [source] });
     siteVersion = switched;
     await render();
-    const link = document.getElementById(`${ANSWER_ID}-S1`)?.getAttribute('href');
+    const link = document.getElementById(`${ANSWER_ID}-source-1`)?.getAttribute('href');
     // jsdom's host reads as a custom domain: no /sites/<id> prefix.
-    expect(link).toBe(`/${asked ? `${asked}/` : ''}guide?lang=en#install`);
+    expect(link).toBe(`/${asked ? `${asked}/` : ''}guide#install`);
   });
 
   it('streams without citation markers, even one split across chunks', async () => {
@@ -456,6 +458,37 @@ describe('what the panel says about saving questions', () => {
     expect(saved()).toBeUndefined();
     await act(async () => writeSiteConsent('docs', 'accepted'));
     expect(saved()?.textContent).toContain('kept for 90 days');
+  });
+
+  it('docks beside the article on a wide screen: no backdrop, no focus trap, and the chrome makes room (PUB-003)', async () => {
+    vi.mocked(window.matchMedia).mockImplementation(
+      (query) => ({ matches: query === '(min-width: 80rem)', addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as MediaQueryList,
+    );
+    mocks.chat.messages = [];
+    const render = await mount();
+    const panel = document.querySelector('[data-theme-surface="ai"]');
+    expect(panel?.hasAttribute('data-docked')).toBe(true);
+    expect(document.querySelector('[data-slot="sheet-overlay"]')).toBeNull();
+    expect(document.documentElement.hasAttribute('data-chat-docked')).toBe(true);
+    // Non-modal: the page outside stays reachable (no inert/aria-hidden siblings).
+    expect(document.querySelector('[inert]')).toBeNull();
+    await render(false);
+    expect(document.documentElement.hasAttribute('data-chat-docked')).toBe(false);
+  });
+
+  it('stays a modal sheet below the docking width', async () => {
+    mocks.chat.messages = [];
+    await mount();
+    expect(document.querySelector('[data-theme-surface="ai"]')?.hasAttribute('data-docked')).toBe(false);
+    expect(document.querySelector('[data-slot="sheet-overlay"]')).not.toBeNull();
+    expect(document.documentElement.hasAttribute('data-chat-docked')).toBe(false);
+  });
+
+  it('names its header icon buttons', async () => {
+    mocks.chat.messages = [];
+    await mount();
+    const labels = [...document.querySelectorAll('header button')].map((control) => control.getAttribute('aria-label'));
+    expect(labels).toEqual(['New chat', 'Close']);
   });
 
   it('describes the panel plainly in its header', async () => {

@@ -1,9 +1,10 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { PageContainer } from '@nibleaf/design-system/components/ui/page-container';
+import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { canAdminister, canEdit } from '@nibleaf/shared/rbac';
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import {
   Archive,
   ArrowLeftRight,
@@ -30,7 +31,7 @@ import {
   Variable,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef } from 'react';
-import { ConfigSection, ConfigSectionList } from '@/components/editor/site-config-panel';
+import { ConfigSection, EDITOR_CONFIG_SECTIONS } from '@/components/editor/site-config-panel';
 import { AddonsSection } from '@/components/project-settings/addons-section';
 import { AuthenticationSection } from '@/components/project-settings/authentication-section';
 import { DangerSection } from '@/components/project-settings/danger-section';
@@ -43,18 +44,21 @@ import { SearchSection } from '@/components/project-settings/search-section';
 import {
   ConfigDirtyProvider,
   DirtyStateReporter,
+  SectionNamedByTabs,
   SettingsFormSkeleton,
   useDirtySources,
   useSettingsDirtyGuard,
 } from '@/components/project-settings/shared';
-import { SmartAiSection } from '@/components/project-settings/smart-ai-section';
 import { QueryErrorState } from '@/components/query-error-state';
-import { ApiKeysTab } from '@/components/settings/api-keys-tab';
 import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { UsageTab } from '@/components/settings/usage-tab';
+import { SectionTabs, sectionTabClassName } from '@/components/ui/section-tabs';
+import { AiAssistantsPage } from '@/features/ai-assistants/components/ai-assistants-page';
 import { SiteTeamPage } from '@/features/people/components/site-team-page';
+import { siteAiQueryOptions } from '@/features/site-ai/api/query-options';
+import { AiAnswersPage } from '@/features/site-ai/components/ai-answers-page';
 import {
   APPEARANCE_SECTION_IDS,
   type AppearanceSectionId,
@@ -84,7 +88,6 @@ import {
   projectQueryOptions,
   projectUsageQueryOptions,
   readerAccessQueryOptions,
-  workspaceAiQueryOptions,
   workspaceSettingsQueryOptions,
 } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
@@ -109,7 +112,7 @@ const SECTION_ICONS: Record<SectionId, LucideIcon> = {
   openapi: Braces,
   contentImport: Import,
   exports: Archive,
-  smartAi: Bot,
+  ai: Bot,
   apiKeys: KeyRound,
   integrations: Plug,
   members: Users,
@@ -160,8 +163,8 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
       case 'integrations':
         prefetchRouteData(queryClient, integrationsQueryOptions(projectId));
         break;
-      case 'smartAi':
-        prefetchRouteData(queryClient, workspaceAiQueryOptions(projectId));
+      case 'ai':
+        prefetchRouteData(queryClient, siteAiQueryOptions(projectId));
         break;
       case 'apiKeys':
         prefetchRouteData(queryClient, apiKeysQueryOptions(projectId));
@@ -433,7 +436,7 @@ function ActiveSection({
     openapi: <OpenApiSection key={`openapi-${projectId}`} projectId={projectId} />,
     contentImport: <ImportTab key={`import-${projectId}`} projectId={projectId} />,
     members: <SiteTeamPage key={`members-${projectId}`} organization={organization} projectId={projectId} siteName={project.name} />,
-    apiKeys: <ApiKeysTab role={role} key={`api-keys-${projectId}`} projectId={projectId} />,
+    apiKeys: <AiAssistantsPage key={`api-keys-${projectId}`} projectId={projectId} role={role} siteName={project.name} />,
     usage: (
       <>
         {movedSection ? <MovedSectionNotice organization={organization} section={movedSection} /> : null}
@@ -445,7 +448,7 @@ function ActiveSection({
       </>
     ),
     integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
-    smartAi: <SmartAiSection key={`smart-ai-${projectId}`} project={project} />,
+    ai: <AiAnswersPage key={`ai-${projectId}`} project={project} />,
     exports: (
       <ExportsSection canCreate={canCreateExports} canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />
     ),
@@ -493,26 +496,44 @@ function ConfigPage({ project, section }: { project: Project; section: 'seo' | '
   );
 }
 
+const APPEARANCE_TABS = EDITOR_CONFIG_SECTIONS.filter((entry): entry is (typeof EDITOR_CONFIG_SECTIONS)[number] & { id: AppearanceSectionId } =>
+  (APPEARANCE_SECTION_IDS as readonly string[]).includes(entry.id),
+);
+
+/**
+ * Settings → Appearance: one page with a header and its seven sub-pages as
+ * line tabs (P1-DASH-006), not a third stacked navigation above the form.
+ * Each tab is a link to its own URL; leaving a tab with unsaved changes goes
+ * through the route's unsaved-change guard.
+ */
 function SiteAppearance({ project, section }: { project: Project; section: AppearanceSectionId }) {
-  const navigate = useNavigate({ from: Route.fullPath });
-  // Subsection navigation uses the route's existing unsaved-change guard.
+  const t = useT();
   const { sources, report } = useDirtySources();
   return (
     <>
       <DirtyStateReporter dirty={sources.size > 0} />
-      <div className="mb-6">
-        <ConfigSectionList
-          active={section}
-          onSelect={(next) => {
-            if (next === section) return;
-            void navigate({ search: { section: 'appearance', appearanceSection: next as AppearanceSectionId } });
-          }}
-          only={APPEARANCE_SECTION_IDS}
-        />
-      </div>
-      <ConfigDirtyProvider report={report}>
-        <ConfigSection project={project} section={section} />
-      </ConfigDirtyProvider>
+      <PageHeader description={t('settings.appearance.summary')} title={t('settings.tab.appearance')} />
+      <SectionTabs className="mb-6" label={t('settings.appearance.sections')}>
+        {APPEARANCE_TABS.map(({ id, labelKey, icon: Icon }) => (
+          <li key={id}>
+            <Link
+              aria-current={id === section ? 'page' : undefined}
+              className={sectionTabClassName}
+              params={{ projectId: project.id }}
+              search={{ section: 'appearance', appearanceSection: id }}
+              to="/app/projects/$projectId/settings"
+            >
+              <Icon aria-hidden className="size-4" />
+              {t(labelKey)}
+            </Link>
+          </li>
+        ))}
+      </SectionTabs>
+      <SectionNamedByTabs value>
+        <ConfigDirtyProvider report={report}>
+          <ConfigSection project={project} section={section} />
+        </ConfigDirtyProvider>
+      </SectionNamedByTabs>
     </>
   );
 }

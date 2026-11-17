@@ -1,6 +1,7 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteContentT } from '@nibleaf/i18n/site-content';
 import { Children, isValidElement, type ReactNode, useId, useRef, useState } from 'react';
+import { ReaderLabel } from './reader-label';
 import { handleTabKeyDown } from './utils';
 
 // ─── Tabs ───────────────────────────────────────────────────────────────────
@@ -39,7 +40,7 @@ export function Tabs({ children, language }: { children?: ReactNode; language?: 
               i === active ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground',
             )}
           >
-            {tab.props.title ?? `${t('tab')} ${i + 1}`}
+            {tab.props.title ?? <ReaderLabel language={language}>{`${t('tab')} ${i + 1}`}</ReaderLabel>}
           </button>
         ))}
       </div>

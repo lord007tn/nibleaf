@@ -53,6 +53,14 @@ type ActionDialogProps = {
   /** The action. Resolve to close the dialog; reject to keep it open and show the error. */
   onConfirm: () => Promise<void>
   /**
+   * Asked synchronously right before the dialog acts on how the action ended
+   * (`ok`: it resolved): before closing on success or showing the error on
+   * failure, and before settling one that ended while the dialog was hidden.
+   * Return false when the result no longer belongs to what the dialog shows
+   * now: the dialog then only stops being busy. Default: every result does.
+   */
+  isCurrentAction?: (result: { ok: boolean }) => boolean
+  /**
    * Turns a rejection into friendly copy shown inside the dialog. Return
    * nothing to fall back to `fallbackErrorMessage`.
    */
@@ -65,6 +73,12 @@ type ActionDialogProps = {
   fallbackErrorMessage: React.ReactNode
   /** Overrides where focus returns on close (defaults to the trigger, else the page h1). */
   finalFocus?: DialogPrimitive.Popup.Props["finalFocus"]
+  /**
+   * `content` leaves opening focus to a field in `children` (its `autoFocus`),
+   * e.g. a search box the person types into first. Default: the action, or
+   * Cancel when `destructive`.
+   */
+  initialFocus?: "content"
   className?: string
 } & TypedConfirmationProps
 
@@ -77,6 +91,12 @@ type ActionDialogProps = {
  * success it closes; on failure it stays open with the error inside it, so the
  * person can retry or cancel. Callers mark the mutation with
  * `meta: { suppressGlobalError: true }` so the error isn't also toasted.
+ *
+ * An action that ends while React hides the dialog (`<Activity>`, which runs
+ * effect cleanups as on unmount but keeps the dialog) is settled when it shows
+ * again: it closes on success or shows the error, and nothing else happens
+ * then. An action that ends after a real unmount, or after the dialog closed
+ * or reopened, is ignored.
  *
  * With `confirmText` the person types it to confirm. Confirm stays disabled
  * (focusable, announced as unavailable with the field's label as its reason)
@@ -94,9 +114,11 @@ function ActionDialog({
   pendingLabel,
   destructive = false,
   onConfirm,
+  isCurrentAction,
   errorMessage,
   fallbackErrorMessage,
   finalFocus,
+  initialFocus,
   className,
   confirmText,
   confirmTextLabel,
@@ -108,6 +130,17 @@ function ActionDialog({
   const [pending, setPending] = React.useState(false)
   const pendingRef = React.useRef(false)
   const mountedRef = React.useRef(true)
+  // How an action ended while the dialog was hidden, for the generation it ran in.
+  const heldRef = React.useRef<{ generation: number; failure?: { error: unknown } } | null>(null)
+  // The callbacks of the last committed render (never of one React abandoned).
+  const onOpenChangeRef = React.useRef(onOpenChange)
+  const isCurrentActionRef = React.useRef(isCurrentAction)
+  React.useLayoutEffect(() => {
+    onOpenChangeRef.current = onOpenChange
+    isCurrentActionRef.current = isCurrentAction
+  })
+  /** Whether the dialog may act on this result; read at the moment it would. */
+  const ownsResult = (ok: boolean) => isCurrentActionRef.current?.({ ok }) ?? true
   const [failure, setFailure] = React.useState<{ error: unknown } | null>(null)
   const [typed, setTyped] = React.useState("")
   const [typedAttempted, setTypedAttempted] = React.useState(false)
@@ -119,10 +152,26 @@ function ActionDialog({
   const returnFocus = React.useRef<HTMLElement | null>(null)
   const inputRef = React.useRef<HTMLInputElement | null>(null)
 
-  React.useEffect(() => {
+  // A layout effect, so the flag is cleared within the commit that removes or
+  // hides the dialog, before any later continuation of the action reads it.
+  React.useLayoutEffect(() => {
     mountedRef.current = true
     return () => {
       mountedRef.current = false
+    }
+  }, [])
+
+  // Settles an action that ended while the dialog was hidden, once it shows again.
+  React.useEffect(() => {
+    const held = heldRef.current
+    heldRef.current = null
+    if (held && held.generation === generationRef.current) {
+      pendingRef.current = false
+      setPending(false)
+      if (ownsResult(!held.failure)) {
+        if (held.failure) setFailure(held.failure)
+        else onOpenChangeRef.current(false)
+      }
     }
   }, [])
 
@@ -144,7 +193,7 @@ function ActionDialog({
 
   // Opening focus: the field when typing is required, Cancel for destructive
   // actions, else the action itself.
-  const focusOnOpen = confirmText !== undefined ? "input" : destructive ? "cancel" : "confirm"
+  const focusOnOpen = confirmText !== undefined ? "input" : initialFocus ?? (destructive ? "cancel" : "confirm")
   const typedMatches = confirmText === undefined || normalizeTyped(typed) === normalizeTyped(confirmText)
   const showMismatch = !typedMatches && (typedAttempted || typed.trim() !== "")
 
@@ -163,20 +212,24 @@ function ActionDialog({
     }
     const generation = generationRef.current
     const isCurrent = () => mountedRef.current && generation === generationRef.current
+    // Off screen but still this dialog: settled when it shows again (a real unmount never does).
+    const hold = (failure?: { error: unknown }) => {
+      if (generation === generationRef.current) heldRef.current = { generation, failure }
+    }
     pendingRef.current = true
     setPending(true)
     setFailure(null)
     try {
       await onConfirm()
-      if (!isCurrent()) return
+      if (!isCurrent()) return hold()
       pendingRef.current = false
       setPending(false)
-      onOpenChange(false)
+      if (ownsResult(true)) onOpenChange(false)
     } catch (error) {
-      if (!isCurrent()) return
+      if (!isCurrent()) return hold({ error })
       pendingRef.current = false
       setPending(false)
-      setFailure({ error })
+      if (ownsResult(false)) setFailure({ error })
     }
   }
 

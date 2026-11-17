@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
     exportJob: { findMany: vi.fn(), groupBy: vi.fn(), count: vi.fn(async () => 0) },
     user: { findUnique: vi.fn() },
     project: { findUnique: vi.fn() },
+    organization: { findUnique: vi.fn(async () => null) },
+    organizationHandle: { findUnique: vi.fn(async () => null) },
     platformEvent: { findMany: vi.fn() },
     gitSyncOperation: { findMany: vi.fn(), count: vi.fn(async () => 0) },
   },
@@ -19,7 +21,7 @@ vi.mock('./members', () => ({ inviteMember: vi.fn() }));
 vi.mock('./usage', () => ({ getProjectUsage: vi.fn() }));
 vi.mock('./workspace', () => ({ parseWorkspaceMetadata: () => ({ plan: 'free' }) }));
 
-import { getAdminOperations, getAdminSite, getAdminUser } from './admin';
+import { getAdminOperations, getAdminSite, getAdminUser, uniqueAdminProjectSlug } from './admin';
 
 describe('admin operations privacy boundary', () => {
   beforeEach(() => {
@@ -116,4 +118,28 @@ it('filters unresolved operations in the database before applying page limits', 
       skip: 1,
     }),
   );
+});
+
+describe('admin-provisioned site address', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.prisma.project.findUnique.mockResolvedValue(null);
+  });
+
+  // P0-DASH-001: an invited site named "Docs" must not get the reserved `docs`.
+  it.each([
+    ['docs', 'docs-2'],
+    ['nibleaf', 'nibleaf-2'],
+    ['', 'documentation'],
+    ['handbook', 'handbook'],
+  ])('gives %j the address %s', async (desired, slug) => {
+    await expect(uniqueAdminProjectSlug(desired)).resolves.toBe(slug);
+  });
+
+  it('keeps a numbered address within one DNS label after truncation', async () => {
+    mocks.prisma.project.findUnique.mockResolvedValueOnce({ id: 'occupied' });
+    const slug = await uniqueAdminProjectSlug('a'.repeat(80));
+    expect(slug).toBe(`${'a'.repeat(61)}-2`);
+    expect(slug).toHaveLength(63);
+  });
 });

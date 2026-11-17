@@ -20,9 +20,8 @@ import {
   Users,
   Waypoints,
 } from 'lucide-react';
-import { BLOG_ENTRIES, blogReadingMinutes } from '@/lib/blog';
-import { availabilityNote } from '../copy/availability';
 import type { LandingCopy, MarketingIcon, MarketingLang, PathCard } from '../copy/types';
+import { USE_CASES_TEASER } from '../copy/use-case-meta';
 import { HeroMedia, MarketingMedia } from '../media/marketing-media';
 import { GitHubStarLink } from '../site/github-star-link';
 import {
@@ -33,7 +32,7 @@ import {
 } from '../site/marketing-icons';
 import { MarketingLink } from '../site/marketing-link';
 import { Eyebrow, iconTile, outlineButton, primaryButton } from '../site/primitives';
-import { UseCasesTeaser } from '../use-cases/use-cases-teaser';
+import { getUseCaseCards } from '../use-cases/use-case-cards';
 
 const icons = {
   ai: Sparkles,
@@ -61,6 +60,13 @@ const icons = {
   support: LifeBuoy,
   team: Users,
 } satisfies Record<MarketingIcon, typeof Sparkles>;
+
+/**
+ * The feature stories the landing page tells, in order (P2-MKT-005). The other
+ * stories in the copy (insights, AI assistants) live on the support-teams use
+ * case page and the pricing table; the Ask AI story links there.
+ */
+export const LANDING_STORY_IDS = ['ask-ai', 'search', 'editor', 'arabic'] as const;
 
 const container = 'mx-auto max-w-7xl px-5 sm:px-6';
 const section = `${container} py-16 sm:py-24`;
@@ -134,7 +140,9 @@ export function LandingView({
   /** Localized accessible label for the GitHub star count, from the shell copy. */
   starsLabel?: (count: number) => string;
 }) {
-  const posts = BLOG_ENTRIES.filter((post) => (post.language ?? 'en') === lang).slice(0, 3);
+  const stories = LANDING_STORY_IDS.flatMap((id) => copy.features.filter((feature) => feature.id === id));
+  const faqs = copy.faq.items.filter((item) => item.featured);
+  const useCases = USE_CASES_TEASER[lang];
   return (
     <>
       <section className="border-border border-b bg-linear-to-b from-primary/5 via-background to-background">
@@ -200,7 +208,7 @@ export function LandingView({
       </section>
 
       <div id="features" className="scroll-mt-24">
-        {copy.features.map((feature, index) => (
+        {stories.map((feature, index) => (
           <section key={feature.id} id={feature.id} className={`scroll-mt-24 border-border border-b ${index % 2 === 1 ? 'bg-muted/20' : ''}`}>
             <div className={`${section} grid items-center gap-9 lg:grid-cols-2 lg:gap-16`}>
               <div className={`min-w-0 ${index % 2 === 1 ? 'lg:order-2' : ''}`}>
@@ -231,45 +239,7 @@ export function LandingView({
         ))}
       </div>
 
-      <UseCasesTeaser lang={lang} />
-
-      <section className={section}>
-        <Heading copy={copy.more} />
-        <div className="mt-10 grid gap-x-10 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
-          {copy.more.items.map((item) => (
-            <div key={item.title} className="flex gap-4">
-              <span className={`${iconTile} size-11 shrink-0`}>
-                <Icon name={item.icon} />
-              </span>
-              <div>
-                <h3 className="font-semibold leading-7">{item.title}</h3>
-                <p className="mt-2 text-muted-foreground text-sm leading-7">{item.body}</p>
-                {item.availability && <p className="mt-2 text-muted-foreground text-xs leading-6">{availabilityNote(item.availability, lang)}</p>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="border-border border-y bg-muted/20">
-        <div className={section}>
-          <Heading copy={copy.howItWorks} />
-          <ol className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {copy.howItWorks.steps.map((step, index) => (
-              <li key={step.title} className="border-border border-t pt-5">
-                <span aria-hidden="true" className="font-mono text-primary text-sm">
-                  {String(index + 1).padStart(2, '0')}
-                </span>
-                <h3 className="mt-4 font-semibold text-lg">{step.title}</h3>
-                <p className={`mt-3 text-sm ${body}`}>{step.body}</p>
-              </li>
-            ))}
-          </ol>
-          {copy.howItWorks.note && <p className="mt-8 max-w-[72ch] text-muted-foreground text-xs leading-6">{copy.howItWorks.note}</p>}
-        </div>
-      </section>
-
-      <section className={section}>
+      <section id="pricing" className={`${section} scroll-mt-24`}>
         <Heading copy={copy.paths} />
         <div className="mt-10 grid max-w-5xl gap-5 md:grid-cols-2">
           <HostingCard copy={copy.paths.cloud} lang={lang} cloud />
@@ -278,74 +248,49 @@ export function LandingView({
         <MarketingLink cta={copy.paths.detailsLink} lang={lang} placement="resource_bridge" className={`mt-5 ${textLink}`}>
           <ArrowRight aria-hidden="true" className="size-4 rtl:rotate-180" />
         </MarketingLink>
+        <div className="mt-8 max-w-5xl border-border border-t pt-6">
+          <h3 className="font-semibold leading-7">{copy.compare.title}</h3>
+          <ul className="mt-1 flex flex-wrap gap-x-6">
+            {copy.compare.links.map((link) => (
+              <li key={link.href}>
+                <MarketingLink cta={link} lang={lang} placement="resource_bridge" className={textLink}>
+                  <ArrowRight aria-hidden="true" className="size-4 shrink-0 rtl:rotate-180" />
+                </MarketingLink>
+              </li>
+            ))}
+          </ul>
+        </div>
       </section>
 
-      <section className="border-border border-y bg-card/40">
-        <div className={section}>
-          <Heading copy={copy.compare} />
-          <div className="mt-8 grid gap-4 md:grid-cols-3">
-            {copy.compare.links.map((link) => (
-              <article key={link.href} className="rounded-xl border border-border bg-background p-5">
-                <h3>
+      <section id="faq" className="scroll-mt-24 border-border border-y bg-muted/20">
+        <div className={`${section} grid gap-8 lg:grid-cols-[0.8fr_1.2fr]`}>
+          <Heading copy={copy.faq} />
+          <div className="min-w-0">
+            <div className="divide-y divide-border border-border border-y">
+              {faqs.map((item) => (
+                <details key={item.q} className="group py-1">
+                  <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-5 rounded-md py-4 [&::-webkit-details-marker]:hidden font-medium leading-7 focus-visible:outline-2 focus-visible:outline-ring">
+                    <span>{item.q}</span>
+                    <Plus aria-hidden="true" className="size-4 shrink-0 group-open:rotate-45" />
+                  </summary>
+                  <p className="max-w-[72ch] pb-5 text-muted-foreground text-sm leading-7">{item.a}</p>
+                </details>
+              ))}
+            </div>
+            <ul className="mt-4 flex flex-wrap gap-x-6">
+              {copy.faq.moreLinks.map((link) => (
+                <li key={link.href}>
                   <MarketingLink cta={link} lang={lang} placement="resource_bridge" className={textLink}>
                     <ArrowRight aria-hidden="true" className="size-4 shrink-0 rtl:rotate-180" />
                   </MarketingLink>
-                </h3>
-                <p className="mt-2 text-muted-foreground text-sm leading-7">{link.description}</p>
-              </article>
-            ))}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </section>
 
-      <section className={`${section} grid gap-8 lg:grid-cols-[0.8fr_1.2fr]`}>
-        <Heading copy={copy.faq} />
-        <div className="min-w-0 divide-y divide-border border-border border-y">
-          {copy.faq.items.map((item) => (
-            <details key={item.q} className="group py-1">
-              <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-5 rounded-md py-4 [&::-webkit-details-marker]:hidden font-medium leading-7 focus-visible:outline-2 focus-visible:outline-ring">
-                <span>{item.q}</span>
-                <Plus aria-hidden="true" className="size-4 shrink-0 group-open:rotate-45" />
-              </summary>
-              <p className="max-w-[72ch] pb-5 text-muted-foreground text-sm leading-7">{item.a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
-
-      <section id="from-the-blog" className="border-border border-t">
-        <div className={section}>
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <Heading copy={copy.blog} />
-            <a className={textLink} href={copy.blog.allLink.href}>
-              {copy.blog.allLink.label}
-              <ArrowRight aria-hidden="true" className="size-4 rtl:rotate-180" />
-            </a>
-          </div>
-          <div className="mt-8 grid gap-5 md:grid-cols-3">
-            {posts.map((post) => (
-              <article key={post.slug} className="flex min-w-0 flex-col rounded-xl border border-border bg-card p-6">
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-muted-foreground text-xs leading-6">
-                  <time dateTime={post.datePublished}>
-                    {new Intl.DateTimeFormat(lang === 'ar' ? 'ar-u-nu-latn' : 'en-US', { dateStyle: 'medium', timeZone: 'UTC' }).format(
-                      new Date(post.datePublished),
-                    )}
-                  </time>
-                  <span>{copy.blog.readingTime(blogReadingMinutes(post))}</span>
-                </div>
-                <h3 className="mt-4 font-semibold text-lg leading-8">
-                  <a className="inline-block hover:text-primary" href={`/blog/${post.slug}`} lang={lang}>
-                    {post.title}
-                  </a>
-                </h3>
-                <p className="mt-3 text-muted-foreground text-sm leading-7">{post.description}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className={`${container} pb-16 sm:pb-24`}>
+      <section className={`${container} py-16 sm:py-24`}>
         <div className="rounded-2xl border border-primary/20 bg-primary/5 px-5 py-12 sm:px-12 sm:py-16">
           <h2 className={`max-w-3xl ${title}`}>{copy.finalCta.title}</h2>
           {/* Full-strength text: muted grey on the tinted panel falls below 4.5:1 in the light theme. */}
@@ -356,6 +301,20 @@ export function LandingView({
             </MarketingLink>
             <MarketingLink cta={copy.finalCta.secondary} lang={lang} placement="final" className={outlineButton} />
             <GitHubStarLink stars={stars} label={lang === 'ar' ? 'GitHub' : 'Star on GitHub'} starsLabel={starsLabel} />
+          </div>
+          {/* The header's "Use cases" link lands here (`/#use-cases`); each team has its own page. */}
+          <div id="use-cases" className="mt-8 scroll-mt-24 border-primary/20 border-t pt-6">
+            <p className="text-foreground/80 text-sm leading-7">{useCases.body}</p>
+            <ul className="mt-1 flex flex-wrap gap-x-6">
+              {getUseCaseCards(lang).map((card) => (
+                <li key={card.slug}>
+                  <a href={card.href} className={textLink}>
+                    {card.label}
+                    <ArrowRight aria-hidden="true" className="size-4 shrink-0 rtl:rotate-180" />
+                  </a>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
       </section>

@@ -36,33 +36,25 @@ vi.mock('@tanstack/react-router', () => ({
   }: {
     children: ReactNode;
     to: string;
-    search?: { section?: string };
+    search?: { section?: string; appearanceSection?: string };
     className?: string;
     'aria-current'?: 'page';
   }) => (
     <a
       aria-current={current}
       className={className}
-      href={`${to.replace('$projectId', 'project-1')}${search?.section ? `?section=${search.section}` : ''}`}
+      href={`${to.replace('$projectId', 'project-1')}${search?.section ? `?section=${search.section}` : ''}${search?.appearanceSection ? `&appearanceSection=${search.appearanceSection}` : ''}`}
     >
       {children}
     </a>
   ),
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
-vi.mock('@/components/editor/site-config-panel', async () => {
+vi.mock('@/components/editor/site-config-panel', async (importOriginal) => {
   const { DirtyStateReporter } = await import('@/components/project-settings/shared');
+  const actual = await importOriginal<typeof import('@/components/editor/site-config-panel')>();
   return {
-    ConfigSectionList: ({ onSelect }: { onSelect: (section: 'branding' | 'redirects') => void }) => (
-      <>
-        <button onClick={() => onSelect('redirects')} type="button">
-          Choose Redirects
-        </button>
-        <button onClick={() => onSelect('branding')} type="button">
-          Choose Branding
-        </button>
-      </>
-    ),
+    EDITOR_CONFIG_SECTIONS: actual.EDITOR_CONFIG_SECTIONS,
     ConfigSection: ({ section }: { section: string }) => (
       <div data-testid="appearance-subsection">
         {section}
@@ -145,11 +137,11 @@ vi.mock('@/components/project-settings/languages-section', () => ({
 vi.mock('@/features/people/components/site-team-page', () => ({ SiteTeamPage: () => null }));
 vi.mock('@/components/project-settings/openapi-section', () => ({ OpenApiSection: () => null }));
 vi.mock('@/components/project-settings/search-section', () => ({ SearchSection: () => null }));
-vi.mock('@/components/project-settings/smart-ai-section', () => ({ SmartAiSection: () => <div data-testid="smart-ai-settings" /> }));
-vi.mock('@/components/settings/api-keys-tab', () => ({ ApiKeysTab: () => null }));
+vi.mock('@/features/site-ai/components/ai-answers-page', () => ({ AiAnswersPage: () => <div data-testid="ai-answers-settings" /> }));
+vi.mock('@/features/ai-assistants/components/ai-assistants-page', () => ({ AiAssistantsPage: () => null }));
+vi.mock('@/components/settings/integrations-tab', () => ({ IntegrationsTab: () => <div data-testid="integrations-settings" /> }));
 vi.mock('@/components/settings/git-tab', () => ({ GitTab: () => null }));
 vi.mock('@/components/settings/import-tab', () => ({ ImportTab: () => null }));
-vi.mock('@/components/settings/integrations-tab', () => ({ IntegrationsTab: () => null }));
 vi.mock('@/components/settings/usage-tab', () => ({
   UsageTab: ({ organization }: { organization?: { canManage: boolean } }) => (
     <div data-can-manage={String(organization?.canManage)} data-testid="usage-settings" />
@@ -214,8 +206,8 @@ describe('site settings permissions', () => {
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
     expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe(section);
-    // A page, not a subsection: no Appearance list above it.
-    expect(container.textContent).not.toContain('Choose Branding');
+    // A page, not a subsection: no Appearance tabs above it.
+    expect(container.querySelector('[data-slot="section-tabs"]')).toBeNull();
     expect(container.querySelector(`nav a[href$="?section=${section}"]`)?.getAttribute('aria-current')).toBe('page');
   });
 
@@ -225,8 +217,10 @@ describe('site settings permissions', () => {
     mocks.dirty = true;
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
-    await act(async () => [...container.querySelectorAll('button')].find((button) => button.textContent === 'Choose Branding')?.click());
-    expect(mocks.navigate).toHaveBeenCalledWith({ search: { section: 'appearance', appearanceSection: 'branding' } });
+    // Each sub-page is a link to its own URL; the route's guard covers leaving it.
+    const tabs = container.querySelector('[data-slot="section-tabs"]');
+    expect(tabs?.querySelector('a[aria-current="page"]')?.getAttribute('href')).toContain('appearanceSection=navbar');
+    expect(tabs?.querySelector('a[href$="appearanceSection=branding"]')).not.toBeNull();
     const blocker = mocks.blocker.mock.lastCall?.[0];
     expect(blocker.enableBeforeUnload()).toBe(true);
     mocks.confirm.mockResolvedValueOnce(false);
@@ -237,6 +231,28 @@ describe('site settings permissions', () => {
     mocks.appearanceSection = 'branding';
     await act(async () => root.render(<SettingsPage />));
     expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe('branding');
+  });
+
+  // P1-DASH-006: Appearance stacked a third navigation above the form.
+  it('gives Appearance a page heading and its seven sub-pages as named link tabs', async () => {
+    mocks.section = 'appearance';
+    mocks.appearanceSection = 'typography';
+    mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
+    await act(async () => root.render(<SettingsPage />));
+    expect(container.querySelector('h1')?.textContent).toBe('settings.tab.appearance');
+    const tabs = container.querySelector('nav[data-slot="section-tabs"]');
+    expect(tabs?.getAttribute('aria-label')).toBe('settings.appearance.sections');
+    expect([...(tabs?.querySelectorAll('a') ?? [])].map((link) => link.textContent)).toEqual([
+      'settings.branding',
+      'settings.themes',
+      'settings.styling',
+      'settings.typography',
+      'settings.navbar',
+      'settings.footer',
+      'settings.banner',
+    ]);
+    expect(tabs?.querySelectorAll('a[aria-current="page"]')).toHaveLength(1);
+    expect(tabs?.querySelector('a[aria-current="page"]')?.textContent).toBe('settings.typography');
   });
 
   it('keeps Appearance restricted to Admins when an Editor follows a subsection deep link', async () => {
@@ -430,7 +446,7 @@ describe('site settings permissions', () => {
     expect(heading?.getAttribute('tabindex')).toBe('-1');
   });
 
-  it.each(['general', 'danger', 'smartAi'])('explains an explicit restricted %s link without redirecting', async (section) => {
+  it.each(['general', 'danger', 'integrations'])('explains an explicit restricted %s link without redirecting', async (section) => {
     mocks.section = section;
     await act(async () => root.render(<SettingsPage />));
     expect(mocks.navigate).not.toHaveBeenCalled();
@@ -439,7 +455,7 @@ describe('site settings permissions', () => {
     expect(container.textContent).toContain(section === 'danger' ? 'settings.permissions.dangerBody' : 'settings.permissions.body');
     expect(container.querySelector('[role="status"]')?.textContent).toContain('settings.languages');
     expect(
-      container.querySelector('[data-testid="general-settings"], [data-testid="danger-settings"], [data-testid="smart-ai-settings"]'),
+      container.querySelector('[data-testid="general-settings"], [data-testid="danger-settings"], [data-testid="integrations-settings"]'),
     ).toBeNull();
   });
 
@@ -460,7 +476,7 @@ describe('site settings permissions', () => {
   });
   it.each([
     { section: 'danger', testId: 'danger-settings' },
-    { section: 'smartAi', testId: 'smart-ai-settings' },
+    { section: 'integrations', testId: 'integrations-settings' },
   ])('explains a restricted $section direct link and provides working alternatives to an editor', async ({ section, testId }) => {
     mocks.section = section;
     await act(async () => root.render(<SettingsPage />));
@@ -474,6 +490,20 @@ describe('site settings permissions', () => {
     expect(mocks.navigate).not.toHaveBeenCalled();
   });
 
+  it('lets an editor open AI answers, which shows editors where answers stand read-only', async () => {
+    mocks.section = 'ai';
+    await act(async () => root.render(<SettingsPage />));
+
+    expect(container.querySelector('[data-testid="ai-answers-settings"]')).not.toBeNull();
+    expect(container.querySelector('[role="status"]')).toBeNull();
+    expect(container.querySelector('nav')?.textContent).toContain('settings.ai');
+  });
+
+  it('opens AI answers from an old Smart AI link', () => {
+    const validate = Route.options.validateSearch as (search: Record<string, unknown>) => { section?: string };
+    expect(validate({ section: 'smartAi' })).toEqual({ section: 'ai' });
+  });
+
   it('lets an editor manage content languages', async () => {
     mocks.section = 'languages';
     await act(async () => root.render(<SettingsPage />));
@@ -484,7 +514,7 @@ describe('site settings permissions', () => {
 
   it.each([
     { section: 'general', testId: 'general-settings' },
-    { section: 'smartAi', testId: 'smart-ai-settings' },
+    { section: 'ai', testId: 'ai-answers-settings' },
   ])('keeps $section settings available to a site administrator', async ({ section, testId }) => {
     mocks.section = section;
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });

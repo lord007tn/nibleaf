@@ -24,16 +24,23 @@ vi.mock('./git-workflow', () => ({
     return <div data-testid="git-workflow" />;
   },
 }));
-const idle = { mutate: vi.fn(), isPending: false };
+// The repository form's save has its own tests (features/site-git); here it only has to render.
+vi.mock('@/features/site-git/api/git-connection', () => ({
+  useSaveGitConnection: () => ({ save: vi.fn(), pending: false, isPending: () => false }),
+  useWriteGitSettings: () => ({ write: state.update, pending: false, isPending: () => false }),
+}));
+// The webhook rotation has its own tests (features/site-git); here it only has to render.
+vi.mock('@/features/site-git/components/use-git-settings-webhook-rotate-command', () => ({
+  useGitSettingsWebhookRotateCommand: () => ({ busy: false, press: vi.fn() }),
+}));
+// The manual import has its own tests (git-tab.import.test.tsx); here it only has to render.
+vi.mock('@/features/site-git/api/git-import', () => ({ useGitImport: () => ({ pending: false, isPending: () => false, send: vi.fn() }) }));
 vi.mock('@/hooks/api', () => ({
   useBranches: () => ({ data: [] }),
   useDeployments: () => ({ data: state.deployments }),
   useLiveDeployments: () => ({ data: state.live }),
   useGitWorkflow: () => ({ data: state.workflow, isPending: false }),
-  useImportFromGit: () => idle,
   useLanguages: () => ({ data: [] }),
-  useRotateGitWebhookSecret: () => idle,
-  useUpdateWorkspaceSettings: () => ({ mutate: state.update, isPending: false }),
   useWorkspaceSettings: () => ({ isPending: false, isError: false, data: { git: state.legacy } }),
 }));
 

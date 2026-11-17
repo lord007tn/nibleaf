@@ -1,3 +1,5 @@
+import { escapeDisallowedExportHtml } from './export-html';
+import { markdownCodeSpans } from './markup-scan';
 import { buildMdxTree, type MdxNode, tokenizeMdx } from './mdx-tokens';
 
 /** A character reference a Markdown renderer decodes to text: named,
@@ -147,10 +149,11 @@ const attributeText = (value: string | undefined): Segment[] => {
   const segments: Segment[] = [];
   const line = (value ?? '').replace(/[\r\n]+/g, ' ').trim();
   let cursor = 0;
-  for (const match of line.matchAll(/(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g)) {
-    if (match.index > cursor) segments.push({ kind: 'attribute', value: markdownText(line.slice(cursor, match.index)) });
-    segments.push({ kind: 'code', value: match[0] });
-    cursor = match.index + match[0].length;
+  // markdownCodeSpans: what `/(`+)(?!`)([\s\S]*?[^`])\1(?!`)/g` finds, in linear time.
+  for (const [start, end] of markdownCodeSpans(line)) {
+    if (start > cursor) segments.push({ kind: 'attribute', value: markdownText(line.slice(cursor, start)) });
+    segments.push({ kind: 'code', value: line.slice(start, end) });
+    cursor = end;
   }
   if (cursor < line.length) segments.push({ kind: 'attribute', value: markdownText(line.slice(cursor)) });
   return segments;
@@ -301,9 +304,11 @@ const projectMdx = (source: string, target: Target): Segment[] => renderNodes(bu
 /** Convert supported authored MDX to inert Markdown for the HTML and PDF exports, with the same
  *  tokenizer and projection as `.md`. Code is never rewritten; `marked` escapes raw HTML. */
 export const portablePublicMdxMarkdown = (source: string): string =>
-  projectMdx(source, 'export')
-    .map((segment) => segment.value)
-    .join('');
+  escapeDisallowedExportHtml(
+    projectMdx(source, 'export')
+      .map((segment) => segment.value)
+      .join(''),
+  );
 
 /** Authored MDX as public Markdown (`.md`, llms files): projected, with active markup, MDX
  *  expressions and ESM removed and prose escaped once. Code stays exactly as written. */
@@ -336,5 +341,5 @@ export const normalizePublicMarkdownContent = (markdown: string): string => {
         .join('\n'),
     );
   }
-  return parts.join('').trim();
+  return escapeDisallowedExportHtml(parts.join('').trim());
 };

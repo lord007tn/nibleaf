@@ -2,6 +2,15 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import { blockDirection } from '@nibleaf/shared/script-direction';
 import type { ReactNode } from 'react';
 import { hasIcon, PageIcon } from '@/components/site/page-icon';
+import { siteEmoji } from '@/lib/site-emoji';
+
+/** A card's icon: a known icon name, an emoji as written, or a neutral page icon
+ *  for anything else (never the name's first letter, which read as a broken tile). */
+function CardIcon({ icon }: { icon: string }) {
+  const emoji = siteEmoji(icon);
+  if (emoji) return <span className="text-lg leading-none">{emoji}</span>;
+  return <PageIcon name={hasIcon(icon) ? icon : 'file-text'} className="size-5" />;
+}
 
 // ─── Cards ──────────────────────────────────────────────────────────────────
 
@@ -16,11 +25,7 @@ export function Card({ title, href, icon, children }: { title?: string; href?: s
     <>
       {icon ? (
         <span className="mb-3 inline-flex text-primary" aria-hidden>
-          {hasIcon(icon) ? (
-            <PageIcon name={icon} className="size-5" />
-          ) : (
-            <span className="grid size-5 place-items-center rounded-md bg-primary/10 font-mono text-[11px]">{icon[0]?.toUpperCase()}</span>
-          )}
+          <CardIcon icon={icon} />
         </span>
       ) : null}
       {title ? (

@@ -12,7 +12,7 @@ vi.mock('@/functions/site', () => ({ getSiteFn: mocks.getSite, getSitePageFn: mo
 vi.mock('@/lib/site-redirects', () => ({ redirectIfConfigured: async () => undefined }));
 vi.mock('@/lib/site-origin', () => ({ customDomainOrigin: () => null }));
 vi.mock('@/providers/site-analytics-provider', () => ({ SiteAnalyticsProvider: ({ children }: { children: unknown }) => children }));
-vi.mock('@/components/site/site-analytics-consent', () => ({ SiteAnalyticsConsent: () => null }));
+vi.mock('@/components/site/site-analytics-consent', () => ({ SiteAnalyticsConsent: () => null, PrivacyChoicesLink: () => null }));
 // Plain buttons stand in for the dropdown, so a test can pick a language.
 vi.mock('@/components/site/language-switcher', () => ({
   LanguageSwitcher: ({ languages, onChange }: { languages: Array<{ code: string }>; onChange: (code: string) => void }) =>
@@ -98,6 +98,18 @@ async function renderReader(url: string, ready: string) {
 }
 
 describe('reader language and access', () => {
+  it('migrates old client URLs without losing hashes and keeps prefixes during navigation', async () => {
+    const container = await renderReader('/sites/docs/next/moved-page?lang=ar&tab=cli#install', '[data-site-not-found]');
+    expect(container.router.state.location.href).toBe('/sites/docs/ar/next/moved-page?tab=cli#install');
+    await act(async () => {
+      await container.router.navigate({ href: '/sites/docs/ar/next/another' });
+    });
+    expect(container.router.state.location.href).toBe('/sites/docs/ar/next/another');
+    expect(mocks.getSitePage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ data: { projectId: 'docs', path: 'next/another', language: 'ar', version: 'next' } }),
+    );
+  });
+
   it('switches language on a page with no known translation without leaving it or its version', async () => {
     const container = await renderReader('/sites/docs/next/moved-page?lang=ar', '[data-site-not-found]');
     await act(async () => container.querySelector<HTMLButtonElement>('[data-switch-language="en"]')?.click());
@@ -176,5 +188,16 @@ describe('reader language and access', () => {
     const container = await renderReader('/sites/docs/guide', 'h1');
     expect(container.querySelector('h1')?.textContent).toBe('Not published yet');
     expect(container.querySelector('a[href="/sign-in"]')).toBeNull();
+  });
+
+  it('says there is no site at an address the API does not know (or a taken-down site), not that it is unpublished', async () => {
+    for (const details of [undefined, { reason: 'takedown' }]) {
+      mocks.getSite.mockRejectedValue(
+        new ApiResponseError('site not found', 404, 'database:not_found', undefined, undefined, undefined, undefined, details),
+      );
+      const container = await renderReader('/sites/joodpms', 'h1');
+      expect(container.querySelector('h1')?.textContent).toBe('No site at this address');
+      expect(container.textContent).not.toContain('editor');
+    }
   });
 });

@@ -82,6 +82,8 @@ describe('Button disabledReason', () => {
 
   // Markup recorded from Button before `disabledReason` existed (main at
   // 0a18349c), so buttons that don't use a reason are provably unchanged.
+  // Re-recorded for P2-DASH-013, which only adds the always-on `aria-disabled`
+  // styling (and its loading override) to every button's classes.
   it.each([
     ['plain', <Button key="a">Save</Button>],
     [

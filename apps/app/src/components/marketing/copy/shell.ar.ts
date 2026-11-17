@@ -18,14 +18,14 @@ export const shellAr: ShellCopy = {
   nav: [
     { label: 'المزايا', href: '/ar#features' },
     { label: 'حالات الاستخدام', href: '/ar#use-cases' },
-    { label: 'الأسعار', href: '/pricing' },
+    { label: 'الأسعار', href: '/ar/pricing' },
     { label: 'الوثائق', href: 'https://docs.nibleaf.com?lang=ar', external: true },
-    { label: 'الاستضافة الذاتية', href: '/self-hosting' },
+    { label: 'الاستضافة الذاتية', href: '/ar/self-hosting' },
   ],
   login: { label: 'تسجيل الدخول', href: '/sign-in' },
   start: { label: 'ابدأ مجانًا', href: '/sign-up' },
   languageSwitch: { label: 'English', ariaLabel: 'Read this page in English', hrefLang: 'en' },
-  theme: { toDark: 'التبديل إلى الوضع الداكن', toLight: 'التبديل إلى الوضع الفاتح' },
+  theme: { darkMode: 'الوضع الداكن', toDark: 'التبديل إلى الوضع الداكن', toLight: 'التبديل إلى الوضع الفاتح' },
   menu: { open: 'افتح القائمة', close: 'أغلق القائمة', title: 'القائمة' },
   github: {
     label: 'GitHub',
@@ -44,8 +44,8 @@ export const shellAr: ShellCopy = {
         links: [
           { label: 'المزايا', href: '/ar#features' },
           { label: 'Nibleaf Cloud', href: '/cloud' },
-          { label: 'الأسعار', href: '/pricing' },
-          { label: 'الاستضافة الذاتية', href: '/self-hosting' },
+          { label: 'الأسعار', href: '/ar/pricing' },
+          { label: 'الاستضافة الذاتية', href: '/ar/self-hosting' },
           { label: 'الإصدارات', href: 'https://github.com/lord007tn/nibleaf/releases', external: true },
         ],
       },

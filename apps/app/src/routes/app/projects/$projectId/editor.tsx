@@ -15,9 +15,9 @@ import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/u
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { isRtl } from '@nibleaf/i18n';
 import { useLocale, useT } from '@nibleaf/i18n/react';
+import { PUBLISH_CHECK_CODES } from '@nibleaf/shared/publish-check-codes';
 import { canAdminister } from '@nibleaf/shared/rbac';
-import { useDebouncer } from '@tanstack/react-pacer';
-import { type QueryClient, useQueryClient } from '@tanstack/react-query';
+import { type QueryClient, type UseQueryResult, useQueries, useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, Link, useBlocker } from '@tanstack/react-router';
 import {
   ChevronLeft,
@@ -40,9 +40,8 @@ import {
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
-import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { z } from 'zod';
 import { ActiveBranchContext } from '@/components/editor/active-branch-context';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
 import { AiAssist } from '@/components/editor/ai-assist';
@@ -54,25 +53,43 @@ import { EditorConflictDialog } from '@/components/editor/editor-conflict-dialog
 import {
   aiAssistState,
   draftUnsavable,
+  foreignCopyConflict,
+  foreignCopyWhileDirty,
+  isDirty,
   isEditorRevisionConflict,
+  isPageTooLarge,
+  mayBeNormalizedWrite,
   nextHydration,
+  normalizedSaveConflict,
+  type OwnWrites,
+  restoredDraftConflict,
+  restoreUnsavedDraft,
   type ServerSnapshot,
   shouldAutosave,
   shouldFlushDraft,
+  shouldSaveDraft,
+  type UnsavedDraft,
+  unsavedDrafts,
 } from '@/components/editor/editor-draft';
 import { resolveEditorLayout } from '@/components/editor/editor-layout';
-import { createEditorSaveQueue, type PageDraft } from '@/components/editor/editor-save-queue';
+import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
+import { createEditorSaveQueue, isSupersededWrite, type PageDraft, type QueuedWrite, samePageDraft } from '@/components/editor/editor-save-queue';
+import { useSaveThrottle } from '@/components/editor/editor-save-throttle';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
+import { useLinkedPageHistory } from '@/components/editor/linked-page-history';
 import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor';
+import { MovePageDialog } from '@/components/editor/move-page-dialog';
+import { pagePublicLink } from '@/components/editor/page-public-link';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
 import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
 import { PageTrashButton } from '@/components/editor/page-trash-button';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
+import { type PublishFixArrival, PublishFixBar } from '@/components/editor/publish-fix-bar';
 import { NeverPublishedBanner, PagePublishStateBar, type SaveState, SaveStatus } from '@/components/editor/save-status';
 import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
-import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree } from '@/components/editor/sortable-page-tree';
-import { TiptapEditor } from '@/components/editor/tiptap-editor';
+import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree, shownRowName } from '@/components/editor/sortable-page-tree';
+import { type EditorDraftHandle, TiptapEditor } from '@/components/editor/tiptap-editor';
 import { detectUnsupportedMdxTags } from '@/components/editor/unsupported-mdx';
 import { aiAssistPageId, useAiAssistSession } from '@/components/editor/use-ai-assist-session';
 import { useDeletePageFlow } from '@/components/editor/use-delete-page';
@@ -84,13 +101,17 @@ import {
   friendlyErrorMessage,
   pageNeverPublished,
   pagePublishState,
+  pickLiveDomain,
   queryKeys,
   useAiDraftCapability,
   useBranches,
   useComments,
   useCreatePage,
   useDeleteAsset,
+  useDomains,
+  useDuplicatePage,
   useLanguages,
+  useOpenApiConfiguration,
   usePage,
   usePages,
   usePendingChanges,
@@ -101,13 +122,21 @@ import {
   useUploadAsset,
 } from '@/hooks/api';
 import { assetUploadErrorMessage } from '@/hooks/api/client-helpers';
-import { aiDraftCapabilityQueryOptions, commentsQueryOptions, pageQueryOptions, projectMembersQueryOptions } from '@/hooks/api/query-options';
+import {
+  aiDraftCapabilityQueryOptions,
+  commentsQueryOptions,
+  pageQueryOptions,
+  pagesQueryOptions,
+  projectMembersQueryOptions,
+} from '@/hooks/api/query-options';
 import { prefetchScopedPages } from '@/hooks/api/route-prefetch';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { PublishControl } from '@/layouts/project';
 import { draftPreviewHref } from '@/lib/draft-preview';
 import { recordFirstPublishStage } from '@/lib/first-publish-activation';
+import { copyToClipboard } from '@/lib/invitations';
 import { resolveProjectEditAccess } from '@/lib/project-settings-access';
+import { boundedText, flag, oneOf, readSearch } from '@/lib/search-params';
 import { typographyVars } from '@/lib/typography';
 import { useSession } from '@/services/auth-client';
 
@@ -117,13 +146,14 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
   // Deep links from the dashboard: `?page=<id>` opens a specific page (e.g. a
   // publish-check issue), `?publish=true` opens the publish flow directly.
   validateSearch: (search) =>
-    z
-      .object({
-        firstPublish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
-        page: z.string().min(1).optional().catch(undefined),
-        publish: z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional()),
-      })
-      .parse(search),
+    readSearch(search, {
+      firstPublish: flag,
+      page: boundedText(1),
+      // A publish check's Fix (contract: @nibleaf/shared/publish-check-codes): PublishFixBar lands on it, then they are dropped.
+      fix: oneOf(PUBLISH_CHECK_CODES),
+      fixTarget: boundedText(1),
+      publish: flag,
+    }),
   loaderDeps: ({ search: { page } }) => ({ page }),
   // The parent route prefetches the site, languages, branches and publishes. This
   // adds the page tree (every language, default branch), the site's AI drafting
@@ -142,10 +172,28 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
   component: EditorPage,
 });
 
+/**
+ * How long the conflict banner may wait for a write of our own to settle when
+ * the copy that raised it may be that write, stored normalized (#825). A
+ * normalized write is a structural one (the server locks the project and
+ * re-parses every page's links), so its response can trail the refetch by a
+ * moment; 4 s covers that and stays well under the 10 s an autosave may wait
+ * while typing goes on. Saving is paused the whole time, and a real foreign
+ * copy is never hidden for longer than this.
+ */
+const OWN_WRITE_HOLD_MS = 4000;
+
+/** The other docs versions' pages for link resolution, and whether all of them loaded. Stable, so
+ *  `useQueries` keeps the same result until a query changes. */
+const combineVersionPages = (results: UseQueryResult<PageNode[]>[]) => ({
+  pages: results.flatMap((result) => result.data ?? []),
+  complete: results.every((result) => result.isSuccess),
+});
+
 function EditorPage() {
   const t = useT();
   const { projectId } = Route.useParams();
-  const { firstPublish, page: pageParam, publish: publishParam } = Route.useSearch();
+  const { firstPublish, page: pageParam, publish: publishParam, fix: fixParam, fixTarget: fixTargetParam } = Route.useSearch();
   const { data: project } = useProject(projectId);
   const {
     data: memberData,
@@ -200,7 +248,10 @@ function EditorPage() {
   const { data: languages } = useLanguages(projectId);
   const { data: allPages, isPending } = usePages(projectId, undefined, activeBranchId ?? undefined);
   const createPage = useCreatePage(projectId);
+  const duplicatePage = useDuplicatePage(projectId);
   const updatePage = useUpdatePage(projectId);
+  const { data: domains } = useDomains(projectId);
+  const [moveForId, setMoveForId] = useState<string | null>(null);
   const [historyForId, setHistoryForId] = useState<string | null>(null);
   const uploadAsset = useUploadAsset(projectId);
   const deleteAsset = useDeleteAsset(projectId);
@@ -356,11 +407,15 @@ function EditorPage() {
   // Markdown source is an editing workspace; Viewers read the visual page.
   const effectiveMode = viewOnly && editorMode === 'markdown' ? visualMode : editorMode;
   const [status, setStatus] = useState<SaveState>('idle');
+  // Why the last save failed, for the save-error banner and toasts.
+  const [saveError, setSaveError] = useState<unknown>(null);
   const [addLangOpen, setAddLangOpen] = useState(false);
   // The page whose settings dialog is open — independent of the active editor
   // page, so opening a page's settings from the tree does NOT switch what you're
   // editing.
   const [settingsForId, setSettingsForId] = useState<string | null>(null);
+  // The field Page settings opens on, when a publish check's Fix asked for one.
+  const [settingsField, setSettingsField] = useState<'title' | 'slug' | undefined>(undefined);
   const [langSettings, setLangSettings] = useState<Language | null>(null);
   // What's currently in sync with the server for the open page: its id + the
   // exact title/content we last loaded (or saved) and its revision stamp. Drives
@@ -475,12 +530,105 @@ function EditorPage() {
   // with a draft that belongs to a different page than `page`: the editor below
   // is keyed by page id and mounts straight onto the right document, and the
   // autosave effect can never observe the previous page's body under the new id.
-  const hydration = nextHydration({ synced, draft: { title, content }, conflicted: conflictedPageId === page?.id }, page);
+  // The page editor serializes an edit only when typing pauses, the page is
+  // saved, or something needs the text (P2-ED-005): `content` can lag the
+  // document by an unserialized edit. `draftRef` follows each serialization at
+  // once (`setEditorContent`), so a save or flush reads the current text.
+  const editorDraftRef = useRef<EditorDraftHandle | null>(null);
+  const draftRef = useRef({ synced, draft: { title, content }, page });
+  // The editor's last serialization, to tell its changes to `content` from others'.
+  const editorEmittedRef = useRef<string | null>(null);
+  const setEditorContent = (markdown: string) => {
+    editorEmittedRef.current = markdown;
+    draftRef.current = { ...draftRef.current, draft: { ...draftRef.current.draft, content: markdown } };
+    setContent(markdown);
+  };
+  /** Bring an unserialized edit into the draft now. */
+  const flushEditorDraft = () => editorDraftRef.current?.flush();
+  // A copy older than this editor's own stored writes is never loaded back (#757).
+  const supersededRef = useRef<(id: string, revision: string) => boolean>(() => false);
+  const superseded = (revision: string) => (page ? supersededRef.current(page.id, revision) : false);
+  // What the save queue knows of this editor's own writes, to tell its copies from another client's (#790).
+  const ownWritesRef = useRef<(id: string) => OwnWrites>(() => ({}));
+  const inFlightRef = useRef<(id: string) => boolean>(() => false);
+  /**
+   * A conflict raised for a copy that arrived while a write of the page was at
+   * the server (#790): that copy may be the write's own, stored as other text
+   * (normalized), which only its response tells. Saving pauses with the banner
+   * at once, never silently; once the writes settle, the conflict is withdrawn
+   * if the copy is one of their stored revisions after all.
+   */
+  const provisionalRef = useRef<{ id: string; revision: string | undefined; error: unknown } | null>(null);
+  /**
+   * The provisional conflict whose banner waits (#825): its copy may be a write
+   * of ours at the server, stored with its links rewritten. Everything else
+   * about the conflict stands (saving paused, the queue latched, guarded
+   * actions held); only the banner waits until the write settles, a guarded
+   * action is refused, or `OWN_WRITE_HOLD_MS` passes, whichever comes first.
+   */
+  const [heldConflict, setHeldConflict] = useState<unknown>(null);
+  const sentWritesRef = useRef<(id: string) => Array<{ title: string; content: string; base?: string }>>(() => []);
+  // The draft as of now, with an edit the editor has not serialized yet, once a fresher copy needs it.
+  let currentDraft = { title, content };
+  let hydration = nextHydration({ synced, draft: currentDraft, conflicted: conflictedPageId === page?.id }, page, superseded);
+  if (hydration && synced?.id === hydration.id && editorDraftRef.current?.pending()) {
+    // A fresher server copy arrived while the editor holds an edit `content`
+    // doesn't have yet. Serialize it first: it makes the draft dirty, and a dirty
+    // draft is never re-seeded over.
+    flushEditorDraft();
+    currentDraft = draftRef.current.draft;
+    hydration = nextHydration({ synced, draft: currentDraft, conflicted: conflictedPageId === page?.id }, page, superseded);
+  }
+  // Another client's newer copy while the draft holds unsent changes: neither
+  // loaded over them nor saved over it, but reviewed at once (#790).
+  const foreignOver = (draft: { title: string; content: string }) =>
+    !hydration &&
+    Boolean(page) &&
+    foreignCopyWhileDirty({ synced, draft, conflicted: conflictedPageId === page?.id }, page, superseded, page ? ownWritesRef.current(page.id) : {});
+  let foreign = foreignOver(currentDraft);
+  if (foreign && editorDraftRef.current?.pending()) {
+    // `content` may lag the editor (an undo back to the loaded text not
+    // serialized yet): decide on the draft as it is.
+    flushEditorDraft();
+    currentDraft = draftRef.current.draft;
+    hydration = nextHydration({ synced, draft: currentDraft, conflicted: conflictedPageId === page?.id }, page, superseded);
+    foreign = foreignOver(currentDraft);
+  }
+  if (foreign && page) {
+    const conflict = foreignCopyConflict(page.id);
+    provisionalRef.current = inFlightRef.current(page.id) ? { id: page.id, revision: page.updatedAt, error: conflict } : null;
+    const copy = page;
+    setHeldConflict(provisionalRef.current && sentWritesRef.current(page.id).some((write) => mayBeNormalizedWrite(copy, write)) ? conflict : null);
+    setSaveError(conflict);
+    setStatus('error');
+    setConflictedPageId(page.id);
+  }
   if (hydration) {
     setSynced(hydration);
     setTitle(hydration.title);
     setContent(hydration.content);
     setStatus('idle');
+  }
+  // A conflict under review keeps its banner and Review until it is resolved: no
+  // other save outcome replaces that status (an older write landing after it, a
+  // failure, going offline). A status that read "saved" would hide the review
+  // while every save stays held back for it.
+  if (page && conflictedPageId === page.id && status !== 'error' && status !== 'offline') setStatus('error');
+  // The banner of a provisional conflict whose copy may be our own write waits for it (#825).
+  const conflictHeld = heldConflict !== null && Boolean(page) && conflictedPageId === page?.id && saveError === heldConflict;
+  useEffect(() => {
+    if (heldConflict === null) return;
+    const timer = setTimeout(() => setHeldConflict((current: unknown) => (current === heldConflict ? null : current)), OWN_WRITE_HOLD_MS);
+    return () => clearTimeout(timer);
+  }, [heldConflict]);
+  // Each newer copy while the banner waits is told apart again: one that is not a
+  // write of ours at the server, links aside, shows the banner now. The conflict
+  // is withdrawn when the writes settle only if the latest copy is one they stored.
+  const waiting = provisionalRef.current;
+  if (conflictHeld && page && waiting?.id === page.id && page.updatedAt !== waiting.revision) {
+    const copy = page;
+    provisionalRef.current = { ...waiting, revision: page.updatedAt };
+    if (!sentWritesRef.current(page.id).some((write) => mayBeNormalizedWrite(copy, write))) setHeldConflict(null);
   }
 
   const navigate = Route.useNavigate();
@@ -497,7 +645,6 @@ function EditorPage() {
     onContentChange: setContent,
     openPage: openPageForAi,
   });
-  const draftRef = useRef({ synced, draft: { title, content }, page });
   const updatePageRef = useRef(updatePage);
   // Read the publish state straight from the query cache at save time: a publish
   // that just went live (or is still running) must stop the address from following
@@ -506,6 +653,17 @@ function EditorPage() {
   // The freshest server copy we know of (a save response can be newer than the
   // detail query, which refetches after it).
   const lastSavedRef = useRef<PageNode | null>(null);
+  // The last draft the server refused for its size: the page, the revision it
+  // was measured against, its text, and the refusal. Autosave does not send the
+  // same text at the same revision again (it would fail the same way); the next
+  // edit does, and Retry still can. A successful save or a new server revision
+  // clears it: the same text may fit against another stored body.
+  const tooLargeDraftRef = useRef<{ id: string; revision: string | undefined; title: string; content: string; error: unknown } | null>(null);
+  // What decides whether a draft may be saved, for the lazy draft read below.
+  const autosaveGateRef = useRef({ canEditContent, conflictedPageId, status });
+  useLayoutEffect(() => {
+    autosaveGateRef.current = { canEditContent, conflictedPageId, status };
+  });
   useLayoutEffect(() => {
     draftRef.current = { synced, draft: { title, content }, page };
     updatePageRef.current = updatePage;
@@ -521,7 +679,19 @@ function EditorPage() {
   const saveQueue = useMemo(
     () =>
       createEditorSaveQueue(
-        async (draft: PageDraft) => {
+        async (draft: PageDraft, write: QueuedWrite) => {
+          const sameText = (other: { title: string; content: string }) => other.title === draft.title && other.content === draft.content;
+          // This draft is the page's final one: the editor still shows it (with
+          // any edit not serialized yet), or the author left the page and no
+          // later draft of it is queued.
+          const final = () => {
+            if (draftRef.current.synced?.id === draft.id) {
+              editorDraftRef.current?.flush();
+              return draftRef.current.synced?.id === draft.id && sameText(draftRef.current.draft);
+            }
+            const queued = saveQueue.pendingDraft();
+            return queued?.id !== draft.id || sameText(queued);
+          };
           try {
             // An unpublished page's address keeps following its title.
             const server = freshestServerCopy(draft.id, draftRef.current.page, lastSavedRef.current);
@@ -533,19 +703,62 @@ function EditorPage() {
                   unpublished: addressFollowsTitleRef.current(draft.id),
                 })
               : undefined;
-            const saved = await updatePageRef.current.mutateAsync({
-              pageId: draft.id,
-              body: { expectedUpdatedAt: draft.expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
-            });
-            lastSavedRef.current = saved;
-            if (mounted.current) setSynced((current) => (current?.id === draft.id ? { ...draft, updatedAt: saved.updatedAt } : current));
-            const latest = draftRef.current;
-            if (mounted.current && latest.synced?.id === draft.id) {
-              setStatus(latest.draft.title === draft.title && latest.draft.content === draft.content ? 'saved' : 'saving');
+            const send = (expectedUpdatedAt: string | undefined) =>
+              updatePageRef.current.mutateAsync({
+                pageId: draft.id,
+                body: { expectedUpdatedAt, title: draft.title, content: draft.content, ...(slug ? { slug } : {}) },
+              });
+            /**
+             * Take `page`, sent from `from`, as what the server holds: it stored
+             * exactly that text, and replaces the editor's server copy unless the
+             * editor moved on to a newer one (another client's, adopted while the
+             * write was in flight): the write's precondition held, so it was
+             * stored before that copy (#757). Returns what the server now holds.
+             */
+            const record = (page: Awaited<ReturnType<typeof send>>, from: string | undefined) => {
+              lastSavedRef.current = page;
+              tooLargeDraftRef.current = null;
+              const stored: ServerSnapshot = { id: draft.id, title: page.title, content: page.content, updatedAt: page.updatedAt };
+              const supersedes = (synced: ServerSnapshot | null) =>
+                synced?.id === draft.id && (from === undefined || synced.updatedAt === undefined || synced.updatedAt === from);
+              if (mounted.current) setSynced((synced) => (supersedes(synced) ? stored : synced));
+              return supersedes(draftRef.current.synced) ? stored : draftRef.current.synced;
+            };
+            const first = await send(draft.expectedUpdatedAt);
+            let saved = first;
+            let base = draft.expectedUpdatedAt;
+            // The server stored other text than this draft (it normalized it). While
+            // the draft is still the page's final one, send it once more from the
+            // revision just stored; if that is changed too, re-sending cannot
+            // converge, so saving pauses for the author to review (#757).
+            // A write from before a conflict review is not the final draft any more.
+            if (!sameText(first) && !write.stale() && final()) {
+              // The server holds `first` now, whatever happens to the retry: the
+              // editor and the queue take it first, so the retry (or a draft
+              // queued meanwhile) moves on from its revision.
+              record(first, base);
+              saveQueue.acknowledge(draft.id, base, first.updatedAt);
+              base = first.updatedAt;
+              saved = await send(base);
+            }
+            const holds = record(saved, base);
+            if (!sameText(saved) && saved !== first) throw normalizedSaveConflict(draft.id);
+            const latest = draftRef.current.draft;
+            // A conflict under review keeps its status; so does one reviewed since this write was queued.
+            if (mounted.current && holds?.id === draft.id && !write.stale() && autosaveGateRef.current.conflictedPageId !== draft.id) {
+              setStatus(latest.title === holds.title && latest.content === holds.content ? 'saved' : 'saving');
             }
             return saved;
           } catch (error) {
-            if (mounted.current && draftRef.current.synced?.id === draft.id) {
+            if (isPageTooLarge(error)) {
+              tooLargeDraftRef.current = { id: draft.id, revision: draft.expectedUpdatedAt, title: draft.title, content: draft.content, error };
+            }
+            // A write queued before the author reviewed the page's conflict says
+            // nothing about it now: its failure (a late 409 included) neither
+            // re-raises the conflict nor shows an error.
+            if (mounted.current && draftRef.current.synced?.id === draft.id && !write.stale()) {
+              // An older write failing never replaces the conflict under review.
+              if (autosaveGateRef.current.conflictedPageId !== draft.id) setSaveError(error);
               setStatus(navigator.onLine === false ? 'offline' : 'error');
               if (isEditorRevisionConflict(error)) setConflictedPageId(draft.id);
             }
@@ -553,35 +766,282 @@ function EditorPage() {
           }
         },
         (saved) => saved.updatedAt,
+        // What the server stored, so a repeat of a pending write's text is skipped only when it landed as sent (#735).
+        (saved) => saved,
       ),
     [],
   );
-  const saveDraft = useDebouncer(
-    (draft: PageDraft) => {
-      // The queue settles status for every write, including flushes on unmount.
-      void saveQueue.save(draft).catch(() => undefined);
+  supersededRef.current = saveQueue.superseded;
+  ownWritesRef.current = (id) => ({
+    carries: (text) => saveQueue.carries(id, text),
+    mayBeOwn: (copy) => saveQueue.ownRevision(id, copy.updatedAt),
+  });
+  inFlightRef.current = saveQueue.inFlight;
+  sentWritesRef.current = saveQueue.sentWrites;
+  // The signed-in account: unsaved drafts are kept and taken back as its own (#789).
+  const owner = session?.user.id;
+  const ownerRef = useRef(owner);
+  const [, setWritesSettled] = useState(0);
+  ownerRef.current = owner;
+  /**
+   * Queue a write, keeping track of it outside this editor (#789). If it fails
+   * or is refused, at the server or in the queue, while no editor shows its page
+   * (this one unmounted or moved to another page), its draft is kept for the
+   * next editor of the page, unless a later write of the page was kept or
+   * stored since, the page's conflict was reviewed since it was queued, or the
+   * session changed.
+   */
+  const saveTracked = (draft: PageDraft) => {
+    const ticket = unsavedDrafts.issue(ownerRef.current, draft.id);
+    const resolution = saveQueue.resolution(draft.id);
+    const result = saveQueue.save(draft);
+    // A newer copy that arrived while a write was at the server is told apart
+    // once it settles (#790): render again to look at it.
+    const settledNow = () => {
+      if (mounted.current) setWritesSettled((count) => count + 1);
+      const provisional = provisionalRef.current;
+      if (!provisional || provisional.id !== draft.id || saveQueue.inFlight(draft.id)) return;
+      provisionalRef.current = null;
+      // Told apart now: a banner waiting for it shows, unless it is withdrawn below.
+      if (mounted.current) setHeldConflict((current: unknown) => (current === provisional.error ? null : current));
+      // The copy was this editor's own write after all: nothing to review. The
+      // queue lets the page's writes go on (a draft queued meanwhile is sent)
+      // whatever the editor shows: unmounted, or with the review open, it is
+      // retired all the same (unless the server raised a conflict of its own).
+      if (!saveQueue.ownRevision(draft.id, provisional.revision) || !saveQueue.dropConflict(draft.id, provisional.error)) return;
+      if (!mounted.current) return;
+      setConflictServer((open) => (open?.id === draft.id ? null : open));
+      setConflictedPageId((current) => (current === draft.id ? null : current));
+      setSaveError(null);
+      setStatus('saving');
+    };
+    result.then(settledNow, settledNow);
+    if (ticket) {
+      result.then(
+        () => unsavedDrafts.stored(ticket),
+        (error: unknown) => {
+          const unseen = !mounted.current || draftRef.current.synced?.id !== draft.id;
+          const reviewed = isSupersededWrite(error) || resolution !== saveQueue.resolution(draft.id);
+          if (unseen && !reviewed) {
+            unsavedDrafts.failed(ticket, { id: draft.id, title: draft.title, content: draft.content, base: saveQueue.baseFor(draft), error });
+          } else unsavedDrafts.settled(ticket, !reviewed);
+        },
+      );
+    }
+    return result;
+  };
+  const saveTrackedRef = useRef(saveTracked);
+  saveTrackedRef.current = saveTracked;
+  const conflictHeldRef = useRef(false);
+  conflictHeldRef.current = conflictHeld;
+  // The session this editor opened in: nothing is kept for it once that session ends (#789).
+  const sessionRef = useRef(unsavedDrafts.generation());
+  // Closing the editor while a conflict's banner waits for our write (#825):
+  // the author was never shown it, so the draft must not go with the editor.
+  // It is queued behind that write, where the conflict still holds it: sent if
+  // the write proves the copy ours (the conflict is withdrawn first), refused
+  // otherwise, and then kept and brought back as a conflict by the next editor (#789).
+  // Any draft but the copy the server holds is kept, even the text this editor
+  // loaded: the server holds that no longer. Not after the session ended.
+  useEffect(
+    () => () => {
+      const held = provisionalRef.current;
+      if (!conflictHeldRef.current || !held || unsavedDrafts.generation() !== sessionRef.current) return;
+      editorDraftRef.current?.flush();
+      const { synced: currentSynced, draft, page: server } = draftRef.current;
+      if (currentSynced?.id !== held.id || (server?.id === held.id && server.title === draft.title && server.content === draft.content)) return;
+      saveTrackedRef.current({ id: held.id, ...draft, expectedUpdatedAt: currentSynced.updatedAt }).catch(() => undefined);
     },
-    { wait: 700, onUnmount: (debouncer) => debouncer.flush() },
+    [],
   );
+  // A draft of this page kept after an editor could not save it (#789) comes
+  // back here once the page is loaded with no edit of this editor's own and no
+  // write of the page is unsettled: as a conflict to review, or as the draft it
+  // was, which autosave sends.
+  const unsavedPageId = page?.id;
+  const readUnsaved = () => (unsavedPageId && !unsavedDrafts.pending(owner, unsavedPageId) ? unsavedDrafts.peek(owner, unsavedPageId) : undefined);
+  const unsaved = useSyncExternalStore(unsavedDrafts.subscribe, readUnsaved, readUnsaved);
+  // The kept draft this editor took back. It stays kept until it is saved (a
+  // later stored write of the page drops it) or its conflict is resolved, so
+  // closing the editor before the review loses nothing (#799 review).
+  const restoredRef = useRef<UnsavedDraft | null>(null);
+  useEffect(() => {
+    if (!unsaved || unsaved === restoredRef.current || !canEditContent || synced?.id !== unsaved.id) return;
+    if (isDirty({ synced, draft: { title, content } }) || editorDraftRef.current?.pending() || saveQueue.hasPending()) return;
+    const restore = restoreUnsavedDraft(unsaved, synced);
+    if (!restore) {
+      // The server holds it already.
+      unsavedDrafts.take(owner, unsaved.id);
+      return;
+    }
+    restoredRef.current = unsaved;
+    setTitle(unsaved.title);
+    setContent(unsaved.content);
+    if (restore === 'conflict') {
+      // Held like any conflict: nothing is written until the review resolves it.
+      const conflict = isEditorRevisionConflict(unsaved.error) ? unsaved.error : restoredDraftConflict(unsaved.id);
+      saveQueue.raiseConflict(unsaved.id, conflict);
+      setSaveError(conflict);
+      setStatus('error');
+      setConflictedPageId(unsaved.id);
+    }
+  }, [unsaved, synced, title, content, canEditContent, saveQueue, owner]);
+  // Closing the editor while a restored draft's conflict is unresolved: the
+  // draft stays kept, with the author's edits since.
+  useEffect(
+    () => () => {
+      const restored = restoredRef.current;
+      if (!restored || autosaveGateRef.current.conflictedPageId !== restored.id) return;
+      editorDraftRef.current?.flush();
+      const { synced: currentSynced, draft } = draftRef.current;
+      if (currentSynced?.id === restored.id) unsavedDrafts.revise(ownerRef.current, restored.id, draft);
+    },
+    [],
+  );
+  /** The page's conflict was resolved: a draft kept for it is settled by that review. */
+  const forgetRestored = (id: string) => {
+    unsavedDrafts.take(ownerRef.current, id);
+    if (restoredRef.current?.id === id) restoredRef.current = null;
+  };
+  // A conflict, whoever found it, holds back the page's writes in the queue too,
+  // as the server's does, until the review resolves it.
+  useEffect(() => {
+    if (conflictedPageId && isEditorRevisionConflict(saveError)) saveQueue.raiseConflict(conflictedPageId, saveError);
+  }, [conflictedPageId, saveError, saveQueue]);
+  // A refusal with its own fix (the page is too large) says so; other failures
+  // keep the general "could not be saved" wording.
+  const saveFailedMessage = (error: unknown) => (isPageTooLarge(error) ? friendlyErrorMessage(t, error, 'editor.saveError') : t('editor.saveError'));
+  const saveErrorText = useMemo(
+    () => (isPageTooLarge(saveError) ? friendlyErrorMessage(t, saveError, 'editor.saveError') : t('editor.saveError')),
+    [saveError, t],
+  );
+  // Saved after a pause, at most every few seconds while typing goes on, and at
+  // once when the window loses focus, the tab is hidden or the editor unmounts.
+  // The queue settles status for every write, including flushes on unmount; the
+  // throttle handles a failed write's rejection.
+  const saveDraft = useSaveThrottle((draft: PageDraft) => saveTracked(draft), samePageDraft);
+  // The draft a save or flush just sent after serializing the editor's edit: the
+  // autosave effect then sees that very draft arrive, and must not queue it again.
+  const sentRef = useRef<PageDraft | null>(null);
+  // The draft the autosave effect saw last, to tell an editor serialization apart.
+  const lastAutosaveInputRef = useRef<PageDraft | null>(null);
+  /**
+   * The draft to save now, read when a lazily paced save is due (see
+   * `onEditorEdit`). Serializes the editor's pending edit first. Null when the
+   * draft must not be saved, under the same rules as the autosave effect.
+   */
+  const readAutosaveDraft = (): PageDraft | null => {
+    const before = draftRef.current.draft.content;
+    flushEditorDraft();
+    const { page: current, synced: currentSynced, draft } = draftRef.current;
+    const gate = autosaveGateRef.current;
+    const conflicted = gate.conflictedPageId === current?.id;
+    if (!current || !gate.canEditContent || !shouldSaveDraft({ synced: currentSynced, draft, conflicted }, current, saveQueue.pendingDraft()))
+      return null;
+    const refused = tooLargeDraftRef.current;
+    if (
+      refused &&
+      refused.id === current.id &&
+      refused.revision === currentSynced?.updatedAt &&
+      refused.title === draft.title &&
+      refused.content === draft.content
+    ) {
+      return null;
+    }
+    const next: PageDraft = { id: current.id, ...draft, expectedUpdatedAt: currentSynced?.updatedAt };
+    sentRef.current = draft.content === before ? null : next;
+    return next;
+  };
+  /**
+   * A keystroke in the page editor (P2-ED-005). The editor no longer serializes
+   * the page for each one: the save is paced from the keystrokes' times, and the
+   * draft is read when the save is due or a flush runs. Edge: undoing back to the
+   * stored text and typing again before the editor serializes (a pause of
+   * `DEFERRED_EMIT_IDLE_MS`) keeps the first change's time, where the draft was
+   * clean in between before; a long burst may then save up to that much sooner.
+   */
+  const onEditorEdit = () => {
+    const gate = autosaveGateRef.current;
+    const current = draftRef.current.page;
+    if (!current || !gate.canEditContent) return;
+    saveDraft.maybeExecuteLazy(readAutosaveDraft);
+    // As the autosave effect said when every keystroke changed `content`.
+    if (gate.conflictedPageId !== current.id && draftRef.current.synced?.id === current.id && gate.status !== 'saving') {
+      gate.status = 'saving';
+      setStatus('saving');
+    }
+  };
 
   // Hydration pins every draft to its page, including intentional empty bodies.
   useEffect(() => {
-    if (!page || !canEditContent || !shouldAutosave({ synced, draft: { title, content }, conflicted: conflictedPageId === page.id }, page)) {
-      // Undoing back to the server copy must cancel an older queued draft.
+    const editorDraft = editorDraftRef.current;
+    if (editorDraft?.pending()) {
+      // The editor holds an edit `content` doesn't have yet: bring it in first.
+      // When it changes `content`, this effect runs again with it.
+      editorDraft.flush();
+      if (draftRef.current.draft.content !== content) return;
+    }
+    const input: PageDraft | null = page ? { id: page.id, title, content, expectedUpdatedAt: synced?.updatedAt } : null;
+    const previousInput = lastAutosaveInputRef.current;
+    lastAutosaveInputRef.current = input;
+    const sent = sentRef.current;
+    sentRef.current = null;
+    // A write still in flight stores its own draft: undoing back to the stored
+    // text then still needs saving after it (#728).
+    if (
+      !page ||
+      !canEditContent ||
+      !shouldSaveDraft({ synced, draft: { title, content }, conflicted: conflictedPageId === page.id }, page, saveQueue.pendingDraft())
+    ) {
+      // Undoing back to the server copy (with no other write pending) must cancel an older queued draft.
       saveDraft.cancel();
       if (!saveQueue.hasPending()) setStatus((current) => (current === 'saving' ? 'saved' : current));
       return;
     }
+    const refused = tooLargeDraftRef.current;
+    // Another page or a new server revision: that refusal no longer applies.
+    if (refused && (refused.id !== page.id || refused.revision !== synced?.updatedAt)) tooLargeDraftRef.current = null;
+    else if (refused && refused.title === title && refused.content === content) {
+      // Still the text the server refused for its size, at the same revision:
+      // keep the draft and the error, and wait for the next edit.
+      saveDraft.cancel();
+      setSaveError(refused.error);
+      setStatus('error');
+      return;
+    }
     setStatus('saving');
-    saveDraft.maybeExecute({ id: page.id, title, content, expectedUpdatedAt: synced?.updatedAt });
-  }, [title, content, page, synced, saveDraft, canEditContent, conflictedPageId, saveQueue.hasPending]);
+    const draft = input as PageDraft;
+    // Just sent by the save or flush that serialized it: nothing left to queue.
+    if (sent && samePageDraft(sent, draft)) return;
+    const serializedByEditor =
+      content === editorEmittedRef.current &&
+      previousInput !== null &&
+      previousInput.id === draft.id &&
+      previousInput.title === draft.title &&
+      previousInput.expectedUpdatedAt === draft.expectedUpdatedAt;
+    // The editor serialized edits whose keystrokes already paced the save: the
+    // save keeps its time. Any other change is a new change, as before.
+    if (serializedByEditor) saveDraft.settle(draft);
+    else saveDraft.maybeExecute(draft);
+  }, [title, content, page, synced, saveDraft, canEditContent, conflictedPageId, saveQueue.hasPending, saveQueue.pendingDraft]);
 
   const flushCurrentDraft = async () => {
+    const before = draftRef.current.draft.content;
+    flushEditorDraft();
+    const serialized = draftRef.current.draft.content !== before;
     saveDraft.cancel();
     let current = draftRef.current;
     if (!current.page || current.synced?.id !== current.page.id) {
       await saveQueue.settled();
       return;
+    }
+    // A conflict under review: nothing is written until the author resolves it,
+    // and navigating, publishing or previewing waits for that review, even with
+    // a draft that compares clean (the server may hold another copy).
+    if (conflictedPageId === current.page.id) {
+      // Refused for it: a banner still waiting for our write shows now.
+      setHeldConflict(null);
+      throw isEditorRevisionConflict(saveError) ? saveError : restoredDraftConflict(current.page.id);
     }
     // The author can undo to the original value while an older save is still
     // in flight. Persist that final value after the request, even though it
@@ -593,10 +1053,16 @@ function EditorPage() {
     const pageId = current.page.id;
     // Typing while a slow request runs must also reach the server before a
     // navigation or publish can proceed.
+    let fresh = serialized;
     for (;;) {
       const snapshot: PageDraft = { id: pageId, ...current.draft, expectedUpdatedAt: current.synced?.updatedAt };
+      if (fresh) sentRef.current = snapshot;
       setStatus('saving');
-      await saveQueue.save(snapshot);
+      await saveTracked(snapshot);
+      // Typing during the request: serialize it, so the loop saves it too.
+      const latest = draftRef.current.draft.content;
+      flushEditorDraft();
+      fresh = draftRef.current.draft.content !== latest;
       current = draftRef.current;
       if (current.page?.id !== snapshot.id || (current.draft.title === snapshot.title && current.draft.content === snapshot.content)) return;
       saveDraft.cancel();
@@ -610,8 +1076,8 @@ function EditorPage() {
     try {
       await flushCurrentDraft();
       action();
-    } catch {
-      toast.error(t('editor.saveError'));
+    } catch (error) {
+      toast.error(saveFailedMessage(error));
       onError?.();
     } finally {
       transitionInFlight.current = false;
@@ -620,6 +1086,7 @@ function EditorPage() {
 
   useBlocker({
     shouldBlockFn: async () => {
+      flushEditorDraft();
       // Made a Viewer with unsaved changes: saving would be refused on every try,
       // so ask once. Staying keeps the text on screen to copy; leaving discards it.
       if (draftUnsavable(viewOnly, draftRef.current, draftRef.current.page)) {
@@ -637,12 +1104,16 @@ function EditorPage() {
       try {
         await flushCurrentDraft();
         return !(await guardConfigChanges());
-      } catch {
-        toast.error(t('editor.saveError'));
+      } catch (error) {
+        toast.error(saveFailedMessage(error));
         return true;
       }
     },
-    enableBeforeUnload: () => shouldAutosave(draftRef.current, draftRef.current.page) || status === 'saving' || configDirtySources.current.size > 0,
+    enableBeforeUnload: () =>
+      Boolean(editorDraftRef.current?.pending()) ||
+      shouldAutosave(draftRef.current, draftRef.current.page) ||
+      status === 'saving' ||
+      configDirtySources.current.size > 0,
   });
 
   const configIsSaved = () => {
@@ -714,7 +1185,13 @@ function EditorPage() {
     const replacement = target ?? [...document.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === previous?.text);
     (replacement ?? document.getElementById('main-content'))?.focus();
   }, [pendingSwitch]);
-  const createAndOpen = (body: Parameters<typeof createPage.mutate>[0], options?: { focusTitle?: boolean }) => {
+  // Create a page (New page, Add a page inside, Duplicate) and open it. With
+  // `focusTitle`, keys typed while it is created go into its title, which then
+  // takes focus, so the new page is ready to name.
+  const createAndOpen = <Created extends { id: string }>(
+    create: (callbacks: { onSuccess: (created: Created) => void; onError: () => void; onSettled: () => void }) => void,
+    options?: { focusTitle?: boolean; onCreated?: (created: Created) => void },
+  ) => {
     if (creationInFlight.current || transitionInFlight.current) return;
     const focused = document.activeElement;
     creationFocus.current =
@@ -722,11 +1199,19 @@ function EditorPage() {
     bufferTitleKeys.current = options?.focusTitle === true;
     beginSwitch({ kind: 'create' }, () => {
       creationInFlight.current = true;
-      createPage.mutate(body, {
+      create({
         onSuccess: (created) => {
           setPendingSwitch({ kind: 'open', id: created.id });
           setSelectedId(created.id);
-          if (options?.focusTitle) setFocusTitleFor(created.id);
+          if (options?.focusTitle) {
+            // The page list may be a drawer over the canvas (narrow screens, or
+            // the focused Markdown layout): close it so the title that takes
+            // focus is visible, without handing focus back to the drawer's button.
+            setMobileSidebarOpen(false);
+            setFocusedTreeOpen(false);
+            setFocusTitleFor(created.id);
+          }
+          options?.onCreated?.(created);
         },
         onError: () => {
           setPendingSwitch(null);
@@ -741,15 +1226,19 @@ function EditorPage() {
   };
   const addPage = (parentId: string | null, languageId: string) =>
     createAndOpen(
-      // Placeholder title in the PAGE's language with a pinned 'untitled' slug: the
-      // address then follows the real title until the page is first published.
-      {
-        title: messageInLanguage('editor.untitled', languageCodeOf(languageId), t),
-        slug: 'untitled',
-        parentId,
-        languageId,
-        ...branchScope,
-      },
+      (callbacks) =>
+        createPage.mutate(
+          // The placeholder is presentation only. The address follows the first
+          // real title until the page is first published.
+          {
+            title: '',
+            slug: 'untitled',
+            parentId,
+            languageId,
+            ...branchScope,
+          },
+          callbacks,
+        ),
       { focusTitle: true },
     );
   // A group only needs a name, so ask for it instead of opening every page setting.
@@ -763,7 +1252,7 @@ function EditorPage() {
       confirmLabel: t('editor.createGroup'),
     });
     if (!name) return;
-    createAndOpen({ title: name.slice(0, 200), kind: 'GROUP', languageId, ...branchScope });
+    createAndOpen((callbacks) => createPage.mutate({ title: name.slice(0, 200), kind: 'GROUP', languageId, ...branchScope }, callbacks));
   };
   const openNode = (id: string) => {
     if (id === activeTreeId) return;
@@ -786,12 +1275,110 @@ function EditorPage() {
     deepLinkedPageId.current = pageParam;
     openNode(pageParam);
   }, [pageParam]);
+  // A link in the page to another page of the site opens that page here, as a
+  // ?page= deep link does (the page being left is saved first), in its own
+  // history entry: Back returns to this page where it was scrolled. A link to a
+  // section (`setup#install`) lands on that heading.
+  const linkedPages = useLinkedPageHistory({ projectId, pageId: page?.id, canvas: () => canvasRef.current });
+  const { data: openApi } = useOpenApiConfiguration(projectId);
+  // The other docs versions' pages, loaded once a link may lead into one of them.
+  const [linkVersionsWanted, setLinkVersionsWanted] = useState(false);
+  const otherBranchIds = useMemo(
+    () => (branches ?? []).filter((branch) => branch.id !== activeBranchId).map((branch) => branch.id),
+    [branches, activeBranchId],
+  );
+  const otherVersions = useQueries({
+    queries: (linkVersionsWanted ? otherBranchIds : []).map((id) => pagesQueryOptions(projectId, undefined, id)),
+    combine: combineVersionPages,
+  });
+  const allVersionsLoaded = otherBranchIds.length === 0 || (linkVersionsWanted && otherVersions.complete);
+  const linkSiteFor = useCallback(
+    (pages: readonly PageNode[]) =>
+      project && languages && branches && activeBranchId
+        ? editorSiteSnapshot({ project, languages, branches, pages, branchId: activeBranchId, openApi })
+        : null,
+    [project, languages, branches, activeBranchId, openApi],
+  );
+  const linkSite = useMemo(
+    () => (allPages ? linkSiteFor([...allPages, ...otherVersions.pages]) : null),
+    [allPages, otherVersions.pages, linkSiteFor],
+  );
+  const editorLinks = useMemo<EditorLinks>(
+    () => ({
+      resolve: editorLinkResolver(linkSite, page?.id, { allVersions: allVersionsLoaded }),
+      open: (id, section) => void linkedPages.open(id, section),
+      href: linkedPages.href,
+      loadVersions: () => setLinkVersionsWanted(true),
+      resolveAsync: async (href) => {
+        setLinkVersionsWanted(true);
+        const lists = await Promise.all(otherBranchIds.map((id) => queryClient.ensureQueryData(pagesQueryOptions(projectId, undefined, id))));
+        return editorLinkResolver(allPages ? linkSiteFor([...allPages, ...lists.flat()]) : null, page?.id)(href);
+      },
+    }),
+    [linkSite, page?.id, allVersionsLoaded, linkedPages, projectId, otherBranchIds, queryClient, allPages, linkSiteFor],
+  );
   useEffect(() => {
     const decision = deepLinkBranchDecision({ deepLinkedPageId: deepLinkedPageId.current, page, activeBranchId, branches });
     if (decision.kind === 'wait') return;
     deepLinkedPageId.current = null;
     if (decision.kind === 'switch') setActiveBranchId(decision.branchId);
   }, [page, activeBranchId, branches]);
+  // ─── A publish check's Fix (P1-ED-002) ───────────────────────────────────────
+  // `?fix=<code>&fixTarget=<evidence>` arrives with `?page=`. It is kept here
+  // while the bar is up, and dropped from the address once arrival is done (a
+  // replace, so a reload or Back doesn't land again). The same Fix pressed
+  // again later (the publish sheet opens over this editor) lands again.
+  const [fixArrival, setFixArrival] = useState<(PublishFixArrival & { key: number }) | null>(null);
+  const handledFix = useRef<string | null>(null);
+  useEffect(() => {
+    if (!(fixParam && pageParam)) {
+      handledFix.current = null;
+      return;
+    }
+    const key = [pageParam, fixParam, fixTargetParam ?? ''].join('\u0000');
+    if (handledFix.current === key) return;
+    handledFix.current = key;
+    setFixArrival((current) => ({ code: fixParam, target: fixTargetParam ?? null, pageId: pageParam, key: (current?.key ?? 0) + 1 }));
+  }, [fixParam, fixTargetParam, pageParam]);
+  // Same page, same scroll: rewriting the address never moves the page (linked-page-history).
+  const rewriteSearch = useCallback(
+    (search: (previous: Record<string, unknown>) => Record<string, unknown>) =>
+      void navigate({
+        to: '/app/projects/$projectId/editor',
+        params: { projectId },
+        search,
+        hash: true,
+        replace: true,
+        ignoreBlocker: true,
+        state: (previous) => ({ ...previous, editorKeepScroll: true }),
+      }),
+    [navigate, projectId],
+  );
+  const dropFixParams = useCallback(() => rewriteSearch((previous) => ({ ...previous, fix: undefined, fixTarget: undefined })), [rewriteSearch]);
+  // The bar shows once the page (or group) it is about is on screen, and goes when the writer moves on.
+  // It waits for the writer's access: the editor remounts once that is known, which would drop the landing.
+  const fixOnScreen =
+    fixArrival !== null &&
+    !switching &&
+    !permissionsPending &&
+    (selectedGroup ? selectedGroup.id === fixArrival.pageId : page?.id === fixArrival.pageId && activeId === page.id);
+  // The arrival that has been on screen: only that one goes when the page changes, never a newer one still on its way.
+  const fixShownKey = useRef<number | null>(null);
+  useEffect(() => {
+    if (!fixArrival) return;
+    if (fixOnScreen) fixShownKey.current = fixArrival.key;
+    else if (fixShownKey.current === fixArrival.key) setFixArrival(null);
+  }, [fixArrival, fixOnScreen]);
+  // "Back to publish" sets `?publish=true`; while the editor is open that opens the sheet, and is dropped again.
+  const [publishRequest, setPublishRequest] = useState(0);
+  const handledPublishParam = useRef(publishParam);
+  useEffect(() => {
+    if (publishParam === handledPublishParam.current) return;
+    handledPublishParam.current = publishParam;
+    if (!publishParam) return;
+    setPublishRequest((count) => count + 1);
+    rewriteSearch((previous) => ({ ...previous, publish: undefined }));
+  }, [publishParam, rewriteSearch]);
   const renameNode = (id: string, nextTitle: string, field: 'title' | 'sidebarTitle' = 'title') => {
     const node = (allPages ?? []).find((p) => p.id === id);
     // A page with its own sidebar title shows that name in the list, so renaming
@@ -845,6 +1432,67 @@ function EditorPage() {
       },
     });
   };
+  // ─── Row menu actions (AUTH-38) ───────────────────────────────────────────────
+  // Duplicate saves the page being edited first, so the copy has its latest
+  // text, then opens the copy as creating a page does.
+  const duplicateNode = (id: string) =>
+    createAndOpen<Page>((callbacks) => duplicatePage.mutate(id, callbacks), {
+      // A page's copy is ready to rename, as a new page is; a group has no title field.
+      focusTitle: (allPages ?? []).find((p) => p.id === id)?.kind !== 'GROUP',
+      onCreated: (created) => toast.success(t('editor.duplicated', { title: shownRowName(created, t('editor.untitled')) })),
+    });
+  // The page's address on the published site, as the reader builds it: the
+  // live domain, the version prefix and the language (left out for the default one).
+  const copyPageLink = async (id: string) => {
+    const node = (allPages ?? []).find((p) => p.id === id);
+    if (!node || node.kind === 'GROUP' || !project) return;
+    // Readers open the LIVE address: a published page whose address the draft
+    // changed (slug, parent or language) keeps its old one until the next publish.
+    const live = pendingChanges?.changes.find((change) => change.id === id && change.status === 'modified')?.published;
+    const liveLanguageId = live && orderedLanguages.find((language) => language.code === live.languageCode)?.id;
+    const linked = live && liveLanguageId ? { ...node, path: live.path, languageId: liveLanguageId } : node;
+    const url = pagePublicLink(projectId, linked, {
+      slug: project.slug,
+      primaryDomain: domains ? pickLiveDomain(domains)?.domain : undefined,
+      languages: orderedLanguages,
+      versionSlug: publishedVersionSlugFor(branches, node.branchId ?? activeBranchId),
+    });
+    if (!(await copyToClipboard(url))) {
+      toast.error(t('settings.members.copyFailed'));
+      return;
+    }
+    // A hidden page's address doesn't open on the published site; say so rather
+    // than let the writer share a link that leads nowhere.
+    toast.success(
+      node.hidden
+        ? t('editor.linkCopiedHidden')
+        : pageNeverPublished(id, pendingChanges)
+          ? t('editor.linkCopiedUnpublished')
+          : t('editor.linkCopied'),
+    );
+  };
+  const pageHref = useCallback((id: string) => `/app/projects/${encodeURIComponent(projectId)}/editor?page=${encodeURIComponent(id)}`, [projectId]);
+  // Hidden pages stay in the editor and leave the site's navigation on the next
+  // publish. Conditional on the revision the writer saw, like every page save;
+  // the open page's draft is saved first so the two don't conflict.
+  const toggleHidden = (id: string) =>
+    void runAfterSavingDraft({
+      action: () => {
+        const node = (allPages ?? []).find((p) => p.id === id);
+        if (!node) return;
+        const latest = freshestServerCopy(id, node, freshestServerCopy(id, draftRef.current.page, lastSavedRef.current));
+        const hidden = !node.hidden;
+        updatePage.mutate(
+          { pageId: id, body: { hidden, expectedUpdatedAt: latest?.updatedAt ?? node.updatedAt } },
+          {
+            onSuccess: () => {
+              if (hidden) toast.success(t('editor.hiddenNotice', { title: shownRowName(node, t('editor.untitled')) }));
+            },
+            onError: (error) => toast.error(friendlyErrorMessage(t, error, 'editor.visibilityFailed')),
+          },
+        );
+      },
+    });
 
   // Raw Markdown is a focused workspace: the source editor gets the entire
   // application canvas while the page tree and comments/AI rail temporarily
@@ -918,7 +1566,10 @@ function EditorPage() {
   const pageTitleInput = (
     <PageTitleField
       label={t('editor.pageTitlePlaceholder')}
+      placeholder={t('editor.untitled')}
       lang={activeLanguage?.code}
+      // In visual mode the title sits outside the body that carries these.
+      style={typographyVars(project?.config?.typography)}
       onChange={canEditContent ? setTitle : ignoreEdit}
       readOnly={!canEditContent}
       onEnter={() => focusBodyStart(canvasRef.current)}
@@ -1010,10 +1661,10 @@ function EditorPage() {
   const newPageLanguage = orderedLanguages.find((lang) => lang.id === newPageLanguageId);
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-dvh min-w-0 flex-col overflow-hidden">
       {/* Top bar — workspace controls (Mintlify-style): back + branch on the left,
           configure / preview / publish on the right. No breadcrumb. */}
-      <header className="flex h-14 shrink-0 items-center gap-1.5 border-border border-b bg-background px-2 sm:gap-2.5 sm:px-3">
+      <header className="flex h-14 min-w-0 shrink-0 items-center gap-1.5 border-border border-b bg-background px-2 sm:gap-2.5 sm:px-3">
         <Link
           to="/app/projects/$projectId"
           params={{ projectId }}
@@ -1024,6 +1675,47 @@ function EditorPage() {
           <ChevronLeft className="size-4 rtl:-scale-x-100" />
           {project?.name ? <span className="hidden max-w-[200px] truncate font-medium text-foreground text-sm sm:inline">{project.name}</span> : null}
         </Link>
+        {view === 'content' ? (
+          <>
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="size-11 shrink-0 sm:hidden"
+              aria-label={t('editor.showPages')}
+              aria-expanded={treeOverlay || mobileSidebarOpen}
+              onClick={() => {
+                if (markdownFocused) setFocusedTreeOpen(true);
+                else {
+                  setSidebarCollapsed(false);
+                  setMobileSidebarOpen(true);
+                }
+              }}
+            >
+              <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
+            </Button>
+            <span className="min-w-0 flex-1 truncate font-medium text-sm sm:hidden" dir="auto">
+              {title || t('editor.untitled')}
+            </span>
+          </>
+        ) : (
+          <>
+            {/* Choosing a settings section closes the phone drawer; this reopens the section list. */}
+            <Button
+              size="icon-sm"
+              variant="ghost"
+              className="size-11 shrink-0 sm:hidden"
+              aria-label={t('editor.showSidebar')}
+              aria-expanded={mobileSidebarOpen}
+              onClick={() => {
+                setSidebarCollapsed(false);
+                setMobileSidebarOpen(true);
+              }}
+            >
+              <PanelLeftOpen className="size-4 rtl:-scale-x-100" />
+            </Button>
+            <span className="min-w-0 flex-1 truncate font-medium text-sm sm:hidden">{t('editor.config.heading')}</span>
+          </>
+        )}
         {/* Divider only once the project name is loaded — otherwise it dangles next to the chevron. */}
         {project?.name ? <span className="hidden h-5 w-px bg-border sm:block" /> : null}
         {/* Versions only matter once a site has more than one; until then the
@@ -1049,7 +1741,7 @@ function EditorPage() {
           }}
         />
         {view === 'content' && page && !switching ? (
-          <SaveStatus state={status} publishState={pageState} unpublishedCount={pendingChanges?.changes.length ?? 0} />
+          <SaveStatus state={conflictHeld ? 'saving' : status} publishState={pageState} unpublishedCount={pendingChanges?.changes.length ?? 0} />
         ) : null}
         <div className="ms-auto flex items-center gap-1 sm:gap-2">
           {viewOnly ? <ViewOnlyBadge /> : null}
@@ -1058,7 +1750,7 @@ function EditorPage() {
               aria-label={t('editor.mode.configuration')}
               size="sm"
               variant={view === 'config' ? 'secondary' : 'ghost'}
-              className="cursor-pointer"
+              className="hidden cursor-pointer sm:inline-flex"
               onClick={async () => {
                 const nextView = view === 'config' ? 'content' : 'config';
                 if (view === 'config' && !(await guardConfigChanges())) return;
@@ -1072,7 +1764,13 @@ function EditorPage() {
               <SlidersHorizontal className="size-3.5" /> <span className="hidden md:inline">{t('editor.mode.configuration')}</span>
             </Button>
           ) : null}
-          <Button aria-label={t('project.preview')} onClick={() => void openDraftPreview()} size="sm" variant="outline" className="cursor-pointer">
+          <Button
+            aria-label={t('project.preview')}
+            onClick={() => void openDraftPreview()}
+            size="sm"
+            variant="outline"
+            className="hidden cursor-pointer sm:inline-flex"
+          >
             <Eye className="size-3.5" /> <span>{t('project.preview')}</span>
           </Button>
           {project ? (
@@ -1089,9 +1787,93 @@ function EditorPage() {
                   : undefined
               }
               initialPublishOpen={publishParam}
+              openRequest={publishRequest}
               project={project}
             />
           ) : null}
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  size="icon-sm"
+                  variant="ghost"
+                  className="size-11 shrink-0 sm:hidden"
+                  aria-label={t('editor.pageActions', { title: title || t('editor.untitled') })}
+                />
+              }
+            >
+              <MoreHorizontal className="size-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-64">
+              <DropdownMenuItem onClick={() => void openDraftPreview()}>
+                <Eye /> {t('project.preview')}
+              </DropdownMenuItem>
+              {canManageSettings ? (
+                <DropdownMenuItem
+                  onClick={async () => {
+                    if (view === 'config' && !(await guardConfigChanges())) return;
+                    setView(view === 'config' ? 'content' : 'config');
+                    setSidebarCollapsed(false);
+                    setMobileSidebarOpen(true);
+                  }}
+                >
+                  <SlidersHorizontal /> {t('editor.mode.configuration')}
+                </DropdownMenuItem>
+              ) : null}
+              {page && view === 'content' && !switching ? (
+                <>
+                  {canEditContent ? (
+                    <>
+                      <DropdownMenuItem onClick={() => void runAfterSavingDraft({ action: () => setSettingsForId(page.id) })}>
+                        <Settings2 /> {t('editor.pageSettings.title')}
+                      </DropdownMenuItem>
+                      <DropdownMenuCheckboxItem checked={commentMode} onCheckedChange={() => toggleCommentMode()}>
+                        {t('editor.comments.mode')}
+                      </DropdownMenuCheckboxItem>
+                    </>
+                  ) : null}
+                  <DropdownMenuItem onClick={() => setRailSheetOpen((value) => !value)}>
+                    <PanelRight /> {railLabel}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void runAfterSavingDraft({ action: () => setHistoryForId(page.id) })}>
+                    <History /> {t('editor.history.title')}
+                  </DropdownMenuItem>
+                  <DropdownMenuCheckboxItem
+                    checked={effectiveMode === 'wysiwyg'}
+                    disabled={effectiveMode === 'markdown'}
+                    onCheckedChange={(checked) => {
+                      const next = checked ? 'wysiwyg' : 'visual';
+                      setVisualMode(next);
+                      setEditorMode(next);
+                    }}
+                  >
+                    {t('editor.showToolbar')}
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      if (commentMode) toggleCommentMode();
+                      setEditorMode(effectiveMode === 'markdown' ? visualMode : 'markdown');
+                    }}
+                  >
+                    <Code2 /> {t(effectiveMode === 'markdown' ? 'editor.backToVisual' : 'editor.editSource')}
+                  </DropdownMenuItem>
+                  {!showBranchSwitcher && canEditContent ? (
+                    <DropdownMenuItem onClick={() => setNewVersionOpen(true)}>
+                      <Layers /> {t('editor.branch.new')}
+                    </DropdownMenuItem>
+                  ) : null}
+                  {canEditContent ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem variant="destructive" onClick={() => deleteNode(page.id)}>
+                        <Trash2 /> {t('editor.deletePage')}
+                      </DropdownMenuItem>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </header>
       {viewOnly ? <ViewOnlyBanner /> : null}
@@ -1328,11 +2110,30 @@ function EditorPage() {
                               onSettings={(id) => void runAfterSavingDraft({ action: () => setSettingsForId(id) })}
                               onRename={renameNode}
                               onDelete={deleteNode}
+                              onDuplicate={duplicateNode}
+                              onCopyLink={(id) => void copyPageLink(id)}
+                              onMoveTo={setMoveForId}
+                              onToggleHidden={toggleHidden}
+                              pageHref={pageHref}
+                              creating={createPage.isPending || duplicatePage.isPending}
                             />
                           )}
                         </div>
                       );
                     })}
+                    {(() => {
+                      const moving = moveForId && canEditContent ? (allPages ?? []).find((p) => p.id === moveForId) : undefined;
+                      return moving ? (
+                        <MovePageDialog
+                          key={moving.id}
+                          page={moving}
+                          pages={allPages ?? []}
+                          languages={orderedLanguages}
+                          onMove={(move) => reorderPages.mutateAsync(move)}
+                          onClose={() => setMoveForId(null)}
+                        />
+                      ) : null;
+                    })()}
                   </PageTreeDndProvider>
 
                   {/* Add a language */}
@@ -1365,6 +2166,7 @@ function EditorPage() {
                 onRestored={(saved) => {
                   saveDraft.cancel();
                   saveQueue.resolveConflict(saved.id, saved.updatedAt);
+                  forgetRestored(saved.id);
                   lastSavedRef.current = saved;
                   setTitle(saved.title);
                   setContent(saved.content);
@@ -1400,7 +2202,12 @@ function EditorPage() {
                     languages={orderedLanguages}
                     pages={allPages ?? []}
                     open
-                    onOpenChange={(o) => !o && setSettingsForId(null)}
+                    initialField={settingsField}
+                    onOpenChange={(o) => {
+                      if (o) return;
+                      setSettingsForId(null);
+                      setSettingsField(undefined);
+                    }}
                   />
                 ) : null;
               })()
@@ -1410,6 +2217,39 @@ function EditorPage() {
         {/* The one main landmark, for every canvas state (configuration, loading,
             group, page, empty): "Skip to main content" lands here. */}
         <main className="flex min-h-0 min-w-0 flex-col outline-none" id="main-content" tabIndex={-1}>
+          {view === 'content' && fixArrival && fixOnScreen ? (
+            <PublishFixBar
+              key={fixArrival.key}
+              arrival={fixArrival}
+              canvas={() => canvasRef.current}
+              group={Boolean(selectedGroup)}
+              markdown={() => {
+                flushEditorDraft();
+                return draftRef.current.draft.content;
+              }}
+              onEditSource={
+                canEditContent
+                  ? () => {
+                      if (commentMode) toggleCommentMode();
+                      setEditorMode('markdown');
+                    }
+                  : undefined
+              }
+              onBackToPublish={() => rewriteSearch((previous) => ({ ...previous, publish: true }))}
+              onDismiss={() => setFixArrival(null)}
+              onFocusTitle={() => {
+                const element = titleRef.current;
+                element?.focus();
+                element?.select();
+              }}
+              onHandled={dropFixParams}
+              onOpenSettings={(field) => {
+                if (!canEditContent) return;
+                setSettingsField(field);
+                setSettingsForId(fixArrival.pageId);
+              }}
+            />
+          ) : null}
           {/* Main area: site configuration */}
           {view === 'config' ? (
             <ConfigCanvas
@@ -1453,14 +2293,14 @@ function EditorPage() {
           ) : activeId && page ? (
             /* Main area: page editor */
             <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-              {status === 'error' || status === 'offline' ? (
+              {(status === 'error' || status === 'offline') && !conflictHeld ? (
                 <div
                   role="alert"
                   className="flex flex-wrap items-center gap-3 border-destructive/30 border-b bg-destructive/5 px-4 py-3 text-destructive text-sm"
                 >
                   <TriangleAlert className="size-4 shrink-0" />
                   <span className="min-w-0 flex-1">
-                    {t(conflictedPageId === page.id ? 'editor.conflict.body' : status === 'offline' ? 'site.aiOffline' : 'editor.saveError')}
+                    {conflictedPageId === page.id ? t('editor.conflict.body') : status === 'offline' ? t('site.aiOffline') : saveErrorText}
                   </span>
                   <Button
                     size="sm"
@@ -1470,6 +2310,8 @@ function EditorPage() {
                         void runAfterSavingDraft({ action: () => undefined });
                         return;
                       }
+                      // The review compares the current text: serialize a pending edit first.
+                      flushEditorDraft();
                       void pageQuery
                         .refetch()
                         .then((result) => {
@@ -1492,6 +2334,7 @@ function EditorPage() {
                       onResolve={(merged) => {
                         saveDraft.cancel();
                         saveQueue.resolveConflict(page.id, conflictServer.updatedAt);
+                        forgetRestored(page.id);
                         lastSavedRef.current = conflictServer;
                         setSynced({ id: page.id, title: conflictServer.title, content: conflictServer.content, updatedAt: conflictServer.updatedAt });
                         setTitle(merged.title);
@@ -1506,7 +2349,7 @@ function EditorPage() {
               ) : null}
               {/* Editor toolbar: re-expand affordance (when the sidebar is collapsed) + the
               document mode/view controls. */}
-              <div className="flex min-h-12 flex-wrap items-center gap-1 border-border border-b px-2 py-1.5 sm:gap-2 sm:px-4 sm:py-0">
+              <div className="hidden min-h-12 flex-wrap items-center gap-1 border-border border-b px-2 py-1.5 sm:flex sm:gap-2 sm:px-4 sm:py-0">
                 {markdownFocused ? (
                   // The focused layout hides the tree; this floats it over the canvas so
                   // the author can still switch pages without leaving Markdown mode.
@@ -1669,28 +2512,32 @@ function EditorPage() {
                   // document can never linger across a page switch.
                   // The link picker searches the version this page belongs to.
                   <ActiveBranchContext.Provider value={page.branchId ?? activeBranchId ?? undefined}>
-                    <TiptapEditor
-                      // Remounts once access is known, so block controls render for that access.
-                      key={`${page.id}:${canEditContent ? 'edit' : 'read'}`}
-                      value={content}
-                      onChange={canEditContent ? setContent : ignoreEdit}
-                      editable={canEditContent}
-                      className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
-                      dir={activeLangDir}
-                      lang={activeLanguage?.code}
-                      style={typographyVars(project?.config?.typography)}
-                      onUpload={onUploadImage}
-                      comments={commentMarkers}
-                      activeCommentId={activeCommentId}
-                      commentMode={commentMode}
-                      onAddComment={(anchor) => {
-                        setPendingAnchor(anchor);
-                        openRail();
-                        setRailTab('comments');
-                      }}
-                      titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
-                      variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
-                    />
+                    <EditorLinksContext.Provider value={editorLinks}>
+                      <TiptapEditor
+                        // Remounts once access is known, so block controls render for that access.
+                        key={`${page.id}:${canEditContent ? 'edit' : 'read'}`}
+                        value={content}
+                        onChange={canEditContent ? setEditorContent : ignoreEdit}
+                        onEdit={onEditorEdit}
+                        draftRef={editorDraftRef}
+                        editable={canEditContent}
+                        className={effectiveMode === 'wysiwyg' ? 'min-h-0 flex-1' : undefined}
+                        dir={activeLangDir}
+                        lang={activeLanguage?.code}
+                        style={typographyVars(project?.config?.typography)}
+                        onUpload={onUploadImage}
+                        comments={commentMarkers}
+                        activeCommentId={activeCommentId}
+                        commentMode={commentMode}
+                        onAddComment={(anchor) => {
+                          setPendingAnchor(anchor);
+                          openRail();
+                          setRailTab('comments');
+                        }}
+                        titleSlot={effectiveMode === 'wysiwyg' ? pageTitleInput : undefined}
+                        variant={effectiveMode === 'wysiwyg' ? 'wysiwyg' : 'visual'}
+                      />
+                    </EditorLinksContext.Provider>
                   </ActiveBranchContext.Provider>
                 ) : (
                   <MarkdownSourceEditor

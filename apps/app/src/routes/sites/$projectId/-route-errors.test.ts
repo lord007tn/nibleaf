@@ -38,16 +38,29 @@ beforeEach(() => {
 });
 
 describe('published reader route input', () => {
-  it('titles reader pages when the site shell fails to load', () => {
-    const head = Route.options.head as unknown as (context: { loaderData?: unknown; match: { search: { lang?: string } }; matches: [] }) => {
+  it('titles reader pages when the site shell fails to load', async () => {
+    const head = Route.options.head as unknown as (context: { loaderData?: unknown; match: { search: { lang?: string } }; matches: [] }) => Promise<{
       meta?: unknown[];
-    };
-    expect(head({ match: { search: { lang: 'ar' } }, matches: [] }).meta).toEqual([{ title: 'الوثائق' }]);
-    expect(head({ match: { search: {} }, matches: [] }).meta).toEqual([{ title: 'Documentation' }]);
+    }>;
+    expect((await head({ match: { search: { lang: 'ar' } }, matches: [] })).meta).toEqual([{ title: 'الوثائق' }]);
+    expect((await head({ match: { search: {} }, matches: [] })).meta).toEqual([{ title: 'Documentation' }]);
   });
 
   it('loads the site shell for a malformed percent path instead of throwing', async () => {
-    mocks.getSite.mockResolvedValueOnce(Response.json({ data: { project: { id: 'qa-site' } } }));
+    mocks.getSite.mockResolvedValueOnce(
+      Response.json({
+        data: {
+          project: { id: 'qa-site' },
+          languages: [
+            { code: 'en', isDefault: true },
+            { code: 'ar', isDefault: false },
+          ],
+          versions: [{ id: 'main', slug: 'main', isDefault: true }],
+          activeLanguage: 'ar',
+          activeVersion: 'main',
+        },
+      }),
+    );
 
     await expect(load('qa-site', '/sites/qa-site/%E0%A4/guide')).resolves.toMatchObject({ site: { project: { id: 'qa-site' } } });
     expect(mocks.getSite).toHaveBeenCalledExactlyOnceWith({ param: { id: 'qa-site' }, query: { lang: 'ar', version: '%E0%A4' } });
@@ -61,10 +74,10 @@ describe('published reader route input', () => {
 
     await expect(load()).resolves.toEqual({ site: null, siteOrigin: null, unavailable: 'private', gate });
     // The tab title follows the site's own language when the URL names none.
-    const head = Route.options.head as unknown as (context: { loaderData?: unknown; match: { search: { lang?: string } }; matches: [] }) => {
+    const head = Route.options.head as unknown as (context: { loaderData?: unknown; match: { search: { lang?: string } }; matches: [] }) => Promise<{
       meta?: Array<{ title?: string }>;
-    };
-    expect(head({ loaderData: { site: null, unavailable: 'private', gate }, match: { search: {} }, matches: [] }).meta?.[0]).toEqual({
+    }>;
+    expect((await head({ loaderData: { site: null, unavailable: 'private', gate }, match: { search: {} }, matches: [] })).meta?.[0]).toEqual({
       title: 'هذا التوثيق خاص',
     });
   });
@@ -93,7 +106,8 @@ describe('published reader route input', () => {
   ])('lets missing identifier %s at %s reach the normal not-found lookup', async (projectId, pathname) => {
     mocks.getSite.mockResolvedValueOnce(apiError(404));
 
-    await expect(load(projectId, pathname)).resolves.toEqual({ site: null, siteOrigin: null });
+    // No site has that id: "No site at this address", not "Not published yet".
+    await expect(load(projectId, pathname)).resolves.toEqual({ site: null, siteOrigin: null, unavailable: 'missing' });
     expect(mocks.getSite).toHaveBeenCalledExactlyOnceWith({ param: { id: projectId }, query: { lang: 'ar' } });
   });
 
@@ -122,7 +136,7 @@ describe('published reader route input', () => {
 describe('published reader failure recovery', () => {
   it('keeps a genuine missing or privacy-hidden publication unavailable', async () => {
     mocks.getSite.mockResolvedValueOnce(apiError(404));
-    await expect(load()).resolves.toEqual({ site: null, siteOrigin: null });
+    await expect(load()).resolves.toEqual({ site: null, siteOrigin: null, unavailable: 'missing' });
   });
   it.each([429, 500, 503])('preserves HTTP %i failures for the retryable error boundary', async (status) => {
     mocks.getSite.mockResolvedValueOnce(apiError(status));

@@ -1,0 +1,947 @@
+{
+  "environment": "Component fixture: main's ImportTab (ab86db55000e512f8f59bba67f4f2433bbbd51fb) and this branch's with the real design system, EN/AR catalogs and the Ghost import mutation; a controlled FileReader; a fictional site and Ghost export; every request answered by interception; not the signed-in dashboard, production, the server's importer or a real Ghost export",
+  "base": "ab86db55000e512f8f59bba67f4f2433bbbd51fb",
+  "head": "e36830b0d3585fdeff606e172d42198d46351142",
+  "uncommitted": [],
+  "attempted": 0,
+  "captures": [
+    {
+      "file": "states-390.png",
+      "width": 390,
+      "theme": "light",
+      "en": {
+        "before-ready": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 0, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-reading": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-readFailed": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": ["That file is not valid JSON."],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-switched": {
+          "dir": "ltr",
+          "panel": "result",
+          "result": "Imported 1 new, updated 0, skipped 0.",
+          "importButton": {
+            "shows": null,
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": null,
+          "file": null,
+          "focusLost": false,
+          "toasts": ["Import finished"],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/ghost",
+              "body": {
+                "db": [
+                  {
+                    "meta": {
+                      "exported_on": 1763280000000,
+                      "version": "5.101.0"
+                    },
+                    "data": {
+                      "posts": [
+                        {
+                          "id": "1",
+                          "title": "Welcome to the Handbook",
+                          "slug": "welcome",
+                          "html": "<p>Hello.</p>",
+                          "status": "published",
+                          "type": "post"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "__nibleafImport": { "ghostUrl": "https://journal.example.com" }
+              }
+            }
+          ]
+        },
+        "after-ready": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 0, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-reading": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-readFailed": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": ["Import failed"],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-switched": {
+          "dir": "ltr",
+          "panel": "repo",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": null,
+          "file": null,
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 1 },
+          "overflow": false,
+          "requests": []
+        }
+      },
+      "ar": {
+        "before-ready": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 0, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-reading": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-readFailed": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": ["هذا الملف ليس JSON صالحا."],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-switched": {
+          "dir": "rtl",
+          "panel": "result",
+          "result": "تم استيراد 1 جديدة وتحديث 0 وتخطي 0.",
+          "importButton": {
+            "shows": null,
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": null,
+          "file": null,
+          "focusLost": false,
+          "toasts": ["اكتمل الاستيراد"],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/ghost",
+              "body": {
+                "db": [
+                  {
+                    "meta": {
+                      "exported_on": 1763280000000,
+                      "version": "5.101.0"
+                    },
+                    "data": {
+                      "posts": [
+                        {
+                          "id": "1",
+                          "title": "Welcome to the Handbook",
+                          "slug": "welcome",
+                          "html": "<p>Hello.</p>",
+                          "status": "published",
+                          "type": "post"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "__nibleafImport": { "ghostUrl": "https://journal.example.com" }
+              }
+            }
+          ]
+        },
+        "after-ready": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 0, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-reading": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "جار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-readFailed": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": ["فشل الاستيراد"],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-switched": {
+          "dir": "rtl",
+          "panel": "repo",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": null,
+          "file": null,
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 1 },
+          "overflow": false,
+          "requests": []
+        }
+      }
+    },
+    {
+      "file": "states-1440.png",
+      "width": 1440,
+      "theme": "light",
+      "en": {
+        "before-ready": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 0, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-reading": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-readFailed": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": ["That file is not valid JSON."],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-switched": {
+          "dir": "ltr",
+          "panel": "result",
+          "result": "Imported 1 new, updated 0, skipped 0.",
+          "importButton": {
+            "shows": null,
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": null,
+          "file": null,
+          "focusLost": false,
+          "toasts": ["Import finished"],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/ghost",
+              "body": {
+                "db": [
+                  {
+                    "meta": {
+                      "exported_on": 1763280000000,
+                      "version": "5.101.0"
+                    },
+                    "data": {
+                      "posts": [
+                        {
+                          "id": "1",
+                          "title": "Welcome to the Handbook",
+                          "slug": "welcome",
+                          "html": "<p>Hello.</p>",
+                          "status": "published",
+                          "type": "post"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "__nibleafImport": { "ghostUrl": "https://journal.example.com" }
+              }
+            }
+          ]
+        },
+        "after-ready": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 0, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-reading": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-readFailed": {
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": ["Import failed"],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-switched": {
+          "dir": "ltr",
+          "panel": "repo",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": null,
+          "file": null,
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 1 },
+          "overflow": false,
+          "requests": []
+        }
+      },
+      "ar": {
+        "before-ready": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 0, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-reading": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-readFailed": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": ["هذا الملف ليس JSON صالحا."],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "before-switched": {
+          "dir": "rtl",
+          "panel": "result",
+          "result": "تم استيراد 1 جديدة وتحديث 0 وتخطي 0.",
+          "importButton": {
+            "shows": null,
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": null,
+          "file": null,
+          "focusLost": false,
+          "toasts": ["اكتمل الاستيراد"],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": [
+            {
+              "call": "POST /api/app/projects/site-1/settings/import/ghost",
+              "body": {
+                "db": [
+                  {
+                    "meta": {
+                      "exported_on": 1763280000000,
+                      "version": "5.101.0"
+                    },
+                    "data": {
+                      "posts": [
+                        {
+                          "id": "1",
+                          "title": "Welcome to the Handbook",
+                          "slug": "welcome",
+                          "html": "<p>Hello.</p>",
+                          "status": "published",
+                          "type": "post"
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "__nibleafImport": { "ghostUrl": "https://journal.example.com" }
+              }
+            }
+          ]
+        },
+        "after-ready": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 0, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-reading": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "جار الاستيراد…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-readFailed": {
+          "dir": "rtl",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": ["فشل الاستيراد"],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requests": []
+        },
+        "after-switched": {
+          "dir": "rtl",
+          "panel": "repo",
+          "result": "Mintlify",
+          "importButton": {
+            "shows": "استيراد",
+            "busy": false,
+            "disabled": true,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": null,
+          "file": null,
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 1 },
+          "overflow": false,
+          "requests": []
+        }
+      }
+    }
+  ],
+  "recordings": [
+    {
+      "file": "flow-en-1440.webm",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "requests": [
+        {
+          "call": "POST /api/app/projects/site-1/settings/import/ghost",
+          "body": {
+            "db": [
+              {
+                "meta": { "exported_on": 1763280000000, "version": "5.101.0" },
+                "data": {
+                  "posts": [
+                    {
+                      "id": "1",
+                      "title": "Welcome to the Handbook",
+                      "slug": "welcome",
+                      "html": "<p>Hello.</p>",
+                      "status": "published",
+                      "type": "post"
+                    }
+                  ]
+                }
+              }
+            ],
+            "__nibleafImport": { "ghostUrl": "https://journal.example.com" }
+          }
+        },
+        {
+          "call": "POST /api/app/projects/site-1/settings/import/ghost",
+          "body": {
+            "db": [
+              {
+                "meta": { "exported_on": 1763280000000, "version": "5.101.0" },
+                "data": {
+                  "posts": [
+                    {
+                      "id": "1",
+                      "title": "Welcome to the Handbook",
+                      "slug": "welcome",
+                      "html": "<p>Hello.</p>",
+                      "status": "published",
+                      "type": "post"
+                    }
+                  ]
+                }
+              }
+            ],
+            "__nibleafImport": { "ghostUrl": "https://journal.example.com" }
+          }
+        }
+      ],
+      "pageErrors": [],
+      "steps": [
+        {
+          "step": "Ghost ready: URL and export chosen",
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": false
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 0, "abortedByApp": 0 },
+          "overflow": false,
+          "requestsSoFar": 0
+        },
+        {
+          "step": "reading (slow): busy",
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requestsSoFar": 0
+        },
+        {
+          "step": "read failed: \"Import failed\", file and URL kept",
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": ["Import failed"],
+          "reads": { "started": 1, "abortedByApp": 0 },
+          "overflow": false,
+          "requestsSoFar": 0
+        },
+        {
+          "step": "pressed twice, reading (slow): one read",
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": ["Import failed"],
+          "reads": { "started": 2, "abortedByApp": 0 },
+          "overflow": false,
+          "requestsSoFar": 0
+        },
+        {
+          "step": "refused (409): explained once, file and URL kept",
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Import",
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [
+            "An import is already running for this project. Wait for it to finish before starting another.",
+            "Import failed"
+          ],
+          "reads": { "started": 2, "abortedByApp": 0 },
+          "overflow": false,
+          "requestsSoFar": 1
+        },
+        {
+          "step": "retried: reading (slow)",
+          "dir": "ltr",
+          "panel": "ghost",
+          "result": "Ghost",
+          "importButton": {
+            "shows": "Importing…",
+            "busy": true,
+            "disabled": false,
+            "ariaDisabled": true,
+            "focused": true
+          },
+          "ghostUrl": "https://journal.example.com",
+          "file": "journal.ghost.2025-11-16.json",
+          "focusLost": false,
+          "toasts": [
+            "An import is already running for this project. Wait for it to finish before starting another."
+          ],
+          "reads": { "started": 3, "abortedByApp": 0 },
+          "overflow": false,
+          "requestsSoFar": 1
+        },
+        {
+          "step": "imported: the result",
+          "dir": "ltr",
+          "panel": "result",
+          "result": "Imported 1 new, updated 0, skipped 0.",
+          "importButton": {
+            "shows": null,
+            "busy": false,
+            "disabled": false,
+            "ariaDisabled": false,
+            "focused": true
+          },
+          "ghostUrl": null,
+          "file": null,
+          "focusLost": false,
+          "toasts": ["Import finished"],
+          "reads": { "started": 3, "abortedByApp": 0 },
+          "overflow": false,
+          "requestsSoFar": 2
+        }
+      ]
+    }
+  ]
+}

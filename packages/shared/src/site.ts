@@ -1,7 +1,14 @@
 import GithubSlugger from 'github-slugger';
 import { isAddonId, parseAddonConfigRecord, projectConfigWithAddons } from './addons';
-import { fencedMarkdownLines } from './markdown-code';
+import { markdownLineKinds } from './markdown-code';
+import { displayTitle } from './page-title';
+import { languageEndonym, languageNameIn } from './site-language';
+import { navGroupHasPage, startsUngroupedBlock } from './site-nav';
 import { stripMarkdownLinks } from './utils';
+
+// Small helpers the reader imports from their own modules (keeping this one,
+// and the add-on schemas it builds snapshots with, out of published pages).
+export { languageEndonym, languageNameIn, navGroupHasPage, startsUngroupedBlock };
 
 /** Per-page SEO + behaviour overrides baked into the snapshot. Mirrors
  *  `pageConfigSchema` in @nibleaf/validators (kept inline to avoid a dep). */
@@ -57,6 +64,8 @@ export interface SnapshotPage {
   icon: string | null;
   description: string | null;
   content: string;
+  /** Intrinsic sizes of stored images referenced by this published page. */
+  imageDimensions?: Record<string, { width: number; height: number }>;
   config: SnapshotPageConfig | null;
   /** Links this page to its translations in other languages (see Page.translationKey). */
   translationKey: string | null;
@@ -65,6 +74,8 @@ export interface SnapshotPage {
 }
 
 export interface SnapshotLanguage {
+  /** Derived serving metadata; computed from all paths, never author configuration. */
+  pathPrefix?: string;
   code: string;
   label: string;
   direction: 'LTR' | 'RTL';
@@ -129,34 +140,6 @@ export const defaultLanguage = (project: SnapshotProject): SnapshotLanguage => {
     throw new Error(`Snapshot project ${project.id} must have exactly one default language.`);
   }
   return defaults[0];
-};
-
-/**
- * `code`'s name in `locale`, or null when the platform has no data for that
- * locale. `new Intl.DisplayNames([locale])` never fails for a valid but
- * unsupported locale: it silently falls back to the default (`la` resolves to
- * en-US and names itself "Latin"), so support is checked first.
- */
-export const languageNameIn = (locale: string, code: string): string | null => {
-  try {
-    if (Intl.DisplayNames.supportedLocalesOf([locale]).length === 0) return null;
-    const name = new Intl.DisplayNames([locale], { type: 'language', fallback: 'none' }).of(code);
-    return name && name !== code ? name : null;
-  } catch {
-    // An invalid tag (`x-klingon`).
-    return null;
-  }
-};
-
-/**
- * A language's own name in its own script ("العربية", "Français", "Deutsch"),
- * capitalized as a menu label. Null when the platform can't name it in its own
- * locale (a private-use tag, or a locale without data such as `la`), so the
- * caller keeps the stored label ("Latina").
- */
-export const languageEndonym = (code: string): string | null => {
-  const name = languageNameIn(code, code);
-  return name ? name.charAt(0).toLocaleUpperCase(code) + name.slice(1) : null;
 };
 
 /** The languages a published site serves: enabled ones. The default language
@@ -271,10 +254,27 @@ export interface ResolvedPageCategory {
 
 const LARGE_FLAT_COLLECTION = 24;
 
+/** Lowercase in the page's language; a code that is not a usable language tag
+ *  (empty, or custom) falls back to the default case mapping instead of throwing. */
+const localeLower = (text: string, languageCode: string): string => {
+  try {
+    return text.toLocaleLowerCase(languageCode || undefined);
+  } catch {
+    return text.toLowerCase();
+  }
+};
+
+/** The page fields navigation is built from: a published snapshot page, or a
+ *  draft page in the dashboard preview (which has no content or version). */
+export type NavSourcePage = Pick<
+  SnapshotPage,
+  'id' | 'parentId' | 'languageCode' | 'kind' | 'title' | 'slug' | 'path' | 'icon' | 'config' | 'position' | 'hidden'
+>;
+
 /** Resolve an explicit category, or infer a conservative workflow category for
  *  very large flat help-center imports. Explicit author metadata always wins;
  *  small hand-authored trees are never classified automatically. */
-export const resolvePageCategory = (page: SnapshotPage, siblingPageCount: number): ResolvedPageCategory | null => {
+export const resolvePageCategory = (page: NavSourcePage, siblingPageCount: number): ResolvedPageCategory | null => {
   const explicit = page.config?.category?.trim();
   if (explicit) {
     return {
@@ -287,7 +287,7 @@ export const resolvePageCategory = (page: SnapshotPage, siblingPageCount: number
     return null;
   }
 
-  const haystack = `${page.title} ${page.slug}`.toLocaleLowerCase(page.languageCode);
+  const haystack = localeLower(`${page.title} ${page.slug}`, page.languageCode);
   const ar = page.languageCode.toLowerCase().startsWith('ar');
   const rules: Array<{ title: string; icon: string; order: number; keywords: string[] }> = ar
     ? [
@@ -366,10 +366,19 @@ export const resolvePageCategory = (page: SnapshotPage, siblingPageCount: number
 };
 
 /** Build a navigation tree from snapshot pages, hiding pages flagged `hidden`.
- *  When `languageCode` is given, only that language's pages are included. */
-export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavNode[] => {
+ *  When `languageCode` is given, only that language's pages are included.
+ *
+ *  Siblings keep the author's order (`position`), groups and pages alike: the
+ *  order the editor's page tree shows. One exception: virtual categories
+ *  (importer metadata, or inferred for flat collections of 24+ pages) are not
+ *  in the editor tree; they sit together where their first page sits, ordered
+ *  among themselves by `categoryOrder`, so a categorized page can move ahead of
+ *  later siblings. The site's home is resolved separately (`resolveSitePage`):
+ *  a page with an empty path wins; a translated root serves the translation
+ *  of the default language's home; otherwise the first page in this order. */
+export const buildNavTree = <T extends NavSourcePage>(pages: readonly T[], languageCode?: string): NavNode[] => {
   const visible = pages.filter((p) => !p.hidden && (!languageCode || p.languageCode === languageCode));
-  const byParent = new Map<string | null, SnapshotPage[]>();
+  const byParent = new Map<string | null, T[]>();
   for (const page of visible) {
     const list = byParent.get(page.parentId) ?? [];
     list.push(page);
@@ -378,11 +387,11 @@ export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavN
   const build = (parentId: string | null): NavNode[] => {
     const siblings = (byParent.get(parentId) ?? []).sort((a, b) => a.position - b.position);
     const siblingPageCount = siblings.filter((page) => page.kind === 'PAGE').length;
-    const toNode = (page: SnapshotPage): NavNode => ({
+    const toNode = (page: T): NavNode => ({
       id: page.id,
       kind: page.kind,
       // Mintlify-style: a short sidebar label overrides the full page title in nav.
-      title: page.config?.sidebarTitle?.trim() || page.title,
+      title: page.config?.sidebarTitle?.trim() || displayTitle(page),
       path: page.path,
       icon: page.icon,
       tag: page.config?.tag?.trim() || null,
@@ -391,16 +400,18 @@ export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavN
 
     // Categories are deliberately virtual: imported flat collections can gain
     // an ergonomic, collapsible sidebar without re-parenting pages or breaking
-    // any existing URL. Real groups remain first; uncategorized pages follow the
-    // explicitly ordered category sections.
-    const plain: NavNode[] = [];
-    const categories = new Map<string, { title: string; icon: string | null; order: number; firstPosition: number; pages: SnapshotPage[] }>();
+    // any existing URL. They sit together, ordered by `categoryOrder`, where
+    // the author's first categorized page sits; every other sibling keeps its
+    // own position.
+    const ordered: Array<NavNode | 'categories'> = [];
+    const categories = new Map<string, { title: string; icon: string | null; order: number; firstPosition: number; pages: T[] }>();
     for (const page of siblings) {
       const resolvedCategory = resolvePageCategory(page, siblingPageCount);
       if (!resolvedCategory) {
-        plain.push(toNode(page));
+        ordered.push(toNode(page));
         continue;
       }
+      if (categories.size === 0) ordered.push('categories');
       const { title } = resolvedCategory;
       const existing = categories.get(title);
       if (existing) {
@@ -427,9 +438,7 @@ export const buildNavTree = (pages: SnapshotPage[], languageCode?: string): NavN
         tag: null,
         children: category.pages.sort((a, b) => a.position - b.position).map(toNode),
       }));
-    const realGroups = plain.filter((node) => node.kind === 'GROUP');
-    const uncategorizedPages = plain.filter((node) => node.kind === 'PAGE');
-    return [...realGroups, ...grouped, ...uncategorizedPages];
+    return ordered.flatMap((entry) => (entry === 'categories' ? grouped : [entry]));
   };
   return build(null);
 };
@@ -477,10 +486,11 @@ export const extractHeadings = (markdown: string): Heading[] => {
   const slugger = new GithubSlugger();
   const lines = markdown.split('\n');
   // Any fenced code (``` or ~~~, longer fences, inside lists or quotes) renders as
-  // code, so a `#` line there is not a heading and must not shift anchor ids.
-  const fenced = fencedMarkdownLines(lines);
+  // code, and an HTML block's lines render as HTML (#593), so a `#` line in either
+  // is not a heading and must not shift anchor ids.
+  const kinds = markdownLineKinds(lines);
   for (const [index, line] of lines.entries()) {
-    if (fenced[index]) {
+    if (kinds[index] !== 'prose') {
       continue;
     }
     const heading = parseHeading(line);

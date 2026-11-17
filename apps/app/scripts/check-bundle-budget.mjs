@@ -8,6 +8,8 @@ import {
   marketingSharedReaderIcons,
   nonReaderRouteBytes,
   preloadTableFiles,
+  searchOpenFiles,
+  searchOpenZodModules,
 } from './bundle-boundaries.mjs';
 
 const appRoot = resolve(import.meta.dirname, '..');
@@ -24,6 +26,9 @@ const profiles = {
   // The dashboard home is an organization's Websites page (/app lands there).
   'dashboard-home': ['__root__', '/app', '/app/o/$orgSlug', '/app/o/$orgSlug/websites'],
   'dashboard-analytics': ['__root__', '/app', '/app/o/$orgSlug', '/app/o/$orgSlug/analytics'],
+  // The first step of the first-run journey (and where /app sends a signed-out visitor).
+  'auth-sign-in': ['__root__', '/(auth)', '/(auth)/sign-in'],
+  'auth-sign-up': ['__root__', '/(auth)', '/(auth)/sign-up'],
 };
 
 // These values are intentionally applied to gzip transfer size, not raw file
@@ -48,10 +53,43 @@ const profiles = {
 // chunks in the router's eager preload table; the dashboard preloads them on
 // intent from its own manifest instead. About 2.8 KiB less; the margin is ~2 KiB
 // over the 343,096 bytes measured.
+// auth-sign-in / auth-sign-up (MKT-001): 1,210 KiB before, when every product
+// message in every locale shipped with the sign-in form (translateFn's catalog
+// import). The auth pages translate through @nibleaf/i18n/scoped now; measured
+// 398,182 and 399,872 bytes, with ~2 KiB of margin.
+// auth-sign-in 402_000 → 383_100, auth-sign-up 403_000 → 384_800 (#697): the
+// auth layout's language button loads its picker dialog (cmdk and its dialog
+// helpers, ~17 KiB) on first open instead of with the page. Measured 382,003 and
+// 383,693 bytes; the margin is ~1 KiB, which also takes back #613's raise.
+// auth-sign-in 383_100 → 369_100, auth-sign-up 384_800 → 370_800: the toast host
+// (sonner, its icons and theme glue, ~13.8 KiB) mounts after hydration instead of
+// with the page (components/deferred-toaster.tsx). Measured 359.41 and 361.06 KiB
+// (about 368,036 and 369,725 bytes); the margin is ~1 KiB.
+// auth-sign-in 369_100 → 324_100, auth-sign-up 370_800 → 327_100 (#711): the
+// published-docs routes' head() and headers() import their SEO helpers when they
+// run, the root reads the no-flash theme script from its own small module, and the
+// reader routes' pending component only renders the skeleton the reader chrome
+// hands down. Product pages no longer load the reader's SEO, theme, redirect and
+// chrome-copy chunks (about 44 KiB). Measured with #703 on main: 322,990 and
+// 326,001 bytes (CI); the margin is ~1 KiB.
+// public-docs and public-docs-index 345_100 → 274_400 (PUB-017): zod no longer
+// reaches published pages. Eager routes read their search params with
+// lib/search-params.ts, the reader's MDX props use plain checks, its language
+// and nav helpers load apart from @nibleaf/shared/site (and its add-on schemas),
+// and zod-csp sets zod's global config without importing zod. This also takes
+// in READER-05's trims, which kept the old budget. Measured 266.02 and 264.68 KiB
+// (about 272,404 and 271,032 bytes) locally; the margin is ~2 KiB.
 const gzipBudgets = {
-  'public-docs': 345_100,
-  'public-docs-index': 345_100,
+  'public-docs': 274_400,
+  'public-docs-index': 274_400,
+  'auth-sign-in': 324_100,
+  'auth-sign-up': 327_100,
 };
+
+/** The published-docs profiles: the dashboard, auth and marketing boundaries
+ *  below apply to these. The auth profiles only have a size budget (they are
+ *  product pages and legitimately load the auth client and providers). */
+const publicProfiles = ['public-docs', 'public-docs-index'];
 
 // A size budget catches overall growth; these signatures make accidental
 // provider-boundary regressions actionable even when another chunk shrinks.
@@ -190,6 +228,16 @@ for (const [profile, report] of Object.entries(reports)) {
   }
 }
 
+// Search open (#842): what the reader's first search open fetches beyond the
+// docs page itself, from the module report.
+const searchOpen = chunkReport ? searchOpenFiles(chunkReport) : [];
+if (searchOpen.length > 0) {
+  const pageFiles = new Set(reports['public-docs']?.assets.map((asset) => asset.url.replace(/^\//, '')) ?? []);
+  const extra = searchOpen.filter((file) => !pageFiles.has(file) && existsSync(join(publicRoot, file)));
+  const gzip = extra.reduce((sum, file) => sum + gzipSync(readFileSync(join(publicRoot, file)), { level: 9 }).byteLength, 0);
+  console.log(`\nsearch open: ${searchOpen.length} chunks, ${extra.length} beyond public-docs (${formatBytes(gzip)} gzip)`);
+}
+
 const shared = Object.values(reports)
   .flatMap((report) => report.assets.map((asset) => asset.url))
   .filter((url, index, all) => all.indexOf(url) === index && all.filter((candidate) => candidate === url).length === Object.keys(reports).length);
@@ -206,7 +254,9 @@ if (process.argv.includes('--check')) {
       );
       invalid = true;
     }
+  }
 
+  for (const profile of publicProfiles) {
     const forbiddenAssets = reports[profile]?.assets.filter((asset) => forbiddenPublicAssetPatterns.some((pattern) => pattern.test(asset.url)));
     if (forbiddenAssets?.length) {
       console.error(`\nBUNDLE BOUNDARY FAILED: ${profile} includes dashboard/auth assets:`);
@@ -230,10 +280,10 @@ if (process.argv.includes('--check')) {
   }
 
   // A report from an older build would vouch for chunks it never saw.
-  const publicAssets = Object.keys(gzipBudgets).flatMap((profile) => reports[profile]?.assets ?? []);
+  const publicAssets = publicProfiles.flatMap((profile) => reports[profile]?.assets ?? []);
   const reportIsCurrent = moduleReport !== null && publicAssets.every((asset) => moduleReport.has(asset.url.replace(/^\//, '')));
   if (reportIsCurrent) {
-    for (const profile of Object.keys(gzipBudgets)) {
+    for (const profile of publicProfiles) {
       for (const asset of reports[profile]?.assets ?? []) {
         const moduleIds = moduleReport.get(asset.url.replace(/^\//, '')).map((module) => module.id);
         for (const moduleId of forbiddenModuleIds(moduleIds)) {
@@ -264,6 +314,17 @@ if (process.argv.includes('--check')) {
       console.error(
         `\nBUNDLE BOUNDARY FAILED: marketing code imports the reader's ${icon} icon, which re-splits the reader's icon chunks. Use a copy in components/marketing/site/marketing-icons.ts.`,
       );
+      invalid = true;
+    }
+    // Opening search must not load zod (#841, #842).
+    if (searchOpen.length === 0) {
+      console.error(
+        '\nBUNDLE BOUNDARY FAILED: no chunk holds components/site/site-search-dialog.tsx; update searchOpenFiles in bundle-boundaries.mjs.',
+      );
+      invalid = true;
+    }
+    for (const { file, id } of searchOpenZodModules(chunkReport)) {
+      console.error(`\nBUNDLE BOUNDARY FAILED: search open includes zod module ${id.replace(/^.*?\/node_modules\//, '')} in ${file}.`);
       invalid = true;
     }
   } else if (process.env.CI) {

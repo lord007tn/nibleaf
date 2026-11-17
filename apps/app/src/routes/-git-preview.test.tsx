@@ -7,7 +7,11 @@ import { afterEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ locale: 'en', invalidate: vi.fn() }));
 vi.mock('@/functions/site', () => ({ getGitPreviewFn: vi.fn() }));
 vi.mock('@nibleaf/i18n/react', () => ({ useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
-vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => mocks.locale, subscribeLanguage: () => () => undefined }));
+vi.mock('@nibleaf/i18n/locale-state', () => ({
+  getLocale: () => mocks.locale,
+  renderedLocale: () => mocks.locale,
+  subscribeLanguage: () => () => undefined,
+}));
 vi.mock('@tanstack/react-router', async (original) => ({
   ...(await original<typeof import('@tanstack/react-router')>()),
   useRouter: () => ({ invalidate: mocks.invalidate }),
@@ -107,7 +111,7 @@ it('keeps a link’s #fragment and scrolls to that heading once the page renders
   await act(async () => root.unmount());
 });
 
-it('opens the page in the language an authored ?lang= link names', async () => {
+it.each([false, true])('opens the page in the language an authored ?lang= link names (collision: %s)', async (collision) => {
   window.scrollTo = vi.fn();
   window.history.replaceState(null, '', '/git-preview/token');
   const arabicSetup = { ...page('الإعداد', 'guides/setup', 'محتوى الإعداد.'), id: 'Setup-ar', languageCode: 'ar' };
@@ -117,7 +121,12 @@ it('opens the page in the language an authored ?lang= link names', async () => {
       ...snapshot.project,
       languages: [...snapshot.project.languages, { code: 'ar', label: 'العربية', direction: 'RTL', isDefault: false, config: null }],
     },
-    pages: [page('Intro', 'intro', 'Read it [in Arabic](/guides/setup?lang=ar).'), page('Setup', 'guides/setup', 'Setup body.'), arabicSetup],
+    pages: [
+      page('Intro', 'intro', 'Read it [in Arabic](/guides/setup?lang=ar).'),
+      page('Setup', 'guides/setup', 'Setup body.'),
+      arabicSetup,
+      ...(collision ? [page('Collision', 'ar/existing', 'Existing English content.')] : []),
+    ],
   } as SiteSnapshot;
   vi.spyOn(Route, 'useLoaderData').mockReturnValue({ snapshot: bilingual } as never);
   const Page = Route.options.component as ComponentType;
@@ -127,6 +136,7 @@ it('opens the page in the language an authored ?lang= link names', async () => {
   await act(async () => root.render(<Page />));
   await vi.waitFor(() => expect(container.querySelector('article a')).not.toBeNull());
 
+  expect(container.querySelector('article a')?.getAttribute('href')).toBe(`/sites/docs/${collision ? '~lang/ar' : 'ar'}/next/guides/setup`);
   await act(async () => container.querySelector<HTMLAnchorElement>('article a')?.click());
   expect(container.querySelector('article h1')?.textContent).toBe('الإعداد');
   await act(async () => root.unmount());

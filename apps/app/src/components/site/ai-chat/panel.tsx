@@ -1,5 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from '@nibleaf/design-system/components/ui/sheet';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import { siteChatT } from '@nibleaf/i18n/site-chat';
 import { analyticsConsentPolicy } from '@nibleaf/shared/analytics-consent';
 import { randomUUID } from '@nibleaf/shared/uuid';
@@ -16,6 +17,7 @@ import {
   siteChatBody,
 } from '@nibleaf/validators';
 import { useChat } from '@tanstack/ai-react';
+import { SquarePen, X } from 'lucide-react';
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { chatSiteFn } from '@/functions/site-chat';
 import { readSiteConsent, subscribeSiteConsent } from '@/lib/site-consent';
@@ -28,6 +30,7 @@ import { fetchChatPolicy } from './policy';
 import type { ChatOpenRequest, ChatOptions, PageContext } from './provider';
 import { readerSession } from './session';
 import { useChatViewport } from './use-chat-viewport';
+import { useDockedChat } from './use-docked';
 
 function Typing({ label, phase }: { label: string; phase: string }) {
   return (
@@ -56,6 +59,15 @@ export default function Panel(
 ) {
   const t = siteChatT(options.lang);
   const viewport = useChatViewport(options.open);
+  // Wide screens dock the panel beside the article (PUB-003); the reader chrome
+  // makes room for it while it is open (styles.css, html[data-chat-docked]).
+  const docked = useDockedChat();
+  useEffect(() => {
+    if (!docked || !options.open) return;
+    const root = document.documentElement;
+    root.setAttribute('data-chat-docked', '');
+    return () => root.removeAttribute('data-chat-docked');
+  }, [docked, options.open]);
   const [conversationId, setConversationId] = useState(() => randomUUID());
   const [finals, setFinals] = useState<Record<string, AiChatFinalEvent>>({});
   const [followUps, setFollowUps] = useState<Record<string, string[]>>({});
@@ -336,10 +348,14 @@ export default function Panel(
   const retainedDays = retentionUnder(policy, storedConsent);
   const latestAnswer = [...chat.messages].reverse().find((message) => message.role !== 'user' && finals[message.id]?.status === 'answered');
   return (
-    <Sheet open={options.open} onOpenChange={options.onOpenChange}>
+    // Docked, it is a non-modal column: no backdrop, no scroll lock, no focus
+    // trap, and a click in the article doesn't close it. Escape and the close
+    // button do. Narrower screens keep the modal sheet: there is no room beside.
+    <Sheet open={options.open} onOpenChange={options.onOpenChange} modal={!docked} disablePointerDismissal={docked}>
       <SheetContent
         side={options.direction === 'rtl' ? 'left' : 'right'}
-        style={viewport}
+        style={docked ? undefined : viewport}
+        overlay={!docked}
         showCloseButton={false}
         // Desktop readers can type straight away; on touch screens focus the
         // dialog itself so the keyboard does not cover the answer.
@@ -350,18 +366,31 @@ export default function Panel(
         }
         dir={options.direction}
         data-theme-surface="ai"
-        className="h-[var(--chat-height,100dvh)]! top-[var(--chat-top,0px)]! bottom-auto! w-full! max-w-none! gap-0 overflow-hidden pt-[env(safe-area-inset-top)] motion-reduce:transition-none md:w-[440px]! md:max-w-[460px]!"
+        data-docked={docked ? '' : undefined}
+        className={cn(
+          'h-[var(--chat-height,100dvh)]! top-[var(--chat-top,0px)]! bottom-auto! w-full! max-w-none! gap-0 overflow-hidden pt-[env(safe-area-inset-top)] motion-reduce:transition-none md:w-[440px]! md:max-w-[460px]!',
+          // xl: so it outranks the md: width above; docked is only ever true from 80rem.
+          docked && 'shadow-none xl:top-0! xl:h-dvh! xl:w-(--chat-dock-width)! xl:max-w-none!',
+        )}
       >
         <header className="flex shrink-0 items-start gap-2 border-b p-4">
           <div className="min-w-0 flex-1">
             <SheetTitle>{t('aiTitle')}</SheetTitle>
             <SheetDescription>{t('aiSubtitle')}</SheetDescription>
           </div>
-          <Button variant="ghost" size="sm" onClick={reset}>
-            {t('aiNew')}
+          {/* Icon buttons, named for assistive tech and titled for a pointer (PUB-021). */}
+          <Button variant="ghost" size="icon-sm" className="pointer-coarse:size-11" onClick={reset} aria-label={t('aiNew')} title={t('aiNew')}>
+            <SquarePen aria-hidden />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => options.onOpenChange(false)}>
-            {t('aiClose')}
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            className="pointer-coarse:size-11"
+            onClick={() => options.onOpenChange(false)}
+            aria-label={t('aiClose')}
+            title={t('aiClose')}
+          >
+            <X aria-hidden />
           </Button>
         </header>
         {page && (

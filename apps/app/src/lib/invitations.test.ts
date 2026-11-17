@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   afterAuthDestination,
   clearPendingDestination,
+  copyToClipboard,
   readPendingDestination,
   readPendingInvitation,
   safeAppPath,
@@ -78,5 +79,46 @@ describe('returning to the dashboard page that asked for sign-in', () => {
     expect(afterAuthDestination({ invite: 'from-url', next: '/app/projects/p1' })).toBe('/accept-invite/from-url');
     expect(afterAuthDestination({ next: '/app/projects/p1' })).toBe('/app/projects/p1');
     expect(afterAuthDestination({ next: '//evil.example' })).toBe('/accept-invite/remembered');
+  });
+});
+
+describe('copyToClipboard', () => {
+  afterEach(() => {
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
+    Object.defineProperty(document, 'execCommand', { configurable: true, value: undefined });
+  });
+
+  it('uses the Clipboard API when it is there', async () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+    expect(await copyToClipboard('https://docs.example.com/start')).toBe(true);
+    expect(writeText).toHaveBeenCalledWith('https://docs.example.com/start');
+  });
+
+  it('falls back to copying a selected field when the API is missing or refused, and gives focus back', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn(async () => Promise.reject(new Error('denied'))) },
+    });
+    let copied = '';
+    Object.defineProperty(document, 'execCommand', {
+      configurable: true,
+      value: vi.fn(() => {
+        copied = (document.activeElement as HTMLTextAreaElement).value;
+        return true;
+      }),
+    });
+    const button = document.createElement('button');
+    document.body.append(button);
+    button.focus();
+    expect(await copyToClipboard('https://docs.example.com/start')).toBe(true);
+    expect(copied).toBe('https://docs.example.com/start');
+    expect(document.querySelector('textarea')).toBeNull();
+    expect(document.activeElement).toBe(button);
+    button.remove();
+  });
+
+  it('reports failure when neither way can copy', async () => {
+    expect(await copyToClipboard('x')).toBe(false);
   });
 });

@@ -45,27 +45,30 @@ export function OrgSidebar({ orgSlug, isAdmin }: { orgSlug: string; isAdmin: boo
         <SidebarBrand orgSlug={orgSlug} />
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarMenu>
-            {ORG_NAV.filter((item) => isAdmin || !item.adminOnly).map((item) => {
-              const label = t(item.labelKey);
-              return (
-                <SidebarMenuItem key={item.section}>
-                  <SidebarMenuButton
-                    isActive={pathname.startsWith(`${base}/${item.section}`)}
-                    onClick={() => setOpenMobile(false)}
-                    render={<Link params={{ orgSlug }} to={`/app/o/$orgSlug/${item.section}`} />}
-                    size="lg"
-                    tooltip={label}
-                  >
-                    <item.icon className="size-5" />
-                    <span>{label}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
-        </SidebarGroup>
+        {/* The sidebar's links are the site's main navigation landmark. */}
+        <nav aria-label={t('nav.main')} className="contents">
+          <SidebarGroup>
+            <SidebarMenu>
+              {ORG_NAV.filter((item) => isAdmin || !item.adminOnly).map((item) => {
+                const label = t(item.labelKey);
+                return (
+                  <SidebarMenuItem key={item.section}>
+                    <SidebarMenuButton
+                      isActive={pathname.startsWith(`${base}/${item.section}`)}
+                      onClick={() => setOpenMobile(false)}
+                      render={<Link params={{ orgSlug }} to={`/app/o/$orgSlug/${item.section}`} />}
+                      size="lg"
+                      tooltip={label}
+                    >
+                      <item.icon className="size-5" />
+                      <span>{label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroup>
+        </nav>
       </SidebarContent>
       <SidebarAccountFooter />
     </Sidebar>

@@ -32,6 +32,7 @@ type ConsentLine =
   | 'oauth.consent.can.read'
   | 'oauth.consent.can.deployments'
   | 'oauth.consent.can.analytics'
+  | 'oauth.consent.can.aiConversations'
   | 'oauth.consent.can.searchTerms'
   | 'oauth.consent.can.drafts'
   | 'oauth.consent.can.publish'
@@ -51,6 +52,8 @@ export const consentLines = (scopes: readonly string[]) => {
   if (READ_SCOPES.some(has)) can.push('oauth.consent.can.read');
   if (has('deployments:read')) can.push('oauth.consent.can.deployments');
   if (has('analytics:read') || has('search:read')) can.push('oauth.consent.can.analytics');
+  // analytics:read also reads saved Ask AI conversations: say so, plainly.
+  if (has('analytics:read')) can.push('oauth.consent.can.aiConversations');
   if (has('analytics:search_terms')) can.push('oauth.consent.can.searchTerms');
   if (has('pages:write')) can.push('oauth.consent.can.drafts');
   if (has('deployments:publish')) can.push('oauth.consent.can.publish');
@@ -58,4 +61,17 @@ export const consentLines = (scopes: readonly string[]) => {
   const writes = has('pages:write') || has('deployments:publish');
   const cannot: ConsentLine[] = [writes ? 'oauth.consent.cannot.admin' : 'oauth.consent.cannot.change', 'oauth.consent.cannot.other'];
   return { can, cannot };
+};
+
+/** The sign-in picker's websites, grouped by the organization that owns them,
+ *  in the order the server sent them. Groups are keyed by id, so two
+ *  organizations with the same name stay apart. */
+export const groupByOrganization = <Site extends { organization: { id: string; name: string } }>(sites: readonly Site[]) => {
+  const groups = new Map<string, { id: string; name: string; sites: Site[] }>();
+  for (const site of sites) {
+    const group = groups.get(site.organization.id) ?? { ...site.organization, sites: [] };
+    group.sites.push(site);
+    groups.set(site.organization.id, group);
+  }
+  return [...groups.values()];
 };

@@ -9,15 +9,31 @@ const mutation = { mutate: vi.fn(), isPending: false };
 const query = vi.hoisted(() => ({ use: vi.fn() }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key, useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
 vi.mock('@/env', () => ({ env: { VITE_APP_URL: 'https://app.example.com' } }));
+// Conflict resolution is covered with the real cache in features/site-git/components/git-conflict-resolution.test.tsx.
+vi.mock('@/features/site-git/components/git-conflict-card', () => ({ GitConflictCard: () => null }));
 vi.mock('@/hooks/api', () => ({
   friendlyErrorMessage: (_t: unknown, _error: unknown, key: string) => key,
   useGitWorkflow: query.use,
-  useAuthorizeGitWorkflow: () => mutation,
-  useConnectGitWorkflow: () => mutation,
   useDisconnectGitWorkflow: () => mutation,
-  useQueueGitOperation: () => mutation,
-  useResolveGitConflict: () => mutation,
-  useRotateGitWorkflowWebhookSecret: () => mutation,
+}));
+// Rotate webhook secret is covered with the real cache in features/site-git/components/git-webhook-rotate.test.tsx.
+const rotate = vi.hoisted(() => vi.fn());
+vi.mock('@/features/site-git/api/git-webhook-rotate', () => ({ useGitWebhookRotate: () => ({ rotate, pending: false }) }));
+// The Connection configuration save is covered with the real cache in git-workflow.connection.test.tsx.
+vi.mock('@/features/site-git/api/git-workflow-connection', () => ({
+  useSaveGitWorkflowConnection: () => ({ save: vi.fn(), pending: false, isPending: () => false }),
+}));
+// The first Connect is covered with the real cache in features/site-git/components/git-first-connect.test.tsx.
+vi.mock('@/features/site-git/components/use-git-first-connect-command', () => ({
+  useGitFirstConnectCommand: () => ({ busy: false, press: vi.fn() }),
+}));
+// Authorize GitHub is covered with the real cache in features/site-git/components/git-authorization.test.tsx.
+vi.mock('@/features/site-git/components/use-git-authorization-command', () => ({
+  useGitAuthorizationCommand: () => ({ busy: false, failed: false, verify: vi.fn(), retire: vi.fn() }),
+}));
+// Sync and Update PR are covered with the real cache in git-workflow.operations.test.tsx.
+vi.mock('@/features/site-git/components/use-git-operation-command', () => ({
+  useGitOperationCommand: () => ({ busy: false, sync: vi.fn(), updatePr: vi.fn() }),
 }));
 
 import { GitWorkflow } from './git-workflow';
@@ -96,7 +112,7 @@ it('localizes both connection and operation failures and keeps details collapsed
 });
 
 it.each([false, true])('confirms webhook secret replacement before sending the request (%s)', async (approved) => {
-  mutation.mutate.mockClear();
+  rotate.mockReset().mockResolvedValue(null);
   state.confirm.mockResolvedValue(approved);
   query.use.mockReturnValue({
     isPending: false,
@@ -127,7 +143,7 @@ it.each([false, true])('confirms webhook secret replacement before sending the r
         destructive: true,
       }),
     );
-    expect(mutation.mutate).toHaveBeenCalledTimes(approved ? 1 : 0);
+    expect(rotate.mock.calls).toEqual(approved ? [['site-1']] : []);
   } finally {
     await act(async () => root.unmount());
     host.remove();
