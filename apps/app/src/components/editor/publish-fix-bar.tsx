@@ -3,7 +3,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { isLocatablePublishCheck, type PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
 import type { Editor } from '@tiptap/core';
 import { NodeSelection, TextSelection } from '@tiptap/pm/state';
-import { TriangleAlert, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, TriangleAlert, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { editorIn, prefersReducedMotion } from './editor-sections';
 import { setFixHighlight } from './extensions/fix-highlight';
@@ -73,7 +73,7 @@ function goToMatch(editor: Editor, matches: FixMatch[], index: number, openLink:
   }
 }
 
-/** Room left between the bar and a landed place, so it never sits against the bar's edge. */
+/** Room left above a landed place, between it and the top of the scrolling area (just under the bar), so it never sits against the bar's edge. */
 const REVEAL_GAP = 16;
 
 /**
@@ -167,11 +167,12 @@ export function PublishFixBar({
     };
   }, []);
 
-  // A landed place scrolls into the page's scrolling area (the rich text document, or the canvas), the bar's height plus a gap below its top.
+  // A landed place scrolls into the page's scrolling area (the rich text document, or the canvas), a gap below its top.
+  // The bar sits above that area, never over it, so its own height is not part of the offset (#668).
   const reveal = useCallback((element: Element | null) => {
     const root = callbacks.current.canvas();
     const scroller = root?.querySelector<HTMLElement>('.pl-document-scroll') ?? root;
-    revealIn(scroller, element, Math.ceil(barRef.current?.getBoundingClientRect().height ?? 0) + REVEAL_GAP);
+    revealIn(scroller, element, REVEAL_GAP);
   }, []);
 
   /** Show place `index` of `matches`, of the check's `total`; or say none is on the page, or none can be shown. */
@@ -286,7 +287,7 @@ export function PublishFixBar({
     <section
       ref={barRef}
       aria-label={t('editor.fix.region')}
-      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-amber-500/35 border-b bg-amber-500/10 px-4 py-2 text-sm"
+      className="@container/fix flex flex-wrap items-center gap-x-3 gap-y-1.5 border-amber-500/35 border-b bg-amber-500/10 px-4 py-2 text-sm"
       data-publish-fix={code}
     >
       <TriangleAlert aria-hidden className="size-4 shrink-0 text-amber-700 dark:text-amber-300" />
@@ -326,18 +327,25 @@ export function PublishFixBar({
         )}
       </p>
       <div className="ms-auto flex max-w-full flex-wrap items-center justify-end gap-1" data-testid="publish-fix-actions">
+        {/* On a narrow bar (under 36rem, a phone) the buttons stay on one row (#668): Edit as Markdown shows its short
+            name, and Previous and Next their arrows. The full names are what assistive technology reads, at every width. */}
         {state.phase === 'found' && state.inside && onEditSource ? (
           <Button ref={editSourceRef} className="cursor-pointer" onClick={onEditSource} size="sm" variant="secondary">
-            {t('editor.editSource')}
+            <span aria-hidden className="@xl/fix:hidden" data-testid="publish-fix-short">
+              {t('editor.mode.markdown')}
+            </span>
+            <span className="sr-only @xl/fix:not-sr-only">{t('editor.editSource')}</span>
           </Button>
         ) : null}
         {state.phase === 'found' ? (
           <>
-            <Button className="cursor-pointer" onClick={() => step(-1)} size="sm" variant="outline">
-              {t('editor.fix.previous')}
+            <Button className="cursor-pointer @max-xl/fix:px-2" onClick={() => step(-1)} size="sm" title={t('editor.fix.previous')} variant="outline">
+              <ChevronLeft aria-hidden className="size-4 @xl/fix:hidden rtl:rotate-180" data-testid="publish-fix-short" />
+              <span className="sr-only @xl/fix:not-sr-only">{t('editor.fix.previous')}</span>
             </Button>
-            <Button className="cursor-pointer" onClick={() => step(1)} size="sm" variant="outline">
-              {t('editor.fix.next')}
+            <Button className="cursor-pointer @max-xl/fix:px-2" onClick={() => step(1)} size="sm" title={t('editor.fix.next')} variant="outline">
+              <ChevronRight aria-hidden className="size-4 @xl/fix:hidden rtl:rotate-180" data-testid="publish-fix-short" />
+              <span className="sr-only @xl/fix:not-sr-only">{t('editor.fix.next')}</span>
             </Button>
           </>
         ) : null}
