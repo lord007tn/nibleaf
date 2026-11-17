@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { starterBodyHash } from '@nibleaf/auth/starter-body.server';
 import { INTERFACE_LOCALES } from '@nibleaf/i18n/locales';
 import { resolveTheme, THEME_PRESETS } from '@nibleaf/shared/themes';
 import { type CreateProjectBody, projectConfigSchema, updateProjectBody } from '@nibleaf/validators';
@@ -25,6 +26,7 @@ const mocks = vi.hoisted(() => ({
     language: { create: vi.fn() },
     branch: { create: vi.fn() },
     page: { create: vi.fn() },
+    projectStarterBaseline: { createMany: vi.fn() },
   },
 }));
 
@@ -371,6 +373,10 @@ describe('site creation language, starters and address availability', () => {
       expect(page.content).toContain('\n- ');
     }
     expect(pages[0]).toMatchObject({ title: 'مرحباً', slug: 'welcome', path: 'welcome', parentId: null });
+    expect(mocks.tx.projectStarterBaseline.createMany).toHaveBeenCalledWith({
+      data: pages.map((page) => ({ projectId: 'project-new', bodyHash: starterBodyHash(page.content), starterKey: `ar/${page.slug}` })),
+      skipDuplicates: true,
+    });
     if (starter === 'product-docs') expect(pages[3]).toMatchObject({ parentId: 'page-3', path: 'guides/first-guide', position: 0 });
   });
 
@@ -386,6 +392,7 @@ describe('site creation language, starters and address availability', () => {
   it('keeps the existing empty tree when starter is omitted', async () => {
     await createProject('user-1', { name: 'Docs' });
     expect(mocks.tx.page.create).not.toHaveBeenCalled();
+    expect(mocks.tx.projectStarterBaseline.createMany).not.toHaveBeenCalled();
   });
 
   it('returns a typed 409 with a free suggestion before writing a taken typed address', async () => {

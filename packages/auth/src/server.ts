@@ -29,6 +29,7 @@ import { createMcpAccessTokenVerifier, MCP_OAUTH_DISABLED_PATHS, mcpOAuthPlugins
 import { organizationMetadataResponseFilter } from './organization-metadata';
 import { ORGANIZATION_DISABLED_PATHS } from './organization-paths';
 import { googleOAuthEnabled } from './providers';
+import { starterBodyHash } from './starter-body.server';
 import {
   STARTER_API_AUTHENTICATION_CONTENT as API_AUTHENTICATION_CONTENT,
   STARTER_API_CREATE_WIDGET_CONTENT as API_CREATE_WIDGET_CONTENT,
@@ -170,7 +171,8 @@ async function createStarterProject(organizationId: string, actorUserId: string)
             data: { projectId: project.id, code: 'en', label: 'English', direction: 'LTR', isDefault: true, position: 0 },
           });
           const branch = await tx.branch.create({ data: { projectId: project.id, name: 'main', isDefault: true }, omit: { forkBaseline: true } });
-          return { project, language, branch };
+          await seedStarterProjectPages(tx, project.id, language.id, branch.id);
+          return project;
         });
       } catch (error) {
         const isSlugConflict =
@@ -185,23 +187,25 @@ async function createStarterProject(organizationId: string, actorUserId: string)
     // Unreachable: the final attempt either returns or throws.
     throw new Error('Failed to allocate a unique starter project slug.');
   };
-  // The project and its required default language/branch commit atomically, so
-  // no request can observe a project that violates the page/snapshot contract.
-  const { project, language, branch } = await createProjectWithInvariants();
-  const base = { projectId: project.id, languageId: language.id, branchId: branch.id };
+  // Pages and their fingerprints commit with the required project/language/branch.
+  return createProjectWithInvariants();
+}
+
+async function seedStarterProjectPages(tx: Prisma.TransactionClient, projectId: string, languageId: string, branchId: string): Promise<void> {
+  const base = { projectId, languageId, branchId };
   const topLevel: Array<{ title: string; icon: string; content: string; position: number }> = [
     { title: STARTER_GETTING_STARTED_TITLE, icon: STARTER_GETTING_STARTED_ICON, content: GETTING_STARTED_CONTENT, position: 0 },
     { title: 'Installation', icon: 'download', content: INSTALLATION_CONTENT, position: 1 },
     { title: 'Components tour', icon: 'puzzle', content: COMPONENTS_TOUR_CONTENT, position: 2 },
   ];
-  await prisma.page.createMany({
+  await tx.page.createMany({
     data: topLevel.map((page) => {
       const slug = slugify(page.title);
       return { ...base, title: page.title, slug, path: joinPath(null, slug), icon: page.icon, content: page.content, position: page.position };
     }),
   });
   const apiReferenceSlug = slugify('API reference');
-  const apiReference = await prisma.page.create({
+  const apiReference = await tx.page.create({
     data: {
       ...base,
       kind: 'GROUP',
@@ -216,7 +220,7 @@ async function createStarterProject(organizationId: string, actorUserId: string)
     { title: 'Authentication', icon: 'key', content: API_AUTHENTICATION_CONTENT, position: 0 },
     { title: 'Create a widget', icon: 'sparkles', content: API_CREATE_WIDGET_CONTENT, position: 1 },
   ];
-  await prisma.page.createMany({
+  await tx.page.createMany({
     data: apiChildren.map((page) => {
       const slug = slugify(page.title);
       return {
@@ -232,10 +236,17 @@ async function createStarterProject(organizationId: string, actorUserId: string)
     }),
   });
   const faqSlug = slugify('FAQ');
-  await prisma.page.create({
+  await tx.page.create({
     data: { ...base, title: 'FAQ', slug: faqSlug, path: joinPath(null, faqSlug), icon: 'help-circle', content: FAQ_CONTENT, position: 4 },
   });
-  return project;
+  await tx.projectStarterBaseline.createMany({
+    data: [...topLevel, ...apiChildren, { title: 'FAQ', content: FAQ_CONTENT }].map((page) => ({
+      projectId,
+      bodyHash: starterBodyHash(page.content),
+      starterKey: `en/${slugify(page.title)}`,
+    })),
+    skipDuplicates: true,
+  });
 }
 
 /** Fire-and-forget platform product event (activation funnel). Never throws. */

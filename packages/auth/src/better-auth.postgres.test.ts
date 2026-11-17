@@ -5,6 +5,7 @@ import { prisma } from '@nibleaf/database';
 import { TERMS_VERSION } from '@nibleaf/shared/legal';
 import { isProjectHostnameAllowed } from '@nibleaf/shared/project-hostname';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { starterBodyHash } from './starter-body.server';
 
 const { ADMIN_ORIGIN, APP_ORIGIN, AUTH_SECRET, GOOGLE_CLIENT_ID, mocks } = vi.hoisted(() => {
   const ADMIN_ORIGIN = 'https://admin.nibleaf.test';
@@ -577,6 +578,11 @@ describe.skipIf(process.env.AUTH_INTEGRATION !== '1')('Better Auth on PostgreSQL
     expect(starter.dataTenantId).not.toBe(organizationId);
     // P0-DASH-001: the starter's address is one its own settings form can save.
     expect(isProjectHostnameAllowed(starter.slug)).toBe(true);
+    const pages = await prisma.page.findMany({ where: { projectId: starter.id, kind: 'PAGE' } });
+    const baselines = await prisma.projectStarterBaseline.findMany({ where: { projectId: starter.id } });
+    expect(pages).toHaveLength(6);
+    expect(new Set(baselines.map((row) => row.bodyHash))).toEqual(new Set(pages.map((page) => starterBodyHash(page.content))));
+    expect(baselines.every((row) => row.starterKey.startsWith('en/'))).toBe(true);
 
     expect((await send('/sign-out', { body: {}, cookie })).status).toBe(200);
     expect(await readSession(cookie)).toBeNull();
