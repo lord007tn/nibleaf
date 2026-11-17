@@ -95,7 +95,7 @@ describe('website settings partition', () => {
         plan: 'free',
         notifications: {},
         integrations: {},
-        git: { repo: 'acme/docs' },
+        git: { repo: 'acme/docs', webhookConfigured: true },
         name: 'Site',
         slug: 'site',
         projectCount: 1,
@@ -103,13 +103,47 @@ describe('website settings partition', () => {
       },
     });
     expect(mocks.git).toHaveBeenCalledWith({ where: { projectId: 'project-1' }, select: { settings: true } });
-    expect(mocks.secretFind).not.toHaveBeenCalled();
+    expect(mocks.secretFind).toHaveBeenCalledWith({ where: { projectId: 'project-1' }, select: { secret: true } });
     expect(mocks.orgUpdate).not.toHaveBeenCalled();
   });
-  it.each(['admin', 'owner'])('reads the website secret for %s without migrating metadata', async (role) => {
+  it.each(['admin', 'owner'])('returns configured status without the website secret for %s or migrating metadata', async (role) => {
     mocks.access.mockResolvedValue({ organizationId: 'site-org', role });
-    expect(await (await app.request(url)).json()).toMatchObject({ data: { git: { repo: 'acme/docs', webhookSecret: 'stored-secret' } } });
+    const body = await (await app.request(url)).json();
+    expect(body).toMatchObject({ data: { git: { repo: 'acme/docs', webhookConfigured: true } } });
+    expect(JSON.stringify(body)).not.toMatch(/stored-secret|wrong-secret|webhookSecret/);
     expect(mocks.secretFind).toHaveBeenCalledWith({ where: { projectId: 'project-1' }, select: { secret: true } });
+    expect(mocks.secretUpsert).not.toHaveBeenCalled();
+    expect(mocks.orgUpdate).not.toHaveBeenCalled();
+  });
+  it('projects legacy raw configuration and PATCH responses without creating or rotating a key', async () => {
+    mocks.access.mockResolvedValue({ organizationId: 'site-org', role: 'admin' });
+    mocks.git.mockResolvedValue({ settings: { repo: 'acme/docs', webhookSecret: 'legacy-raw-secret', connected: false, autoPublish: false } });
+    for (const method of ['GET', 'PATCH']) {
+      const response = await app.request(
+        url,
+        method === 'PATCH'
+          ? {
+              method,
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                git: { provider: 'github', repo: 'acme/docs', webhookSecret: 'ignored-input-secret', autoPublish: false, connected: false },
+              }),
+            }
+          : undefined,
+      );
+      expect(response.status).toBe(200);
+      const body = await response.json();
+      expect(body).toMatchObject({ data: { git: { webhookConfigured: true, connected: false, autoPublish: false } } });
+      expect(JSON.stringify(body)).not.toMatch(/stored-secret|legacy-raw-secret|ignored-input-secret|webhookSecret/);
+      expect(mocks.secretUpsert).not.toHaveBeenCalled();
+    }
+  });
+  it.each(['viewer', 'member', 'admin', 'owner'])('reports no configured key to %s, and writes nothing on GET', async (role) => {
+    mocks.access.mockResolvedValue({ organizationId: 'site-org', role });
+    mocks.secretFind.mockResolvedValue(null);
+    const response = await app.request(url);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { git: { webhookConfigured: false } } });
     expect(mocks.secretUpsert).not.toHaveBeenCalled();
     expect(mocks.orgUpdate).not.toHaveBeenCalled();
   });
