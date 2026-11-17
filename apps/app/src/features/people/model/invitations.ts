@@ -1,4 +1,6 @@
 import type { MessageKey } from '@nibleaf/i18n';
+import type { InvitationResend } from '@nibleaf/shared/rbac';
+import type { Decision } from './permissions';
 
 /** Most addresses one invitation request takes (the server's limit). */
 const MAX_INVITE_EMAILS = 100;
@@ -59,4 +61,17 @@ export function deliverySummary(deliveries: InvitationDelivery[]): { key: Messag
   if (failed) return { key: 'people.invite.someFailed', count: failed };
   if (deliveries.length && deliveries.every((delivery) => delivery === 'disabled')) return { key: 'people.invite.notEmailed' };
   return { key: 'people.invite.emailed' };
+}
+
+/**
+ * Resend on a website's Team page, from the server's per-invitation `resend`
+ * (its issuer policy, applied to the viewer): an invitation that gives
+ * organization access, or access to websites the viewer can't grant, is for an
+ * organization Admin. Older servers send nothing: allowed, as before. The resend
+ * itself stays the authority.
+ */
+export function resendDecision(resend: InvitationResend | undefined): Decision {
+  if (resend === 'orgAccess') return { allowed: false, reason: 'people.reason.resendOrgAccess' };
+  if (resend === 'otherWebsites') return { allowed: false, reason: 'people.reason.resendOtherWebsites' };
+  return { allowed: true };
 }
