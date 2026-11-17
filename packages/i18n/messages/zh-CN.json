@@ -4536,6 +4536,8 @@
   "people_reason_removeselfsite": "你不能移除自己。请联系其他管理员。",
   "people_reason_moreaccess": "对方的访问权限比你多。",
   "people_reason_roleaboveyours": "你只能授予不高于你自己的角色。",
+  "people_reason_resendorgaccess": "请让组织管理员重新发送：此邀请会授予组织级访问权限。",
+  "people_reason_resendotherwebsites": "请让组织管理员重新发送：此邀请还会授予你无权分配的其他网站的访问权限。",
   "people_invite_open": "邀请成员",
   "people_invite_title": "邀请成员加入 {org}",
   "people_invite_description": "对方会收到一封邮件，其中的链接 7 天内有效。",
