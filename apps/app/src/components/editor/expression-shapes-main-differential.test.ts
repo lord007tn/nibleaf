@@ -99,6 +99,7 @@ describe('expression shapes main saves byte for byte', () => {
     if (process.env.WRITE_EXPRESSION_SHAPES_MAIN) {
       const rows = results.map(({ exact, editable }) => [exact ? 1 : 0, editable.join(',')]);
       writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, results: rows }, null, 2)}\n`);
+      return;
     }
     const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; results: Array<[0 | 1, string]> };
     expect(main.pages).toBe(pages.length);
