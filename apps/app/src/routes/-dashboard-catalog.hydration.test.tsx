@@ -15,6 +15,10 @@ vi.mock('@nibleaf/i18n/dashboard-catalog', async () => {
 });
 vi.mock('@/functions/site', () => ({ getGitPreviewFn: vi.fn() }));
 vi.mock('@/components/markdown', () => ({ Markdown: () => null }));
+vi.mock('@/routeTree.gen', async () => {
+  const { createRootRoute } = await import('@tanstack/react-router');
+  return { routeTree: createRootRoute() };
+});
 
 import { setLanguage } from '@nibleaf/i18n/locale-state';
 import { useLocale } from '@nibleaf/i18n/react';
