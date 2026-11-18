@@ -15,6 +15,10 @@ const matrices = [
   { label: 'review 2640', count: 2640, cases: htmlExportBoundaryCases(), seed: undefined },
   { label: 'seed 0xc611babe', count: 4096, cases: seededExportCases(), seed: EXPORT_GUARD_SEED },
 ] as const;
+// The 4096 baseline was recorded on main, except for the public export of cases
+// 376 and 2188: markdown-it 15 reads the double-backtick span in each as CommonMark
+// and micromark do, so their `code` and `codeTokens` entries were re-recorded.
+// The exported bytes did not change.
 const readBaseline = (count: number): ExportGuardBaseline =>
   JSON.parse(
     readFileSync(new URL(`./__fixtures__/markdown-export.guard.main-2cf12d3f.${count}.json`, import.meta.url), 'utf8'),
