@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs';
 import { Editor } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { readLineEndings, restoreLineEndings } from './line-endings';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 describe('line endings follow editor positions (#754)', () => {
@@ -32,6 +33,72 @@ describe('line endings follow editor positions (#754)', () => {
     if (!range) throw new Error(`Heading not found: ${text}`);
     editor.view.dispatch(editor.state.tr.insertText(replacement, range.from, range.to));
   };
+
+  const mainSave = (source: string) => {
+    const storage = editor.storage as unknown as { markdown: { serializer: { serialize(doc: unknown): string } } };
+    return restoreLineEndings(readLineEndings(source), storage.markdown.serializer.serialize(editor.state.doc));
+  };
+
+  it('final review: a no-op paragraph update keeps every original ending', () => {
+    const page = '# Start\r\n\r\nOne\nwrapped.\r\n\r\nTwo.\n\r\n# End';
+    load(page);
+    const node = editor.state.doc.nodeAt(7);
+    if (!node) throw new Error('Expected paragraph');
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(7, undefined, { ...node.attrs }));
+    expect(getMarkdown(editor)).toBe(page);
+  });
+
+  it.each([
+    ['heading', '# One\n\r\nTwo.\r\n\r\n# End'],
+    ['blockquote', '> One\n> wrapped.\r\n\r\nAfter.'],
+    ['codeBlock', '```text\r\none\nwrapped.\r\n```\r\n\r\nAfter.'],
+    ['horizontalRule', '---\n\r\nAfter.\r\n\r\nEnd.'],
+  ])('final review: a no-op %s wrapper keeps main endings', (type, page) => {
+    load(page);
+    let at = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (at < 0 && node.type.name === type) at = pos;
+    });
+    const node = editor.state.doc.nodeAt(at);
+    if (!node) throw new Error(`Expected ${type}`);
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(at, undefined, { ...node.attrs }));
+    expect(getMarkdown(editor)).toBe(mainSave(page));
+  });
+
+  it.each([
+    ['paragraph', '# Start\r\n\r\nOne\nwrapped.\r\n\r\nTwo.\n\r\n# End', { textAlign: 'center' }],
+    ['heading', '# One\n\r\nTwo.\n\r\n# End', { level: 2 }],
+    ['codeBlock', '```text\nalpha\r\nbeta\n```\r\n\r\nAfter.', { language: 'javascript' }],
+  ] as const)('final review: attribute-only %s changes keep main endings', (type, page, attrs) => {
+    load(page);
+    let at = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (at < 0 && node.type.name === type) at = pos;
+    });
+    const node = editor.state.doc.nodeAt(at);
+    if (!node) throw new Error(`Expected ${type}`);
+    editor.view.dispatch(editor.state.tr.setNodeMarkup(at, undefined, { ...node.attrs, ...attrs }));
+    expect(getMarkdown(editor)).toBe(mainSave(page));
+  });
+
+  it('final review: an extra header line does not shift the y row ending', () => {
+    load('| H |\r\n| --- |\r\n| x |\r\n| y |\n\r\nAfter.');
+    editor.view.dispatch(editor.state.tr.insertText('new\nline', 5));
+    expect(getMarkdown(editor)).toBe('| Hnew\r\nline |\r\n| --- |\r\n| x |\r\n| y |\n\r\nAfter.');
+  });
+
+  it.each(['J', 'a'])('final review: multiline text in table cell %s keeps the later row ending', (cell) => {
+    const page = '| H | J |\r\n| --- | --- |\r\n| x | a |\r\n| y | b |\n\r\nAfter.';
+    load(page);
+    let at = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === cell) at = pos + cell.length;
+    });
+    if (at < 0) throw new Error('Expected table cell text');
+    editor.view.dispatch(editor.state.tr.insertText('new\nline', at));
+    expect(getMarkdown(editor)).toBe(mainSave(page));
+    expect(getMarkdown(editor)).toContain('| y | b |\n\r\nAfter.');
+  });
 
   it('keeps the two identical paragraphs and their blank lines when both headings change (repro 1)', () => {
     load('# Start\r\n\r\nx\n\r\nx\r\n\r\n# End');

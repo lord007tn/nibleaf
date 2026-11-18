@@ -2,7 +2,7 @@ import type { Editor } from '@tiptap/core';
 import { isHistoryTransaction } from '@tiptap/pm/history';
 import type { Fragment, Mark, Node as PMNode } from '@tiptap/pm/model';
 import { Plugin, PluginKey, type Selection, type SelectionBookmark, type Transaction } from '@tiptap/pm/state';
-import { type Mappable, ReplaceStep } from '@tiptap/pm/transform';
+import { type Mappable, ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import { MarkdownSerializerState } from 'prosemirror-markdown';
 import { Markdown } from 'tiptap-markdown';
 import {
@@ -605,6 +605,20 @@ export const LinearMarkdown = Markdown.extend({
             // A page load establishes a new source. Undo across setContent keeps
             // #761's latest-source behavior instead of reviving another page.
             if (restored && restored.source === previous.source) return restored;
+            const wrapperChange = transaction.steps.some((step, index) => {
+              if (step instanceof ReplaceAroundStep) return true;
+              if (!(step instanceof ReplaceStep) || step.slice.content.childCount !== 1) return false;
+              const replacement = step.slice.content.firstChild;
+              const original = transaction.docs[index]?.nodeAt(step.from);
+              return !!replacement?.isLeaf && !replacement.isText && !!original?.isLeaf && step.to - step.from === original.nodeSize;
+            });
+            if (transaction.docChanged && wrapperChange) {
+              // setNodeMarkup replaces wrapper tokens even when nothing changed.
+              // Keep true no-ops intact; otherwise prefer main's text matching
+              // over guessing which wrapper-owned lines survived.
+              if (transaction.doc.eq(transaction.before)) return previous;
+              return { ...previous, anchors: [], pristine: false, textFallback: true };
+            }
             return transaction.docChanged ? mapLineEndings(previous, transaction.mapping) : previous;
           },
         },

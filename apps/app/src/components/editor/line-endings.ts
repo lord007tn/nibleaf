@@ -227,6 +227,8 @@ export interface PositionedLineEndings {
   readonly source: SourceLineEndings;
   readonly anchors: readonly EndingAnchor[];
   readonly pristine: boolean;
+  /** Wrapper replacement made the original position ownership uncertain. */
+  readonly textFallback?: boolean;
 }
 
 const blankLine = (text: string) => /^[ \t>]*$/.test(text);
@@ -281,6 +283,15 @@ export function positionedLines(pieces: Iterable<{ text: string; owner: Serializ
     while (last > 0 && blankLine(rows[indexes[last - 1] as number]?.text ?? '')) last--;
     const code = node.type.name === 'codeBlock';
     const table = node.type.name === 'table' && /^[ \t>]*(?:(?:[-+*]|\d+[.)])[ \t]+)?\|/.test(first?.text ?? '');
+    // A cell can serialize more than one physical line. Ordinals then cannot
+    // identify rows safely; use the existing text matcher for this save.
+    if (table && last !== node.childCount + 1) {
+      for (const index of indexes) {
+        const line = result[index];
+        if (line) result[index] = { ...line, part: 'table-ambiguous' };
+      }
+      continue;
+    }
     const tableRows: Array<{ from: number; to: number }> = [];
     if (table)
       node.forEach((row, offset) => {
@@ -337,7 +348,7 @@ export function positionedLines(pieces: Iterable<{ text: string; owner: Serializ
   return result;
 }
 
-/** The load-time compatibility alignment happens once; edits never match text. */
+/** Align once at load; uncertain ownership uses the compatibility text matcher. */
 export function createPositionedLineEndings(source: SourceLineEndings, serialize: () => SerializedPage): PositionedLineEndings {
   // Common endings need no anchors: new and untouched lines already use them.
   // Uniform CRLF/CR pages therefore need neither position collection nor mapping.
@@ -365,12 +376,13 @@ export function mapLineEndings(state: PositionedLineEndings, mapping: Mappable):
     if (!from.deleted && !to.deleted && from.pos <= to.pos)
       anchors.push(from.pos === line.from && to.pos === line.to ? line : { ...line, from: from.pos, to: to.pos });
   }
-  return { source: state.source, anchors, pristine: false };
+  return { ...state, anchors, pristine: false };
 }
 
 const positionKey = (line: PositionedLine) => `${line.from}:${line.to}:${line.part}:${line.slot}`;
 
 export function restorePositionedLineEndings(state: PositionedLineEndings, page: SerializedPage): string {
+  if (state.textFallback || page.lines.some((line) => line.part === 'table-ambiguous')) return restoreLineEndings(state.source, page.markdown);
   if (state.pristine && page.markdown === state.source.normalized) return state.source.source;
   if (state.anchors.length === 0) return page.markdown.replace(/\n/g, state.source.dominant);
   const anchors = new Map(state.anchors.map((line) => [positionKey(line), line]));
