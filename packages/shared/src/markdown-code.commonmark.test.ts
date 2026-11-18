@@ -281,3 +281,15 @@ it('never lists a heading that markdown-it puts inside an HTML block, across the
   console.info('extractHeadings against markdown-it:', table);
   expect(failures.slice(0, 8), `${failures.length} cases list a heading from inside an HTML block`).toEqual([]);
 });
+
+// markdown-it 15 reads both code spans as CommonMark and the reader's micromark
+// do. markdown-it 14 left the first as text and shortened the second to one space.
+it.each([
+  ['[ ``a`` ```', '<p>[ <code>a</code> ```</p>\n', 'a'],
+  ['``  \n``', '<p><code>   </code></p>\n', '   '],
+])('reads the code span in %j as the reader does', (source, html, code) => {
+  expect(markdown.render(source)).toBe(html);
+  const paragraph = fromMarkdown(source).children[0];
+  const spans = paragraph?.type === 'paragraph' ? paragraph.children.filter((node) => node.type === 'inlineCode') : [];
+  expect(spans.map((span) => span.value)).toEqual([code]);
+});

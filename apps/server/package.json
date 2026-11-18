@@ -71,7 +71,6 @@
   },
   "devDependencies": {
     "@nibleaf/tsconfig": "workspace:*",
-    "@types/markdown-it": "14.1.2",
     "@types/node": "^26.6.6",
     "@types/turndown": "^5.0.6",
     "dotenv-cli": "^11.1.0",

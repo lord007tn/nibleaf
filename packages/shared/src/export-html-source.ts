@@ -1,5 +1,5 @@
+import type { Token } from 'markdown-it';
 import MarkdownIt from 'markdown-it';
-import type Token from 'markdown-it/lib/token.mjs';
 import { type DefaultTreeAdapterTypes, Parser, parseFragment } from 'parse5';
 import { AttributeReplay } from './export-html-replay';
 import { dangerous, isExportUrlAttribute, unsafeAttribute } from './export-url-policy';

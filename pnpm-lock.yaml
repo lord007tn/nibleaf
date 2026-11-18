@@ -648,9 +648,6 @@ importers:
       '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../../packages/tsconfig
-      '@types/markdown-it':
-        specifier: 14.1.2
-        version: 14.1.2
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
@@ -1266,9 +1263,6 @@ importers:
       '@nibleaf/tsconfig':
         specifier: workspace:*
         version: link:../tsconfig
-      '@types/markdown-it':
-        specifier: 14.1.2
-        version: 14.1.2
       '@types/mdast':
         specifier: ^4.0.4
         version: 4.0.4
