@@ -415,6 +415,23 @@ export const readExportHtml = (source: string, options: ReadOptions = {}): Expor
     remember(token.location?.endOffset);
     doctype(token);
   };
+  // parse5 7 started a text token that followed whitespace after its literal
+  // `<`; parse5 8 starts it at the `<`. Exports were built on the first reading,
+  // so keep it: otherwise `<pre>\n< x` would become inert and shift their bytes.
+  const delimiterStarts = new Set<number>();
+  let whitespaceEnd = -1;
+  const whitespaceCharacter = parser.onWhitespaceCharacter.bind(parser),
+    character = parser.onCharacter.bind(parser);
+  parser.onWhitespaceCharacter = (token) => {
+    whitespaceEnd = token.location?.endOffset ?? -1;
+    whitespaceCharacter(token);
+  };
+  parser.onCharacter = (token) => {
+    const start = token.location?.startOffset;
+    if (start !== undefined && start === whitespaceEnd && html[start] === '<') delimiterStarts.add(start);
+    whitespaceEnd = -1;
+    character(token);
+  };
   if (fullValues) {
     const replay = new AttributeReplay();
     let at = 0;
@@ -482,8 +499,9 @@ export const readExportHtml = (source: string, options: ReadOptions = {}): Expor
       }
     }
     const loc = 'sourceCodeLocation' in node ? node.sourceCodeLocation : undefined;
-    if (loc && (node.nodeName === '#comment' || (node.nodeName === '#text' && html.slice(loc.startOffset, loc.endOffset).includes('<')))) {
-      const from = originalAt[loc.startOffset] ?? -1;
+    const start = loc ? loc.startOffset + Number(node.nodeName === '#text' && delimiterStarts.has(loc.startOffset)) : 0;
+    if (loc && (node.nodeName === '#comment' || (node.nodeName === '#text' && html.slice(start, loc.endOffset).includes('<')))) {
+      const from = originalAt[start] ?? -1;
       if (from >= 0) {
         risky = true;
         hide(from, Math.max(from, sourceEnd(loc.endOffset)));
