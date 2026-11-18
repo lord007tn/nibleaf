@@ -1323,7 +1323,9 @@ function unsupportedRanges(source: string, layout: MarkdownLayout, tokens: TagTo
     const closeIndex = token.closing ? undefined : pairs.get(i);
     const close = closeIndex == null ? undefined : tokens[closeIndex];
     const end = close?.end ?? (token.runsToEnd ? source.length : token.end);
-    ranges.push(sourceRange(source, layout, { start: token.start, end }, token.name));
+    // Keep the escape with its literal raw-text tag; left outside, it escapes the internal placeholder.
+    const start = token.html && RAW_TEXT_HTML.has(token.name) && escapedAt(source, token.start) ? token.start - 1 : token.start;
+    ranges.push(sourceRange(source, layout, { start, end }, token.name));
     if (!token.closing) coveredUntil = end;
   }
   return ranges;
