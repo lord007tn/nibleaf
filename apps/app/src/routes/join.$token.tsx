@@ -7,7 +7,9 @@ import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 export const Route = createFileRoute('/join/$token')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
   staticData: { interfaceLocale: true },
-  loader: ({ context: { queryClient }, params: { token } }) => {
+  loader: async ({ context: { queryClient }, params: { token } }) => {
+    const { loadDashboardLocale } = await import('@/lib/dashboard-locale');
+    await loadDashboardLocale();
     prefetchRouteData(queryClient, joinLinkPreviewQueryOptions(token));
     prefetchRouteData(queryClient, getPublicMetaQueryOptions());
   },

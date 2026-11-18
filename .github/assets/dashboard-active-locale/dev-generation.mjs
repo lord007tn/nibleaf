@@ -63,8 +63,11 @@ export async function checkDevGeneration(root, scratch, browser, registerCleanup
       sampling = false;
       await reader;
       try {
-        await context?.close();
-        await server?.close();
+        try {
+          await context?.close();
+        } finally {
+          await server?.close();
+        }
       } finally {
         await replaceSource(original);
         await generateDashboardCatalogs();

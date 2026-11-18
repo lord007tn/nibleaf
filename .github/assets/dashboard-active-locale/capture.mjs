@@ -145,6 +145,7 @@ createRoot(document.getElementById('root')).render(<RouterProvider router={route
   });
   const owner = `ui/627-builder capture pid=${process.pid}`;
   let stopRuntime = async () => undefined;
+  let runtimeStopFailure;
   let closeBrowser = async () => undefined;
   const lock = await acquireDevstackLock(owner, {
     onInterrupt: async () => {
@@ -317,6 +318,14 @@ createRoot(document.getElementById('root')).render(<RouterProvider router={route
       },
     );
   } finally {
-    await releaseOwnedDevstack(lock, owner);
+    // A runtime that may still own the ports keeps the lock held.
+    await stopRuntime().then(
+      () => releaseOwnedDevstack(lock, owner),
+      (error) => {
+        lock.keep();
+        runtimeStopFailure = error;
+      },
+    );
   }
+  if (runtimeStopFailure) throw runtimeStopFailure;
 }

@@ -60,6 +60,14 @@ export function rememberInterfaceLocale(locale: Locale): void {
 
 let prepareLanguage: ((locale: Locale) => Promise<boolean>) | undefined;
 let languageChange = 0;
+const languageFailureListeners = new Set<(locale: Locale) => void>();
+
+/** Called when the visitor's latest language choice could not be prepared. The
+ *  current language stays on screen; choosing again retries the download. */
+export function subscribeLanguageFailure(listener: (locale: Locale) => void): () => void {
+  languageFailureListeners.add(listener);
+  return () => languageFailureListeners.delete(listener);
+}
 
 /** Installed only by the dashboard client catalog. Scoped auth and published
  * translators do not import or download dashboard messages. */
@@ -72,7 +80,10 @@ export async function setLanguage(locale: Locale): Promise<void> {
   // must never change module-level locale state in a shared server process.
   if (typeof document === 'undefined') return;
   const change = ++languageChange;
-  if (prepareLanguage && !(await prepareLanguage(locale))) return;
+  if (prepareLanguage && !(await prepareLanguage(locale))) {
+    if (change === languageChange) for (const listener of languageFailureListeners) listener(locale);
+    return;
+  }
   if (change !== languageChange) return;
   await setLocale(locale, { reload: false });
   if (change !== languageChange) return;

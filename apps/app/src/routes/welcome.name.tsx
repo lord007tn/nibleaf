@@ -17,6 +17,10 @@ export const Route = createFileRoute('/welcome/name')({
     if (session.user.name?.trim()) throw redirect({ href: nameDestination });
     return { nameDestination };
   },
+  loader: async () => {
+    const { loadDashboardLocale } = await import('@/lib/dashboard-locale');
+    await loadDashboardLocale();
+  },
   head: () => ({ meta: [{ title: 'Welcome — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   // Method shorthand is what TanStack's code splitter moves out of the route
   // tree (a named function costs every page ~0.6 KiB). The router renders it

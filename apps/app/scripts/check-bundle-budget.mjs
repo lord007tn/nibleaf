@@ -11,7 +11,14 @@ import {
   searchOpenFiles,
   searchOpenZodModules,
 } from './bundle-boundaries.mjs';
-import { dashboardCatalogChunks, dashboardCatalogFailures, dashboardHomeGzipBudget, dashboardLocaleGzipBudget } from './dashboard-catalog-budget.mjs';
+import {
+  dashboardCatalogChunks,
+  dashboardCatalogFailures,
+  dashboardCatalogRouteFailures,
+  dashboardHomeGzipBudget,
+  dashboardLocaleGzipBudget,
+  serverCatalogFailures,
+} from './dashboard-catalog-budget.mjs';
 import { transitiveImports } from './dashboard-preload-plugin.ts';
 
 const appRoot = resolve(import.meta.dirname, '..');
@@ -324,12 +331,16 @@ if (process.argv.includes('--check')) {
         }
       }
     }
-    for (const asset of reports['dashboard-home']?.assets ?? []) {
-      const modules = moduleReport.get(asset.url.replace(/^\//, '')) ?? [];
-      if (modules.some((module) => /\/i18n\/src\/dashboard-catalog\.server\.ts$/.test(module.id))) {
-        console.error(`DASHBOARD CATALOG BOUNDARY FAILED: ${asset.url} includes the server catalog.`);
-        invalid = true;
-      }
+    // Route preloads plus everything each locale's startup imports beyond them.
+    const startupFiles = new Set([...initialFiles, ...(dashboardInitialLoads ?? []).flatMap((initial) => initial.extraFiles)]);
+    for (const failure of serverCatalogFailures(startupFiles, moduleReport)) {
+      console.error(`DASHBOARD CATALOG BOUNDARY FAILED: ${failure}`);
+      invalid = true;
+    }
+    // Every route outside the dashboard family, including all marketing pages.
+    for (const failure of dashboardCatalogRouteFailures(routes, moduleReport)) {
+      console.error(`DASHBOARD CATALOG BOUNDARY FAILED: ${failure}`);
+      invalid = true;
     }
     for (const profile of [...publicProfiles, 'auth-sign-in', 'auth-sign-up']) {
       for (const asset of reports[profile]?.assets ?? []) {

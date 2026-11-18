@@ -7,7 +7,8 @@ import { afterEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ locale: 'en', invalidate: vi.fn() }));
 vi.mock('@/functions/site', () => ({ getGitPreviewFn: vi.fn() }));
 vi.mock('@nibleaf/i18n/react', () => ({ useLocale: () => ({ locale: 'en', t: (key: string) => key }) }));
-vi.mock('@nibleaf/i18n/locale-state', () => ({
+vi.mock('@nibleaf/i18n/locale-state', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nibleaf/i18n/locale-state')>()),
   getLocale: () => mocks.locale,
   renderedLocale: () => mocks.locale,
   subscribeLanguage: () => () => undefined,

@@ -7,6 +7,10 @@ import { McpOAuthProjectStep } from '@/components/oauth/mcp-oauth-steps';
 export const Route = createFileRoute('/oauth/project')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
   staticData: { interfaceLocale: true },
+  loader: async () => {
+    const { loadDashboardLocale } = await import('@/lib/dashboard-locale');
+    await loadDashboardLocale();
+  },
   head: () => ({ meta: [{ title: 'Connect an AI app — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: () => (
     <AuthProviders>

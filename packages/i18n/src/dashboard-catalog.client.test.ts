@@ -81,6 +81,47 @@ describe('dashboard catalog downloads', () => {
     unsubscribe();
   });
 
+  it('reports a failed language choice once, and only for the latest choice', async () => {
+    downloads.german.mockResolvedValue({ common_cancel: () => 'fixture German' });
+    const { configureDashboardLocaleLoading } = await import('./dashboard-catalog.client');
+    let failArabic!: (error: Error) => void;
+    configureDashboardLocaleLoading(
+      vi
+        .fn()
+        .mockImplementationOnce(
+          () =>
+            new Promise((_resolve, reject) => {
+              failArabic = reject;
+            }),
+        )
+        .mockImplementationOnce((importer: () => Promise<unknown>) => importer())
+        .mockRejectedValueOnce(new Error('fixture offline')),
+    );
+    const { getLocale, setLanguage, subscribeLanguageFailure } = await import('./runtime');
+    const failed = vi.fn();
+    const unsubscribe = subscribeLanguageFailure(failed);
+    const superseded = setLanguage('ar');
+    await setLanguage('de');
+    failArabic(new Error('fixture offline'));
+    await superseded;
+    expect(failed).not.toHaveBeenCalled();
+    expect(getLocale()).toBe('de');
+    await setLanguage('fr');
+    expect(failed).toHaveBeenCalledExactlyOnceWith('fr');
+    expect(getLocale()).toBe('de');
+    unsubscribe();
+  });
+
+  it('skips the optional-load exemption for a catalog the page needs to render', async () => {
+    downloads.arabic.mockResolvedValue({ common_cancel: () => 'fixture Arabic' });
+    const { dashboardMessage, prepareDashboardLocale, configureDashboardLocaleLoading } = await import('./dashboard-catalog.client');
+    const optional = vi.fn((importer: () => Promise<unknown>) => importer());
+    configureDashboardLocaleLoading(optional);
+    expect(await prepareDashboardLocale('ar', { required: true })).toBe(true);
+    expect(optional).not.toHaveBeenCalled();
+    expect(dashboardMessage('common_cancel', 'ar')?.()).toBe('fixture Arabic');
+  });
+
   it('applies only the latest choice when downloads finish out of order', async () => {
     let finishArabic!: (catalog: Record<string, () => string>) => void;
     downloads.german.mockResolvedValue({ common_cancel: () => 'fixture German' });

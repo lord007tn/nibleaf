@@ -32,8 +32,10 @@ export const dashboardMessage = (id: string, locale: Locale): MessageFn | undefi
   return catalogs.get(locale)?.[identifier] ?? englishCatalog[identifier];
 };
 
-// The app supplies its optional-load wrapper so failed locale downloads use
-// the existing page fallback rather than the stale-route reload mechanism.
+// The app supplies its optional-load wrapper so a failed language choice keeps
+// the current page rather than triggering the stale-route reload mechanism.
+// A catalog a page needs in order to render is `required`: its failure goes
+// through normal chunk recovery, then the caller's own failure path.
 let optionalLoad = (load: () => Promise<unknown>): Promise<unknown> => load();
 let isDashboardActive = () => true;
 
@@ -42,11 +44,12 @@ export function configureDashboardLocaleLoading(wrapper: typeof optionalLoad, ac
   isDashboardActive = active;
 }
 
-export function prepareDashboardLocale(locale: Locale): Promise<boolean> {
+export function prepareDashboardLocale(locale: Locale, { required = false }: { required?: boolean } = {}): Promise<boolean> {
   if (catalogs.has(locale)) return Promise.resolve(true);
   const inFlight = pending.get(locale);
   if (inFlight) return inFlight;
-  const download = optionalLoad(() => imports[locale as Exclude<Locale, 'en'>]())
+  const load = () => imports[locale as Exclude<Locale, 'en'>]();
+  const download = (required ? load() : optionalLoad(load))
     .then(
       (catalog) => {
         catalogs.set(locale, catalog as unknown as Catalog);

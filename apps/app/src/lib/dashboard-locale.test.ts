@@ -9,7 +9,11 @@ const catalog = vi.hoisted(() => ({
   }),
 }));
 vi.mock('@nibleaf/i18n/dashboard-catalog', () => ({ prepareDashboardLocale: catalog.prepare, configureDashboardLocaleLoading: catalog.configure }));
-vi.mock('@nibleaf/i18n/locale-state', () => ({ getLocale: () => 'de', renderedLocale: () => 'ar' }));
+vi.mock('@nibleaf/i18n/locale-state', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@nibleaf/i18n/locale-state')>()),
+  getLocale: () => 'de',
+  renderedLocale: () => 'ar',
+}));
 
 import { hydrateDashboardLocale, loadDashboardLocale } from './dashboard-locale';
 import { needsDashboardLocale } from './dashboard-locale-path';
@@ -18,17 +22,28 @@ beforeEach(() => catalog.prepare.mockClear());
 
 it("loads the current choice for navigation rather than the document's old server snapshot", async () => {
   await loadDashboardLocale();
-  expect(catalog.prepare).toHaveBeenCalledExactlyOnceWith('de');
+  expect(catalog.prepare).toHaveBeenCalledExactlyOnceWith('de', { required: true });
 });
 
 it('loads the server snapshot before hydration', async () => {
   await hydrateDashboardLocale();
-  expect(catalog.prepare).toHaveBeenCalledExactlyOnceWith('ar');
+  expect(catalog.prepare).toHaveBeenCalledExactlyOnceWith('ar', { required: true });
 });
 
-it('limits dashboard loading to its two consumer route families', () => {
-  for (const path of ['/app', '/app/o/fixture/websites', '/git-preview/fixture']) expect(needsDashboardLocale(path)).toBe(true);
-  for (const path of ['/sign-in', '/sign-up', '/', '/ar', '/sites/fixture', '/application']) expect(needsDashboardLocale(path)).toBe(false);
+it('limits dashboard loading to the product routes that translate through its catalog', () => {
+  for (const path of [
+    '/app',
+    '/app/o/fixture/websites',
+    '/git-preview/fixture',
+    '/welcome/name',
+    '/oauth/consent',
+    '/oauth/project',
+    '/accept-invite/fixture',
+    '/join/fixture',
+  ])
+    expect(needsDashboardLocale(path)).toBe(true);
+  for (const path of ['/sign-in', '/sign-up', '/', '/ar', '/ar/pricing', '/blog/fixture', '/sites/fixture', '/application', '/joined', '/welcome'])
+    expect(needsDashboardLocale(path)).toBe(false);
   const active = catalog.active as () => boolean;
   window.history.replaceState(null, '', '/app/o/fixture/websites');
   expect(active()).toBe(true);

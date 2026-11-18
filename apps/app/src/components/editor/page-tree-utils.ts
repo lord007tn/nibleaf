@@ -1,7 +1,8 @@
-import { type MessageKey, resolveLocale, translateFn } from '@nibleaf/i18n';
+import { type MessageKey, resolveLocale } from '@nibleaf/i18n';
 import { pageStructureRevisionSource } from '@nibleaf/shared/page-moves';
 import { slugifyUnicode } from '@nibleaf/shared/utils';
 import type { PageNode } from '@/hooks/api';
+import { type PageLanguageMessageKey, pageLanguageText } from './page-language-messages';
 
 /** Search uses the same folding for the query, titles and page addresses. */
 export function normalizePageSearch(value: string): string {
@@ -92,9 +93,9 @@ export function countDescendants(pages: ReadonlyArray<Pick<PageNode, 'id' | 'par
  * "صفحة بدون عنوان", even when the dashboard is in English). Falls back to
  * the interface language when the page language has no interface catalog.
  */
-export function messageInLanguage(key: MessageKey, languageCode: string | undefined, fallback: (key: MessageKey) => string): string {
+export function messageInLanguage(key: PageLanguageMessageKey, languageCode: string | undefined, fallback: (key: MessageKey) => string): string {
   const locale = resolveLocale(languageCode);
-  return locale ? translateFn(key, undefined, locale) : fallback(key);
+  return locale ? pageLanguageText(key, locale) : fallback(key);
 }
 
 const PLACEHOLDER_SLUG_RE = /^(?:untitled|new-group)(?:-\d+)?$/;

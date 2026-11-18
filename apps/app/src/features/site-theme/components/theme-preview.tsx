@@ -1,18 +1,19 @@
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import type { MessageKey } from '@nibleaf/i18n';
-import { translateFn, useT } from '@nibleaf/i18n/react';
+import { useT } from '@nibleaf/i18n/react';
 import { resolveTheme, THEME_PRESETS, type ThemeComponents, type ThemeLayout, type ThemePresetId } from '@nibleaf/shared/themes';
 import type { ProjectConfig } from '@nibleaf/validators';
 import { type CSSProperties, useId } from 'react';
 import { DocumentationStudioPreviewLayout, DocumentationThemeProvider } from '@/components/site/documentation-theme-provider';
+import { type ThemePreviewMessageKey, themePreviewText } from '@/features/site-theme/theme-preview-messages';
 import { projectThemeStyle, projectThemeVariables } from '@/lib/site-theme';
 
 type PreviewMode = 'light' | 'dark';
 
 export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; mode: PreviewMode; arabic: boolean }) {
   const theme = resolveTheme(config);
-  const t = (key: MessageKey) => translateFn(key, undefined, arabic ? 'ar' : 'en');
+  const t = (key: ThemePreviewMessageKey) => themePreviewText(key, arabic ? 'ar' : 'en');
   return (
     <DocumentationThemeProvider
       appearance={mode}

@@ -65,11 +65,13 @@ export function getRouter() {
     // Runs in the browser before React hydrates. A page whose server HTML marks
     // code-split reader content (`data-hydration-module`, written by the
     // islands in lib/reader-hydration-modules.ts) loads it first, so hydrating
-    // keeps that HTML instead of swapping it for a fallback. Dashboard and
-    // private-preview documents first load the server's interface catalog;
-    // auth, marketing and published docs never load that catalog.
+    // keeps that HTML instead of swapping it for a fallback. Product documents
+    // that translate through the dashboard catalog first load the server's
+    // interface catalog, and stay as server HTML until it is available, so they
+    // never hydrate in another language. Auth, marketing and published docs
+    // never load that catalog.
     hydrate: () => {
-      const dashboard = needsDashboardLocale(window.location.pathname);
+      const dashboard = !customDomainProjectId && needsDashboardLocale(window.location.pathname);
       const reader = document.querySelector('[data-hydration-module]');
       if (!dashboard && !reader) return;
       return (async () => {
