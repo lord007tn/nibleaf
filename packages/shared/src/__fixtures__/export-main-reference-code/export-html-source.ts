@@ -1,6 +1,7 @@
 // Frozen main at ec2d10d8; test-only byte reference for #664.
+
+import type { Token } from 'markdown-it';
 import MarkdownIt from 'markdown-it';
-import type Token from 'markdown-it/lib/token.mjs';
 import { type DefaultTreeAdapterTypes, Parser, parseFragment } from 'parse5';
 
 const ACTIVE_TAGS = ['script', 'style', 'iframe', 'object', 'embed'];

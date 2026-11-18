@@ -1,5 +1,5 @@
 // Frozen main at ec2d10d8; test-only byte reference for #664.
-import type Token from 'markdown-it/lib/token.mjs';
+import type { Token } from 'markdown-it';
 import {
   authoredExportText,
   exportTextEnd,
