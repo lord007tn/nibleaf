@@ -1,10 +1,22 @@
 import type { Editor } from '@tiptap/core';
+import { isHistoryTransaction } from '@tiptap/pm/history';
 import type { Fragment, Mark, Node as PMNode } from '@tiptap/pm/model';
-import { Plugin, PluginKey, type Transaction } from '@tiptap/pm/state';
-import { type Mappable, ReplaceStep } from '@tiptap/pm/transform';
+import { Plugin, PluginKey, type Selection, type SelectionBookmark, type Transaction } from '@tiptap/pm/state';
+import { type Mappable, ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import { MarkdownSerializerState } from 'prosemirror-markdown';
 import { Markdown } from 'tiptap-markdown';
-import { normalizeLineEndings, readLineEndings, restoreLineEndings, type SourceLineEndings } from './line-endings';
+import {
+  createPositionedLineEndings,
+  mapLineEndings,
+  normalizeLineEndings,
+  type PositionedLineEndings,
+  positionedLines,
+  readLineEndings,
+  restorePositionedLineEndings,
+  type SerializedLineOwner,
+  type SerializedPage,
+  type SourceLineEndings,
+} from './line-endings';
 
 /*
  * Saving a page writes its Markdown into one output buffer (#612). The serializer
@@ -26,6 +38,24 @@ import { normalizeLineEndings, readLineEndings, restoreLineEndings, type SourceL
 /** The pieces of Markdown written so far, read only from the end. */
 export class MarkdownOutput {
   private pieces: string[] = [];
+  private owners: Array<SerializedLineOwner | null> | null = null;
+  private joined: string | null = null;
+  owner: SerializedLineOwner | null = null;
+  get tracksLines(): boolean {
+    return this.owners !== null;
+  }
+
+  trackLines(): void {
+    this.owners = this.pieces.map(() => null);
+  }
+
+  claimLastPiece(): void {
+    if (this.owners?.length) this.owners[this.owners.length - 1] = this.owner;
+  }
+
+  *ownedPieces(): IterableIterator<{ text: string; owner: SerializedLineOwner | null }> {
+    for (const [index, text] of this.pieces.entries()) yield { text, owner: this.owners?.[index] ?? null };
+  }
   /** Characters written so far. */
   length = 0;
   /** Characters read back from the output or copied out of it (`sliceFrom`,
@@ -35,6 +65,8 @@ export class MarkdownOutput {
   append(text: string): void {
     if (text === '') return;
     this.pieces.push(text);
+    this.owners?.push(this.owner);
+    this.joined = null;
     this.length += text.length;
   }
 
@@ -133,8 +165,19 @@ export class MarkdownOutput {
     if (text === '') return;
     const { index, offset } = this.pieceAt(start);
     const piece = this.pieces[index];
-    if (piece === undefined) this.pieces.push(text);
-    else this.pieces.splice(index, 1, ...[piece.slice(0, start - offset), text, piece.slice(start - offset)].filter(Boolean));
+    if (piece === undefined) {
+      this.pieces.push(text);
+      this.owners?.push(this.owner);
+    } else {
+      const owner = this.owners?.[index] ?? null;
+      // The component serializer inserts a missing separator back at its opener
+      // while writing its closer. Attribute that new line to the opening edge.
+      const insertedOwner = this.owner?.edge === 'end' ? { ...this.owner, edge: 'start' as const } : this.owner;
+      const parts = [piece.slice(0, start - offset), text, piece.slice(start - offset)];
+      this.pieces.splice(index, 1, ...parts.filter(Boolean));
+      this.owners?.splice(index, 1, ...[owner, insertedOwner, owner].filter((_, at) => parts[at] !== ''));
+    }
+    this.joined = null;
     this.length += text.length;
   }
 
@@ -142,20 +185,29 @@ export class MarkdownOutput {
   truncate(length: number): void {
     while (this.length > length) {
       const piece = this.pieces.pop() ?? '';
+      const owner = this.owners?.pop() ?? null;
       this.length -= piece.length;
       if (this.length < length) {
         const kept = piece.slice(0, length - this.length);
         this.pieces.push(kept);
+        this.owners?.push(owner);
         this.length += kept.length;
       }
     }
+    this.joined = null;
   }
 
   /** All of it, joined once (and kept joined, so reading it again copies nothing). */
   toString(): string {
+    if (this.joined !== null) return this.joined;
     if (this.pieces.length > 1) {
       this.charactersRead += this.length;
-      this.pieces = [this.pieces.join('')];
+      const joined = this.pieces.join('');
+      if (this.owners) {
+        this.joined = joined;
+        return joined;
+      }
+      this.pieces = [joined];
     }
     return this.pieces[0] ?? '';
   }
@@ -164,6 +216,8 @@ export class MarkdownOutput {
   reset(text: string): void {
     this.pieces = text === '' ? [] : [text];
     this.length = text.length;
+    if (this.owners) this.owners = text === '' ? [] : [this.owner];
+    this.joined = null;
   }
 }
 
@@ -238,7 +292,10 @@ class LinearMarkdownSerializerState extends SerializerState {
   inTable = false;
   /** The nodes being rendered, outermost first, each with its parent and index: a
    *  fence reads what comes after the containers it ends (fence-source.ts). */
-  readonly path: Array<{ node: PMNode; parent: PMNode | Fragment; index: number }> = [];
+  readonly path: Array<{ node: PMNode; parent: PMNode | Fragment; index: number; position: number; lastChildEnd?: number; lastChildIndex?: number }> =
+    [];
+  private readonly offsets = new WeakMap<object, number[]>();
+  private closedOwner: SerializedLineOwner | null = null;
   private readonly inlines: InlineState[] = [];
   private readonly scanDelims: ScanDelims;
 
@@ -249,6 +306,8 @@ class LinearMarkdownSerializerState extends SerializerState {
 
   override flushClose(size = 2): void {
     if (!this.closed) return;
+    const owner = this.output.owner;
+    if (this.output.tracksLines) this.output.owner = this.closedOwner;
     if (!this.atBlank()) this.output.append('\n');
     if (size > 1) {
       let delimMin = this.delim;
@@ -257,6 +316,32 @@ class LinearMarkdownSerializerState extends SerializerState {
       for (let i = 1; i < size; i++) this.output.append(`${delimMin}\n`);
     }
     this.closed = null;
+    this.closedOwner = null;
+    this.output.owner = owner;
+  }
+
+  override closeBlock(node: PMNode): void {
+    super.closeBlock(node);
+    if (this.output.tracksLines) {
+      const at = this.path.findLastIndex((entry) => entry.node === node);
+      const entry = this.path[at];
+      // A list closes each item through wrapBlock, passing the list itself.
+      // Interior gaps belong to that item; the final gap belongs to the list.
+      if (entry?.lastChildEnd === this.output.length && entry.lastChildIndex !== undefined && entry.lastChildIndex < node.childCount - 1) {
+        const child = node.child(entry.lastChildIndex);
+        const position = entry.position + 1 + (this.offsets.get(node)?.[entry.lastChildIndex] ?? 0);
+        this.closedOwner = { node: child, position, depth: at + 1, edge: child.isTextblock || child.isAtom ? 'body' : 'end' };
+        return;
+      }
+      this.closedOwner = entry
+        ? {
+            node,
+            position: entry.position,
+            depth: at,
+            edge: node.isTextblock || node.isAtom ? 'body' : this.output.owner?.node === node ? this.output.owner.edge : 'end',
+          }
+        : this.output.owner;
+    }
   }
 
   override atBlank(): boolean {
@@ -293,11 +378,32 @@ class LinearMarkdownSerializerState extends SerializerState {
 
   // tiptap-markdown's MarkdownSerializerState (src/serialize/state.js) from here on.
   override render(node: PMNode, parent: PMNode, index: number): void {
-    this.path.push({ node, parent, index });
+    const previousOwner = this.output.owner;
+    let position = -1;
+    if (this.output.tracksLines && node.isBlock) {
+      let offsets = this.offsets.get(parent);
+      if (!offsets) {
+        offsets = [];
+        parent.forEach((_node, offset) => {
+          offsets?.push(offset);
+        });
+        this.offsets.set(parent, offsets);
+      }
+      position = (this.path.findLast((entry) => entry.node === parent)?.position ?? -1) + 1 + (offsets[index] ?? 0);
+      this.output.owner = { node, position, depth: this.path.length, edge: node.isTextblock || node.isAtom ? 'body' : 'start' };
+      // renderList writes an item's marker before rendering the item. Even an
+      // empty item's line must belong to that item rather than the whole list.
+      if (node.type.name === 'listItem' || node.type.name === 'taskItem') this.output.claimLastPiece();
+    }
+    this.path.push({ node, parent, index, position });
     try {
       super.render(node, parent, index);
     } finally {
       this.path.pop();
+      this.output.owner =
+        node.isBlock && previousOwner && !previousOwner.node.isTextblock && !previousOwner.node.isAtom
+          ? { ...previousOwner, edge: 'end' }
+          : previousOwner;
     }
     const top = this.inlines[this.inlines.length - 1];
     // A run that starts at position 0 is never trimmed there either.
@@ -308,10 +414,20 @@ class LinearMarkdownSerializerState extends SerializerState {
       while (/\s/.test(text.charAt(start - window))) start += 1;
       const trimmed = trimInline(this.scanDelims, text, top.delimiter, start - window, top.end - window);
       if (trimmed !== text) {
-        this.output.truncate(window);
-        this.output.append(trimmed);
+        // Trimming cannot change the prefix before `start`. Keep its owners,
+        // especially when the two-character window crosses a block separator.
+        const kept = this.output.tracksLines ? start - window : 0;
+        this.output.truncate(window + kept);
+        this.output.append(trimmed.slice(kept));
       }
       this.inlines.pop();
+    }
+    if (this.output.tracksLines && node.isBlock) {
+      const container = this.path.findLast((entry) => entry.node === parent);
+      if (container) {
+        container.lastChildEnd = this.output.length;
+        container.lastChildIndex = index;
+      }
     }
   }
 
@@ -352,12 +468,56 @@ type MarkdownStorageLike = {
   getMarkdown(): string;
   /** The line endings of the Markdown the document was last set from (line-endings.ts). */
   lineEndings: SourceLineEndings | null;
+  serializePositioned(content: PMNode): SerializedPage;
 };
 
 type SetContent = (content: unknown, ...rest: unknown[]) => (props: { editor: Editor }) => boolean;
+interface LineEndingReset {
+  source: SourceLineEndings | null;
+  /** The document immediately after setContent, before later chained edits. */
+  steps: number;
+}
 
 const markdownStorage = (editor: Editor) => (editor.storage as unknown as { markdown: MarkdownStorageLike }).markdown;
-const lineEndingsKey = new PluginKey('markdownLineEndings');
+const lineEndingsKey = new PluginKey<PositionedLineEndings | null>('markdownLineEndings');
+const restoredBookmarks = new WeakMap<Selection, PositionedLineEndings>();
+const selectionBookmarks = new WeakMap<Selection, { state: PositionedLineEndings | null }>();
+
+/** History already maps its selection bookmarks through intervening steps and
+ * their inverses. Carry ending ownership alongside that public bookmark protocol,
+ * without adding history events or changing the selection's type, JSON or ranges. */
+class LineEndingBookmark implements SelectionBookmark {
+  constructor(
+    private readonly bookmark: SelectionBookmark,
+    private readonly endings: PositionedLineEndings,
+  ) {}
+
+  map(mapping: Mappable): SelectionBookmark {
+    return new LineEndingBookmark(this.bookmark.map(mapping), mapLineEndings(this.endings, mapping));
+  }
+
+  resolve(doc: PMNode): Selection {
+    const selection = this.bookmark.resolve(doc);
+    restoredBookmarks.set(selection, this.endings);
+    return selection;
+  }
+}
+
+function keepEndingBookmark(selection: Selection, state: PositionedLineEndings | null): void {
+  const existing = selectionBookmarks.get(selection);
+  if (existing) {
+    existing.state = state;
+    return;
+  }
+  if (!state) return;
+  const context: { state: PositionedLineEndings | null } = { state };
+  const getBookmark = selection.getBookmark.bind(selection);
+  selection.getBookmark = () => {
+    const bookmark = getBookmark();
+    return context.state ? new LineEndingBookmark(bookmark, context.state) : bookmark;
+  };
+  selectionBookmarks.set(selection, context);
+}
 
 // keyboardShortcut() replays mapped steps, without transaction metadata. Keep
 // the source on the replacement too. Inversion/merging and JSON serialization
@@ -374,6 +534,17 @@ class LineEndingsReplaceStep extends ReplaceStep {
     const mapped = super.map(mapping);
     return mapped && new LineEndingsReplaceStep(mapped, this.lineEndings);
   }
+}
+
+/** Recover the last applied replacement, including steps replayed after a
+ * transaction's own setContent. Its boundary is where position mapping begins. */
+function lineEndingReset(transaction: Transaction): LineEndingReset | undefined {
+  const reset = transaction.getMeta(lineEndingsKey) as LineEndingReset | undefined;
+  for (let index = transaction.steps.length - 1; index >= (reset?.steps ?? 0); index--) {
+    const step = transaction.steps[index];
+    if (step instanceof LineEndingsReplaceStep) return { source: step.lineEndings, steps: index + 1 };
+  }
+  return reset;
 }
 
 /** tiptap-markdown, saving with `LinearMarkdownSerializerState`. Its serializer
@@ -397,7 +568,7 @@ export const LinearMarkdown = Markdown.extend({
           const result = setContent(markdown ? normalizeLineEndings(content) : content, ...rest)(props);
           if (result && props.dispatch) {
             const endings = markdown ? readLineEndings(content) : null;
-            props.tr.setMeta(lineEndingsKey, endings);
+            props.tr.setMeta(lineEndingsKey, { source: endings, steps: props.tr.steps.length } satisfies LineEndingReset);
             for (let index = start; index < props.tr.steps.length; index++) {
               const step = props.tr.steps[index];
               if (step instanceof ReplaceStep) props.tr.steps[index] = new LineEndingsReplaceStep(step, endings);
@@ -410,18 +581,57 @@ export const LinearMarkdown = Markdown.extend({
   addProseMirrorPlugins() {
     return [
       ...(this.parent?.() ?? []),
-      new Plugin({
+      new Plugin<PositionedLineEndings | null>({
         key: lineEndingsKey,
-        appendTransaction: (transactions) => {
+        state: {
+          init: (_config, state) => {
+            const storage = markdownStorage(this.editor);
+            const endings = storage.lineEndings
+              ? createPositionedLineEndings(storage.lineEndings, () => storage.serializePositioned(state.doc))
+              : null;
+            keepEndingBookmark(state.selection, endings);
+            return endings;
+          },
+          apply: (transaction, previous) => {
+            const reset = lineEndingReset(transaction);
+            if (reset) {
+              if (!reset.source) return null;
+              const loaded = transaction.docs[reset.steps] ?? transaction.doc;
+              const endings = createPositionedLineEndings(reset.source, () => markdownStorage(this.editor).serializePositioned(loaded));
+              return reset.steps < transaction.steps.length ? mapLineEndings(endings, transaction.mapping.slice(reset.steps)) : endings;
+            }
+            if (!previous) return null;
+            const restored = isHistoryTransaction(transaction) ? restoredBookmarks.get(transaction.selection) : undefined;
+            // A page load establishes a new source. Undo across setContent keeps
+            // #761's latest-source behavior instead of reviving another page.
+            if (restored && restored.source === previous.source) return restored;
+            const wrapperChange = transaction.steps.some((step, index) => {
+              if (step instanceof ReplaceAroundStep) return true;
+              if (!(step instanceof ReplaceStep) || step.slice.content.childCount !== 1) return false;
+              const replacement = step.slice.content.firstChild;
+              const original = transaction.docs[index]?.nodeAt(step.from);
+              return !!replacement?.isLeaf && !replacement.isText && !!original?.isLeaf && step.to - step.from === original.nodeSize;
+            });
+            if (transaction.docChanged && wrapperChange) {
+              // setNodeMarkup replaces wrapper tokens even when nothing changed.
+              // Keep true no-ops intact; otherwise prefer main's text matching
+              // over guessing which wrapper-owned lines survived.
+              if (transaction.doc.eq(transaction.before)) return previous;
+              return { ...previous, anchors: [], pristine: false, textFallback: true };
+            }
+            return transaction.docChanged ? mapLineEndings(previous, transaction.mapping) : previous;
+          },
+        },
+        appendTransaction: (transactions, _oldState, newState) => {
           // Runs only for applied transactions, before update listeners save,
           // including silent setContent and replacements with an equal document.
           for (const transaction of transactions) {
-            const endings = transaction.getMeta(lineEndingsKey) as SourceLineEndings | null | undefined;
-            if (endings !== undefined) markdownStorage(this.editor).lineEndings = endings;
-            for (const step of transaction.steps) {
-              if (step instanceof LineEndingsReplaceStep) markdownStorage(this.editor).lineEndings = step.lineEndings;
-            }
+            const reset = lineEndingReset(transaction);
+            if (reset) markdownStorage(this.editor).lineEndings = reset.source;
           }
+          // Install after history has captured the OLD selection's bookmark.
+          // Some transactions reuse that same selection object in the new state.
+          keepEndingBookmark(newState.selection, lineEndingsKey.getState(newState) ?? null);
           return null;
         },
       }),
@@ -437,12 +647,25 @@ export const LinearMarkdown = Markdown.extend({
     storage.lineEndings = lineEndings;
     const { serializer } = storage;
     const scanDelims = scanDelimsOf(this.editor);
-    serializer.serialize = (content) => {
+    const serialize = (content: PMNode | Fragment, positions: boolean): SerializedPage => {
       const state = new LinearMarkdownSerializerState(serializer.nodes, serializer.marks, { hardBreakNodeName: 'hardBreak' }, scanDelims);
+      if (positions) state.output.trackLines();
       state.renderContent(content as PMNode);
-      return state.output.toString();
+      return { markdown: state.output.toString(), lines: positions ? positionedLines(state.output.ownedPieces()) : [] };
     };
+    serializer.serialize = (content) => serialize(content, false).markdown;
+    storage.serializePositioned = (content) => serialize(content, true);
     // Only the whole page is saved with the source's endings; a copied slice keeps LF.
-    storage.getMarkdown = () => restoreLineEndings(storage.lineEndings, serializer.serialize(this.editor.state.doc));
+    storage.getMarkdown = () => {
+      const endings = lineEndingsKey.getState(this.editor.state);
+      return endings
+        ? restorePositionedLineEndings(
+            endings,
+            endings.anchors.length
+              ? storage.serializePositioned(this.editor.state.doc)
+              : { markdown: serializer.serialize(this.editor.state.doc), lines: [] },
+          )
+        : serializer.serialize(this.editor.state.doc);
+    };
   },
 });
