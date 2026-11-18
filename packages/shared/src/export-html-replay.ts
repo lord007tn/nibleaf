@@ -8,10 +8,14 @@ interface ReplayTokenizer {
   lastStartTagName: string;
   currentAttr: Fields;
   currentToken: Fields;
+  runStart: number;
+  runEnd: number;
+  preprocessor: { html: string };
   _createAttr(first: string): void;
   _leaveAttrName(): void;
   _leaveAttrValue(): void;
-  _appendCharToCurrentCharacterToken(type: number, value: string): void;
+  _ensureCharacterToken(type: number): void;
+  _flushRun(text: string): void;
   write(value: string, last: boolean): void;
   pause(): void;
   _callState(codePoint: number): void;
@@ -22,7 +26,8 @@ type Operation =
   | { kind: 'set'; object: Target; field: string; value: string | boolean | null }
   | { kind: 'createAttr'; first: string }
   | { kind: 'leaveAttrName' | 'leaveAttrValue' }
-  | { kind: 'characters'; type: number; parts: string[]; value: string };
+  | { kind: 'characterType'; type: number }
+  | { kind: 'text'; parts: string[]; value: string };
 interface Plan {
   state: number;
   returnState: number;
@@ -39,7 +44,7 @@ export class AttributeReplay {
   bytes = 0;
 
   apply(tokenizer: Tokenizer, value: string) {
-    // parse5 is pinned to 7.3.0. Keep its protected tokenizer interop here;
+    // parse5 is pinned to 8.1.1. Keep its protected tokenizer interop here;
     // the differential replay matrix checks this boundary against full parsing.
     const target = tokenizer as unknown as ReplayTokenizer;
     let contexts = this.plans.get(value);
@@ -53,7 +58,23 @@ export class AttributeReplay {
       this.analyses++;
       this.bytes += value.length;
       const operations: Operation[] = [];
+      // parse5 buffers attribute values, comment data and character tokens as
+      // a run of input offsets. Record each flushed run as text: the offsets
+      // mean nothing in the real tokenizer's buffer, which never holds the value.
+      const flushRun = (text: string) => {
+        const run = compiler.preprocessor.html.slice(compiler.runStart, compiler.runEnd) + text;
+        compiler.runStart = compiler.runEnd;
+        if (!run) return;
+        const previous = operations.at(-1);
+        if (previous?.kind === 'text') previous.parts.push(run);
+        else operations.push({ kind: 'text', parts: [run], value: '' });
+      };
+      const record = (operation: Operation) => {
+        flushRun('');
+        operations.push(operation);
+      };
       const append = (object: Target, field: string, value: string) => {
+        flushRun('');
         const previous = operations.at(-1);
         if (previous?.kind === 'append' && previous.object === object && previous.field === field) previous.parts.push(value);
         else operations.push({ kind: 'append', object, field, parts: [value], value: '' });
@@ -70,7 +91,7 @@ export class AttributeReplay {
             set: (_object, property: string | symbol, value: string | boolean | null) => {
               const field = String(property);
               if (typeof value === 'string' && reads.delete(field)) append(object, field, value);
-              else operations.push({ kind: 'set', object, field, value });
+              else record({ kind: 'set', object, field, value });
               return true;
             },
           },
@@ -99,15 +120,19 @@ export class AttributeReplay {
       compiler.currentAttr = recorded('currentAttr');
       compiler.currentToken = recorded('currentToken');
       compiler._createAttr = (first: string) => {
-        operations.push({ kind: 'createAttr', first });
+        record({ kind: 'createAttr', first });
         compiler.currentAttr = recorded('currentAttr');
       };
-      compiler._leaveAttrName = () => operations.push({ kind: 'leaveAttrName' });
-      compiler._leaveAttrValue = () => operations.push({ kind: 'leaveAttrValue' });
-      compiler._appendCharToCurrentCharacterToken = (type: number, chars: string) => {
-        const previous = operations.at(-1);
-        if (previous?.kind === 'characters' && previous.type === type) previous.parts.push(chars);
-        else operations.push({ kind: 'characters', type, parts: [chars], value: '' });
+      compiler._leaveAttrName = () => record({ kind: 'leaveAttrName' });
+      compiler._leaveAttrValue = () => record({ kind: 'leaveAttrValue' });
+      compiler._flushRun = flushRun;
+      // The compiler never holds a character token, so parse5 asks for one at
+      // every code point. Only a change of type reaches the real tokenizer.
+      let characterType: number | undefined;
+      compiler._ensureCharacterToken = (type: number) => {
+        if (type === characterType) return;
+        characterType = type;
+        record({ kind: 'characterType', type });
       };
       // Finish a trailing surrogate without executing the EOF state. Values
       // are HTML-escaped, so an unfinished character reference cannot cross
@@ -118,6 +143,7 @@ export class AttributeReplay {
         else callState(codePoint);
       };
       compiler.write(value, true);
+      flushRun('');
       for (const operation of operations) {
         if ('parts' in operation) {
           operation.value = operation.parts.join('');
@@ -128,6 +154,8 @@ export class AttributeReplay {
       plan = { state: compiler.state, returnState: compiler.returnState, operations };
       contexts.set(context, plan);
     }
+    // Input already consumed comes first, whatever the plan writes next.
+    target._flushRun('');
     for (const operation of plan.operations) {
       switch (operation.kind) {
         case 'append': {
@@ -155,8 +183,11 @@ export class AttributeReplay {
         case 'leaveAttrValue':
           target._leaveAttrValue();
           break;
-        case 'characters':
-          target._appendCharToCurrentCharacterToken(operation.type, operation.value);
+        case 'characterType':
+          target._ensureCharacterToken(operation.type);
+          break;
+        case 'text':
+          target._flushRun(operation.value);
           break;
         default:
           break;
