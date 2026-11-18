@@ -291,5 +291,6 @@ it.each([
   expect(markdown.render(source)).toBe(html);
   const paragraph = fromMarkdown(source).children[0];
   const spans = paragraph?.type === 'paragraph' ? paragraph.children.filter((node) => node.type === 'inlineCode') : [];
-  expect(spans.map((span) => span.value)).toEqual([code]);
+  // mdast keeps the line ending; the reader renders it as a space.
+  expect(spans.map((span) => span.value.replaceAll('\n', ' '))).toEqual([code]);
 });

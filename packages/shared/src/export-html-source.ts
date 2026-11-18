@@ -121,7 +121,7 @@ export const readExportHtml = (source: string, options: ReadOptions = {}): Expor
         hazards
           ? htmlToken ||
             ((token.type === 'link_open' || token.type === 'image') &&
-              token.attrs?.some(([name, value]) => (name === 'href' || name === 'src') && isDangerous(value)))
+              token.attrs?.some(([name, value]) => (name === 'href' || name === 'src') && isDangerous(String(value))))
           : htmlToken && mayHaveActiveExportElements(token.content)
       ) {
         possible = true;
@@ -314,7 +314,7 @@ export const readExportHtml = (source: string, options: ReadOptions = {}): Expor
         attributes?.map(([name, value]) => {
           if (name === 'title') return [name, ''];
           if (name !== 'href' && name !== 'src') return [name, value];
-          return [name, fullValues ? '' : hazards && isDangerous(value) ? 'data:' : '#'];
+          return [name, fullValues ? '' : hazards && isDangerous(String(value)) ? 'data:' : '#'];
         }) ?? null;
     const value = rule
       ? rule(frame.tokens, frame.at - 1, markdown.options, env, markdown.renderer)
@@ -322,7 +322,7 @@ export const readExportHtml = (source: string, options: ReadOptions = {}): Expor
     token.attrs = attributes;
     if (fullValues && destinationToken) {
       for (const match of value.matchAll(/ (href|src|title)=""/g)) {
-        const original = attributes?.find(([name]) => name === match[1])?.[1] ?? '';
+        const original = String(attributes?.find(([name]) => name === match[1])?.[1] ?? '');
         let escaped = escapedValues.get(original);
         if (escaped === undefined) {
           escaped = markdown.utils.escapeHtml(original);
@@ -331,7 +331,7 @@ export const readExportHtml = (source: string, options: ReadOptions = {}): Expor
         macros.push({ at: length + match.index + match[0].length - 1, value: escaped });
       }
     }
-    if (hazards && destinationToken && attributes?.some(([name, value]) => (name === 'href' || name === 'src') && isDangerous(value)))
+    if (hazards && destinationToken && attributes?.some(([name, value]) => (name === 'href' || name === 'src') && isDangerous(String(value))))
       destinationBounds.set(length, {
         sourceFrom: originalOffset(lineStarts[map[0]] ?? 0),
         sourceTo: originalOffset(lineStarts[map[1]] ?? input.length),
