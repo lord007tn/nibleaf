@@ -1,7 +1,8 @@
 import { type QueryClient, useQueryClient as useCacheClient } from '@tanstack/react-query';
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
-import { ApiResponseError, mutateData } from '@/hooks/api/client-helpers';
+import { mutateData } from '@/hooks/api/client-helpers';
 import { queryKeys } from '@/hooks/api/query-keys';
+import { safeSettingsError } from '@/hooks/api/workspace-settings-response';
 import { useSessionQueryClient } from '@/integrations/tanstack-query/session-cache';
 import { getSessionGeneration } from '@/integrations/tanstack-query/session-generation';
 import { api } from '@/services/api';
@@ -78,35 +79,9 @@ const CODES = new Set([
 ]);
 
 /**
- * The error a refused rotation reports: the HTTP status, the code when it is one this route answers with, and a
- * numeric `Retry-After`. Never the server's message, details or anything else it sent.
- */
-const sanitized = (error: unknown) => {
-  if (error instanceof ApiResponseError) {
-    const status = Number.isInteger(error.status) && error.status >= 400 && error.status <= 599 ? error.status : 500;
-    const code = error.code && CODES.has(error.code) ? error.code : undefined;
-    const retryAfter = error.retryAfter && /^\d{1,6}$/.test(error.retryAfter) ? error.retryAfter : undefined;
-    return new ApiResponseError(FAILED, status, code, retryAfter);
-  }
-  return error instanceof TypeError ? new TypeError(FAILED) : new Error(FAILED);
-};
-
-/**
- * Settings → Git → Deploy on push → Generate / Rotate: `POST /settings/git/webhook-secret` with no body, which stores
- * a new secret (admin only). The settings page shows the secret from its own settings read, so the answer's body is
- * never read: the secret in it is not decoded, returned or kept.
- *
- * A direct request, not a TanStack mutation: no mutation, option, variable, meta, cached closure or error in any cache
- * holds the request or its answer, and a refusal comes back sanitized. Never retried, paused or replayed: a rotation
- * whose answer was lost may have stored a secret, so only a new press sends another; offline, it fails.
- *
- * `rotate(site)` sends once for `site`. On success it re-reads that site's settings, whatever the page shows by then,
- * and resolves to true after that read. It resolves to false, sending, re-reading or reporting nothing (more), while a
- * rotation of the site is in flight in this session (checked in the same tick as the send, so presses in one tick send
- * once), or once the session this hook was mounted in has ended (AppGuard remounts the dashboard for the next one).
- *
- * `pending` says whether a rotation of `projectId` is in flight from any instance in this session, until the request
- * and the re-read after a success end.
+ * A direct, non-replayed request: the only secret-bearing answer is request-local until its owning panel consumes
+ * it. Shared busy bookkeeping holds ownership tokens and listeners only, through the original site's readback.
+ * The original site's metadata is still refreshed when a panel retires; the retired panel never receives the answer.
  */
 export function useGitSettingsWebhookRotate(projectId: string) {
   const cache = useCacheClient();
@@ -115,23 +90,36 @@ export function useGitSettingsWebhookRotate(projectId: string) {
   const pending = useRotating(cache, generation, projectId);
 
   const rotate = useCallback(
-    async (site: string): Promise<boolean> => {
+    async (site: string, ownsAnswer: () => boolean = () => true): Promise<{ webhookSecret: string | null } | null> => {
       const current = () => getSessionGeneration(cache) === generation;
-      if (!current() || isRotating(cache, generation, site)) return false;
+      if (!current() || isRotating(cache, generation, site)) return null;
       const release = startRotation(cache, generation, site);
       try {
+        let webhookSecret: string | null = null;
         try {
           const response = await api.app.projects[':projectId'].settings.git['webhook-secret'].$post({ param: { projectId: site } });
-          // A refusal throws the route's error, sanitized below; an answer's body (the secret) is dropped unread.
+          if (!current()) {
+            void response.body?.cancel().catch(() => undefined);
+            return null;
+          }
+          // Refusals are reconstructed below, before any caller can retain or report the server's body.
           if (!response.ok) await mutateData(response, FAILED);
-          await response.body?.cancel().catch(() => undefined);
+          if (!current()) return null;
+          if (ownsAnswer()) {
+            const answer = await mutateData<{ webhookSecret?: unknown }>(response, FAILED);
+            if (!current()) return null;
+            if (ownsAnswer()) webhookSecret = typeof answer?.webhookSecret === 'string' ? answer.webhookSecret : null;
+          } else {
+            await response.body?.cancel().catch(() => undefined);
+          }
         } catch (error) {
-          if (!current()) return false;
-          throw sanitized(error);
+          if (!current()) return null;
+          throw safeSettingsError(error, FAILED, CODES);
         }
-        if (!current()) return false;
-        await client.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(site) });
-        return current();
+        if (!current()) return null;
+        // Rotation already succeeded. A failed metadata refetch must not lose the only one-time answer.
+        await client.invalidateQueries({ queryKey: queryKeys.workspace.projectSettings(site), exact: true }).catch(() => undefined);
+        return current() && ownsAnswer() ? { webhookSecret } : null;
       } finally {
         release();
       }
