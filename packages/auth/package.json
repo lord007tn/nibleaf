@@ -22,9 +22,9 @@
     "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
   },
   "dependencies": {
-    "@better-auth/cimd": "1.7.18",
-    "@better-auth/mcp": "1.7.18",
-    "@better-auth/oauth-provider": "1.7.18",
+    "@better-auth/cimd": "1.7.25",
+    "@better-auth/mcp": "1.7.25",
+    "@better-auth/oauth-provider": "1.7.25",
     "@nibleaf/bullmq": "workspace:*",
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
@@ -33,14 +33,14 @@
     "@nibleaf/logger": "workspace:*",
     "@nibleaf/shared": "workspace:*",
     "@t3-oss/env-core": "^0.13.11",
-    "better-auth": "^1.7.18",
+    "better-auth": "^1.7.25",
     "zod": "^4.6.7"
   },
   "peerDependencies": {
     "react": "^19.3.1"
   },
   "devDependencies": {
-    "@better-auth/core": "1.7.18",
+    "@better-auth/core": "1.7.25",
     "@nibleaf/tsconfig": "workspace:*",
     "@types/react": "^19.3.0",
     "react": "^19.3.1",
