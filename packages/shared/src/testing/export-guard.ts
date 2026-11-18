@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
+import type { Token } from 'markdown-it';
 import MarkdownIt from 'markdown-it';
-import type Token from 'markdown-it/lib/token.mjs';
 import rehypeRaw from 'rehype-raw';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';

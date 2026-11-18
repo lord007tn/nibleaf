@@ -318,7 +318,7 @@ describe('final imported destinations', () => {
   });
 });
 
-const rendered = (sourcePath: string, type: string, attribute: string): Array<string | null> => {
+const rendered = (sourcePath: string, type: string, attribute: string): Array<string | number | null> => {
   const source = mem.rows.find((row) => row.path === sourcePath);
   expect(source).toBeDefined();
   return new MarkdownIt({ html: true })

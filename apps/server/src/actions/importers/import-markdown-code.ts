@@ -1,5 +1,6 @@
 import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence, protectMarkdownCode } from '@nibleaf/shared/markdown-code';
 import { randomUUID } from '@nibleaf/shared/uuid';
+import type { Token } from 'markdown-it';
 import MarkdownIt from 'markdown-it';
 
 const markdown = new MarkdownIt({ html: true });
@@ -88,9 +89,9 @@ export const readImportComponentTag = (source: string, start: number): { end: nu
  * Only block parsing is needed: do not parse every prose link just to find code. */
 export const importCodeLines = (source: string): boolean[] => {
   const normalized = source.replace(/\r\n?/g, '\n').replaceAll('\u0000', '\uFFFD');
-  const tokens: ReturnType<MarkdownIt['parse']> = [];
+  const tokens: Token[] = [];
   markdown.block.parse(normalized, markdown, {}, tokens);
-  const ordinary: ReturnType<MarkdownIt['parse']> = [];
+  const ordinary: Token[] = [];
   markdownWithoutHtml.block.parse(normalized, markdownWithoutHtml, {}, ordinary);
   const ordinaryFences = new Set<number>();
   const ordinaryFenceEnds = new Map<number, number>();
