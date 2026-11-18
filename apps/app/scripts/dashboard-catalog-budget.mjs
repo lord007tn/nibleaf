@@ -1,4 +1,4 @@
-import { needsDashboardLocale } from '../src/lib/dashboard-locale-path.ts';
+import { isDashboardLocaleRouteId } from '../src/lib/dashboard-locale-routes.ts';
 
 // Transfer bytes, compressed independently per file with gzip level 9, as in
 // the route budget. English may share the translator/key-map chunk.
@@ -30,20 +30,12 @@ export function serverCatalogFailures(files, moduleReport) {
     .map((file) => `${file} includes the server catalog.`);
 }
 
-/** A route id as a URL: pathless groups dropped, parameters filled in. */
-const routePath = (routeId) =>
-  routeId
-    .split('/')
-    .filter((segment) => !/^\(.*\)$/.test(segment))
-    .map((segment) => (segment.startsWith('$') ? 'fixture' : segment))
-    .join('/') || '/';
-
 /** Routes outside the dashboard family never download a dashboard catalog: they
  *  would hydrate through a catalog nothing prepares for them. */
 export function dashboardCatalogRouteFailures(routes, moduleReport) {
   const failures = [];
   for (const [routeId, route] of Object.entries(routes)) {
-    if (routeId === '__root__' || needsDashboardLocale(routePath(routeId))) continue;
+    if (routeId === '__root__' || isDashboardLocaleRouteId(routeId)) continue;
     for (const preload of route.preloads ?? []) {
       if ((moduleReport.get(assetFile(preload)) ?? []).some((module) => DASHBOARD_CATALOG_MODULE.test(module.id)))
         failures.push(`${routeId} preloads dashboard catalog code in ${preload}.`);

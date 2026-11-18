@@ -10,6 +10,7 @@ import { switcherQueryOptions } from '@/hooks/api/organization-query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { useDashboardIntentPreload } from '@/lib/dashboard-intent-preload';
+import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 import { useSession } from '@/services/auth-client';
 import { useDashboardSessionBoundary } from '@/services/dashboard-session';
 import { ProjectProvider } from '@/stores/active-project';
@@ -43,8 +44,7 @@ export const Route = createFileRoute('/app')({
   // Lazily, from its own small module: this file is in the router's eager chunk,
   // which public docs pages load, so nothing here may add to their first load.
   loader: async ({ context: { queryClient } }) => {
-    const { loadDashboardLocale } = await import('@/lib/dashboard-locale');
-    await loadDashboardLocale();
+    await loadRouteDashboardLocale();
     prefetchRouteData(queryClient, switcherQueryOptions());
     const { unreadNotificationCountQueryOptions } = await import('@/hooks/api/notification-query-options');
     prefetchRouteData(queryClient, unreadNotificationCountQueryOptions());

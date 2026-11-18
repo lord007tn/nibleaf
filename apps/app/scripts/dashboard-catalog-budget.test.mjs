@@ -50,10 +50,12 @@ describe('dashboard catalog budgets', () => {
       '/(auth)/sign-in': { preloads: ['/assets/catalog.js'] },
       '/app/o/$orgSlug': { preloads: ['/assets/catalog.js'] },
       '/join/$token': { preloads: ['/assets/catalog.js'] },
+      '/joined/$token': { preloads: ['/assets/catalog.js'] },
     };
     expect(dashboardCatalogRouteFailures(routes, modules)).toEqual([
       '/$page preloads dashboard catalog code in /assets/catalog.js.',
       '/(auth)/sign-in preloads dashboard catalog code in /assets/catalog.js.',
+      '/joined/$token preloads dashboard catalog code in /assets/catalog.js.',
     ]);
   });
 

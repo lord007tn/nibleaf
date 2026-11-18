@@ -4,49 +4,67 @@ import { beforeEach, expect, it, vi } from 'vitest';
 const catalog = vi.hoisted(() => ({
   prepare: vi.fn().mockResolvedValue(true),
   active: undefined as (() => boolean) | undefined,
-  configure: vi.fn((_wrapper: unknown, active: () => boolean) => {
+  wrapper: undefined as unknown,
+  configure: vi.fn((wrapper: unknown, active: () => boolean) => {
+    catalog.wrapper = wrapper;
     catalog.active = active;
   }),
 }));
-vi.mock('@nibleaf/i18n/dashboard-catalog', () => ({ prepareDashboardLocale: catalog.prepare, configureDashboardLocaleLoading: catalog.configure }));
+vi.mock('@nibleaf/i18n/dashboard-catalog', () => ({
+  prepareDashboardLocale: catalog.prepare,
+  configureDashboardLocaleLoading: catalog.configure,
+  dashboardLocaleFailure: () => undefined,
+}));
 vi.mock('@nibleaf/i18n/locale-state', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@nibleaf/i18n/locale-state')>()),
   getLocale: () => 'de',
   renderedLocale: () => 'ar',
 }));
 
+import type { AnyRouter } from '@tanstack/react-router';
 import { hydrateDashboardLocale, loadDashboardLocale } from './dashboard-locale';
-import { needsDashboardLocale } from './dashboard-locale-path';
+import { trackDashboardLocaleRouter } from './dashboard-locale-boot';
+import { isDashboardLocaleRouteId } from './dashboard-locale-routes';
+import { runOptionalLoad } from './document-recovery';
 
 beforeEach(() => catalog.prepare.mockClear());
 
 it("loads the current choice for navigation rather than the document's old server snapshot", async () => {
   await loadDashboardLocale();
-  expect(catalog.prepare).toHaveBeenCalledExactlyOnceWith('de', { required: true });
+  expect(catalog.prepare).toHaveBeenCalledExactlyOnceWith('de');
 });
 
 it('loads the server snapshot before hydration', async () => {
   await hydrateDashboardLocale();
-  expect(catalog.prepare).toHaveBeenCalledExactlyOnceWith('ar', { required: true });
+  expect(catalog.prepare).toHaveBeenCalledExactlyOnceWith('ar');
+});
+
+it('never lets a catalog download reload the document', () => {
+  expect(catalog.wrapper).toBe(runOptionalLoad);
 });
 
 it('limits dashboard loading to the product routes that translate through its catalog', () => {
-  for (const path of [
+  for (const id of [
     '/app',
-    '/app/o/fixture/websites',
-    '/git-preview/fixture',
+    '/app/o/$orgSlug/websites',
+    '/git-preview/$token',
     '/welcome/name',
     '/oauth/consent',
     '/oauth/project',
-    '/accept-invite/fixture',
-    '/join/fixture',
+    '/accept-invite/$invitationId',
+    '/join/$token',
   ])
-    expect(needsDashboardLocale(path)).toBe(true);
-  for (const path of ['/sign-in', '/sign-up', '/', '/ar', '/ar/pricing', '/blog/fixture', '/sites/fixture', '/application', '/joined', '/welcome'])
-    expect(needsDashboardLocale(path)).toBe(false);
+    expect(isDashboardLocaleRouteId(id)).toBe(true);
+  for (const id of ['/(auth)/sign-in', '/(auth)/sign-up', '/', '/ar/$page', '/blog/$slug', '/sites/$projectId/$', '/application', '/$page'])
+    expect(isDashboardLocaleRouteId(id)).toBe(false);
+});
+
+it('follows the route the router matched for the current location', () => {
+  const routerAt = (id: string) =>
+    ({ latestLocation: { pathname: '/any' }, getMatchedRoutes: () => [[{ id: '__root__' }, { id }]] }) as unknown as AnyRouter;
   const active = catalog.active as () => boolean;
-  window.history.replaceState(null, '', '/app/o/fixture/websites');
+  trackDashboardLocaleRouter(routerAt('/app'));
   expect(active()).toBe(true);
-  window.history.replaceState(null, '', '/sign-in');
+  trackDashboardLocaleRouter(routerAt('/(auth)/sign-in'));
   expect(active()).toBe(false);
 });

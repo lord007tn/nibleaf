@@ -9,7 +9,7 @@ import { PageLoader } from '@/components/page-loader';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { reloadOnceOnChunkLoadFailure } from '@/lib/chunk-reload';
 import { hydratedCustomDomainProjectId, rewriteCustomDomainInput, rewriteCustomDomainOutput } from '@/lib/custom-domain-rewrite';
-import { needsDashboardLocale } from '@/lib/dashboard-locale-path';
+import { currentRouteNeedsDashboardLocale, holdHydrationForDashboardLocale, trackDashboardLocaleRouter } from '@/lib/dashboard-locale-boot';
 import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { routeTree } from './routeTree.gen';
 
@@ -71,14 +71,11 @@ export function getRouter() {
     // never hydrate in another language. Auth, marketing and published docs
     // never load that catalog.
     hydrate: () => {
-      const dashboard = !customDomainProjectId && needsDashboardLocale(window.location.pathname);
+      const dashboard = currentRouteNeedsDashboardLocale();
       const reader = document.querySelector('[data-hydration-module]');
       if (!dashboard && !reader) return;
       return (async () => {
-        if (dashboard) {
-          const { hydrateDashboardLocale } = await import('@/lib/dashboard-locale');
-          await hydrateDashboardLocale();
-        }
+        if (dashboard) await holdHydrationForDashboardLocale();
         if (reader) {
           await import('@/lib/reader-hydration-modules').then((module) => module.loadServerRenderedReaderModules(document)).catch(() => undefined);
         }
@@ -92,6 +89,7 @@ export function getRouter() {
       : undefined,
   });
   prepareMarketingRouter(router);
+  if (typeof document !== 'undefined') trackDashboardLocaleRouter(router);
   return router;
 }
 

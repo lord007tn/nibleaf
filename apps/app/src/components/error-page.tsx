@@ -3,6 +3,7 @@ import { useStandaloneT } from '@nibleaf/i18n/standalone';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
+import { reloadDocument } from '@/lib/document-recovery';
 
 export function ErrorPage({ error, reset }: ErrorComponentProps) {
   const t = useStandaloneT();
@@ -25,6 +26,11 @@ export function ErrorPage({ error, reset }: ErrorComponentProps) {
           <Button
             loading={retrying}
             onClick={async () => {
+              // Repeating a request for a replaced build's file cannot succeed.
+              if ((error as { reloadRequired?: boolean }).reloadRequired) {
+                reloadDocument();
+                return;
+              }
               setRetrying(true);
               try {
                 await router.invalidate();

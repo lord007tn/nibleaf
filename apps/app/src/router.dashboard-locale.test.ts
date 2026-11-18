@@ -5,12 +5,31 @@ const boot = vi.hoisted(() => ({ customDomain: null as string | null, hydrate: v
 vi.mock('@/lib/dashboard-locale', () => ({ hydrateDashboardLocale: boot.hydrate }));
 vi.mock('@/lib/custom-domain-rewrite', () => ({
   hydratedCustomDomainProjectId: () => boot.customDomain,
-  rewriteCustomDomainInput: vi.fn(),
-  rewriteCustomDomainOutput: vi.fn(),
+  // A custom domain's paths belong to its published site, as in the real rewrite.
+  rewriteCustomDomainInput: (url: URL, projectId: string) => {
+    url.pathname = `/sites/${projectId}${url.pathname}`;
+    return url;
+  },
+  rewriteCustomDomainOutput: (url: URL) => url,
 }));
 vi.mock('@/routeTree.gen', async () => {
-  const { createRootRoute } = await import('@tanstack/react-router');
-  return { routeTree: createRootRoute() };
+  const { createRootRoute, createRoute } = await import('@tanstack/react-router');
+  const root = createRootRoute();
+  const paths = [
+    '/',
+    '/ar',
+    '/blog/$slug',
+    '/sign-in',
+    '/sites/$projectId/$',
+    '/app',
+    '/git-preview/$token',
+    '/welcome/name',
+    '/oauth/consent',
+    '/oauth/project',
+    '/accept-invite/$invitationId',
+    '/join/$token',
+  ];
+  return { routeTree: root.addChildren(paths.map((path) => createRoute({ getParentRoute: () => root, path }))) };
 });
 
 import { getRouter } from './router';
@@ -53,7 +72,7 @@ describe('hydration waits for the interface catalog', () => {
     expect(hydrated).toBe(true);
   });
 
-  it.each(['/', '/ar', '/blog/fixture', '/sign-in', '/sites/fixture'])('starts %s without loading a catalog', (path) => {
+  it.each(['/', '/ar', '/blog/fixture', '/sign-in', '/sites/fixture/page'])('starts %s without loading a catalog', (path) => {
     expect(startHydration(path)).toBeUndefined();
     expect(boot.hydrate).not.toHaveBeenCalled();
   });

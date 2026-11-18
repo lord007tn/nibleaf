@@ -9,35 +9,43 @@ Paired production builds against main `cc6a1e2357cccf02590646c04d79247dbfa4f6dd`
 
 | Route | main | PR, English | PR, Arabic | PR, largest locale (Russian) |
 | --- | ---: | ---: | ---: | ---: |
-| Dashboard home | 1,749,808 | 683,540 | 802,456 | 805,230 |
-| Organization analytics | 1,845,367 | 778,976 | 897,892 | 900,666 |
-| Private preview | 1,632,811 | 568,992 | 687,908 | 690,682 |
-| Welcome name | 1,495,643 | 429,611 | 548,527 | 551,301 |
-| OAuth consent | 1,593,347 | 527,538 | 646,454 | 649,228 |
-| Join link | 1,617,731 | 551,833 | 670,749 | 673,523 |
-| Accept invitation | 1,617,726 | 551,834 | 670,750 | 673,524 |
+| Dashboard home | 1,749,808 | 684,445 | 803,361 | 806,135 |
+| Organization analytics | 1,845,367 | 779,875 | 898,791 | 901,565 |
+| Private preview | 1,632,811 | 569,705 | 688,621 | 691,395 |
+| Welcome name | 1,495,643 | 430,306 | 549,222 | 551,996 |
+| OAuth consent | 1,593,347 | 528,236 | 647,152 | 649,926 |
+| Join link | 1,617,731 | 552,554 | 671,470 | 674,244 |
+| Accept invitation | 1,617,726 | 552,553 | 671,469 | 674,243 |
 
 | Route without a dashboard catalog | main | PR |
 | --- | ---: | ---: |
-| Marketing home | 271,517 | 271,252 |
-| Arabic comparison page | 1,608,109 | 376,852 |
-| Blog article | 1,762,718 | 541,442 |
-| Sign-in | 323,641 | 322,444 |
-| Published docs page | 273,744 | 273,441 |
+| Marketing home | 271,517 | 271,812 |
+| Arabic comparison page | 1,608,109 | 377,409 |
+| Blog article | 1,762,718 | 542,009 |
+| Sign-in | 323,641 | 323,005 |
+| Published docs page | 273,744 | 274,006 |
 
-The fix keeps the saving. Dashboard startup is under 1 KB larger than the parked implementation measured below, for the failure handling. Mixed-locale text now ships as named messages in the chunks that use it, all outside dashboard startup: slash titles about 7.7 KB gzip, page-language editor text 3.6 KB, Theme preview 5.2 KB (upper bounds, compressed separately).
+The fix keeps the saving. English dashboard startup is 1,726 bytes larger than the parked implementation measured below, for the routing and failure handling. Mixed-locale text now ships as named messages in the chunks that use it, all outside dashboard startup: slash titles about 7.7 KB gzip, page-language editor text 3.6 KB, Theme preview 5.2 KB (upper bounds, compressed separately).
 
 **Lookup rule.** `translateFn` and `useLocale().t` read the active catalog only, and no application code passes them a locale. Text in a named language reads Paraglide's named messages through `@nibleaf/i18n/scoped`, which hold every locale synchronously: blog chrome, the Arabic comparison page, Theme preview, slash titles, inserted block text, placeholders, new-group names and export sizes. A parity test compares each of them with the full catalog in all twelve locales.
 
-**Routes.** `/app`, `/git-preview`, `/welcome/name`, `/oauth/*`, `/accept-invite/*` and `/join/*` reach the translator, so each prepares its language before hydration and in its loader. A source test walks every route's imports and fails if another route can reach the translator. The bundle check rejects dashboard catalog code in any other route's preloads.
+**Routes.** `/app`, `/git-preview`, `/welcome/name`, `/oauth/*`, `/accept-invite/*` and `/join/*` reach the translator, so each prepares its language before hydration and in its loader. The decision uses the route the router matched, so every URL form it accepts counts, including `/JOIN/token`, `/APP` and trailing slashes. A source test walks every route's imports and fails if another route can reach the translator. The bundle check rejects dashboard catalog code in any other route's preloads.
 
 **When a catalog cannot load.**
 
 | Moment | Behaviour |
 | --- | --- |
-| Hydrating a server-rendered page | Retries twice, then keeps the server HTML unhydrated with a localized notice and Try again. It also retries when the connection returns. It never hydrates another language over the HTML. |
-| Navigating to a route | The normal stale-chunk recovery may reload once. After that the route shows its localized error page, and Try again reruns the loader. |
-| Choosing a language | The current language stays, and a toast offers the same choice again. |
+| Hydrating a server-rendered page, including when the locale bootstrap itself cannot load | Keeps the server HTML unhydrated with a localized notice, and retries on a timer and when the connection returns. It never reloads by itself and never hydrates another language over the HTML. If the build was replaced, Try again reloads the page. |
+| Navigating to a route | Never reloads by itself. The route shows its localized error page. Try again reruns the loader, or reloads the page if the build was replaced. |
+| Choosing a language | The current language stays usable. A toast offers the same choice again, or Refresh when the build was replaced, which saves the choice and opens the new build in that language. |
+
+A build counts as replaced when the failed asset, or this page's entry script when the browser does not name the asset, answers 404 or 410. No failed catalog or bootstrap import triggers the automatic stale-chunk reload.
+
+**Recovery re-check.** [Results](regression-recovery-results.json), on the same production setup with real emitted chunks blocked or answered 404 in the browser: mixed-case and trailing-slash hydration, a language switch on an upper-case dashboard URL, the network dropping during the catalog and the bootstrap requests, and a replaced build at hydration, on a first language choice and on navigation. **0 non-local requests.**
+
+| Connection lost during startup | Language chunk removed by a deployment |
+| --- | --- |
+| ![Held Arabic page while offline](regression-offline-held-ar.png) | ![Refresh offered, English still usable](regression-replaced-language-toast.png) |
 
 **Browser check.** [Results](regression-browser-results.json), run on the production build with a disposable local database and services, app on 4310 and API on 4410: **0 non-local requests**. It covers Arabic blog and comparison hydration for English and Arabic browsers with no dashboard catalog request, Arabic `/join` hydration, a signed-in EN → AR → EN → failed DE → retry → EN switch [recording](regression-language-switch.webm) without a document reload, a cold Arabic dashboard, and all catalog failure paths above. The seeded account is fictional.
 

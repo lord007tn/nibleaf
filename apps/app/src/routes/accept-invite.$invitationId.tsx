@@ -3,13 +3,13 @@ import { AuthProviders } from '@/components/auth-providers';
 import { AcceptInvitationView } from '@/features/people/components/admission';
 import { getInvitationInfoQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
   staticData: { interfaceLocale: true },
   loader: async ({ context: { queryClient }, params: { invitationId } }) => {
-    const { loadDashboardLocale } = await import('@/lib/dashboard-locale');
-    await loadDashboardLocale();
+    await loadRouteDashboardLocale();
     return prefetchRouteData(queryClient, getInvitationInfoQueryOptions(invitationId));
   },
   // Not under the (auth) layout, so noindex it directly: the URL carries a live

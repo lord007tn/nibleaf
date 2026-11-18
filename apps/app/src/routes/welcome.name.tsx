@@ -1,5 +1,6 @@
 import { createFileRoute, lazyRouteComponent, redirect } from '@tanstack/react-router';
 import { getSessionFn } from '@/functions/session';
+import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 
 const WelcomeNamePage = lazyRouteComponent(() => import('@/components/welcome-name-page'));
 
@@ -18,8 +19,7 @@ export const Route = createFileRoute('/welcome/name')({
     return { nameDestination };
   },
   loader: async () => {
-    const { loadDashboardLocale } = await import('@/lib/dashboard-locale');
-    await loadDashboardLocale();
+    await loadRouteDashboardLocale();
   },
   head: () => ({ meta: [{ title: 'Welcome — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   // Method shorthand is what TanStack's code splitter moves out of the route

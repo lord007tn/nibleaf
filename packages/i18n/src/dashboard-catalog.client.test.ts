@@ -112,14 +112,31 @@ describe('dashboard catalog downloads', () => {
     unsubscribe();
   });
 
-  it('skips the optional-load exemption for a catalog the page needs to render', async () => {
+  it('sends every download through the optional-load wrapper and keeps why it failed', async () => {
     downloads.arabic.mockResolvedValue({ common_cancel: () => 'fixture Arabic' });
-    const { dashboardMessage, prepareDashboardLocale, configureDashboardLocaleLoading } = await import('./dashboard-catalog.client');
-    const optional = vi.fn((importer: () => Promise<unknown>) => importer());
+    const { dashboardLocaleFailure, prepareDashboardLocale, configureDashboardLocaleLoading } = await import('./dashboard-catalog.client');
+    const failure = new TypeError('fixture retired chunk');
+    const optional = vi
+      .fn()
+      .mockRejectedValueOnce(failure)
+      .mockImplementation((importer: () => Promise<unknown>) => importer());
     configureDashboardLocaleLoading(optional);
-    expect(await prepareDashboardLocale('ar', { required: true })).toBe(true);
-    expect(optional).not.toHaveBeenCalled();
-    expect(dashboardMessage('common_cancel', 'ar')?.()).toBe('fixture Arabic');
+    expect(await prepareDashboardLocale('ar')).toBe(false);
+    expect(dashboardLocaleFailure('ar')).toBe(failure);
+    expect(await prepareDashboardLocale('ar')).toBe(true);
+    expect(dashboardLocaleFailure('ar')).toBeUndefined();
+    expect(optional).toHaveBeenCalledTimes(2);
+  });
+
+  it('treats an import that resolves to nothing as failed, not as an empty catalog', async () => {
+    const { dashboardLocaleFailure, dashboardMessage, prepareDashboardLocale, configureDashboardLocaleLoading } = await import(
+      './dashboard-catalog.client'
+    );
+    // Vite resolves a failed import with undefined when its error event was cancelled.
+    configureDashboardLocaleLoading(async () => undefined);
+    expect(await prepareDashboardLocale('ar')).toBe(false);
+    expect(dashboardLocaleFailure('ar')).toBeInstanceOf(Error);
+    expect(dashboardMessage('common_cancel', 'ar')?.()).toBe('Cancel');
   });
 
   it('applies only the latest choice when downloads finish out of order', async () => {

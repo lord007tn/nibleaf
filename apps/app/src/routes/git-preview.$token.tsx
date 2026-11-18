@@ -27,14 +27,14 @@ import { type MouseEvent, useEffect, useMemo, useState, useSyncExternalStore } f
 import { Markdown } from '@/components/markdown';
 import { getGitPreviewFn } from '@/functions/site';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
+import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 import { previewScope } from '@/lib/git-preview';
 import { setPendingDestination } from '@/lib/invitations';
 import { safeDecode } from '@/lib/site-paths';
 
 export const Route = createFileRoute('/git-preview/$token')({
   loader: async ({ params }): Promise<{ snapshot: SiteSnapshot } | { snapshot: null }> => {
-    const { loadDashboardLocale } = await import('@/lib/dashboard-locale');
-    await loadDashboardLocale();
+    await loadRouteDashboardLocale();
     try {
       return JSON.parse(await getGitPreviewFn({ data: { token: params.token } })) as { snapshot: SiteSnapshot };
     } catch (error) {

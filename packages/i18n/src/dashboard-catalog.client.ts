@@ -26,16 +26,18 @@ const englishCatalog = english as unknown as Catalog;
 const aliases = generatedAliases as Readonly<Record<string, string>>;
 const catalogs = new Map<Locale, Catalog>([['en', englishCatalog]]);
 const pending = new Map<Locale, Promise<boolean>>();
+const failures = new Map<Locale, unknown>();
+
+/** Why the latest download of `locale` failed, for the app's recovery. */
+export const dashboardLocaleFailure = (locale: Locale): unknown => failures.get(locale);
 
 export const dashboardMessage = (id: string, locale: Locale): MessageFn | undefined => {
   const identifier = aliases[id] ?? id;
   return catalogs.get(locale)?.[identifier] ?? englishCatalog[identifier];
 };
 
-// The app supplies its optional-load wrapper so a failed language choice keeps
-// the current page rather than triggering the stale-route reload mechanism.
-// A catalog a page needs in order to render is `required`: its failure goes
-// through normal chunk recovery, then the caller's own failure path.
+// The app supplies its optional-load wrapper: a failed catalog is reported to
+// the caller and never triggers the stale-route document reload.
 let optionalLoad = (load: () => Promise<unknown>): Promise<unknown> => load();
 let isDashboardActive = () => true;
 
@@ -44,19 +46,22 @@ export function configureDashboardLocaleLoading(wrapper: typeof optionalLoad, ac
   isDashboardActive = active;
 }
 
-export function prepareDashboardLocale(locale: Locale, { required = false }: { required?: boolean } = {}): Promise<boolean> {
+export function prepareDashboardLocale(locale: Locale): Promise<boolean> {
   if (catalogs.has(locale)) return Promise.resolve(true);
   const inFlight = pending.get(locale);
   if (inFlight) return inFlight;
-  const load = () => imports[locale as Exclude<Locale, 'en'>]();
-  const download = (required ? load() : optionalLoad(load))
-    .then(
-      (catalog) => {
-        catalogs.set(locale, catalog as unknown as Catalog);
-        return true;
-      },
-      () => false,
-    )
+  const download = optionalLoad(() => imports[locale as Exclude<Locale, 'en'>]())
+    .then((catalog) => {
+      // Vite resolves a failed import with nothing when the failure was cancelled.
+      if (!catalog) throw new Error(`The ${locale} catalog did not load`);
+      catalogs.set(locale, catalog as unknown as Catalog);
+      failures.delete(locale);
+      return true;
+    })
+    .catch((error: unknown) => {
+      failures.set(locale, error);
+      return false;
+    })
     .finally(() => pending.delete(locale));
   pending.set(locale, download);
   return download;

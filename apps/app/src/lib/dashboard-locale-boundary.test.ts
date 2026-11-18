@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { needsDashboardLocale } from './dashboard-locale-path';
+import { isDashboardLocaleRouteId } from './dashboard-locale-routes';
 
 /*
  * The browser holds only English and the prepared interface locale. These source
@@ -54,17 +54,8 @@ function chainToTranslator(route: string): string[] | undefined {
   return undefined;
 }
 
-/** A route file as a URL: `join.$token.tsx` is /join/fixture, `(auth)/route.tsx` is /. */
-function routeUrl(file: string): string {
-  const path = relative(routesDir, file)
-    .replaceAll('\\', '/')
-    .replace(/\.tsx?$/, '')
-    .split(/[/.]/)
-    .filter((segment) => segment !== 'route' && segment !== 'index' && !/^\(.*\)$/.test(segment))
-    .map((segment) => (segment.startsWith('$') ? 'fixture' : segment))
-    .join('/');
-  return `/${path}`;
-}
+/** The id a route file declares; the root route declares none. */
+const routeIdOf = (file: string): string | undefined => /createFileRoute\('([^']+)'\)/.exec(readFileSync(file, 'utf8'))?.[1];
 
 const routeFiles = walk(routesDir).filter(
   (file) =>
@@ -118,7 +109,8 @@ describe('dashboard catalog boundary', () => {
   it('prepares the interface catalog on every route that can reach the translator', () => {
     const unprepared = routeFiles.flatMap((file) => {
       const chain = chainToTranslator(file);
-      return chain && !needsDashboardLocale(routeUrl(file)) ? [`${routeUrl(file)}: ${chain.join(' > ')}`] : [];
+      const routeId = routeIdOf(file);
+      return chain && routeId && !isDashboardLocaleRouteId(routeId) ? [`${routeId}: ${chain.join(' > ')}`] : [];
     });
     expect(unprepared).toEqual([]);
   });
@@ -142,7 +134,7 @@ describe('dashboard catalog boundary', () => {
     'accept-invite.$invitationId.tsx',
     'join.$token.tsx',
   ])('%s waits for its language before rendering', (file) => {
-    expect(needsDashboardLocale(routeUrl(join(routesDir, file)))).toBe(true);
-    expect(readFileSync(join(routesDir, file), 'utf8')).toMatch(/await loadDashboardLocale\(\)/);
+    expect(isDashboardLocaleRouteId(routeIdOf(join(routesDir, file)) ?? '')).toBe(true);
+    expect(readFileSync(join(routesDir, file), 'utf8')).toMatch(/await loadRouteDashboardLocale\(\)/);
   });
 });

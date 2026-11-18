@@ -3,13 +3,13 @@ import { AuthProviders } from '@/components/auth-providers';
 import { JoinLinkView } from '@/features/people/components/admission';
 import { getPublicMetaQueryOptions, joinLinkPreviewQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 
 export const Route = createFileRoute('/join/$token')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
   staticData: { interfaceLocale: true },
   loader: async ({ context: { queryClient }, params: { token } }) => {
-    const { loadDashboardLocale } = await import('@/lib/dashboard-locale');
-    await loadDashboardLocale();
+    await loadRouteDashboardLocale();
     prefetchRouteData(queryClient, joinLinkPreviewQueryOptions(token));
     prefetchRouteData(queryClient, getPublicMetaQueryOptions());
   },
