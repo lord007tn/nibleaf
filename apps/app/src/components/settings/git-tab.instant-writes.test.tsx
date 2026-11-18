@@ -14,7 +14,7 @@ import { GitTab } from './git-tab';
  * API keeps each PATCH body as sent, runs the real body validator (answering
  * 422 when it refuses, as the route does), then stores what the server stores: `git` replaced wholesale with
  * the validated object, the import and push-sync bookkeeping carried over, and
- * the webhook secret kept apart (the GET returns it to an admin).
+ * the webhook secret kept apart (GET returns only configured status).
  * apps/server/src/actions/workspace.git-connection.test.ts runs the same
  * payloads through the server's own merge and read.
  */
@@ -31,7 +31,7 @@ const readSettings = (site: string) => ({
   plan: 'free',
   notifications: {},
   integrations: {},
-  git: { ...db.git[site], ...(db.secrets[site] ? { webhookSecret: db.secrets[site] } : {}) },
+  git: { ...db.git[site], webhookConfigured: Boolean(db.secrets[site]) },
   name: 'Acme',
   slug: 'acme',
   projectCount: 2,

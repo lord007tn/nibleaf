@@ -306,6 +306,12 @@ describe('pages without a Frame read as on main', () => {
       nodes.push(node.type.name);
       blankLineValue ||= Object.values(node.attrs).some((value) => typeof value === 'string' && BLANK_LINE.test(value));
       if (!target && key in node.attrs) target = { pos, type: node.type.name, attrs: node.attrs };
+      // #670 adds editable name text where the recorded schema had an atom.
+      // Keep comparing its original name attribute and all saved/edited bytes.
+      if (node.type.name === 'mdxFile') {
+        expect(node.textContent).toBe(node.attrs.name);
+        return false;
+      }
     });
     const saved = getMarkdown(editor);
     let edited: string | null = null;
@@ -322,7 +328,6 @@ describe('pages without a Frame read as on main', () => {
     const digests = results.map((result) => result.digest);
     if (process.env.WRITE_NON_FRAME_MAIN) writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
     const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[] };
-    expect(main.pages).toBe(pages.length);
     if (process.env.WRITE_NON_FRAME_714_MAIN) {
       // Run against main's editor: its results for the pages with a #714 value or an
       // inserted character that it saves with a loss, where they are what the digests
@@ -357,6 +362,8 @@ describe('pages without a Frame read as on main', () => {
       }
       writeFileSync(FIXTURE_714, `${JSON.stringify({ pages: pages.length, records }, null, 2)}\n`);
     }
+    if (process.env.WRITE_NON_FRAME_MAIN || process.env.WRITE_NON_FRAME_714_MAIN) return;
+    expect(main.pages).toBe(pages.length);
     const main714 = JSON.parse(readFileSync(FIXTURE_714, 'utf8')) as { pages: number; records: Main714Record[] };
     expect(main714.pages).toBe(pages.length);
     // Each record is main's own result for its page: it hashes to main's digest.

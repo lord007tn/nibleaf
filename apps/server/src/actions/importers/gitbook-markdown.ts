@@ -449,7 +449,7 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
         const preceding = before.slice(before.lastIndexOf('\n') + 1).slice(0, 300);
         const title =
           plainGitBookText(
-            attributes.title || caption || (preceding.includes('\uE000') || preceding.startsWith('{%') || preceding.startsWith('<') ? '' : preceding),
+            attributes.title || caption || (preceding.includes('\uE000') || preceding.includes('{%') || preceding.includes('<') ? '' : preceding),
           ) || 'Video';
         const frame = importEmbed(
           url,

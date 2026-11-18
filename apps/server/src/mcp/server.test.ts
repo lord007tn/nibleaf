@@ -91,6 +91,7 @@ vi.mock('@/actions/deployments', () => ({
   getDeployment: mocks.getDeployment,
   getPendingChanges: mocks.getPendingChanges,
   getCurrentSnapshot: mocks.getCurrentSnapshot,
+  getCurrentDraft: async () => ({ snapshot: await mocks.getCurrentSnapshot(), rawBodies: [], baselines: [] }),
   createDeployment: mocks.createDeployment,
 }));
 vi.mock('@/actions/git/workflow', () => ({ getGitWorkspaceStatus: mocks.getGitWorkspaceStatus }));

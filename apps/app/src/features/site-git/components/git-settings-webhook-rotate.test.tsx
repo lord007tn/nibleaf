@@ -10,17 +10,18 @@
 // offline, and a session change (AppGuard remounts the dashboard). Two presses in the same tick are not reachable by a
 // person (the button shows busy after the first render); that test says "programmatic".
 //
-// The settings read itself answers an admin with the site's webhook secret, and the settings page shows it from that
-// read (main's contract, unchanged here). So the checks below leave that one query's data out and look everywhere
-// else: the secret must never be held by a mutation, its options or error, another query, or a dehydration.
+// All settings reads and both dehydration modes must be free of secrets. Only the live request
+// and its owning panel may hold a one-time answer. Tests intercept HTTP, not the settings query.
+import { writeFileSync } from 'node:fs';
 import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
 import { translateFn } from '@nibleaf/i18n';
-import { defaultShouldDehydrateQuery, dehydrate, onlineManager, type Query, type QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { dehydrate, onlineManager, type QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ settingsGet: vi.fn(), rotatePost: vi.fn(), error: vi.fn(), success: vi.fn() }));
+const mocks = vi.hoisted(() => ({ settingsGet: vi.fn(), rotatePost: vi.fn(), copy: vi.fn(), error: vi.fn(), success: vi.fn() }));
+vi.mock('@/lib/invitations', () => ({ copyToClipboard: mocks.copy }));
 vi.mock('sonner', () => ({ toast: { error: mocks.error, success: mocks.success } }));
 vi.mock('@nibleaf/i18n/react', async () => {
   const { translateFn: translate } = await vi.importActual<typeof import('@nibleaf/i18n')>('@nibleaf/i18n');
@@ -59,7 +60,7 @@ const json = (status: number, body: unknown, headers: Record<string, string> = {
 const SECRET_A = 'test-secret-0001';
 const SECRET_B = 'test-secret-0002';
 
-/** The secret each fictional site has stored, as the settings read answers an admin with it. */
+/** Fictional private storage: settings exposes only whether a secret exists. */
 let stored: Record<string, string | undefined>;
 const settings = (projectId: string) => ({
   data: {
@@ -72,7 +73,7 @@ const settings = (projectId: string) => ({
       repo: `acme-fixture/${projectId}`,
       branch: 'main',
       path: 'docs',
-      ...(stored[projectId] ? { webhookSecret: stored[projectId] } : {}),
+      webhookConfigured: Boolean(stored[projectId]),
     },
     name: 'Acme Fixture',
     slug: 'acme-fixture',
@@ -173,6 +174,7 @@ function dashboard(queryClient: () => QueryClient = () => client) {
       await settle();
     },
     hasRotateButton: () => rotateButton() !== undefined,
+    actionName: () => rotateButton()?.textContent?.trim(),
     busy: () => rotateButton()?.getAttribute('aria-busy') === 'true',
     /** The secret field: its value and whether it is revealed. */
     field: () => {
@@ -208,22 +210,15 @@ const reachable = (root: unknown, skip: object[] = []) => {
   walk(root);
   return found.join('\n');
 };
-/** The settings read, which answers an admin with the stored secret (main's contract; see the header). */
-const isSettingsRead = (query: Query) => query.queryKey[0] === 'workspace' && query.queryKey[1] === 'settings';
-/**
- * Nothing the QueryClient keeps or hands on holds a placeholder secret, outside the settings read's own data: no
- * mutation at all (the rotation is a direct request); no other query; the session's cache record; an all-mutation
- * and all-query dehydration and the default one (what an offline persister would keep); no console line; no toast.
- */
+/** Every cache entry, options/state and non-enumerable error field, session record and dehydration. */
 const expectNothingKept = (queryClient: QueryClient = client) => {
   expect(queryClient.getMutationCache().getAll()).toEqual([]);
-  const settingsReads = queryClient.getQueryCache().findAll({ predicate: isSettingsRead });
   const text = [
-    reachable(queryClient.getQueryCache().getAll(), settingsReads),
-    reachable(queryClient.getMutationCache().getAll(), settingsReads),
-    reachable(sessionOf(queryClient), settingsReads),
-    JSON.stringify(dehydrate(queryClient, { shouldDehydrateMutation: () => true, shouldDehydrateQuery: (query) => !isSettingsRead(query) })),
-    JSON.stringify(dehydrate(queryClient, { shouldDehydrateQuery: (query) => defaultShouldDehydrateQuery(query) && !isSettingsRead(query) })),
+    reachable(queryClient.getQueryCache().getAll()),
+    reachable(queryClient.getMutationCache().getAll()),
+    reachable(sessionOf(queryClient)),
+    reachable(dehydrate(queryClient, { shouldDehydrateMutation: () => true, shouldDehydrateQuery: () => true })),
+    reachable(dehydrate(queryClient)),
     reachable(vi.mocked(console.error).mock.calls),
     reachable(vi.mocked(console.warn).mock.calls),
     reachable(vi.mocked(console.log).mock.calls),
@@ -246,6 +241,7 @@ beforeEach(() => {
   );
   mocks.error.mockReset();
   mocks.success.mockReset();
+  mocks.copy.mockReset().mockResolvedValue(true);
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
   vi.spyOn(console, 'warn').mockImplementation(() => undefined);
   vi.spyOn(console, 'log').mockImplementation(() => undefined);
@@ -263,7 +259,7 @@ describe('a press sends the route’s exact request once, re-reads the site, the
   it('sends one empty POST for the site, stays busy until the settings read is back, then reveals with one toast', async () => {
     const tab = dashboard();
     await tab.open('site-a');
-    expect(tab.field()).toEqual({ value: SECRET_B, revealed: false });
+    expect(tab.field()).toBeNull();
     await tab.press();
     // The route as main calls it: POST /settings/git/webhook-secret for this site, no body or query; the api client
     // adds the session cookie as for every dashboard call.
@@ -278,7 +274,7 @@ describe('a press sends the route’s exact request once, re-reads the site, the
     // The answer is in, the settings read is not: still busy, nothing revealed or toasted yet.
     expect(reads('site-a')).toBe(before + 1);
     expect(tab.busy()).toBe(true);
-    expect(tab.field()?.revealed).toBe(false);
+    expect(tab.field()).toBeNull();
     expect(toasts()).toEqual({ success: [], error: [] });
     await readback.answer();
     expect(tab.busy()).toBe(false);
@@ -333,9 +329,9 @@ describe('a press belongs to the tab, site and session that made it', () => {
     await rotated(0, SECRET_A);
     expect(reads('site-a')).toBeGreaterThan(before);
     expect(tab.busy()).toBe(false);
-    expect(tab.field()).toEqual({ value: SECRET_A, revealed: false });
+    expect(tab.field()).toBeNull();
     await rotated(1, SECRET_A);
-    expect(tab.field()?.revealed).toBe(false);
+    expect(tab.field()).toBeNull();
     expect(toasts()).toEqual({ success: [], error: [] });
     expectNothingKept();
   });
@@ -349,7 +345,7 @@ describe('a press belongs to the tab, site and session that made it', () => {
     await tab.open('site-a', 'git-site-a-next-session');
     expect(tab.busy()).toBe(false);
     await rotated(0, SECRET_A);
-    expect(tab.field()?.revealed).toBe(false);
+    expect(tab.field()).toBeNull();
     expect(toasts()).toEqual({ success: [], error: [] });
     expectNothingKept();
   });
@@ -378,7 +374,7 @@ describe('failures are reported once, with nothing the server sent, and never re
     );
     expect(toasts()).toEqual({ success: [], error: [t('settings.git.webhook.rotateError')] });
     expect(tab.busy()).toBe(false);
-    expect(tab.field()?.revealed).toBe(false);
+    expect(tab.field()).toBeNull();
     expectNothingKept();
 
     await tab.press();
@@ -416,4 +412,235 @@ describe('failures are reported once, with nothing the server sent, and never re
     expect(posts()).toHaveLength(1);
     expectNothingKept();
   });
+});
+
+// Failing-first ordinary main: the real settings query retained the legacy HTTP value and the tab
+// revealed that query value after rotation. This is an older-server compatibility answer after #855.
+it('ordinary main repro / legacy-server compatibility: stored query secret cannot be revealed', async () => {
+  mocks.settingsGet.mockImplementation(async (projectId: string) => {
+    const result = settings(projectId);
+    return json(200, { data: { ...result.data, git: { ...result.data.git, webhookSecret: stored[projectId] } } });
+  });
+  const tab = dashboard();
+  await tab.open('site-a');
+  if (process.env.NIBLEAF_855_BASELINE === '1') {
+    const report = {
+      baseline: 'c3285e6c2de544aa251b627924f513758be0815d',
+      case: 'ordinary main HTTP settings response; real QueryClient, settings query, GitTab and rotation command; held HTTP only',
+      storedCredential: '<credential#2>',
+      responseCredential: '<credential#1>',
+      queryRetainsStored: reachable(client.getQueryCache().getAll()).includes(SECRET_B),
+      defaultDehydrateRetainsStored: reachable(dehydrate(client)).includes(SECRET_B),
+      initialFieldHoldsStored: tab.field()?.value === SECRET_B,
+    };
+    await tab.press();
+    await rotated(0, SECRET_A);
+    const rotatedField = tab.field();
+    const ordinary = {
+      ...report,
+      rotatesViaMutation: client.getMutationCache().getAll().length > 0,
+      rotatedQueryRetainsAnswer: reachable(client.getQueryCache().getAll()).includes(SECRET_A),
+      revealsAfterQueryReadback: rotatedField?.value === SECRET_A && rotatedField.revealed,
+    };
+    // Deliberate divergence is a synthetic sensitivity probe, separate from ordinary route-shaped persistence.
+    mocks.settingsGet.mockImplementation(async (projectId: string) => {
+      const result = settings(projectId);
+      return json(200, { data: { ...result.data, git: { ...result.data.git, webhookSecret: SECRET_B } } });
+    });
+    await tab.press();
+    await rotated(1, SECRET_A);
+    const result = {
+      ordinary,
+      syntheticStaleReadback: {
+        label: 'synthetic HTTP readback deliberately differs from the explicit rotation response',
+        revealsQueryInsteadOfResponse: tab.field()?.value === SECRET_B && tab.field()?.revealed,
+      },
+    };
+    if (process.env.NIBLEAF_855_REPORT) writeFileSync(process.env.NIBLEAF_855_REPORT, JSON.stringify(result, null, 2));
+    expect(result).toMatchObject({
+      ordinary: {
+        queryRetainsStored: true,
+        defaultDehydrateRetainsStored: true,
+        initialFieldHoldsStored: true,
+        rotatesViaMutation: false,
+        rotatedQueryRetainsAnswer: true,
+        revealsAfterQueryReadback: true,
+      },
+      syntheticStaleReadback: { revealsQueryInsteadOfResponse: true },
+    });
+    return;
+  }
+  expectNothingKept();
+  expect(tab.field()).toBeNull();
+});
+
+it('remount and reload expose configured status and Rotate, never the previous one-time answer', async () => {
+  const tab = dashboard();
+  await tab.open('site-a');
+  expect(tab.field()).toBeNull();
+  expect(tab.hasRotateButton()).toBe(true);
+  await tab.press();
+  await rotated(0, SECRET_A);
+  expect(tab.field()).toEqual({ value: SECRET_A, revealed: true });
+  await tab.leave();
+  await tab.open('site-a');
+  expect(tab.field()).toBeNull();
+  client = createQueryClient();
+  await tab.open('site-a', 'reload');
+  expect(tab.field()).toBeNull();
+  expect(tab.hasRotateButton()).toBe(true);
+  expectNothingKept();
+});
+
+it('the one-time answer is copyable in its current panel and survives a failed post-success settings refetch', async () => {
+  client.setDefaultOptions({ ...client.getDefaultOptions(), queries: { ...client.getDefaultOptions().queries, retry: false } });
+  const tab = dashboard();
+  await tab.open('site-a');
+  await tab.press();
+  mocks.settingsGet.mockImplementationOnce(async () => json(500, { error: { message: SECRET_A } }));
+  await rotated(0, SECRET_A);
+  expect(tab.field()).toEqual({ value: SECRET_A, revealed: true });
+  const buttons = [...tab.host.querySelectorAll<HTMLButtonElement>('button')].filter(
+    (button) => button.getAttribute('aria-label') === t('settings.git.webhook.copy'),
+  );
+  await act(async () => buttons.at(-1)?.click());
+  await settle();
+  expect(mocks.copy).toHaveBeenLastCalledWith(SECRET_A);
+  expectNothingKept();
+  expect(tab.actionName()).toBe(t('settings.git.webhook.rotate'));
+});
+
+it.each(['site', 'leave', 'session', 'client'] as const)('retires the answer while response-body parsing is held: %s', async (retirement) => {
+  let activeClient = client;
+  const tab = dashboard(() => activeClient);
+  await tab.open('site-a', 'unkeyed');
+  await tab.press();
+  let finish: (answer: unknown) => void = () => undefined;
+  const response = json(200, {});
+  vi.spyOn(response, 'json').mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  await refused(0, response);
+  expect(tab.busy()).toBe(true);
+  if (retirement === 'site') {
+    await tab.open('site-b', 'unkeyed');
+    await tab.open('site-a', 'unkeyed');
+  }
+  if (retirement === 'leave') {
+    await tab.leave();
+    await tab.open('site-a');
+  }
+  if (retirement === 'session') {
+    await act(async () => resetDashboardSession(client));
+    await tab.open('site-a', 'session-next');
+  }
+  if (retirement === 'client') {
+    activeClient = createQueryClient();
+    await tab.open('site-a', 'unkeyed');
+  }
+  await act(async () => finish({ data: { webhookSecret: SECRET_A } }));
+  await settle();
+  expect(tab.field()).toBeNull();
+  expect(toasts()).toEqual({ success: [], error: [] });
+  expectNothingKept();
+  expectNothingKept(activeClient);
+});
+
+it.each(['site', 'session', 'client'] as const)(
+  'clears an already displayed answer on %s replacement without relying on a keyed remount',
+  async (replacement) => {
+    let activeClient = client;
+    const tab = dashboard(() => activeClient);
+    await tab.open('site-a', 'unkeyed');
+    await tab.press();
+    await rotated(0, SECRET_A);
+    expect(tab.field()?.value).toBe(SECRET_A);
+    if (replacement === 'site') await tab.open('site-b', 'unkeyed');
+    if (replacement === 'session') await act(async () => resetDashboardSession(client));
+    if (replacement === 'client') {
+      activeClient = createQueryClient();
+      await tab.open('site-a', 'unkeyed');
+    }
+    await settle();
+    expect(tab.field()).toBeNull();
+    expectNothingKept(activeClient);
+  },
+);
+
+it('suppresses a pending clipboard completion after leaving and returning', async () => {
+  const tab = dashboard();
+  await tab.open('site-a');
+  await tab.press();
+  await rotated(0, SECRET_A);
+  let finish: (ok: boolean) => void = () => undefined;
+  mocks.copy.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const buttons = [...tab.host.querySelectorAll<HTMLButtonElement>('button')].filter(
+    (button) => button.getAttribute('aria-label') === t('settings.git.webhook.copy'),
+  );
+  await act(async () => buttons.at(-1)?.click());
+  mocks.success.mockClear();
+  await tab.leave();
+  await tab.open('site-a');
+  await act(async () => finish(true));
+  await settle();
+  expect(toasts()).toEqual({ success: [], error: [] });
+  expect(tab.field()).toBeNull();
+  expectNothingKept();
+});
+
+it('holds busy through readback and suppresses a late reveal when the panel leaves during that read', async () => {
+  const tab = dashboard();
+  await tab.open('site-a');
+  await tab.press();
+  const readback = holdNextRead('site-a');
+  await rotated(0, SECRET_A);
+  expect(tab.busy()).toBe(true);
+  await tab.leave();
+  await tab.open('site-a');
+  expect(tab.busy()).toBe(true);
+  await tab.press();
+  expect(posts()).toHaveLength(1);
+  await readback.answer();
+  expect(tab.field()).toBeNull();
+  expect(toasts()).toEqual({ success: [], error: [] });
+  expectNothingKept();
+});
+
+it('synthetic stale readback differs from the explicit answer: only the request answer is displayed', async () => {
+  const tab = dashboard();
+  await tab.open('site-a');
+  mocks.settingsGet.mockImplementation(async (projectId: string) => {
+    const result = settings(projectId);
+    return json(200, { data: { ...result.data, git: { ...result.data.git, webhookSecret: SECRET_B } } });
+  });
+  await tab.press();
+  await rotated(0, SECRET_A);
+  expect(tab.field()).toEqual({ value: SECRET_A, revealed: true });
+  expectNothingKept();
+});
+
+it('creation is known to be configured even if readback fails; a later refused rotation drops its old value', async () => {
+  stored = {};
+  client.setDefaultOptions({ ...client.getDefaultOptions(), queries: { ...client.getDefaultOptions().queries, retry: false } });
+  const tab = dashboard();
+  await tab.open('site-a');
+  expect(tab.actionName()).toBe(t('settings.git.webhook.generate'));
+  await tab.press();
+  mocks.settingsGet.mockImplementationOnce(async () => json(500, { error: { message: SECRET_A } }));
+  await rotated(0, SECRET_A);
+  expect(tab.field()?.value).toBe(SECRET_A);
+  expect(tab.actionName()).toBe(t('settings.git.webhook.rotate'));
+  await tab.press();
+  await refused(1, json(403, { error: { code: 'http:forbidden' } }));
+  expect(tab.field()).toBeNull();
+  expect(tab.actionName()).toBe(t('settings.git.webhook.rotate'));
+  expectNothingKept();
 });

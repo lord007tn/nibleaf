@@ -119,6 +119,7 @@ vi.mock('@/actions/pages', () => ({
 }));
 vi.mock('@/actions/deployments', () => ({
   getCurrentSnapshot: mocks.getCurrentSnapshot,
+  getCurrentDraft: async () => ({ snapshot: await mocks.getCurrentSnapshot(), rawBodies: [], baselines: [] }),
   getPendingChanges: mocks.getPendingChanges,
   createDeployment: mocks.createDeployment,
   listDeployments: mocks.listDeployments,
@@ -371,11 +372,11 @@ beforeEach(() => {
       : (state.deployments.find((deployment) => deployment.status === 'PENDING' || deployment.status === 'BUILDING') ?? null),
   );
   mocks.getCurrentSnapshot.mockImplementation(async () => snapshot());
-  mocks.getPendingChanges.mockImplementation(async (_projectId: string, current: ReturnType<typeof snapshot>) => ({
+  mocks.getPendingChanges.mockImplementation(async (_projectId: string, current: { snapshot: ReturnType<typeof snapshot> }) => ({
     hasBaseline: false,
     lastVersion: null,
     lastPublishedAt: null,
-    changes: current.pages.map((row) => ({
+    changes: current.snapshot.pages.map((row) => ({
       id: row.id,
       title: row.title,
       path: row.path,

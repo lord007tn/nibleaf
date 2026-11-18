@@ -26,16 +26,18 @@ vi.mock('./git-webhook-secret', () => ({
   settleLegacyWebhookSecretIn: async () => undefined,
 }));
 
-describe('getScopedWorkspaceSettings: admin-only material never reaches Editors or Viewers', () => {
-  it.each([MemberRole.OWNER, MemberRole.ADMIN])('returns the webhook secret and integrations to %s', async (role) => {
+describe('getScopedWorkspaceSettings: secret-free settings and role-scoped integrations/URLs', () => {
+  it.each([MemberRole.OWNER, MemberRole.ADMIN])('returns configured status and integrations, never the secret, to %s', async (role) => {
     const visible = await getScopedWorkspaceSettings('org-1', role);
-    expect(visible.git).toEqual({ ...metadata.git, webhookSecret: 'f00d' });
+    expect(visible.git).toEqual({ ...metadata.git, webhookConfigured: true });
+    expect(JSON.stringify(visible)).not.toContain('f00d');
+    expect(visible.git).not.toHaveProperty('webhookSecret');
     expect(visible.integrations).toEqual(metadata.integrations);
   });
 
   it.each([MemberRole.MEMBER, MemberRole.VIEWER, '', 'unknown'])('strips the webhook secret and integration blob for %j', async (role) => {
     const visible = await getScopedWorkspaceSettings('org-1', role);
-    expect(visible.git).toEqual({ ...metadata.git, cloneUrl: 'https://git.example.com/acme/docs.git' });
+    expect(visible.git).toEqual({ ...metadata.git, webhookConfigured: true, cloneUrl: 'https://git.example.com/acme/docs.git' });
     expect(visible.integrations).toEqual({});
     expect(visible.notifications).toEqual({ member_joined: true });
     expect(visible.name).toBe('Acme');

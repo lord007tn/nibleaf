@@ -178,10 +178,11 @@ describe.skipIf(process.env.PAGE_TRASH_POSTGRES !== '1')('page Trash on PostgreS
     // The publish snapshot is what the live site and its search index are built
     // from (publish → reindex-project). The trashed subtree is absent at once.
     const deleted = await trash.deletePage(f.project.id, f.guide.id, f.author.id);
-    const without = await deployments.getCurrentSnapshot(f.project.id);
+    const currentDraft = await deployments.getCurrentDraft(f.project.id);
+    const without = currentDraft.snapshot;
     for (const id of [f.guide.id, f.setup.id, f.deep.id, f.usage.id]) expect(ids(without)).not.toContain(id);
     expect(ids(without)).toContain(f.intro.id);
-    const pending = await deployments.getPendingChanges(f.project.id, without);
+    const pending = await deployments.getPendingChanges(f.project.id, currentDraft);
     expect(JSON.stringify(pending)).not.toContain('Install it');
 
     // A page takes the address meanwhile, so restore renames the group.

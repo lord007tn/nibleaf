@@ -1,7 +1,7 @@
 import { prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
-import type { UpdateWorkspaceSettingsBody } from '@nibleaf/validators';
+import type { PublicGitSettings, UpdateWorkspaceSettingsBody } from '@nibleaf/validators';
 import { z } from 'zod';
 import { forbidden, notFound } from '@/errors';
 import { resolveOrgAccess } from '@/lib/access';
@@ -70,7 +70,10 @@ export const getScopedWorkspaceSettings = async (organizationId: string, role: s
   ]);
   const metadata = parseWorkspaceMetadata(org.metadata);
   const parsedGit = z.record(z.string(), z.unknown()).safeParse(storedGit);
-  const git = parsedGit.success ? { ...parsedGit.data } : {};
+  const git: PublicGitSettings = {
+    ...(parsedGit.success ? parsedGit.data : {}),
+    webhookConfigured: Boolean(await getGitWebhookSecret(id)),
+  };
   delete git.webhookSecret;
   if (!roleAtLeast(role, MemberRole.ADMIN)) {
     for (const field of ['cloneUrl', 'instanceUrl'] as const) {
@@ -79,10 +82,9 @@ export const getScopedWorkspaceSettings = async (organizationId: string, role: s
       if (clean === null) delete git[field];
       else git[field] = clean;
     }
-  } else {
-    const secret = await getGitWebhookSecret(id);
-    if (secret) git.webhookSecret = secret;
   }
+  // Public settings never carry verification material, even for administrators.
+  // The private reader remains unchanged for webhook verification; reads mint nothing.
   return {
     plan: metadata.plan,
     notifications: metadata.notifications,

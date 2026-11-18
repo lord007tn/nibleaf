@@ -124,7 +124,7 @@ describe('a repository save through the real validator and merge', () => {
     async (_provider, values, connection) => {
       const read = await saveConnection(values);
       expect(db.git).toEqual({ ...connection, connected: true, autoPublish: true, ...BOOKKEEPING });
-      expect(read.git).toEqual({ ...connection, connected: true, autoPublish: true, ...BOOKKEEPING, webhookSecret: 'f00d' });
+      expect(read.git).toEqual({ ...connection, connected: true, autoPublish: true, ...BOOKKEEPING, webhookConfigured: true });
       // What the form reads back is what it judged the save by (its `toSent`): a clean echo.
       expect(gitConnectionValues(read.git)).toEqual(sentGitConnectionValues(values));
       expect(db.legacy).toEqual({ integrations: { slack: { webhookUrl: 'https://hooks.slack.com/services/x' } } });
@@ -179,13 +179,13 @@ describe('an instant write through the real validator and merge (#780)', () => {
   const CHANGES: GitInstantChange[] = [{ autoPublish: true }, { autoPublish: false }, { connected: false }];
 
   it.each(Object.entries(CONNECTIONS))(
-    '%s: each change stores only that change, and reads it back with the bookkeeping and the secret',
+    '%s: each change stores only that change, reads back the bookkeeping and keeps the private secret',
     async (_provider, connection) => {
       for (const change of CHANGES) {
         db.git = { ...connection, ...BOOKKEEPING };
         const read = await writeInstant(change);
         expect(db.git).toEqual({ ...connection, ...change, ...BOOKKEEPING });
-        expect(read.git).toEqual({ ...connection, ...change, ...BOOKKEEPING, webhookSecret: 'f00d' });
+        expect(read.git).toEqual({ ...connection, ...change, ...BOOKKEEPING, webhookConfigured: true });
         expect(db.secret).toBe('f00d');
         expect(db.legacy).toEqual({ integrations: { slack: { webhookUrl: 'https://hooks.slack.com/services/x' } } });
       }
