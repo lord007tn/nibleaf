@@ -17,6 +17,7 @@ import {
   type SerializedPage,
   type SourceLineEndings,
 } from './line-endings';
+import { writesTight } from './tight-lists';
 
 /*
  * Saving a page writes its Markdown into one output buffer (#612). The serializer
@@ -273,6 +274,7 @@ interface StateInternals {
   delim: string;
   closed: PMNode | null;
   atBlockStart: boolean;
+  inTightList: boolean;
   flushClose(size?: number): void;
   atBlank(): boolean;
 }
@@ -342,6 +344,21 @@ class LinearMarkdownSerializerState extends SerializerState {
           }
         : this.output.owner;
     }
+  }
+
+  /** prosemirror-markdown's `renderList`, except that a list marked tight is checked
+   *  against what its items write now (tight-lists.ts). */
+  override renderList(node: PMNode, delim: string, firstDelim: (index: number) => string): void {
+    if (this.closed && this.closed.type === node.type) this.flushClose(3);
+    else if (this.inTightList) this.flushClose(1);
+    const tight = writesTight(node);
+    const outerTight = this.inTightList;
+    this.inTightList = tight;
+    node.forEach((child, _offset, index) => {
+      if (index && tight) this.flushClose(1);
+      this.wrapBlock(delim, firstDelim(index), node, () => this.render(child, node, index));
+    });
+    this.inTightList = outerTight;
   }
 
   override atBlank(): boolean {

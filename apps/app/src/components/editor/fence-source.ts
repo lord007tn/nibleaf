@@ -131,8 +131,8 @@ const ITEM_LEAD_BLOCKS = new Set(['blockquote_open', 'heading_open', 'bullet_lis
  *
  * A list item starting with a fence, quote, heading or nested list gets an empty
  * paragraph before that block: the editor's schema requires one (#578, #604).
- * The paragraph serializer preserves whether a quote, heading or list shared its
- * marker's line; fences keep their existing source handling (see `writeFence`).
+ * `itemLeadPlacement` (tight-lists.ts) writes it back for a quote, heading or list;
+ * fences keep their existing source handling (see `writeFence`).
  */
 export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   const lines = state.src.split('\n');

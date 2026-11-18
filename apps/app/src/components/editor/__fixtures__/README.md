@@ -65,3 +65,9 @@ text. The draft compares clean, so nothing is written and no conflict is raised,
 keeps the other client's copy. The test names the seeds that end this way (95756 and 246217, the
 same on main) and allows that outcome for them only. The fixture was made against main's
 `editor.tsx`, `editor-draft.ts` and `editor-save-queue.ts` with `WRITE_AUTOSAVE_ADOPTION_MAIN=1`.
+
+`list-item-lead-main.json` holds main's (f6b23b3d) four checks for each page and edit that
+`list-item-lead-matrix.test.ts` generates: lists opening with a quote, heading, fence, nested list
+or nothing, across marker widths and start numbers. The test checks no result loses a check main
+passed. It was made by running that test against main's `fence-source.ts`, `paragraph-source.ts`,
+`tight-lists.ts` and `markdown-output.ts` with `WRITE_LIST_LEAD_MAIN` set to main's revision.

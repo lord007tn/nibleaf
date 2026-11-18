@@ -4,7 +4,7 @@ import { type Fragment, DOMParser as PMDOMParser, type Node as PMNode, type Sche
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
 import type { MarkdownOutput } from './markdown-output';
-import { markTightLists } from './tight-lists';
+import { itemLeadPlacement, markTightLists } from './tight-lists';
 
 /*
  * A paragraph wrapped across several lines in the source keeps those lines, so a
@@ -152,6 +152,9 @@ interface ParagraphSerializeState {
   text: (text: string, escapeText?: boolean) => void;
   renderInline: (node: PMNode) => void;
   closeBlock: (node: PMNode) => void;
+  ensureNewLine: () => void;
+  /** The nodes being rendered, outermost first (LinearMarkdownSerializerState). */
+  path?: ReadonlyArray<{ node: PMNode; parent: PMNode | Fragment; index: number }>;
 }
 
 /** The containers whose first line their serializer writes before their first child: a
@@ -163,8 +166,8 @@ const LINE_CONTAINERS: ReadonlySet<string> = new Set(['listItem', 'blockquote'])
  * after it. Markdown has no empty paragraph there: written (`- `, a blank line, then the
  * rest), it read back as an empty item and a paragraph outside the list, so a page with
  * one never saved to a fixed point. It is left out, and the paragraph after it opens the
- * item. Before any other block (a nested list, a quote) it is written as before: left
- * out, that block's own marker would share the item's line (`- - Beta`).
+ * item. Before a quote, heading or nested list, `itemLeadPlacement` (tight-lists.ts) says
+ * where it goes.
  */
 const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: number | undefined): boolean =>
   index === 0 &&
@@ -181,17 +184,17 @@ const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: n
  */
 function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: PMNode | Fragment, index?: number): void {
   if (emptyLead(node, parent, index)) return;
-  if (
-    index === 0 &&
-    node.content.size === 0 &&
-    node.attrs.sourceItemLead === 'inline' &&
-    parent &&
-    'type' in parent &&
-    parent.type.name === 'listItem' &&
-    parent.childCount > 1 &&
-    ['blockquote', 'heading', 'bulletList', 'orderedList'].includes(parent.child(1).type.name)
-  )
-    return;
+  const item = state.path?.[state.path.length - 2];
+  if (index === 0 && node.content.size === 0 && item && item.node === parent && 'type' in item.parent) {
+    const placement = itemLeadPlacement(item.node, item.parent, item.index);
+    if (placement === 'marker') return;
+    if (placement === 'above') {
+      // No blank line: it would end the item, and the block would load outside it.
+      state.write();
+      state.ensureNewLine();
+      return;
+    }
+  }
   const source = String(node.attrs.sourceParagraph ?? '');
   const joined = source ? joinedSourceLines(source) : null;
   if (joined === null) {
@@ -283,9 +286,11 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
     // A hoisted ordered list is adjacent to its ordered parent, so main uses
     // `)` to separate them. Defer non-default starts rather than change that
     // delimiter (or the start number) while putting the list back inside
-    // (serializer corpus page 658).
+    // (serializer corpus page 658). A list under a marker alone is what the
+    // serializer writes for such an item after an edit, and stays inside it.
     if (
       list.tagName === 'OL' &&
+      lead.getAttribute('data-md-item-lead') === 'inline' &&
       block?.type.name === 'orderedList' &&
       (Number(list.getAttribute('start') ?? 1) !== 1 || Number(block.attrs.start ?? 1) !== 1)
     )
@@ -307,9 +312,18 @@ function fitItemLeads(element: HTMLElement, schema: Schema): void {
         safe = false;
     }
     if (safe && block && ITEM_LEAD_NODES.has(block.type.name) && !stayed) continue;
-    lead.remove();
-    for (let ancestor: Element | null = list; ancestor; ancestor = ancestor.parentElement) {
-      if (ancestor.matches('ul,ol')) affected.add(ancestor);
+    // Fitting now moves this item's block out, with any list inside it: the leads
+    // in there were kept for an item they no longer sit in (leads come innermost
+    // first). A list inside a quote moves with its quote and keeps its leads.
+    const nested = Array.from(item.querySelectorAll('p[data-md-item-lead]')).filter((inner) => {
+      const quote = inner.closest('blockquote');
+      return !quote || !item.contains(quote);
+    });
+    for (const rejected of [lead, ...nested]) {
+      for (let ancestor = rejected.parentElement?.parentElement ?? null; ancestor; ancestor = ancestor.parentElement) {
+        if (ancestor.matches('ul,ol')) affected.add(ancestor);
+      }
+      rejected.remove();
     }
   }
   for (const list of affected) {
@@ -346,9 +360,10 @@ export const SourceParagraph = Paragraph.extend({
     return {
       ...this.parent?.(),
       sourceItemLead: {
-        // Undefined keeps ordinary paragraphs' serialized JSON unchanged.
+        // Undefined keeps ordinary paragraphs' serialized JSON unchanged. Both halves of
+        // a split lead stay leads: the block after the second still needs its spacing.
         default: undefined,
-        keepOnSplit: false,
+        keepOnSplit: true,
         parseHTML: (element) => element.getAttribute('data-md-item-lead') ?? undefined,
         rendered: false,
       },
