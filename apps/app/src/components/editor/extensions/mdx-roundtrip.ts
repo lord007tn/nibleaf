@@ -59,7 +59,7 @@ const openTight = new WeakMap<object, Array<{ node: PMNode; start: number }>>();
  * is read again: it must be what `childrenLayout` reads as a child's Markdown line, not
  * blank in its containers (`> ` left by an emptied quote) and not another tag.
  */
-const tightLine = (line: string): boolean => !blankInContainers(line) && !TAG_LINE.test(line);
+const tightLine = (line: string): boolean => !blankInContainers(line) && (!TAG_LINE.test(line) || AUTOLINK_LINE.test(line));
 
 /**
  * A component's opening tag before its children (#606). Where the author started the
@@ -1879,6 +1879,10 @@ const leadStartOf = (source: string, at: number): number => {
 };
 /** A line that starts with a tag (after its quote markers): another component's, or HTML. */
 const TAG_LINE = /^[ \t>]*</;
+/** CommonMark URI and email autolinks are Markdown, even though they start with `<`. */
+const AUTOLINK_LINE =
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: CommonMark URI autolinks exclude ASCII controls and spaces
+  /^[ \t>]*<(?:[a-z][a-z\d+.-]{1,31}:[^<>\u0000-\u0020]*|[a-z\d.!#$%&'*+/=?^_`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*)>/i;
 /** The rest of a tag's line (whitespace only), its line break, and the line after it. */
 const NEXT_LINE = /^[ \t]*(\r\n|\r|\n)([^\r\n]*)/;
 
@@ -1899,7 +1903,7 @@ function childrenLayout(source: string, open: TagToken, close: TagToken | undefi
   const next = NEXT_LINE.exec(source.slice(open.end, open.end + 4096));
   if (!next) return null;
   const [, lineBreak = '\n', firstLine = ''] = next;
-  const tightOpen = !blankInContainers(firstLine) && !TAG_LINE.test(firstLine);
+  const tightOpen = tightLine(firstLine);
   let tightClose = false;
   if (close) {
     // The line before the closing tag is read only once the tag is known to start its line.
@@ -1907,7 +1911,7 @@ function childrenLayout(source: string, open: TagToken, close: TagToken | undefi
     if (closeLine > open.end) {
       const previousEnd = source[closeLine - 1] === '\n' && source[closeLine - 2] === '\r' ? closeLine - 2 : closeLine - 1;
       const previous = source.slice(lineStartOf(source, previousEnd), previousEnd);
-      tightClose = !blankInContainers(previous) && !TAG_LINE.test(previous);
+      tightClose = tightLine(previous);
     }
   }
   if (!tightOpen && !tightClose) return null;

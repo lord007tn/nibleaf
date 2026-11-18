@@ -49,6 +49,44 @@ const nodeTypes = (page: string) => {
   return names;
 };
 
+describe('angle-bracket autolinks next to component tags (#861)', () => {
+  const url = '<https://example.com>';
+  const email = '<writer@example.com>';
+  it.each([
+    ['URL first', `<Note>\n${url}\n\nAfter.\n</Note>`, 'https://example.com'],
+    ['URL last', `<Note>\nBefore.\n\n${url}\n</Note>`, 'https://example.com'],
+    ['URL only', `<Note>\n${url}\n</Note>`, 'https://example.com'],
+    ['email first', `<Note>\n${email}\n\nAfter.\n</Note>`, 'mailto:writer@example.com'],
+    ['email last', `<Note>\nBefore.\n\n${email}\n</Note>`, 'mailto:writer@example.com'],
+    ['email only', `<Note>\n${email}\n</Note>`, 'mailto:writer@example.com'],
+    ['in a list', `<Note>\n- ${url}\n</Note>`, 'https://example.com'],
+    ['in a quote', `<Note>\n> ${url}\n</Note>`, 'https://example.com'],
+  ])('keeps %s for ten cycles, with the plain-page email form', (_name, page, href) => {
+    const expected = href.startsWith('mailto:') ? page.replace(email, getMarkdown(open(email))) : page;
+    let saved = page;
+    for (let cycle = 0; cycle < 10; cycle++) {
+      const editor = open(saved);
+      const links: Array<{ text: string; href: string }> = [];
+      editor.state.doc.descendants((node) => {
+        for (const mark of node.marks) if (mark.type.name === 'link') links.push({ text: node.textContent, href: mark.attrs.href });
+      });
+      saved = getMarkdown(editor);
+      expect(saved, `cycle ${cycle + 1}`).toBe(expected);
+      expect(links, `cycle ${cycle + 1}`).toEqual([{ text: href.replace(/^mailto:/, ''), href }]);
+    }
+  });
+
+  it('keeps the existing blank-line layout for real adjacent component tags', () => {
+    const page = '<Note>\n<Card title="Tour">\n\nBody.\n\n</Card>\n</Note>';
+    expectRoundTrip(page, '<Note>\n\n<Card title="Tour">\n\nBody.\n\n</Card>\n\n</Note>');
+    expect(nodeTypes(page)).toContain('mdxCard');
+  });
+
+  it('uses the existing plain-page email serialization without losing text or destination', () => {
+    expectRoundTrip(email, '[writer@example.com](mailto:writer@example.com)');
+  });
+});
+
 /** Type a character after the second one of the page's first paragraph. */
 const typeNearby = (editor: Editor) => {
   editor.commands.setTextSelection(3);

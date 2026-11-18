@@ -1,0 +1,1555 @@
+{
+  "result": "PASS: all assertions in browser.mjs completed",
+  "sourceRevision": "59bd032b21d9ee91e24cca22e137d42e583092ec",
+  "sourceHashes": [
+    {
+      "file": "harness.tsx",
+      "sha256": "f492323bbef2deb707802498f157af14207d30d1de57fa82584f3cf75f54aaea"
+    },
+    {
+      "file": "harness.css",
+      "sha256": "ca74962cc781e0411e2f5c4dc9d181f0dcf1d6d0208439399792791f9356b45d"
+    },
+    {
+      "file": "site-search.tsx",
+      "sha256": "de3836e71cadb282392974c72d61e9c28df7242927580db3276cc8c096c44ab8"
+    },
+    {
+      "file": "site-search-dialog.tsx",
+      "sha256": "cf525fb5df47470a4cf6e9a50614b8dd08112faec9cf09d21e3fa41307ee754f"
+    },
+    {
+      "file": "use-visual-viewport.ts",
+      "sha256": "72d2913cc2632202e2f580b96b845d38eabe64c95d279565babe65d075fe91f3"
+    },
+    {
+      "file": "dialog.tsx",
+      "sha256": "ffb57e87b84be279f0c23c3b2138670000f1d45e1645a138f0ddbb87e62d7d1e"
+    },
+    {
+      "file": "globals.css",
+      "sha256": "8634ccc52301154326df564d18a2c8a69399bde162c07f8307d90e7cb48e7fa4"
+    }
+  ],
+  "browser": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/158.0.8127.18 Safari/537.36",
+  "motion": "no-preference; production 100ms animations",
+  "viewport": { "width": 390, "height": 844, "scale": 1 },
+  "cases": [
+    {
+      "lang": "en",
+      "reachability": {
+        "box": {
+          "at": 1399.2999999821186,
+          "mounted": true,
+          "closed": false,
+          "heightVar": "470px",
+          "topVar": "96px",
+          "cssHeight": "470px",
+          "cssTop": "96px",
+          "direction": "ltr",
+          "opacity": "1",
+          "transform": "none",
+          "bounds": { "top": 96, "bottom": 566, "left": 0, "right": 390 },
+          "animations": []
+        },
+        "footer": { "top": 517, "bottom": 566, "left": 0, "right": 390 },
+        "last": { "top": 461, "bottom": 517, "left": 6, "right": 384 },
+        "list": { "top": 153, "bottom": 517, "left": 0, "right": 390 },
+        "scrollTop": 1372,
+        "clientHeight": 364,
+        "scrollHeight": 1742
+      },
+      "reopened": {
+        "at": 1717.2999999821186,
+        "mounted": true,
+        "closed": false,
+        "heightVar": "530px",
+        "topVar": "40px",
+        "cssHeight": "530px",
+        "cssTop": "40px",
+        "direction": "ltr",
+        "opacity": "1",
+        "transform": "none",
+        "bounds": { "top": 40, "bottom": 570, "left": 0, "right": 390 },
+        "animations": []
+      },
+      "normal": {
+        "interrupted": false,
+        "height": 470,
+        "top": 96,
+        "closeAt": 1462.0999999940395,
+        "mutationAt": 1483.7999999821186,
+        "opening": null,
+        "samples": [
+          {
+            "at": 1462.0999999940395,
+            "mounted": true,
+            "closed": false,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "1",
+            "transform": "none",
+            "bounds": { "top": 96, "bottom": 566, "left": 0, "right": 390 },
+            "animations": []
+          },
+          {
+            "at": 1483.699999988079,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.78077",
+            "transform": "matrix3d(0.989038, 0, 0, 0, 0, 0.989038, 0, 0, 0, 0, 0.989038, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 98.57595825195312,
+              "bottom": 563.4240112304688,
+              "left": 2.1374988555908203,
+              "right": 387.8624744415283
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 16.599999999999948,
+                "duration": 100,
+                "progress": 0.16599999999999948
+              }
+            ]
+          },
+          {
+            "at": 1498.5999999940395,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.424732",
+            "transform": "matrix3d(0.971237, 0, 0, 0, 0, 0.971237, 0, 0, 0, 0, 0.971237, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 102.7593994140625,
+              "bottom": 559.2406005859375,
+              "left": 5.608865737915039,
+              "right": 384.3911533355713
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 33.29999999999988,
+                "duration": 100,
+                "progress": 0.33299999999999885
+              }
+            ]
+          },
+          {
+            "at": 1512.2999999821186,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.197597",
+            "transform": "matrix3d(0.95988, 0, 0, 0, 0, 0.95988, 0, 0, 0, 0, 0.95988, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 105.4282455444336,
+              "bottom": 556.5717697143555,
+              "left": 7.8234357833862305,
+              "right": 382.17658519744873
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 50.00000000000004,
+                "duration": 100,
+                "progress": 0.5000000000000004
+              }
+            ]
+          },
+          {
+            "at": 1528.5999999940395,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.0755195",
+            "transform": "matrix3d(0.953776, 0, 0, 0, 0, 0.953776, 0, 0, 0, 0, 0.953776, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 106.86264038085938,
+              "bottom": 555.1373901367188,
+              "left": 9.013679504394531,
+              "right": 380.98633575439453
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 66.6,
+                "duration": 100,
+                "progress": 0.6659999999999999
+              }
+            ]
+          },
+          {
+            "at": 1545.699999988079,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.0165959",
+            "transform": "matrix3d(0.95083, 0, 0, 0, 0, 0.95083, 0, 0, 0, 0, 0.95083, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 107.55499267578125,
+              "bottom": 554.4450073242188,
+              "left": 9.588188171386719,
+              "right": 380.4117965698242
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 83.29999999999993,
+                "duration": 100,
+                "progress": 0.8329999999999993
+              }
+            ]
+          },
+          {
+            "at": 1565.2999999821186,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 1579.0999999940395,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 1595.5,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          }
+        ],
+        "completions": [
+          {
+            "open": false,
+            "at": 1562.5,
+            "box": {
+              "at": 1562.699999988079,
+              "mounted": true,
+              "closed": true,
+              "heightVar": "470px",
+              "topVar": "96px",
+              "cssHeight": "470px",
+              "cssTop": "96px",
+              "direction": "ltr",
+              "opacity": "1",
+              "transform": "none",
+              "bounds": { "top": 96, "bottom": 566, "left": 0, "right": 390 },
+              "animations": []
+            }
+          }
+        ],
+        "changes": [{ "open": false, "at": 1462.699999988079 }],
+        "listeners": { "resize": 0, "scroll": 0 }
+      },
+      "fresh": {
+        "interrupted": false,
+        "height": 530,
+        "top": 40,
+        "closeAt": 1728.7999999821186,
+        "mutationAt": 1747.7999999821186,
+        "opening": null,
+        "samples": [
+          {
+            "at": 1728.699999988079,
+            "mounted": true,
+            "closed": false,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "ltr",
+            "opacity": "1",
+            "transform": "none",
+            "bounds": { "top": 40, "bottom": 570, "left": 0, "right": 390 },
+            "animations": []
+          },
+          {
+            "at": 1747.699999988079,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "ltr",
+            "opacity": "0.78077",
+            "transform": "matrix3d(0.989038, 0, 0, 0, 0, 0.989038, 0, 0, 0, 0, 0.989038, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 42.904808044433594,
+              "bottom": 567.0952377319336,
+              "left": 2.1374988555908203,
+              "right": 387.8624744415283
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 16.599999999999948,
+                "duration": 100,
+                "progress": 0.16599999999999948
+              }
+            ]
+          },
+          {
+            "at": 1762.199999988079,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "ltr",
+            "opacity": "0.424732",
+            "transform": "matrix3d(0.971237, 0, 0, 0, 0, 0.971237, 0, 0, 0, 0, 0.971237, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 47.6223030090332,
+              "bottom": 562.3776741027832,
+              "left": 5.608865737915039,
+              "right": 384.3911533355713
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 33.30000000000011,
+                "duration": 100,
+                "progress": 0.3330000000000011
+              }
+            ]
+          },
+          {
+            "at": 1779.4000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "ltr",
+            "opacity": "0.198593",
+            "transform": "matrix3d(0.95993, 0, 0, 0, 0, 0.95993, 0, 0, 0, 0, 0.95993, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 50.61864471435547,
+              "bottom": 559.3813400268555,
+              "left": 7.813719272613525,
+              "right": 382.1862778663635
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 49.900000000000055,
+                "duration": 100,
+                "progress": 0.49900000000000055
+              }
+            ]
+          },
+          {
+            "at": 1796.2999999821186,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "ltr",
+            "opacity": "0.0755195",
+            "transform": "matrix3d(0.953776, 0, 0, 0, 0, 0.953776, 0, 0, 0, 0, 0.953776, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 52.249359130859375,
+              "bottom": 557.7506103515625,
+              "left": 9.013679504394531,
+              "right": 380.98633575439453
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 66.6,
+                "duration": 100,
+                "progress": 0.6659999999999999
+              }
+            ]
+          },
+          {
+            "at": 1812.699999988079,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "ltr",
+            "opacity": "0.0165959",
+            "transform": "matrix3d(0.95083, 0, 0, 0, 0, 0.95083, 0, 0, 0, 0, 0.95083, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 53.03010177612305,
+              "bottom": 556.9699211120605,
+              "left": 9.588188171386719,
+              "right": 380.4117965698242
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 83.30000000000015,
+                "duration": 100,
+                "progress": 0.8330000000000015
+              }
+            ]
+          },
+          {
+            "at": 1831,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 1845.9000000059605,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 1862.199999988079,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          }
+        ],
+        "completions": [
+          {
+            "open": false,
+            "at": 1829,
+            "box": {
+              "at": 1829.0999999940395,
+              "mounted": true,
+              "closed": true,
+              "heightVar": "530px",
+              "topVar": "40px",
+              "cssHeight": "530px",
+              "cssTop": "40px",
+              "direction": "ltr",
+              "opacity": "1",
+              "transform": "none",
+              "bounds": { "top": 40, "bottom": 570, "left": 0, "right": 390 },
+              "animations": []
+            }
+          }
+        ],
+        "changes": [{ "open": false, "at": 1728.9000000059605 }],
+        "listeners": { "resize": 0, "scroll": 0 }
+      },
+      "interrupted": {
+        "interrupted": true,
+        "height": 470,
+        "top": 96,
+        "closeAt": 1896.2999999821186,
+        "mutationAt": 1916.5,
+        "opening": {
+          "at": 1896.2999999821186,
+          "mounted": true,
+          "closed": false,
+          "heightVar": "470px",
+          "topVar": "96px",
+          "cssHeight": "470px",
+          "cssTop": "96px",
+          "direction": "ltr",
+          "opacity": "0.219966",
+          "transform": "matrix3d(0.960998, 0, 0, 0, 0, 0.960998, 0, 0, 0, 0, 0.960998, 0, 0, 0, 0, 1)",
+          "bounds": {
+            "top": 105.16539764404297,
+            "bottom": 556.834587097168,
+            "left": 7.605332374572754,
+            "right": 382.39463901519775
+          },
+          "animations": [
+            {
+              "state": "running",
+              "currentTime": 16.634000000000036,
+              "duration": 100,
+              "progress": 0.16634000000000038
+            }
+          ]
+        },
+        "samples": [
+          {
+            "at": 1879.2999999821186,
+            "mounted": true,
+            "closed": false,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0",
+            "transform": "matrix3d(0.95, 0, 0, 0, 0, 0.95, 0, 0, 0, 0, 0.95, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 107.75,
+              "bottom": 554.25,
+              "left": 9.750001907348633,
+              "right": 380.25000190734863
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 0,
+                "duration": 100,
+                "progress": 0
+              }
+            ]
+          },
+          {
+            "at": 1896.2999999821186,
+            "mounted": true,
+            "closed": false,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.219966",
+            "transform": "matrix3d(0.960998, 0, 0, 0, 0, 0.960998, 0, 0, 0, 0, 0.960998, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 105.16539764404297,
+              "bottom": 556.834587097168,
+              "left": 7.605332374572754,
+              "right": 382.39463901519775
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 16.634000000000036,
+                "duration": 100,
+                "progress": 0.16634000000000038
+              }
+            ]
+          },
+          {
+            "at": 1916.5,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.778604",
+            "transform": "matrix3d(0.98893, 0, 0, 0, 0, 0.98893, 0, 0, 0, 0, 0.98893, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 98.60140991210938,
+              "bottom": 563.3985595703125,
+              "left": 2.1586177349090576,
+              "right": 387.84135699272156
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 16.69999999999994,
+                "duration": 100,
+                "progress": 0.16699999999999937
+              }
+            ]
+          },
+          {
+            "at": 1931.9000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.424732",
+            "transform": "matrix3d(0.971237, 0, 0, 0, 0, 0.971237, 0, 0, 0, 0, 0.971237, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 102.7593994140625,
+              "bottom": 559.2406005859375,
+              "left": 5.608865737915039,
+              "right": 384.3911533355713
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 33.29999999999988,
+                "duration": 100,
+                "progress": 0.33299999999999885
+              }
+            ]
+          },
+          {
+            "at": 1945.9000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.197597",
+            "transform": "matrix3d(0.95988, 0, 0, 0, 0, 0.95988, 0, 0, 0, 0, 0.95988, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 105.4282455444336,
+              "bottom": 556.5717697143555,
+              "left": 7.8234357833862305,
+              "right": 382.17658519744873
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 50.00000000000004,
+                "duration": 100,
+                "progress": 0.5000000000000004
+              }
+            ]
+          },
+          {
+            "at": 1962.9000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.0750046",
+            "transform": "matrix3d(0.95375, 0, 0, 0, 0, 0.95375, 0, 0, 0, 0, 0.95375, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 106.86869049072266,
+              "bottom": 555.1312942504883,
+              "left": 9.01870059967041,
+              "right": 380.98128604888916
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 66.69999999999999,
+                "duration": 100,
+                "progress": 0.6669999999999998
+              }
+            ]
+          },
+          {
+            "at": 1979.0999999940395,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "ltr",
+            "opacity": "0.0165959",
+            "transform": "matrix3d(0.95083, 0, 0, 0, 0, 0.95083, 0, 0, 0, 0, 0.95083, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 107.55499267578125,
+              "bottom": 554.4450073242188,
+              "left": 9.588188171386719,
+              "right": 380.4117965698242
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 83.29999999999993,
+                "duration": 100,
+                "progress": 0.8329999999999993
+              }
+            ]
+          },
+          {
+            "at": 1997.2999999821186,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 2012.7999999821186,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 2029,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          }
+        ],
+        "completions": [
+          {
+            "open": false,
+            "at": 1995.5,
+            "box": {
+              "at": 1995.5999999940395,
+              "mounted": true,
+              "closed": true,
+              "heightVar": "470px",
+              "topVar": "96px",
+              "cssHeight": "470px",
+              "cssTop": "96px",
+              "direction": "ltr",
+              "opacity": "1",
+              "transform": "none",
+              "bounds": { "top": 96, "bottom": 566, "left": 0, "right": 390 },
+              "animations": []
+            }
+          }
+        ],
+        "changes": [{ "open": false, "at": 1896.4000000059605 }],
+        "listeners": { "resize": 0, "scroll": 0 }
+      }
+    },
+    {
+      "lang": "ar",
+      "reachability": {
+        "box": {
+          "at": 1182.9000000059605,
+          "mounted": true,
+          "closed": false,
+          "heightVar": "470px",
+          "topVar": "96px",
+          "cssHeight": "470px",
+          "cssTop": "96px",
+          "direction": "rtl",
+          "opacity": "1",
+          "transform": "none",
+          "bounds": { "top": 96, "bottom": 566, "left": 0, "right": 390 },
+          "animations": []
+        },
+        "footer": { "top": 517, "bottom": 566, "left": 0, "right": 390 },
+        "last": { "top": 461, "bottom": 517, "left": 6, "right": 384 },
+        "list": { "top": 153, "bottom": 517, "left": 0, "right": 390 },
+        "scrollTop": 1352,
+        "clientHeight": 364,
+        "scrollHeight": 1722
+      },
+      "reopened": {
+        "at": 1504.9000000059605,
+        "mounted": true,
+        "closed": false,
+        "heightVar": "530px",
+        "topVar": "40px",
+        "cssHeight": "530px",
+        "cssTop": "40px",
+        "direction": "rtl",
+        "opacity": "1",
+        "transform": "none",
+        "bounds": { "top": 40, "bottom": 570, "left": 0, "right": 390 },
+        "animations": []
+      },
+      "normal": {
+        "interrupted": false,
+        "height": 470,
+        "top": 96,
+        "closeAt": 1231.0999999940395,
+        "mutationAt": 1254.699999988079,
+        "opening": null,
+        "samples": [
+          {
+            "at": 1231.0999999940395,
+            "mounted": true,
+            "closed": false,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "1",
+            "transform": "none",
+            "bounds": { "top": 96, "bottom": 566, "left": 0, "right": 390 },
+            "animations": []
+          },
+          {
+            "at": 1254.5999999940395,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.78077",
+            "transform": "matrix3d(0.989038, 0, 0, 0, 0, 0.989038, 0, 0, 0, 0, 0.989038, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 98.57595825195312,
+              "bottom": 563.4240112304688,
+              "left": 2.1374988555908203,
+              "right": 387.8624744415283
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 16.599999999999948,
+                "duration": 100,
+                "progress": 0.16599999999999948
+              }
+            ]
+          },
+          {
+            "at": 1270.0999999940395,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.42652",
+            "transform": "matrix3d(0.971326, 0, 0, 0, 0, 0.971326, 0, 0, 0, 0, 0.971326, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 102.73838806152344,
+              "bottom": 559.2615814208984,
+              "left": 5.591431140899658,
+              "right": 384.40856981277466
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 33.199999999999896,
+                "duration": 100,
+                "progress": 0.33199999999999896
+              }
+            ]
+          },
+          {
+            "at": 1285.7999999821186,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.197597",
+            "transform": "matrix3d(0.95988, 0, 0, 0, 0, 0.95988, 0, 0, 0, 0, 0.95988, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 105.4282455444336,
+              "bottom": 556.5717697143555,
+              "left": 7.8234357833862305,
+              "right": 382.17658519744873
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 50.00000000000004,
+                "duration": 100,
+                "progress": 0.5000000000000004
+              }
+            ]
+          },
+          {
+            "at": 1301.5999999940395,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.0755195",
+            "transform": "matrix3d(0.953776, 0, 0, 0, 0, 0.953776, 0, 0, 0, 0, 0.953776, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 106.86264038085938,
+              "bottom": 555.1373901367188,
+              "left": 9.013679504394531,
+              "right": 380.98633575439453
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 66.6,
+                "duration": 100,
+                "progress": 0.6659999999999999
+              }
+            ]
+          },
+          {
+            "at": 1317.4000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.0165959",
+            "transform": "matrix3d(0.95083, 0, 0, 0, 0, 0.95083, 0, 0, 0, 0, 0.95083, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 107.55499267578125,
+              "bottom": 554.4450073242188,
+              "left": 9.588188171386719,
+              "right": 380.4117965698242
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 83.29999999999993,
+                "duration": 100,
+                "progress": 0.8329999999999993
+              }
+            ]
+          },
+          {
+            "at": 1335.5,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 1347.0999999940395,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 1363.7999999821186,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          }
+        ],
+        "completions": [
+          {
+            "open": false,
+            "at": 1332.699999988079,
+            "box": {
+              "at": 1332.7999999821186,
+              "mounted": true,
+              "closed": true,
+              "heightVar": "470px",
+              "topVar": "96px",
+              "cssHeight": "470px",
+              "cssTop": "96px",
+              "direction": "rtl",
+              "opacity": "1",
+              "transform": "none",
+              "bounds": { "top": 96, "bottom": 566, "left": 0, "right": 390 },
+              "animations": []
+            }
+          }
+        ],
+        "changes": [{ "open": false, "at": 1231.4000000059605 }],
+        "listeners": { "resize": 0, "scroll": 0 }
+      },
+      "fresh": {
+        "interrupted": false,
+        "height": 530,
+        "top": 40,
+        "closeAt": 1514.199999988079,
+        "mutationAt": 1538,
+        "opening": null,
+        "samples": [
+          {
+            "at": 1514.199999988079,
+            "mounted": true,
+            "closed": false,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "rtl",
+            "opacity": "1",
+            "transform": "none",
+            "bounds": { "top": 40, "bottom": 570, "left": 0, "right": 390 },
+            "animations": []
+          },
+          {
+            "at": 1537.9000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "rtl",
+            "opacity": "0.778604",
+            "transform": "matrix3d(0.98893, 0, 0, 0, 0, 0.98893, 0, 0, 0, 0, 0.98893, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 42.93350601196289,
+              "bottom": 567.0664405822754,
+              "left": 2.1586177349090576,
+              "right": 387.84135699272156
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 16.70000000000016,
+                "duration": 100,
+                "progress": 0.1670000000000016
+              }
+            ]
+          },
+          {
+            "at": 1553,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "rtl",
+            "opacity": "0.424732",
+            "transform": "matrix3d(0.971237, 0, 0, 0, 0, 0.971237, 0, 0, 0, 0, 0.971237, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 47.6223030090332,
+              "bottom": 562.3776741027832,
+              "left": 5.608865737915039,
+              "right": 384.3911533355713
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 33.30000000000011,
+                "duration": 100,
+                "progress": 0.3330000000000011
+              }
+            ]
+          },
+          {
+            "at": 1566.5,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "rtl",
+            "opacity": "0.197597",
+            "transform": "matrix3d(0.95988, 0, 0, 0, 0, 0.95988, 0, 0, 0, 0, 0.95988, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 50.6318473815918,
+              "bottom": 559.3681755065918,
+              "left": 7.8234357833862305,
+              "right": 382.17658519744873
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 50.00000000000004,
+                "duration": 100,
+                "progress": 0.5000000000000004
+              }
+            ]
+          },
+          {
+            "at": 1580.4000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "rtl",
+            "opacity": "0.0755195",
+            "transform": "matrix3d(0.953776, 0, 0, 0, 0, 0.953776, 0, 0, 0, 0, 0.953776, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 52.249359130859375,
+              "bottom": 557.7506103515625,
+              "left": 9.013679504394531,
+              "right": 380.98633575439453
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 66.6,
+                "duration": 100,
+                "progress": 0.6659999999999999
+              }
+            ]
+          },
+          {
+            "at": 1596.699999988079,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "530px",
+            "cssTop": "40px",
+            "direction": "rtl",
+            "opacity": "0.0168072",
+            "transform": "matrix3d(0.95084, 0, 0, 0, 0, 0.95084, 0, 0, 0, 0, 0.95084, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 53.027305603027344,
+              "bottom": 556.9727096557617,
+              "left": 9.58613109588623,
+              "right": 380.41388988494873
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 83.20000000000016,
+                "duration": 100,
+                "progress": 0.8320000000000016
+              }
+            ]
+          },
+          {
+            "at": 1616.5999999940395,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 1630.4000000059605,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 1647.199999988079,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "530px",
+            "topVar": "40px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          }
+        ],
+        "completions": [
+          {
+            "open": false,
+            "at": 1614.0999999940395,
+            "box": {
+              "at": 1614.199999988079,
+              "mounted": true,
+              "closed": true,
+              "heightVar": "530px",
+              "topVar": "40px",
+              "cssHeight": "530px",
+              "cssTop": "40px",
+              "direction": "rtl",
+              "opacity": "1",
+              "transform": "none",
+              "bounds": { "top": 40, "bottom": 570, "left": 0, "right": 390 },
+              "animations": []
+            }
+          }
+        ],
+        "changes": [{ "open": false, "at": 1514.2999999821186 }],
+        "listeners": { "resize": 0, "scroll": 0 }
+      },
+      "interrupted": {
+        "interrupted": true,
+        "height": 470,
+        "top": 96,
+        "closeAt": 1681.0999999940395,
+        "mutationAt": 1703,
+        "opening": {
+          "at": 1681.0999999940395,
+          "mounted": true,
+          "closed": false,
+          "heightVar": "470px",
+          "topVar": "96px",
+          "cssHeight": "470px",
+          "cssTop": "96px",
+          "direction": "rtl",
+          "opacity": "0.219966",
+          "transform": "matrix3d(0.960998, 0, 0, 0, 0, 0.960998, 0, 0, 0, 0, 0.960998, 0, 0, 0, 0, 1)",
+          "bounds": {
+            "top": 105.16539764404297,
+            "bottom": 556.834587097168,
+            "left": 7.605332374572754,
+            "right": 382.39463901519775
+          },
+          "animations": [
+            {
+              "state": "running",
+              "currentTime": 16.634000000000036,
+              "duration": 100,
+              "progress": 0.16634000000000038
+            }
+          ]
+        },
+        "samples": [
+          {
+            "at": 1666.5,
+            "mounted": true,
+            "closed": false,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0",
+            "transform": "matrix3d(0.95, 0, 0, 0, 0, 0.95, 0, 0, 0, 0, 0.95, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 107.75,
+              "bottom": 554.25,
+              "left": 9.750001907348633,
+              "right": 380.25000190734863
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 0,
+                "duration": 100,
+                "progress": 0
+              }
+            ]
+          },
+          {
+            "at": 1681.0999999940395,
+            "mounted": true,
+            "closed": false,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.219966",
+            "transform": "matrix3d(0.960998, 0, 0, 0, 0, 0.960998, 0, 0, 0, 0, 0.960998, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 105.16539764404297,
+              "bottom": 556.834587097168,
+              "left": 7.605332374572754,
+              "right": 382.39463901519775
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 16.634000000000036,
+                "duration": 100,
+                "progress": 0.16634000000000038
+              }
+            ]
+          },
+          {
+            "at": 1702.9000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.778604",
+            "transform": "matrix3d(0.98893, 0, 0, 0, 0, 0.98893, 0, 0, 0, 0, 0.98893, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 98.60140991210938,
+              "bottom": 563.3985595703125,
+              "left": 2.1586177349090576,
+              "right": 387.84135699272156
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 16.69999999999994,
+                "duration": 100,
+                "progress": 0.16699999999999937
+              }
+            ]
+          },
+          {
+            "at": 1717.9000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.42295",
+            "transform": "matrix3d(0.971148, 0, 0, 0, 0, 0.971148, 0, 0, 0, 0, 0.971148, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 102.78032684326172,
+              "bottom": 559.2196578979492,
+              "left": 5.626230239868164,
+              "right": 384.37378883361816
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 33.4000000000001,
+                "duration": 100,
+                "progress": 0.33400000000000096
+              }
+            ]
+          },
+          {
+            "at": 1734,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.196604",
+            "transform": "matrix3d(0.95983, 0, 0, 0, 0, 0.95983, 0, 0, 0, 0, 0.95983, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 105.43989562988281,
+              "bottom": 556.5601348876953,
+              "left": 7.83310604095459,
+              "right": 382.16690731048584
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 50.10000000000004,
+                "duration": 100,
+                "progress": 0.5010000000000003
+              }
+            ]
+          },
+          {
+            "at": 1748.4000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.0750046",
+            "transform": "matrix3d(0.95375, 0, 0, 0, 0, 0.95375, 0, 0, 0, 0, 0.95375, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 106.86869049072266,
+              "bottom": 555.1312942504883,
+              "left": 9.01870059967041,
+              "right": 380.98128604888916
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 66.69999999999999,
+                "duration": 100,
+                "progress": 0.6669999999999998
+              }
+            ]
+          },
+          {
+            "at": 1763.9000000059605,
+            "mounted": true,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "470px",
+            "cssTop": "96px",
+            "direction": "rtl",
+            "opacity": "0.0163862",
+            "transform": "matrix3d(0.950819, 0, 0, 0, 0, 0.950819, 0, 0, 0, 0, 0.950819, 0, 0, 0, 0, 1)",
+            "bounds": {
+              "top": 107.55746459960938,
+              "bottom": 554.4425659179688,
+              "left": 9.59023380279541,
+              "right": 380.40975284576416
+            },
+            "animations": [
+              {
+                "state": "running",
+                "currentTime": 83.39999999999992,
+                "duration": 100,
+                "progress": 0.8339999999999992
+              }
+            ]
+          },
+          {
+            "at": 1782.9000000059605,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 1797,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          },
+          {
+            "at": 1813.9000000059605,
+            "mounted": false,
+            "closed": true,
+            "heightVar": "470px",
+            "topVar": "96px",
+            "cssHeight": "",
+            "cssTop": "",
+            "direction": "",
+            "opacity": "",
+            "transform": "",
+            "bounds": { "top": 0, "bottom": 0, "left": 0, "right": 0 },
+            "animations": []
+          }
+        ],
+        "completions": [
+          {
+            "open": false,
+            "at": 1780,
+            "box": {
+              "at": 1780.199999988079,
+              "mounted": true,
+              "closed": true,
+              "heightVar": "470px",
+              "topVar": "96px",
+              "cssHeight": "470px",
+              "cssTop": "96px",
+              "direction": "rtl",
+              "opacity": "1",
+              "transform": "none",
+              "bounds": { "top": 96, "bottom": 566, "left": 0, "right": 390 },
+              "animations": []
+            }
+          }
+        ],
+        "changes": [{ "open": false, "at": 1681.2999999821186 }],
+        "listeners": { "resize": 0, "scroll": 0 }
+      }
+    }
+  ],
+  "nonLocalAttempts": [],
+  "limitations": [
+    "Synthetic visualViewport; no actual phone, native keyboard, Safari, panning, pinch zoom or rotation acceptance."
+  ]
+}
