@@ -68,14 +68,19 @@ export function getRouter() {
     // keeps that HTML instead of swapping it for a fallback. Dashboard and
     // private-preview documents first load the server's interface catalog;
     // auth, marketing and published docs never load that catalog.
-    hydrate: async () => {
-      if (needsDashboardLocale(window.location.pathname)) {
-        const { hydrateDashboardLocale } = await import('@/lib/dashboard-locale');
-        await hydrateDashboardLocale();
-      }
-      if (document.querySelector('[data-hydration-module]')) {
-        await import('@/lib/reader-hydration-modules').then((module) => module.loadServerRenderedReaderModules(document)).catch(() => undefined);
-      }
+    hydrate: () => {
+      const dashboard = needsDashboardLocale(window.location.pathname);
+      const reader = document.querySelector('[data-hydration-module]');
+      if (!dashboard && !reader) return;
+      return (async () => {
+        if (dashboard) {
+          const { hydrateDashboardLocale } = await import('@/lib/dashboard-locale');
+          await hydrateDashboardLocale();
+        }
+        if (reader) {
+          await import('@/lib/reader-hydration-modules').then((module) => module.loadServerRenderedReaderModules(document)).catch(() => undefined);
+        }
+      })();
     },
     rewrite: customDomainProjectId
       ? {

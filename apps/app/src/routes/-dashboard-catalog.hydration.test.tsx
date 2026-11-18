@@ -58,6 +58,12 @@ function DashboardNavigation() {
   return <nav lang={locale}>{t('common.cancel')}</nav>;
 }
 
+it('keeps documents without dashboard or reader preloads synchronous', async () => {
+  window.history.replaceState(null, '', '/sign-in');
+  const { getRouter } = await import('@/router');
+  expect(getRouter().options.hydrate?.(undefined as never)).toBeUndefined();
+});
+
 it.each(['en', 'ar'] as const)('hydrates dashboard navigation in %s and switches without replacing the document', async (locale) => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   document.documentElement.setAttribute('data-locale', locale);
