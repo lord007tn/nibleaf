@@ -19,7 +19,9 @@ const listItemSource = readFileSync(new URL('__fixtures__/list-item-first-block.
   .replace(/^import fixture from '.\/list-item-first-block-main\.json';\r?\n/m, '')
   .replace(/^export /gm, '');
 const listItems = new vm.Script(
-  stripTypeScriptTypes(`(() => { ${listItemSource}; return { LIST_ITEM_FIRST_BLOCK_INDICES, LIST_ITEM_MAIN_TOGGLE_OVERLAP, repairedListItem }; })()`),
+  stripTypeScriptTypes(
+    `(() => { ${listItemSource}; return { LIST_ITEM_FIRST_BLOCK_INDICES, LIST_ITEM_EDIT_REPAIR_INDICES, LIST_ITEM_MAIN_TOGGLE_OVERLAP, repairedListItem }; })()`,
+  ),
 ).runInNewContext({ fixture: JSON.parse(readFileSync(new URL('__fixtures__/list-item-first-block-main.json', editor), 'utf8')) });
 const hash = (text) => createHash('sha256').update(text).digest('hex').slice(0, 16);
 
@@ -39,20 +41,29 @@ const expect = (actual) => ({
   toHaveLength: (expected) => assert.equal(actual.length, expected),
 });
 
-function harness(env = {}, differing = 14, listDiffering = 14) {
-  const { LIST_ITEM_FIRST_BLOCK_INDICES: listIndices, LIST_ITEM_MAIN_TOGGLE_OVERLAP: overlap, repairedListItem } = listItems;
+const editRepairs = listItems.LIST_ITEM_EDIT_REPAIR_INDICES.length;
+
+function harness(env = {}, differing = 14, listDiffering = 14, editDiffering = editRepairs) {
+  const {
+    LIST_ITEM_FIRST_BLOCK_INDICES: listIndices,
+    LIST_ITEM_EDIT_REPAIR_INDICES: editIndices,
+    LIST_ITEM_MAIN_TOGGLE_OVERLAP: overlap,
+    repairedListItem,
+  } = listItems;
   assert.equal(listIndices.length, 14);
   // The two named sets share page 550: 14 + 14 - 1 = 27. Vary either set
   // independently, with a fifteenth unnamed page to exercise the upper bound.
   // Keep the overlap first so the 13-page case removes an unshared exception.
   const keptLinks = [overlap.index, ...Array.from({ length: 13 }, (_, index) => index)];
   const changed = new Set([...keptLinks, 13].slice(0, differing).concat([...listIndices, 14].slice(0, listDiffering)));
+  // The serializer corpus saves after its edits, where only some list repairs remain.
+  const editChanged = new Set([...keptLinks, 13].slice(0, differing).concat([...editIndices, 14].slice(0, editDiffering)));
   const count = Math.max(...listIndices, overlap.index) + 1;
   const main = Array.from({ length: count }, (_, index) => `main-${index}`);
   main[overlap.index] = overlap.mainLfDigest;
   const serializerMain = [...main];
   serializerMain[overlap.index] = overlap.mainSerializerDigest;
-  const outputs = serializerMain.map((value, index) => (changed.has(index) ? `head-${index}` : value));
+  const outputs = serializerMain.map((value, index) => (editChanged.has(index) ? `head-${index}` : value));
   const mainToggle = [...serializerMain];
   mainToggle[overlap.index] = hash(repairedListItem(overlap.corpusEdit));
   const files = new Map([
@@ -187,11 +198,11 @@ for (const differing of [0, 13, 14, 15]) {
   });
 }
 
-for (const differing of [0, 13, 14, 15]) {
-  test(`serializer checking mode enforces the exact 14-page list exception (${differing} differences)`, async () => {
-    const { context, writes } = harness({}, 14, differing);
+for (const differing of [0, editRepairs - 1, editRepairs, editRepairs + 1]) {
+  test(`serializer checking mode enforces the exact ${editRepairs}-page list exception (${differing} differences)`, async () => {
+    const { context, writes } = harness({}, 14, 14, differing);
     const run = serializerTests(context);
-    if (differing === 14) await run();
+    if (differing === editRepairs) await run();
     else await assert.rejects(run(), assert.AssertionError);
     assert.deepEqual(writes, []);
   });

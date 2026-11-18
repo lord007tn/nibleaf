@@ -17,6 +17,7 @@ import {
   type SerializedPage,
   type SourceLineEndings,
 } from './line-endings';
+import { withoutItemLeads } from './list-item-leads';
 import { writesTight } from './tight-lists';
 
 /*
@@ -485,6 +486,12 @@ type MarkdownStorageLike = {
   getMarkdown(): string;
   /** The line endings of the Markdown the document was last set from (line-endings.ts). */
   lineEndings: SourceLineEndings | null;
+  parser: { parse(content: string, options?: { inline?: boolean }): string };
+  /** The Markdown the document was last set from, with LF line endings. */
+  loadedMarkdown: string | null;
+  /** Record that `transaction` sets the document from its Markdown again (list-item-leads.ts). */
+  markContentReset(transaction: Transaction): void;
+  isContentReset(transaction: Transaction): boolean;
   serializePositioned(content: PMNode): SerializedPage;
 };
 
@@ -584,6 +591,7 @@ export const LinearMarkdown = Markdown.extend({
           const start = props.tr.steps.length;
           const result = setContent(markdown ? normalizeLineEndings(content) : content, ...rest)(props);
           if (result && props.dispatch) {
+            markdownStorage(this.editor).loadedMarkdown = markdown ? normalizeLineEndings(content) : null;
             const endings = markdown ? readLineEndings(content) : null;
             props.tr.setMeta(lineEndingsKey, { source: endings, steps: props.tr.steps.length } satisfies LineEndingReset);
             for (let index = start; index < props.tr.steps.length; index++) {
@@ -662,6 +670,15 @@ export const LinearMarkdown = Markdown.extend({
     this.parent?.(event);
     const storage = markdownStorage(this.editor);
     storage.lineEndings = lineEndings;
+    storage.loadedMarkdown = typeof content === 'string' ? normalizeLineEndings(content) : null;
+    storage.markContentReset = (transaction) => {
+      transaction.setMeta(lineEndingsKey, { source: storage.lineEndings, steps: transaction.steps.length } satisfies LineEndingReset);
+    };
+    storage.isContentReset = (transaction) => !!lineEndingReset(transaction);
+    // Pasted and inserted Markdown is read as main reads it, with no item leads.
+    const { parser } = storage;
+    const parse = parser.parse.bind(parser);
+    parser.parse = (content, options) => (options?.inline ? withoutItemLeads(() => parse(content, options)) : parse(content, options));
     const { serializer } = storage;
     const scanDelims = scanDelimsOf(this.editor);
     const serialize = (content: PMNode | Fragment, positions: boolean): SerializedPage => {

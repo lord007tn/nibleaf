@@ -1,10 +1,10 @@
-import { Extension } from '@tiptap/core';
 import Paragraph from '@tiptap/extension-paragraph';
-import { type Fragment, DOMParser as PMDOMParser, type Node as PMNode, type Schema } from '@tiptap/pm/model';
+import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
+import { ITEM_LEAD_ATTRIBUTE, itemLeadForm, itemLeadPlacement, ListItemLeadFitting, ListItemLeadGuard } from './list-item-leads';
 import type { MarkdownOutput } from './markdown-output';
-import { itemLeadPlacement, markTightLists } from './tight-lists';
+import { markTightLists } from './tight-lists';
 
 /*
  * A paragraph wrapped across several lines in the source keeps those lines, so a
@@ -166,7 +166,7 @@ const LINE_CONTAINERS: ReadonlySet<string> = new Set(['listItem', 'blockquote'])
  * after it. Markdown has no empty paragraph there: written (`- `, a blank line, then the
  * rest), it read back as an empty item and a paragraph outside the list, so a page with
  * one never saved to a fixed point. It is left out, and the paragraph after it opens the
- * item. Before a quote, heading or nested list, `itemLeadPlacement` (tight-lists.ts) says
+ * item. Before a quote, heading or nested list, `itemLeadPlacement` (list-item-leads.ts) says
  * where it goes.
  */
 const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: number | undefined): boolean =>
@@ -218,143 +218,10 @@ function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: P
 
 const paragraphParsers = new WeakSet<object>();
 
-const ITEM_LEAD_NODES = new Set(['blockquote', 'heading', 'bulletList', 'orderedList']);
-const ITEM_CONTENT_NODES = new Set(['paragraph', 'text', 'hardBreak', 'listItem', ...ITEM_LEAD_NODES]);
-
-/** Validate the staged lead after callout and task-list DOM conversions. A token
- * called a quote can now be an HTML-backed callout (#871). Probe the unmodified
- * item with the real schema and keep the lead only when fitting hoists its block. */
-function fitItemLeads(element: HTMLElement, schema: Schema): void {
-  const parser = PMDOMParser.fromSchema(schema);
-  const affected = new Set<Element>();
-  const leads = Array.from(element.querySelectorAll('li > p[data-md-item-lead]'));
-  const candidates = new Set<Element | null>(leads.map((lead) => lead.parentElement));
-  const tails = new Map<Element, boolean>();
-  // Leads are visited backwards, so following items have their final lead state.
-  const followingLeads = (item: Element): boolean => {
-    const pending: Element[] = [];
-    let result = true;
-    for (let next = item.nextElementSibling; next; next = next.nextElementSibling) {
-      const cached = tails.get(next);
-      if (cached !== undefined) {
-        result = cached;
-        break;
-      }
-      pending.push(next);
-      if (next.tagName === 'LI' && !next.firstElementChild?.matches('p[data-md-item-lead]')) {
-        result = false;
-        break;
-      }
-    }
-    for (const next of pending) tails.set(next, result);
-    return result;
-  };
-  const simpleContents = new Map<Element, boolean>();
-  const simpleContent = (item: Element): boolean => {
-    const cached = simpleContents.get(item);
-    if (cached !== undefined) return cached;
-    const clone = item.cloneNode(true) as HTMLElement;
-    for (const staged of clone.querySelectorAll('p[data-md-item-lead]')) staged.remove();
-    let simple = true;
-    parser.parseSlice(clone).content.descendants((node) => {
-      if (!ITEM_CONTENT_NODES.has(node.type.name)) simple = false;
-      return simple;
-    });
-    simpleContents.set(item, simple);
-    return simple;
-  };
-  for (const lead of leads.reverse()) {
-    const item = lead.parentElement;
-    const list = item?.parentElement;
-    if (!item || !list) continue;
-    const original = item.cloneNode(true) as HTMLElement;
-    for (const staged of original.querySelectorAll('p[data-md-item-lead]')) staged.remove();
-    const first = original.firstElementChild;
-    const blockDOM = document.createElement('div');
-    if (first) blockDOM.appendChild(first.cloneNode(true));
-    const block = parser.parseSlice(blockDOM).content.firstChild;
-    const listDOM = list.cloneNode(false) as HTMLElement;
-    listDOM.appendChild(original);
-    const holder = document.createElement('div');
-    holder.appendChild(listDOM);
-    const fitted = parser.parse(holder).firstChild?.firstChild;
-    let stayed = false;
-    fitted?.forEach((child) => {
-      if (block && child.eq(block)) stayed = true;
-    });
-    let safe = simpleContent(list);
-    // A hoisted ordered list is adjacent to its ordered parent, so main uses
-    // `)` to separate them. Defer non-default starts rather than change that
-    // delimiter (or the start number) while putting the list back inside
-    // (serializer corpus page 658). A list under a marker alone is what the
-    // serializer writes for such an item after an edit, and stays inside it.
-    if (
-      list.tagName === 'OL' &&
-      lead.getAttribute('data-md-item-lead') === 'inline' &&
-      block?.type.name === 'orderedList' &&
-      (Number(list.getAttribute('start') ?? 1) !== 1 || Number(block.attrs.start ?? 1) !== 1)
-    )
-      safe = false;
-    // Hoisting an inline block can turn later ordered items into a new bullet
-    // list. Keeping those items byte-identical to main needs a serializer fix.
-    // A marker-only item after an edit is a different source shape (#858).
-    if (list.tagName === 'OL' && lead.getAttribute('data-md-item-lead') === 'inline') {
-      safe &&= followingLeads(item);
-    }
-    for (let ancestor: Element | null = item; ancestor; ancestor = ancestor.parentElement) {
-      if (candidates.has(ancestor) && !simpleContent(ancestor)) safe = false;
-      // Canonical markers merge adjacent lists on reload. Restoring an item
-      // there needs a separate serializer change, not just a load-time lead.
-      if (
-        ancestor.matches('ul,ol') &&
-        (ancestor.previousElementSibling?.tagName === ancestor.tagName || ancestor.nextElementSibling?.tagName === ancestor.tagName)
-      )
-        safe = false;
-    }
-    if (safe && block && ITEM_LEAD_NODES.has(block.type.name) && !stayed) continue;
-    // Fitting now moves this item's block out, with any list inside it: the leads
-    // in there were kept for an item they no longer sit in (leads come innermost
-    // first). A list inside a quote moves with its quote and keeps its leads.
-    const nested = Array.from(item.querySelectorAll('p[data-md-item-lead]')).filter((inner) => {
-      const quote = inner.closest('blockquote');
-      return !quote || !item.contains(quote);
-    });
-    for (const rejected of [lead, ...nested]) {
-      for (let ancestor = rejected.parentElement?.parentElement ?? null; ancestor; ancestor = ancestor.parentElement) {
-        if (ancestor.matches('ul,ol')) affected.add(ancestor);
-      }
-      rejected.remove();
-    }
-  }
-  for (const list of affected) {
-    if (!list.querySelector('p[data-md-item-lead]')) {
-      if (list.getAttribute('data-md-item-main-tight') === 'true') list.setAttribute('data-tight', 'true');
-      else list.removeAttribute('data-tight');
-    }
-  }
-}
-
-// Run after every node's DOM conversion without changing paragraph's schema order.
-const ListItemLeadFitting = Extension.create({
-  name: 'listItemLeadFitting',
-  priority: -1,
-  addStorage() {
-    return {
-      markdown: {
-        parse: {
-          updateDOM(element) {
-            fitItemLeads(element, this.editor.schema);
-          },
-        },
-      } satisfies Pick<MarkdownNodeSpec, 'parse'>,
-    };
-  },
-});
-
 /** StarterKit's paragraph, keeping its source lines (see the note at the top). */
 export const SourceParagraph = Paragraph.extend({
   addExtensions() {
-    return [ListItemLeadFitting];
+    return [ListItemLeadFitting, ListItemLeadGuard];
   },
   addAttributes() {
     return {
@@ -364,7 +231,7 @@ export const SourceParagraph = Paragraph.extend({
         // a split lead stay leads: the block after the second still needs its spacing.
         default: undefined,
         keepOnSplit: true,
-        parseHTML: (element) => element.getAttribute('data-md-item-lead') ?? undefined,
+        parseHTML: (element) => itemLeadForm(element.getAttribute(ITEM_LEAD_ATTRIBUTE)),
         rendered: false,
       },
       sourceParagraph: {

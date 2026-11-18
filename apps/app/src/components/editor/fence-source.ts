@@ -1,5 +1,6 @@
 import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
 import { encodeMdxSource, fenceClosed, fenceContentLines } from './extensions/mdx-roundtrip';
+import { ITEM_LEAD_ATTRIBUTE, itemLeadMarker, stagesItemLeads } from './list-item-leads';
 import type { MarkdownOutput } from './markdown-output';
 
 /*
@@ -131,7 +132,7 @@ const ITEM_LEAD_BLOCKS = new Set(['blockquote_open', 'heading_open', 'bullet_lis
  *
  * A list item starting with a fence, quote, heading or nested list gets an empty
  * paragraph before that block: the editor's schema requires one (#578, #604).
- * `itemLeadPlacement` (tight-lists.ts) writes it back for a quote, heading or list;
+ * `itemLeadPlacement` (list-item-leads.ts) writes it back for a quote, heading or list;
  * fences keep their existing source handling (see `writeFence`).
  */
 export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
@@ -149,11 +150,11 @@ export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState
   for (const token of state.tokens) {
     const after = previous;
     previous = token;
-    if (after?.type === 'list_item_open' && ITEM_LEAD_BLOCKS.has(token.type)) {
+    if (stagesItemLeads() && after?.type === 'list_item_open' && ITEM_LEAD_BLOCKS.has(token.type)) {
       const lead = leadParagraph(state, token);
       // Keep whether the block shared the marker's line. An item emptied by an edit
       // writes its empty marker before the nested list, and reloads that way too.
-      lead[0]?.attrSet('data-md-item-lead', token.map?.[0] === after.map?.[0] ? 'inline' : 'block');
+      lead[0]?.attrSet(ITEM_LEAD_ATTRIBUTE, itemLeadMarker(token.map?.[0] === after.map?.[0] ? 'inline' : 'block'));
       tokens.push(...lead);
     }
     if (token.type === 'blockquote_open') containers.push({ quote: true });

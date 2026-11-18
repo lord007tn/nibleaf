@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Editor } from '@tiptap/core';
 import { expect, it } from 'vitest';
-import { LIST_ITEM_FIRST_BLOCK_INDICES, LIST_ITEM_MAIN_TOGGLE_OVERLAP, repairedListItem } from './__fixtures__/list-item-first-block';
+import { LIST_ITEM_EDIT_REPAIR_INDICES, LIST_ITEM_MAIN_TOGGLE_OVERLAP, repairedListItem } from './__fixtures__/list-item-first-block';
 import {
   applyCorpusEdits,
   CODE_TOGGLE_KEEPS_LINK_PAGES,
@@ -101,11 +101,11 @@ it.skipIf(baselineDir)(
     const module = await import('./tiptap-editor');
     const outputs = await saveAll(module);
     const differing = outputs.flatMap((output, index) => (output === baseline.outputs[index] ? [] : [index]));
-    // #604's 14 named prefix repairs are checked bytewise against pinned main
-    // output in list-item-first-block-differential.test.ts. Page 550 overlaps #660.
-    const expected = [...new Set([...CODE_TOGGLE_KEEPS_LINK_PAGES, ...LIST_ITEM_FIRST_BLOCK_INDICES])].sort((a, b) => a - b);
+    // #604's named prefix repairs that survive the corpus edits are checked bytewise
+    // against pinned main output in list-item-first-block-differential.test.ts. Page
+    // 550 overlaps #660.
+    const expected = [...new Set([...CODE_TOGGLE_KEEPS_LINK_PAGES, ...LIST_ITEM_EDIT_REPAIR_INDICES])].sort((a, b) => a - b);
     expect(differing, `${differing.length} pages save differently from main`).toEqual(expected);
-    expect(differing).toHaveLength(27);
     const withMainToggle = await saveAll(module, CODE_TOGGLE_KEEPS_LINK_PAGES, (editor) => withMainCodeToggle(editor as unknown as MarkEditor));
     expect(baseline.outputs[550]).toBe(LIST_ITEM_MAIN_TOGGLE_OVERLAP.mainSerializerDigest);
     expect(withMainToggle).toEqual(

@@ -8,6 +8,9 @@ export interface ListItemRepair {
 
 export const LIST_ITEM_FIRST_BLOCK_CASES = fixture.cases;
 export const LIST_ITEM_FIRST_BLOCK_INDICES = fixture.cases.map(({ index }) => index);
+/** The pages whose save after the corpus edits still differs from main's: an edit that
+ *  reaches a lead's list runs on main's document, and the other pages then save as main. */
+export const LIST_ITEM_EDIT_REPAIR_INDICES = fixture.cases.filter(({ corpusEdit }) => corpusEdit.patches.length > 0).map(({ index }) => index);
 export const LIST_ITEM_MAIN_TOGGLE_OVERLAP = fixture.mainToggleOverlap;
 
 /** Apply the named prefix repair to pinned main bytes; all other bytes survive. */

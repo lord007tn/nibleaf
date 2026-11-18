@@ -1,4 +1,5 @@
 import type { Node as PMNode } from '@tiptap/pm/model';
+import { ITEM_LEAD_ATTRIBUTE, isListNode, MARKER_LINE_BLOCKS, opensWithBareMarker } from './list-item-leads';
 
 /*
  * A list saves tight (no blank lines between its items) when its `tight` attribute
@@ -13,74 +14,16 @@ import type { Node as PMNode } from '@tiptap/pm/model';
  * line. `writesTight` checks the list as it is when it is saved (#604).
  */
 
-const LIST_NODES: ReadonlySet<string> = new Set(['bulletList', 'orderedList']);
-/** Blocks that can share a list marker's line, in place of an empty first paragraph. */
-const MARKER_LINE_BLOCKS: ReadonlySet<string> = new Set(['blockquote', 'heading']);
-
-const isEmptyParagraph = (node: PMNode): boolean => node.type.name === 'paragraph' && node.content.size === 0;
-
-/** Whether the item opens with the schema's empty paragraph before a quote, heading or list. */
-function opensWithLead(item: PMNode): boolean {
-  const first = item.firstChild;
-  if (!first || !isEmptyParagraph(first) || item.childCount < 2) return false;
-  const next = item.child(1).type.name;
-  return MARKER_LINE_BLOCKS.has(next) || LIST_NODES.has(next);
-}
-
-const lastItemsWithoutLead = new WeakMap<PMNode, number>();
-
-/** The index of the list's last item that does not open with a lead, or -1. */
-function lastItemWithoutLead(list: PMNode): number {
-  let last = lastItemsWithoutLead.get(list);
-  if (last === undefined) {
-    last = -1;
-    for (let index = list.childCount - 1; index >= 0 && last < 0; index--) if (!opensWithLead(list.child(index))) last = index;
-    lastItemsWithoutLead.set(list, last);
-  }
-  return last;
-}
-
-/**
- * Where the empty first paragraph of a list item goes, when a quote, heading or nested
- * list follows it. The schema requires that paragraph; Markdown has no such thing.
- * Written with a blank line after it, the item ended there: the block left the list, or
- * read as indented code under a wide marker (`10. `).
- *
- * - `marker`: not written, and the block takes the marker's line (`- > Alpha`).
- * - `above`: the marker alone, with the block on the very next line (`1. ` then `   > Alpha`).
- *
- * A nested list stays on the marker's line only if it was read there. An ordered item
- * followed by one with no lead also stays off that line: `fitItemLeads` (paragraph-source.ts)
- * leaves such an item to main's path when it reads it back.
- */
-export function itemLeadPlacement(item: PMNode, list: PMNode, itemIndex: number): 'marker' | 'above' | null {
-  if (item.type.name !== 'listItem' || !opensWithLead(item)) return null;
-  const lead = item.child(0);
-  if (LIST_NODES.has(item.child(1).type.name) && lead.attrs.sourceItemLead !== 'inline') return 'above';
-  return list.type.name === 'orderedList' && itemIndex < lastItemWithoutLead(list) ? 'above' : 'marker';
-}
-
-/** Whether the first line this list writes has anything after its marker. */
-function firstLineHasContent(list: PMNode): boolean {
-  const item = list.firstChild;
-  const first = item?.firstChild;
-  if (!item || !first) return false;
-  if (!isEmptyParagraph(first)) return true;
-  if (item.childCount > 1 && item.child(1).type.name === 'codeBlock') return true;
-  if (itemLeadPlacement(item, list, 0) !== 'marker') return false;
-  const next = item.child(1);
-  return LIST_NODES.has(next.type.name) ? firstLineHasContent(next) : true;
-}
-
-/** Whether the item's text stands before a block it cannot be written tight against. */
+/** Whether the item's lead, now holding text, stands before a block it needs a gap from. */
 function itemWritesTight(item: PMNode): boolean {
   for (let index = 1; index < item.childCount; index++) {
     const previous = item.child(index - 1);
     if (previous.type.name !== 'paragraph' || previous.content.size === 0) continue;
     const block = item.child(index);
     // A marker with nothing after it, under text, turns the text into a heading.
-    if (LIST_NODES.has(block.type.name) && !firstLineHasContent(block)) return false;
+    if (isListNode(block) && opensWithBareMarker(block)) return false;
     if (!previous.attrs.sourceItemLead) continue;
+    if (isListNode(block) && opensWithBareMarker(block, true)) return false;
     if (MARKER_LINE_BLOCKS.has(block.type.name)) return false;
     // CommonMark lets an ordered list interrupt a paragraph only from 1.
     if (block.type.name === 'orderedList' && Number(block.attrs.start ?? 1) !== 1) return false;
@@ -127,7 +70,7 @@ const LIST_CLOSE = new Set(['bullet_list_close', 'ordered_list_close']);
 type ItemBlock = 'paragraph' | 'lead' | 'fence' | 'list' | 'other';
 
 function itemBlock(token: MarkdownToken): ItemBlock {
-  if (token.type === 'paragraph_open') return token.attrGet('data-md-item-lead') ? 'lead' : 'paragraph';
+  if (token.type === 'paragraph_open') return token.attrGet(ITEM_LEAD_ATTRIBUTE) ? 'lead' : 'paragraph';
   if (token.type === 'fence') return 'fence';
   return LIST_OPEN.has(token.type) ? 'list' : 'other';
 }
@@ -149,7 +92,7 @@ export function markTightLists<T extends MarkdownToken>(state: MarkdownCoreState
   let staged = false;
   for (let index = 0; index < state.tokens.length; index++) {
     const token = state.tokens[index] as T;
-    if (token.type === 'paragraph_open' && token.attrGet('data-md-item-lead')) {
+    if (token.type === 'paragraph_open' && token.attrGet(ITEM_LEAD_ATTRIBUTE)) {
       staged = true;
       index += 2;
     } else original.push(token);
