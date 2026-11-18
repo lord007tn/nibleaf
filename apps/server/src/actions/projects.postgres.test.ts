@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
+import { starterBodyHash } from '@nibleaf/auth/starter-body.server';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@nibleaf/auth/tenant-erasure', () => ({
@@ -67,6 +68,9 @@ describe.skipIf(process.env.CREATE_SITE_POSTGRES !== '1')('site creation on Post
       code: 'ar',
       direction: 'RTL',
     });
+    const storedPages = await db.prisma.page.findMany({ where: { projectId: winner.value.id } });
+    const storedBaselines = await db.prisma.projectStarterBaseline.findMany({ where: { projectId: winner.value.id } });
+    expect(storedBaselines.map((row) => row.bodyHash).sort()).toEqual(storedPages.map((page) => starterBodyHash(page.content)).sort());
     expect(await db.prisma.page.findUnique({ where: { id: winner.value.firstPageId ?? '' } })).toMatchObject({
       projectId: winner.value.id,
       title: 'مرحباً',
@@ -83,6 +87,7 @@ describe.skipIf(process.env.CREATE_SITE_POSTGRES !== '1')('site creation on Post
       db.prisma.branch.count({ where: scope }),
       db.prisma.page.count({ where: scope }),
       db.prisma.projectAddon.count({ where: scope }),
+      db.prisma.projectStarterBaseline.count({ where: scope }),
     ]);
     await db.prisma.$executeRawUnsafe(
       `CREATE FUNCTION "${functionName}"() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.slug = 'getting-started' AND EXISTS (SELECT 1 FROM project WHERE id = NEW."projectId" AND name = '${name}') THEN RAISE EXCEPTION 'injected second starter page failure'; END IF; RETURN NEW; END $$`,
@@ -99,6 +104,7 @@ describe.skipIf(process.env.CREATE_SITE_POSTGRES !== '1')('site creation on Post
         db.prisma.branch.count({ where: scope }),
         db.prisma.page.count({ where: scope }),
         db.prisma.projectAddon.count({ where: scope }),
+        db.prisma.projectStarterBaseline.count({ where: scope }),
       ]);
       expect(after).toEqual(before);
       expect(await db.prisma.organization.count({ where: { id: { in: orgIds } } })).toBe(2);

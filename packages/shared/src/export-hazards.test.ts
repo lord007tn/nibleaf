@@ -76,6 +76,14 @@ it.each([
   ['/safe future(unclosed, data:x', ['/safe']],
 ] as const)('splits compound URL candidates: %s', (value, expected) => expect(srcsetCandidates(value)).toEqual(expected));
 
+it.each([
+  ['<pre>\n< x\n</pre>\n\n<img onerror=x>\n', []],
+  ['<listing>\n<= [a](b)\n</listing>\n\ntext\n\n<img onerror=x>\n', []],
+  ['<pre>\n<=a b<script>', [[11, 19]]],
+])('keeps the inert ranges exports were built on after a dropped first newline: %j', (source, inert) => {
+  expect(readExportHtml(source, { hazards: true })?.inert).toEqual(inert);
+});
+
 it('replays cached values exactly in raw, foreign, quoted, comment and declaration contexts', () => {
   const markdown = new MarkdownIt({ html: true });
   const prefixes = [
