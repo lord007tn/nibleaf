@@ -1,8 +1,7 @@
 import { renderedLocale } from '@nibleaf/i18n/locale-state';
-import type { AnyRouter } from '@tanstack/react-router';
-import { DASHBOARD_LOCALE_ROUTE_IDS } from '@/lib/dashboard-locale-routes';
+import { translateStandalone } from '@nibleaf/i18n/standalone';
+import type { AnyRoute, AnyRouter } from '@tanstack/react-router';
 import { reloadDocument, runOptionalLoad } from '@/lib/document-recovery';
-import { showRecoveryNotice } from '@/lib/hydration-recovery';
 
 let activeRouter: AnyRouter | undefined;
 
@@ -14,42 +13,50 @@ export const trackDashboardLocaleRouter = (router: AnyRouter): void => {
  *  slash, escapes, custom-domain rewrites) gets the same answer as its matching. */
 export const currentRouteNeedsDashboardLocale = (): boolean =>
   Boolean(
-    activeRouter?.getMatchedRoutes(activeRouter.latestLocation.pathname)[0].some((route: { id: string }) => DASHBOARD_LOCALE_ROUTE_IDS.has(route.id)),
+    activeRouter?.getMatchedRoutes(activeRouter.latestLocation.pathname)[0].some((route: AnyRoute) => route.options.staticData?.dashboardLocale),
   );
 
 /** The bootstrap is optional to the page: its failure never reloads the document.
  *  Vite resolves a cancelled speculative failure with nothing. */
-export async function dashboardLocaleModule() {
-  const module = await runOptionalLoad(() => import('@/lib/dashboard-locale'));
-  if (!module) throw new Error('The interface language module did not load');
-  return module;
+export const dashboardLocaleModule = () => runOptionalLoad(() => import('@/lib/dashboard-locale'));
+
+/** Plain DOM for when no other chunk can load. React's root may already hold
+ *  clicks on the document, so the button is handled on `window`, ahead of it. */
+function showRefreshNotice(label: string | undefined) {
+  const notice = document.createElement('div');
+  const action = document.createElement('button');
+  notice.setAttribute('role', 'alert');
+  notice.className = 'fixed bottom-4 start-4 z-50 flex items-center gap-3 rounded-lg border bg-card p-3 text-sm';
+  action.className = 'rounded-md border px-3 py-1';
+  action.textContent = label ?? '';
+  notice.append(translateStandalone('error.unexpected', renderedLocale()), action);
+  document.body.append(notice);
+  window.addEventListener('click', (event) => event.target === action && reloadDocument(), true);
+  return { notice, action };
 }
 
 /**
  * Keeps the server HTML while the locale bootstrap cannot be fetched, retrying
  * on a timer and when the connection returns. This stays small because every
  * page loads it: the bootstrap handles a missing catalog itself. Online, the
- * notice's button reloads, since the bootstrap may belong to a replaced build.
+ * notice offers Refresh, in the words the server sent with this document, since
+ * the bootstrap may belong to a replaced build.
  */
-export async function holdHydrationForDashboardLocale(): Promise<void> {
-  let notice: ReturnType<typeof showRecoveryNotice> | undefined;
-  let wake: (() => void) | undefined;
+export async function holdHydrationForDashboardLocale(refreshLabel?: string): Promise<void> {
+  let shown: ReturnType<typeof showRefreshNotice> | undefined;
   for (let attempt = 0; ; attempt += 1) {
-    let module: Awaited<ReturnType<typeof dashboardLocaleModule>> | undefined;
-    try {
-      module = await dashboardLocaleModule();
-    } catch {
-      // Retried below.
-    }
+    const module = await dashboardLocaleModule().catch(() => undefined);
     if (module) {
-      notice?.remove();
+      shown?.notice.remove();
       return module.hydrateDashboardLocale();
     }
-    if (attempt === 2) notice = showRecoveryNotice(renderedLocale(), () => (navigator.onLine === false ? wake?.() : reloadDocument()));
+    if (attempt > 1) {
+      shown ??= showRefreshNotice(refreshLabel);
+      shown.action.hidden = !refreshLabel || navigator.onLine === false;
+    }
     await new Promise<void>((resolve) => {
-      wake = resolve;
       window.addEventListener('online', () => resolve(), { once: true });
-      setTimeout(resolve, attempt < 2 ? 500 + attempt * 1000 : 5000);
+      setTimeout(resolve, attempt < 2 ? 1000 : 5000);
     });
   }
 }

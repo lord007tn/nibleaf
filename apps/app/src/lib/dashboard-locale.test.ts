@@ -61,7 +61,10 @@ it('limits dashboard loading to the product routes that translate through its ca
 
 it('follows the route the router matched for the current location', () => {
   const routerAt = (id: string) =>
-    ({ latestLocation: { pathname: '/any' }, getMatchedRoutes: () => [[{ id: '__root__' }, { id }]] }) as unknown as AnyRouter;
+    ({
+      latestLocation: { pathname: '/any' },
+      getMatchedRoutes: () => [[{ options: {} }, { options: { staticData: { dashboardLocale: id === '/app' } } }]],
+    }) as unknown as AnyRouter;
   const active = catalog.active as () => boolean;
   trackDashboardLocaleRouter(routerAt('/app'));
   expect(active()).toBe(true);

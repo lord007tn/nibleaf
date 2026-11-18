@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { common_refresh } from '@nibleaf/i18n/messages/common_refresh';
 import { translateStandalone } from '@nibleaf/i18n/standalone';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 
@@ -13,13 +14,14 @@ vi.mock('@/lib/document-recovery', async (importOriginal) => ({
 vi.mock('@/routeTree.gen', async () => {
   const { createRootRoute, createRoute } = await import('@tanstack/react-router');
   const root = createRootRoute();
-  return { routeTree: root.addChildren([createRoute({ getParentRoute: () => root, path: '/app' })]) };
+  return { routeTree: root.addChildren([createRoute({ getParentRoute: () => root, path: '/app', staticData: { dashboardLocale: true } })]) };
 });
 
 import { reloadOnceOnChunkLoadFailure } from '@/lib/chunk-reload';
 import { getRouter } from '@/router';
 
 const notice = () => document.querySelector<HTMLElement>('[role="alert"]');
+const actionButton = () => document.querySelector<HTMLButtonElement>('[role="alert"] button');
 
 beforeEach(() => {
   document.documentElement.setAttribute('data-locale', 'ar');
@@ -46,7 +48,7 @@ function startHydration() {
   });
   window.history.replaceState(null, '', '/app');
   const state = { hydrated: false, rejected: undefined as unknown };
-  Promise.resolve(getRouter().options.hydrate?.(undefined as never)).then(
+  Promise.resolve(getRouter().options.hydrate?.({ refreshLabel: common_refresh({}, { locale: 'ar' }) } as never)).then(
     () => {
       state.hydrated = true;
     },
@@ -65,9 +67,8 @@ it('keeps the server page, then hydrates when the bootstrap can load again', asy
   expect(document.querySelector('main')?.textContent).toBe('نص من الخادم');
   expect(net.claim).not.toHaveBeenCalled();
 
-  // Offline, the button waits for the network rather than reloading.
-  document.querySelector<HTMLButtonElement>('[role="alert"] button')?.click();
-  expect(net.reload).not.toHaveBeenCalled();
+  // Offline there is nothing to do but wait: the page retries by itself.
+  expect(actionButton()?.hidden).toBe(true);
 
   vi.doUnmock('@/lib/dashboard-locale');
   vi.doMock('@/lib/dashboard-locale', () => ({ hydrateDashboardLocale: net.hydrate }));
@@ -82,6 +83,18 @@ it('offers a reload while online, when the bootstrap may belong to a replaced bu
   startHydration();
   await noticeShown();
   expect(net.reload).not.toHaveBeenCalled();
-  document.querySelector<HTMLButtonElement>('[role="alert"] button')?.click();
+  expect(actionButton()?.hidden).toBe(false);
+  expect(actionButton()?.textContent).toBe(common_refresh({}, { locale: 'ar' }));
+  actionButton()?.click();
   expect(net.reload).toHaveBeenCalledOnce();
+});
+
+it('reveals Refresh when the connection returns but the bootstrap still fails', async () => {
+  const online = vi.spyOn(window.navigator, 'onLine', 'get');
+  startHydration();
+  await noticeShown();
+  expect(actionButton()?.hidden).toBe(true);
+  online.mockReturnValue(true);
+  window.dispatchEvent(new Event('online'));
+  await vi.waitFor(() => expect(actionButton()?.hidden).toBe(false));
 });

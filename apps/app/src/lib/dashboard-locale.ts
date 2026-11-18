@@ -1,7 +1,17 @@
 import { configureDashboardLocaleLoading, dashboardLocaleFailure, prepareDashboardLocale } from '@nibleaf/i18n/dashboard-catalog';
-import { getLocale, rememberInterfaceLocale, renderedLocale, setLanguage, subscribeLanguageFailure } from '@nibleaf/i18n/locale-state';
+import {
+  getLocale,
+  languageChoice,
+  rememberInterfaceLocale,
+  renderedLocale,
+  setLanguage,
+  subscribeLanguage,
+  subscribeLanguageChoice,
+  subscribeLanguageFailure,
+} from '@nibleaf/i18n/locale-state';
 import type { Locale } from '@nibleaf/i18n/locales';
 import { common_refresh } from '@nibleaf/i18n/messages/common_refresh';
+import { deploy_close } from '@nibleaf/i18n/messages/deploy_close';
 import { translateStandalone } from '@nibleaf/i18n/standalone';
 import { isBuildRetired } from '@/lib/build-retired';
 import { currentRouteNeedsDashboardLocale } from '@/lib/dashboard-locale-boot';
@@ -58,6 +68,10 @@ export async function hydrateDashboardLocale(): Promise<void> {
   let reload = await isBuildRetired(failure);
   await new Promise<void>((resolve) => {
     let busy = false;
+    const showAction = () => {
+      notice.action.textContent =
+        reload && navigator.onLine !== false ? common_refresh({}, { locale }) : translateStandalone('error.tryAgain', locale);
+    };
     const run = async (requested: boolean) => {
       if (busy) return;
       if (reload && navigator.onLine !== false) {
@@ -68,6 +82,7 @@ export async function hydrateDashboardLocale(): Promise<void> {
       notice.action.disabled = true;
       if (await attempt()) {
         window.removeEventListener('online', onOnline);
+        window.removeEventListener('offline', showAction);
         // Removed before React continues, so it sees exactly the server's document.
         notice.remove();
         resolve();
@@ -76,42 +91,71 @@ export async function hydrateDashboardLocale(): Promise<void> {
       reload = navigator.onLine !== false && (requested || (await isBuildRetired(failure)));
       busy = false;
       notice.action.disabled = false;
+      showAction();
     };
-    const onOnline = () => void run(false);
+    const onOnline = () => {
+      showAction();
+      void run(false);
+    };
     const notice = showRecoveryNotice(locale, () => void run(true));
+    showAction();
     window.addEventListener('online', onOnline);
+    window.addEventListener('offline', showAction);
   });
 }
 
+let failedChoice: Locale | undefined;
+let languageNotice: ReturnType<typeof showRecoveryNotice> | undefined;
+
+const dismissLanguageNotice = () => {
+  languageNotice?.remove();
+  languageNotice = undefined;
+};
+
 /**
- * A language the visitor picked could not be downloaded, so the page stays as it
- * is. The same choice can be tried again, unless this tab's build was replaced:
- * its catalog will never return, so the action saves the choice and loads the
- * current build in that language.
+ * The latest language choice could not be downloaded, so the page stays as it is
+ * and offers one action, drawn here because a toast's own chunks may be gone too.
+ * It retries first. If that fails online, it offers Refresh, which saves the
+ * choice and loads the current build: safe whether or not the build was replaced.
+ * The action belongs to this request, and a later choice removes it.
  */
-async function offerLanguageRecovery(locale: Locale): Promise<void> {
-  const retired = await isBuildRetired(dashboardLocaleFailure(locale));
-  const action = retired
-    ? () => {
+function offerLanguageRecovery(locale: Locale): void {
+  const choice = languageChoice();
+  const shownIn = getLocale() as Locale;
+  const refresh = failedChoice === locale && navigator.onLine !== false;
+  failedChoice = locale;
+  dismissLanguageNotice();
+  const notice = showRecoveryNotice(
+    shownIn,
+    () => {
+      if (choice !== languageChoice()) {
+        dismissLanguageNotice();
+      } else if (refresh && navigator.onLine !== false) {
         rememberInterfaceLocale(locale);
         reloadDocument();
+      } else {
+        void setLanguage(locale);
       }
-    : () => void setLanguage(locale);
-  const shownIn = getLocale() as Locale;
-  try {
-    const { toast } = await runOptionalLoad(() => import('sonner'));
-    toast.error(translateStandalone('error.unexpected', shownIn), {
-      action: { label: retired ? common_refresh({}, { locale: shownIn }) : translateStandalone('error.tryAgain', shownIn), onClick: action },
-    });
-  } catch {
-    // The toast's own chunk can be gone from the same replaced build.
-    const notice = showRecoveryNotice(shownIn, () => {
-      notice.remove();
-      action();
-    });
-  }
+    },
+    refresh ? common_refresh({}, { locale: shownIn }) : translateStandalone('error.tryAgain', shownIn),
+  );
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'size-9 shrink-0 rounded-md';
+  close.textContent = '×';
+  close.setAttribute('aria-label', deploy_close({}, { locale: shownIn }));
+  close.addEventListener('click', dismissLanguageNotice);
+  notice.action.after(close);
+  languageNotice = notice;
 }
 
 if (typeof document !== 'undefined') {
-  subscribeLanguageFailure((locale) => void offerLanguageRecovery(locale));
+  subscribeLanguageFailure(offerLanguageRecovery);
+  subscribeLanguageChoice((locale) => {
+    dismissLanguageNotice();
+    if (locale !== failedChoice) failedChoice = undefined;
+  });
+  subscribeLanguage(() => {
+    failedChoice = undefined;
+  });
 }

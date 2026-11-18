@@ -17,7 +17,7 @@ import { ProjectProvider } from '@/stores/active-project';
 
 export const Route = createFileRoute('/app')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
-  staticData: { interfaceLocale: true },
+  staticData: { interfaceLocale: true, dashboardLocale: true },
   beforeLoad: async ({ context: { queryClient }, location }) => {
     const routeSession = await getSessionFn();
     if (typeof window !== 'undefined') {

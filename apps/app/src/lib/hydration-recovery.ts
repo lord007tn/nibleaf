@@ -7,7 +7,7 @@ import { translateStandalone } from '@nibleaf/i18n/standalone';
  * may already hold every click on the document until hydration finishes, so the
  * button is handled on `window`, ahead of it.
  */
-export function showRecoveryNotice(locale: Locale, onAction: () => void) {
+export function showRecoveryNotice(locale: Locale, onAction: () => void, label = translateStandalone('error.tryAgain', locale)) {
   const notice = document.createElement('div');
   const message = document.createElement('p');
   const action = document.createElement('button');
@@ -23,7 +23,7 @@ export function showRecoveryNotice(locale: Locale, onAction: () => void) {
   message.textContent = translateStandalone('error.unexpected', locale);
   action.type = 'button';
   action.className = 'min-h-9 shrink-0 rounded-md border px-3 font-medium';
-  action.textContent = translateStandalone('error.tryAgain', locale);
+  action.textContent = label;
   notice.append(message, action);
   document.body.append(notice);
   window.addEventListener('click', onClick, true);

@@ -33,6 +33,7 @@ import { setPendingDestination } from '@/lib/invitations';
 import { safeDecode } from '@/lib/site-paths';
 
 export const Route = createFileRoute('/git-preview/$token')({
+  staticData: { dashboardLocale: true },
   loader: async ({ params }): Promise<{ snapshot: SiteSnapshot } | { snapshot: null }> => {
     await loadRouteDashboardLocale();
     try {

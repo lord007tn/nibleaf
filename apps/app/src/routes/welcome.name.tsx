@@ -6,7 +6,7 @@ const WelcomeNamePage = lazyRouteComponent(() => import('@/components/welcome-na
 
 export const Route = createFileRoute('/welcome/name')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
-  staticData: { interfaceLocale: true },
+  staticData: { interfaceLocale: true, dashboardLocale: true },
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
     redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
   }),

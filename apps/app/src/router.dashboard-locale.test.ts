@@ -15,6 +15,15 @@ vi.mock('@/lib/custom-domain-rewrite', () => ({
 vi.mock('@/routeTree.gen', async () => {
   const { createRootRoute, createRoute } = await import('@tanstack/react-router');
   const root = createRootRoute();
+  const DASHBOARD_ROUTES = new Set([
+    '/app',
+    '/git-preview/$token',
+    '/welcome/name',
+    '/oauth/consent',
+    '/oauth/project',
+    '/accept-invite/$invitationId',
+    '/join/$token',
+  ]);
   const paths = [
     '/',
     '/ar',
@@ -29,7 +38,11 @@ vi.mock('@/routeTree.gen', async () => {
     '/accept-invite/$invitationId',
     '/join/$token',
   ];
-  return { routeTree: root.addChildren(paths.map((path) => createRoute({ getParentRoute: () => root, path }))) };
+  return {
+    routeTree: root.addChildren(
+      paths.map((path) => createRoute({ getParentRoute: () => root, path, staticData: { dashboardLocale: DASHBOARD_ROUTES.has(path) } })),
+    ),
+  };
 });
 
 import { getRouter } from './router';

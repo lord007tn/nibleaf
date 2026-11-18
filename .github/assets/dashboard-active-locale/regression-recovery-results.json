@@ -5,6 +5,49 @@
   "nonLocalAttempts": 0,
   "results": [
     {
+      "name": "offline-during-startup",
+      "failedRequest": "catalog",
+      "documentLoads": 1,
+      "recoveredOnReconnect": true
+    },
+    {
+      "name": "offline-during-startup",
+      "failedRequest": "bootstrap",
+      "documentLoads": 1,
+      "recoveredOnReconnect": true
+    },
+    {
+      "name": "replaced-build-bootstrap",
+      "action": "تحديث",
+      "automaticReloads": 0,
+      "explicitReloadHydrated": true
+    },
+    {
+      "name": "replaced-build-at-hydration",
+      "automaticReloads": 0,
+      "explicitReloadHydrated": true
+    },
+    {
+      "name": "replaced-build-language-choice",
+      "firstAction": "Try again",
+      "afterRetryFailed": "Refresh",
+      "after": "opened German"
+    },
+    {
+      "name": "newer-language-choice-supersedes-recovery",
+      "failed": "ar",
+      "chosenNext": "fr",
+      "noticeRemoved": true,
+      "cookie": "fr"
+    },
+    {
+      "name": "replaced-build-on-navigation",
+      "automaticReloads": 0,
+      "tryAgainReloaded": true
+    }
+  ],
+  "earlierResults": [
+    {
       "name": "mixed-case-hydration",
       "path": "/JOIN/fixture-token",
       "catalog": "ar",
@@ -26,33 +69,6 @@
       "name": "mixed-case-language-switch",
       "url": "upper-case dashboard URL",
       "documentLoads": 1
-    },
-    {
-      "name": "offline-during-startup",
-      "failedRequest": "catalog",
-      "documentLoads": 1,
-      "recoveredOnReconnect": true
-    },
-    {
-      "name": "offline-during-startup",
-      "failedRequest": "bootstrap",
-      "documentLoads": 1,
-      "recoveredOnReconnect": true
-    },
-    {
-      "name": "replaced-build-at-hydration",
-      "automaticReloads": 0,
-      "explicitReloadHydrated": true
-    },
-    {
-      "name": "replaced-build-language-choice",
-      "before": "English stayed usable",
-      "after": "explicit refresh opened German"
-    },
-    {
-      "name": "replaced-build-on-navigation",
-      "automaticReloads": 0,
-      "tryAgainReloaded": true
     }
   ]
 }

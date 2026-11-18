@@ -135,6 +135,8 @@ describe('dashboard catalog boundary', () => {
     'join.$token.tsx',
   ])('%s waits for its language before rendering', (file) => {
     expect(isDashboardLocaleRouteId(routeIdOf(join(routesDir, file)) ?? '')).toBe(true);
-    expect(readFileSync(join(routesDir, file), 'utf8')).toMatch(/await loadRouteDashboardLocale\(\)/);
+    const source = readFileSync(join(routesDir, file), 'utf8');
+    expect(source).toMatch(/await loadRouteDashboardLocale\(\)/);
+    expect(source).toMatch(/dashboardLocale: true/);
   });
 });

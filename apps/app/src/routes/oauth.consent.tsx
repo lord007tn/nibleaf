@@ -6,7 +6,7 @@ import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 /** Better Auth's MCP consent page: approve or deny the connection. */
 export const Route = createFileRoute('/oauth/consent')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
-  staticData: { interfaceLocale: true },
+  staticData: { interfaceLocale: true, dashboardLocale: true },
   loader: async () => {
     await loadRouteDashboardLocale();
   },

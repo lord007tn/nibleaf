@@ -61,6 +61,16 @@ export function rememberInterfaceLocale(locale: Locale): void {
 let prepareLanguage: ((locale: Locale) => Promise<boolean>) | undefined;
 let languageChange = 0;
 const languageFailureListeners = new Set<(locale: Locale) => void>();
+const languageChoiceListeners = new Set<(locale: Locale) => void>();
+
+/** Identifies the visitor's latest language choice, successful or not. */
+export const languageChoice = (): number => languageChange;
+
+/** Called as soon as the visitor chooses a language, before it is prepared. */
+export function subscribeLanguageChoice(listener: (locale: Locale) => void): () => void {
+  languageChoiceListeners.add(listener);
+  return () => languageChoiceListeners.delete(listener);
+}
 
 /** Called when the visitor's latest language choice could not be prepared. The
  *  current language stays on screen; choosing again retries the download. */
@@ -80,6 +90,7 @@ export async function setLanguage(locale: Locale): Promise<void> {
   // must never change module-level locale state in a shared server process.
   if (typeof document === 'undefined') return;
   const change = ++languageChange;
+  for (const listener of languageChoiceListeners) listener(locale);
   if (prepareLanguage && !(await prepareLanguage(locale))) {
     if (change === languageChange) for (const listener of languageFailureListeners) listener(locale);
     return;

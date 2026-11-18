@@ -1,5 +1,7 @@
 // First, before anything that uses zod: turns off its eval probe in the browser (READER-23).
 import '@/lib/zod-csp';
+import { documentInterfaceLocale } from '@nibleaf/i18n/locale-state';
+import { common_refresh } from '@nibleaf/i18n/messages/common_refresh';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type AnyRouter, createRouter as createTanStackRouter } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
@@ -22,6 +24,15 @@ const requestNonce = createIsomorphicFn()
 const recoverFromStaleChunks = createIsomorphicFn()
   .server(() => undefined)
   .client(reloadOnceOnChunkLoadFailure);
+
+// The always-loaded chunk has no room for this word in every language, so product
+// documents carry it for the one notice that can show before any chunk loads.
+const dehydrateRefreshLabel = createIsomorphicFn()
+  .server(() => {
+    const locale = documentInterfaceLocale();
+    return locale ? { refreshLabel: common_refresh({}, { locale }) } : undefined;
+  })
+  .client(() => undefined);
 
 const prepareMarketingRouter = createIsomorphicFn()
   .server((router: AnyRouter) => {
@@ -70,12 +81,14 @@ export function getRouter() {
     // interface catalog, and stay as server HTML until it is available, so they
     // never hydrate in another language. Auth, marketing and published docs
     // never load that catalog.
-    hydrate: () => {
+    // Nothing is sent for other documents, which the router's type does not express.
+    dehydrate: dehydrateRefreshLabel as () => { refreshLabel?: string },
+    hydrate: (dehydrated) => {
       const dashboard = currentRouteNeedsDashboardLocale();
       const reader = document.querySelector('[data-hydration-module]');
       if (!dashboard && !reader) return;
       return (async () => {
-        if (dashboard) await holdHydrationForDashboardLocale();
+        if (dashboard) await holdHydrationForDashboardLocale(dehydrated?.refreshLabel);
         if (reader) {
           await import('@/lib/reader-hydration-modules').then((module) => module.loadServerRenderedReaderModules(document)).catch(() => undefined);
         }

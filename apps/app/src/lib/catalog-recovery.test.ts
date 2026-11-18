@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { common_refresh } from '@nibleaf/i18n/messages/common_refresh';
 import { translateStandalone } from '@nibleaf/i18n/standalone';
-import { toast } from 'sonner';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /*
@@ -59,16 +58,16 @@ vi.mock('@/lib/document-recovery', async (importOriginal) => ({
   claimDocumentRecovery: net.claim,
   reloadDocument: net.reload,
 }));
-vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 vi.mock('@/routeTree.gen', async () => {
   const { createRootRoute, createRoute } = await import('@tanstack/react-router');
   const root = createRootRoute();
-  return { routeTree: root.addChildren([createRoute({ getParentRoute: () => root, path: '/app' })]) };
+  return { routeTree: root.addChildren([createRoute({ getParentRoute: () => root, path: '/app', staticData: { dashboardLocale: true } })]) };
 });
 
 import { reloadOnceOnChunkLoadFailure } from '@/lib/chunk-reload';
 import { getRouter } from '@/router';
 
+const REFRESH = common_refresh({}, { locale: 'ar' });
 const SERVER_HTML = '<main>نص من الخادم</main>';
 const notice = () => document.querySelector<HTMLElement>('[role="alert"]');
 const button = () => notice()?.querySelector('button') as HTMLButtonElement;
@@ -108,7 +107,6 @@ beforeEach(() => {
   net.reload.mockClear();
   net.setLanguage.mockClear();
   net.remember.mockClear();
-  vi.mocked(toast.error).mockClear();
   document.documentElement.setAttribute('data-locale', 'ar');
   document.body.innerHTML = SERVER_HTML;
   setOnline(true);
@@ -149,6 +147,7 @@ describe('a catalog that fails while the document starts', () => {
     expect(fetch).toHaveBeenCalledWith(CATALOG_URL, expect.objectContaining({ method: 'HEAD', cache: 'no-store' }));
     expect(net.claim).not.toHaveBeenCalled();
     expect(net.reload).not.toHaveBeenCalled();
+    expect(button().textContent).toBe(REFRESH);
 
     button().click();
     await settle();
@@ -159,10 +158,12 @@ describe('a catalog that fails while the document starts', () => {
   it('retries in place while the asset still exists, and offers a reload if that fails online', async () => {
     const state = startHydration();
     await settle(5000);
+    expect(button().textContent).toBe(translateStandalone('error.tryAgain', 'ar'));
     button().click();
     await settle();
     expect(net.reload).not.toHaveBeenCalled();
     expect(state.hydrated).toBe(false);
+    expect(button().textContent).toBe(REFRESH);
 
     button().click();
     await settle();
@@ -174,6 +175,8 @@ describe('a catalog that fails while the document starts', () => {
     startHydration();
     await settle(5000);
     setOnline(false);
+    window.dispatchEvent(new Event('offline'));
+    expect(button().textContent).toBe(translateStandalone('error.tryAgain', 'ar'));
     button().click();
     await settle();
     expect(net.reload).not.toHaveBeenCalled();
@@ -187,7 +190,7 @@ describe('a catalog that fails on navigation', () => {
     const { loadRouteDashboardLocale } = await import('@/lib/dashboard-locale-route');
     const failed = loadRouteDashboardLocale().catch((error: unknown) => error);
     await settle();
-    expect(await failed).toMatchObject({ reloadRequired: true });
+    expect(await failed).toMatchObject({ reloadLabel: REFRESH });
     expect(net.claim).not.toHaveBeenCalled();
   });
 
@@ -196,38 +199,21 @@ describe('a catalog that fails on navigation', () => {
     const { loadRouteDashboardLocale } = await import('@/lib/dashboard-locale-route');
     const failed = loadRouteDashboardLocale().catch((error: unknown) => error);
     await settle();
-    expect(await failed).toMatchObject({ reloadRequired: false });
+    expect(await failed).toMatchObject({ reloadLabel: undefined });
     expect(fetch).not.toHaveBeenCalled();
   });
-});
 
-describe('a chosen language whose catalog is gone', () => {
-  const actionOfToast = async () => {
-    await import('@/lib/dashboard-locale');
-    net.failure = new TypeError('Failed to fetch dynamically imported module: http://localhost:3000/assets/de-OLD.js');
-    net.languageFailure?.('de');
-    await vi.waitFor(() => expect(toast.error).toHaveBeenCalledOnce());
-    const [, options] = vi.mocked(toast.error).mock.calls[0] as unknown as [string, { action: { label: string; onClick: () => void } }];
-    return options.action;
-  };
-
-  it('offers a reload that opens the new build in that language', async () => {
-    vi.useRealTimers();
-    serveAssets(404);
-    const action = await actionOfToast();
-    expect(action.label).toBe(common_refresh({}, { locale: 'ar' }));
-    action.onClick();
-    expect(net.remember).toHaveBeenCalledExactlyOnceWith('de');
-    expect(net.reload).toHaveBeenCalledOnce();
-    expect(net.setLanguage).not.toHaveBeenCalled();
-  });
-
-  it('offers the same choice again when the catalog still exists', async () => {
-    vi.useRealTimers();
-    const action = await actionOfToast();
-    expect(action.label).toBe(translateStandalone('error.tryAgain', 'ar'));
-    action.onClick();
-    expect(net.setLanguage).toHaveBeenCalledExactlyOnceWith('de');
-    expect(net.reload).not.toHaveBeenCalled();
+  it('offers a reload when a retry fails online, even if the old asset still answers', async () => {
+    const { loadRouteDashboardLocale } = await import('@/lib/dashboard-locale-route');
+    net.down = false;
+    await loadRouteDashboardLocale();
+    net.down = true;
+    const attempt = async () => {
+      const failed = loadRouteDashboardLocale().catch((error: unknown) => error);
+      await settle();
+      return failed;
+    };
+    expect(await attempt()).toMatchObject({ reloadLabel: undefined });
+    expect(await attempt()).toMatchObject({ reloadLabel: REFRESH });
   });
 });

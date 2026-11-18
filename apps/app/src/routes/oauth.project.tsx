@@ -7,7 +7,7 @@ import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
  *  a permission preset. The URL carries a live, signed authorization request. */
 export const Route = createFileRoute('/oauth/project')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
-  staticData: { interfaceLocale: true },
+  staticData: { interfaceLocale: true, dashboardLocale: true },
   loader: async () => {
     await loadRouteDashboardLocale();
   },

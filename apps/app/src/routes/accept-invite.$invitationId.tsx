@@ -7,7 +7,7 @@ import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
-  staticData: { interfaceLocale: true },
+  staticData: { interfaceLocale: true, dashboardLocale: true },
   loader: async ({ context: { queryClient }, params: { invitationId } }) => {
     await loadRouteDashboardLocale();
     return prefetchRouteData(queryClient, getInvitationInfoQueryOptions(invitationId));
