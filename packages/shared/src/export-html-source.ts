@@ -38,10 +38,71 @@ interface ReadOptions {
 const markdown = new MarkdownIt({ html: true });
 const inlineStarts = new WeakMap<Token, number>();
 const inlineCode = new WeakMap<Token, string>();
+// markdown-it 15's published build sets each Token field through a helper, and
+// exports parse most pages. Build the same objects directly: same fields, order
+// and prototype. The push methods below mirror markdown-it's, which name its
+// Token class directly; export-hazards.test.ts pins the result to a stock parse.
+function ExportTokenConstructor(this: Token, type: string, tag: string, nesting: Token['nesting']) {
+  this.map = null;
+  this.level = 0;
+  this.children = null;
+  this.content = '';
+  this.markup = '';
+  this.info = '';
+  this.block = false;
+  this.hidden = false;
+  this.type = type;
+  this.tag = tag;
+  this.attrs = null;
+  this.nesting = nesting;
+  this.meta = null;
+}
+ExportTokenConstructor.prototype = new markdown.core.State('', markdown, {}).Token.prototype;
+const ExportToken = ExportTokenConstructor as unknown as typeof Token;
+const BaseCoreState = markdown.core.State;
+markdown.core.State = class extends BaseCoreState {
+  override Token = ExportToken;
+};
+const BaseBlockState = markdown.block.State;
+markdown.block.State = class extends BaseBlockState {
+  override push(type: string, tag: string, nesting: Token['nesting']): Token {
+    const token = new ExportToken(type, tag, nesting);
+    token.block = true;
+    if (nesting < 0) this.level--;
+    token.level = this.level;
+    if (nesting > 0) this.level++;
+    this.tokens.push(token);
+    return token;
+  }
+};
 const BaseInlineState = markdown.inline.State;
 markdown.inline.State = class extends BaseInlineState {
+  override pushPending(): Token {
+    const token = new ExportToken('text', '', 0);
+    token.content = this.pending;
+    token.level = this.pendingLevel;
+    this.tokens.push(token);
+    this.pending = '';
+    return token;
+  }
   override push(type: string, tag: string, nesting: Token['nesting']): Token {
-    const token = super.push(type, tag, nesting);
+    if (this.pending) this.pushPending();
+    const token = new ExportToken(type, tag, nesting);
+    let tokenMeta: (typeof this.tokens_meta)[number];
+    if (nesting < 0) {
+      this.level--;
+      this.delimiters = this._prev_delimiters.pop() ?? [];
+    }
+    token.level = this.level;
+    if (nesting > 0) {
+      this.level++;
+      this._prev_delimiters.push(this.delimiters);
+      this.delimiters = [];
+      tokenMeta = { delimiters: this.delimiters };
+    }
+    this.pendingLevel = this.level;
+    this.tokens.push(token);
+    this.tokens_meta.push(tokenMeta);
     if (type === 'html_inline' || type === 'code_inline' || type === 'image') inlineStarts.set(token, this.pos);
     if (type === 'code_inline') inlineCode.set(token, this.src);
     return token;
@@ -268,7 +329,7 @@ export const readExportHtml = (source: string, options: ReadOptions = {}): Expor
   };
   const frames = [{ tokens, at: 0, positions: [] as number[] }];
   while (frames.length) {
-    const frame = frames.at(-1);
+    const frame = frames[frames.length - 1];
     if (!frame) break;
     const token = frame.tokens[frame.at++];
     if (!token) {
@@ -358,7 +419,11 @@ export const readExportHtml = (source: string, options: ReadOptions = {}): Expor
   // A start tag spanning renderer-generated markup was unterminated in the
   // author's HTML token. Prefix counts keep every context lookup constant-time.
   const generatedBefore = new Uint32Array(html.length + 1);
-  for (let at = 0; at < html.length; at++) generatedBefore[at + 1] = (generatedBefore[at] ?? 0) + Number((originalAt[at] ?? -1) < 0);
+  let generated = 0;
+  for (let at = 0; at < html.length; at++) {
+    if ((originalAt[at] as number) < 0) generated++;
+    generatedBefore[at + 1] = generated;
+  }
   const active: Array<[number, number]> = [];
   let risky = spans.some((span) => span.token.content.includes('<!') || span.token.content.includes('<?'));
   const hidden = new Int32Array(source.length + 1);
@@ -372,6 +437,7 @@ export const readExportHtml = (source: string, options: ReadOptions = {}): Expor
     return endAt[end - 1] ?? source.length;
   };
   const rawText = ['script', 'style', 'iframe', 'xmp', 'noembed', 'noframes', 'noscript', 'plaintext', 'textarea', 'title'];
+  const contextTags = new Set([...rawText, 'select', 'template', 'svg', 'math', 'table', 'frameset']);
   // Fragment parsing discards doctypes. Capture their token locations as well,
   // so a declaration opened in a changed run cannot release content past it.
   let unfinishedTag = false,
@@ -493,14 +559,15 @@ export const readExportHtml = (source: string, options: ReadOptions = {}): Expor
       // Own the earlier malformed opener; a normal unclosed element does not
       // need to consume following code merely because its closing tag is absent.
       if (from >= 0 && malformedOpening) hide(from, Math.max(from + 1, sourceEnd(loc.endOffset)));
-      if (from >= 0 && [...rawText, 'select', 'template', 'svg', 'math', 'table', 'frameset'].includes(node.tagName)) {
+      if (from >= 0 && contextTags.has(node.tagName)) {
         risky = true;
         hide(from, loc.endTag ? sourceEnd(loc.endTag.endOffset) : source.length);
       }
     }
     const loc = 'sourceCodeLocation' in node ? node.sourceCodeLocation : undefined;
     const start = loc ? loc.startOffset + Number(node.nodeName === '#text' && delimiterStarts.has(loc.startOffset)) : 0;
-    if (loc && (node.nodeName === '#comment' || (node.nodeName === '#text' && html.slice(start, loc.endOffset).includes('<')))) {
+    const nextTag = loc && node.nodeName === '#text' ? html.indexOf('<', start) : -1;
+    if (loc && (node.nodeName === '#comment' || (nextTag >= 0 && nextTag < loc.endOffset))) {
       const from = originalAt[start] ?? -1;
       if (from >= 0) {
         risky = true;
