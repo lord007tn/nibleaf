@@ -4,12 +4,13 @@ import type { MessageFn, MessageVariables } from './message-types';
 import { getLocale, renderedLocale, setLanguage, subscribeLanguage } from './runtime';
 
 /*
- * Translators over a chosen set of messages. `translateFn` (./translate) reads
- * every message through Paraglide's namespace export, so any chunk that imports
- * it carries the whole catalog: every product message in every locale (about
- * 800 KB gzipped). A surface that needs a few dozen messages (sign-in, sign-up)
- * imports those message modules itself and translates through this module,
- * which never imports the catalog or the key map (MKT-001).
+ * Translators over a chosen set of messages. `translateFn` (./translate) carries
+ * the key map and a dashboard catalog, and in the browser answers only for the
+ * active locale. A surface that needs a few dozen messages (sign-in, sign-up), or
+ * text in a language other than the interface's (marketing, page-language editor
+ * text, the Theme preview), imports those message modules itself and translates
+ * through this module. Named messages hold every locale synchronously, and this
+ * module never imports the catalog or the key map (MKT-001).
  */
 
 /** Dotted product keys (as in ./message-ids) mapped to their Paraglide message

@@ -1,8 +1,6 @@
-import { type MessageKey, type MessageVariables, translateFn } from '@nibleaf/i18n';
-import { useLocale } from '@nibleaf/i18n/react';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
-import { useCallback } from 'react';
 import { primaryButton } from '@/components/cloud-marketing';
+import { arabicSeoText } from '@/components/marketing/arabic-seo-messages';
 import { sendMarketingCtaEvent } from '@/lib/marketing-analytics';
 
 import { ArabicShell } from './arabic-shell';
@@ -18,14 +16,9 @@ interface Platform {
   nibleaf?: boolean;
 }
 
-type T = (key: MessageKey, variables?: MessageVariables) => string;
+const t = arabicSeoText;
 
-function useArabicT() {
-  const { locale, t } = useLocale();
-  return useCallback<T>((key, variables) => (locale === 'ar' ? t(key, variables) : translateFn(key, variables, 'ar')), [locale, t]);
-}
-
-function getPlatforms(t: T): Platform[] {
+function getPlatforms(): Platform[] {
   return [
     {
       name: 'Nibleaf',
@@ -106,8 +99,7 @@ function getPlatforms(t: T): Platform[] {
 }
 
 export function ArabicDocumentationPlatformsPage() {
-  const t = useArabicT();
-  const platforms = getPlatforms(t);
+  const platforms = getPlatforms();
   return (
     <ArabicShell>
       <article>

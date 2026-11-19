@@ -1,0 +1,291 @@
+{
+  "baseline": "4a054cc420dfd5b96f84160d94f5e45c331e01c2",
+  "nonLocalAttempts": 0,
+  "profiles": [
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "assets": [
+        "/",
+        "/assets/index-tDaElx9p.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/geist-latin-wght-normal-BgDaEnEv.woff2"
+      ],
+      "errors": [],
+      "text": "Show or hide the menu\nFixture Studio\nInterface language\nWebsites\n\nEvery website in Fixture Studio you can open.\n\nCreate your first website\n\nFixture Studio has no websites yet.\n\nCreate your first website"
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "assets": [
+        "/",
+        "/assets/index-tDaElx9p.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/geist-latin-wght-normal-BgDaEnEv.woff2"
+      ],
+      "errors": [],
+      "text": "Show or hide the menu\nFixture Studio\nInterface language\nWebsites\n\nEvery website in Fixture Studio you can open.\n\nCreate your first website\n\nFixture Studio has no websites yet.\n\nCreate your first website"
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "assets": [
+        "/",
+        "/assets/index-tDaElx9p.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/geist-latin-wght-normal-BgDaEnEv.woff2"
+      ],
+      "errors": [],
+      "text": "Nibleaf\nWebsites\nAnalytics\nMembers\nUsage & billing\nSettings\nShow or hide the menu\nFixture Studio\nInterface language\nWebsites\n\nEvery website in Fixture Studio you can open.\n\nCreate your first website\n\nFixture Studio has no websites yet.\n\nCreate your first website"
+    },
+    {
+      "phase": "before",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "assets": [
+        "/",
+        "/assets/index-tDaElx9p.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/geist-latin-wght-normal-BgDaEnEv.woff2"
+      ],
+      "errors": [],
+      "text": "Nibleaf\nWebsites\nAnalytics\nMembers\nUsage & billing\nSettings\nShow or hide the menu\nFixture Studio\nInterface language\nWebsites\n\nEvery website in Fixture Studio you can open.\n\nCreate your first website\n\nFixture Studio has no websites yet.\n\nCreate your first website"
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "assets": [
+        "/",
+        "/assets/index-tDaElx9p.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/noto-sans-arabic-latin-wght-normal-BQEJrIpl.woff2",
+        "/assets/noto-sans-arabic-arabic-wght-normal-BhzieyvS.woff2"
+      ],
+      "errors": [],
+      "text": "إظهار القائمة أو إخفاؤها\nFixture Studio\nلغة الواجهة\nالمواقع\n\nكل مواقع Fixture Studio التي يمكنك فتحها.\n\nأنشئ موقعك الأول\n\nلا توجد مواقع في Fixture Studio بعد.\n\nأنشئ موقعك الأول"
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "assets": [
+        "/",
+        "/assets/index-tDaElx9p.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/noto-sans-arabic-latin-wght-normal-BQEJrIpl.woff2",
+        "/assets/noto-sans-arabic-arabic-wght-normal-BhzieyvS.woff2"
+      ],
+      "errors": [],
+      "text": "إظهار القائمة أو إخفاؤها\nFixture Studio\nلغة الواجهة\nالمواقع\n\nكل مواقع Fixture Studio التي يمكنك فتحها.\n\nأنشئ موقعك الأول\n\nلا توجد مواقع في Fixture Studio بعد.\n\nأنشئ موقعك الأول"
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "assets": [
+        "/",
+        "/assets/index-tDaElx9p.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/noto-sans-arabic-latin-wght-normal-BQEJrIpl.woff2",
+        "/assets/noto-sans-arabic-arabic-wght-normal-BhzieyvS.woff2"
+      ],
+      "errors": [],
+      "text": "Nibleaf\nالمواقع\nالتحليلات\nالأعضاء\nالاستخدام والفوترة\nالإعدادات\nإظهار القائمة أو إخفاؤها\nFixture Studio\nلغة الواجهة\nالمواقع\n\nكل مواقع Fixture Studio التي يمكنك فتحها.\n\nأنشئ موقعك الأول\n\nلا توجد مواقع في Fixture Studio بعد.\n\nأنشئ موقعك الأول"
+    },
+    {
+      "phase": "before",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "assets": [
+        "/",
+        "/assets/index-tDaElx9p.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/noto-sans-arabic-latin-wght-normal-BQEJrIpl.woff2",
+        "/assets/noto-sans-arabic-arabic-wght-normal-BhzieyvS.woff2"
+      ],
+      "errors": [],
+      "text": "Nibleaf\nالمواقع\nالتحليلات\nالأعضاء\nالاستخدام والفوترة\nالإعدادات\nإظهار القائمة أو إخفاؤها\nFixture Studio\nلغة الواجهة\nالمواقع\n\nكل مواقع Fixture Studio التي يمكنك فتحها.\n\nأنشئ موقعك الأول\n\nلا توجد مواقع في Fixture Studio بعد.\n\nأنشئ موقعك الأول"
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "light",
+      "assets": [
+        "/",
+        "/assets/index-CZXBW34x.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/geist-latin-wght-normal-BgDaEnEv.woff2"
+      ],
+      "errors": [],
+      "text": "Show or hide the menu\nFixture Studio\nInterface language\nWebsites\n\nEvery website in Fixture Studio you can open.\n\nCreate your first website\n\nFixture Studio has no websites yet.\n\nCreate your first website"
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 390,
+      "theme": "dark",
+      "assets": [
+        "/",
+        "/assets/index-CZXBW34x.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/geist-latin-wght-normal-BgDaEnEv.woff2"
+      ],
+      "errors": [],
+      "text": "Show or hide the menu\nFixture Studio\nInterface language\nWebsites\n\nEvery website in Fixture Studio you can open.\n\nCreate your first website\n\nFixture Studio has no websites yet.\n\nCreate your first website"
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "light",
+      "assets": [
+        "/",
+        "/assets/index-CZXBW34x.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/geist-latin-wght-normal-BgDaEnEv.woff2"
+      ],
+      "errors": [],
+      "text": "Nibleaf\nWebsites\nAnalytics\nMembers\nUsage & billing\nSettings\nShow or hide the menu\nFixture Studio\nInterface language\nWebsites\n\nEvery website in Fixture Studio you can open.\n\nCreate your first website\n\nFixture Studio has no websites yet.\n\nCreate your first website"
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "theme": "dark",
+      "assets": [
+        "/",
+        "/assets/index-CZXBW34x.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/geist-latin-wght-normal-BgDaEnEv.woff2"
+      ],
+      "errors": [],
+      "text": "Nibleaf\nWebsites\nAnalytics\nMembers\nUsage & billing\nSettings\nShow or hide the menu\nFixture Studio\nInterface language\nWebsites\n\nEvery website in Fixture Studio you can open.\n\nCreate your first website\n\nFixture Studio has no websites yet.\n\nCreate your first website"
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "light",
+      "assets": [
+        "/",
+        "/assets/index-CZXBW34x.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/ar-BTaLrh-B.js",
+        "/assets/noto-sans-arabic-latin-wght-normal-BQEJrIpl.woff2",
+        "/assets/noto-sans-arabic-arabic-wght-normal-BhzieyvS.woff2"
+      ],
+      "errors": [],
+      "text": "إظهار القائمة أو إخفاؤها\nFixture Studio\nلغة الواجهة\nالمواقع\n\nكل مواقع Fixture Studio التي يمكنك فتحها.\n\nأنشئ موقعك الأول\n\nلا توجد مواقع في Fixture Studio بعد.\n\nأنشئ موقعك الأول"
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "theme": "dark",
+      "assets": [
+        "/",
+        "/assets/index-CZXBW34x.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/ar-BTaLrh-B.js",
+        "/assets/noto-sans-arabic-latin-wght-normal-BQEJrIpl.woff2",
+        "/assets/noto-sans-arabic-arabic-wght-normal-BhzieyvS.woff2"
+      ],
+      "errors": [],
+      "text": "إظهار القائمة أو إخفاؤها\nFixture Studio\nلغة الواجهة\nالمواقع\n\nكل مواقع Fixture Studio التي يمكنك فتحها.\n\nأنشئ موقعك الأول\n\nلا توجد مواقع في Fixture Studio بعد.\n\nأنشئ موقعك الأول"
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "light",
+      "assets": [
+        "/",
+        "/assets/index-CZXBW34x.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/ar-BTaLrh-B.js",
+        "/assets/noto-sans-arabic-latin-wght-normal-BQEJrIpl.woff2",
+        "/assets/noto-sans-arabic-arabic-wght-normal-BhzieyvS.woff2"
+      ],
+      "errors": [],
+      "text": "Nibleaf\nالمواقع\nالتحليلات\nالأعضاء\nالاستخدام والفوترة\nالإعدادات\nإظهار القائمة أو إخفاؤها\nFixture Studio\nلغة الواجهة\nالمواقع\n\nكل مواقع Fixture Studio التي يمكنك فتحها.\n\nأنشئ موقعك الأول\n\nلا توجد مواقع في Fixture Studio بعد.\n\nأنشئ موقعك الأول"
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 1440,
+      "theme": "dark",
+      "assets": [
+        "/",
+        "/assets/index-CZXBW34x.js",
+        "/assets/index-DDS-ADoo.css",
+        "/assets/ar-BTaLrh-B.js",
+        "/assets/noto-sans-arabic-latin-wght-normal-BQEJrIpl.woff2",
+        "/assets/noto-sans-arabic-arabic-wght-normal-BhzieyvS.woff2"
+      ],
+      "errors": [],
+      "text": "Nibleaf\nالمواقع\nالتحليلات\nالأعضاء\nالاستخدام والفوترة\nالإعدادات\nإظهار القائمة أو إخفاؤها\nFixture Studio\nلغة الواجهة\nالمواقع\n\nكل مواقع Fixture Studio التي يمكنك فتحها.\n\nأنشئ موقعك الأول\n\nلا توجد مواقع في Fixture Studio بعد.\n\nأنشئ موقعك الأول"
+    }
+  ],
+  "devGeneration": {
+    "changed": ["messages/ar.js"],
+    "sourceRestored": true,
+    "outputsRestored": true,
+    "atomicReadSamples": 10
+  },
+  "privatePreview": {
+    "appPid": 56432,
+    "requests": [
+      {
+        "method": "GET",
+        "path": "/api/app/health"
+      },
+      {
+        "method": "GET",
+        "path": "/api/app/health"
+      },
+      {
+        "method": "GET",
+        "path": "/api/public/git/previews/fixture-private-preview"
+      },
+      {
+        "method": "GET",
+        "path": "/api/public/git/previews/fixture-private-preview"
+      },
+      {
+        "method": "GET",
+        "path": "/api/public/git/previews/fixture-private-preview"
+      },
+      {
+        "method": "GET",
+        "path": "/api/public/git/previews/fixture-private-preview"
+      }
+    ],
+    "result": [
+      {
+        "locale": "en",
+        "status": 200,
+        "title": "This preview is private",
+        "errors": []
+      },
+      {
+        "locale": "ar",
+        "status": 200,
+        "title": "هذه المعاينة خاصة",
+        "errors": []
+      }
+    ]
+  }
+}

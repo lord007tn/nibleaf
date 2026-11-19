@@ -1,8 +1,9 @@
 import type { Locale, MessageKey, MessageVariables } from '@nibleaf/i18n';
-import { translateFn } from '@nibleaf/i18n/react';
 import type { Editor, Range } from '@tiptap/core';
 import type { ComponentType } from 'react';
+import { type PageLanguageMessageKey, pageLanguageText } from '../../page-language-messages';
 import type { ImageUploader } from '../image-upload';
+import type { SlashTitleKey } from './title-messages';
 
 interface SlashCommandProps {
   editor: Editor;
@@ -12,7 +13,7 @@ interface SlashCommandProps {
 }
 
 export interface SlashItem {
-  titleKey: MessageKey;
+  titleKey: SlashTitleKey;
   descKey: MessageKey;
   icon: ComponentType<{ className?: string }>;
   /** Short mono glyph shown in the 32px tile (matches the design's monospace tiles). */
@@ -26,4 +27,5 @@ export type UploadFn = ImageUploader;
 
 /** Default text for an inserted block, written in the page language (an Arabic
  *  page gets Arabic placeholders whatever the dashboard locale is). */
-export const scaffoldText = (key: MessageKey, locale: Locale, variables?: MessageVariables): string => translateFn(key, variables, locale);
+export const scaffoldText = (key: PageLanguageMessageKey, locale: Locale, variables?: MessageVariables): string =>
+  pageLanguageText(key, locale, variables);

@@ -1,9 +1,7 @@
-import {
-  marketing_arabicplatforms_breadcrumb,
-  marketing_arabicplatforms_description,
-  marketing_arabicplatforms_imagealt,
-  marketing_arabicplatforms_title,
-} from '@nibleaf/i18n/messages';
+import { marketing_arabicplatforms_breadcrumb } from '@nibleaf/i18n/messages/marketing_arabicplatforms_breadcrumb';
+import { marketing_arabicplatforms_description } from '@nibleaf/i18n/messages/marketing_arabicplatforms_description';
+import { marketing_arabicplatforms_imagealt } from '@nibleaf/i18n/messages/marketing_arabicplatforms_imagealt';
+import { marketing_arabicplatforms_title } from '@nibleaf/i18n/messages/marketing_arabicplatforms_title';
 
 // The Arabic platform comparison's head copy. Its route loader imports this module
 // lazily: a route's `head` is part of the router's eager chunk, which every

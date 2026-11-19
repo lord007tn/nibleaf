@@ -6,11 +6,12 @@
 import { type Locale, type MessageKey, translateFn } from '@nibleaf/i18n';
 import { describe, expect, it } from 'vitest';
 import { createSlashItems, nextSlashSelection, rankSlashItems, slashSection } from './extensions/slash-command';
+import type { SlashTitleKey } from './extensions/slash-items/title-messages';
 
 const items = createSlashItems();
 const titles = (query: string, locale: Locale = 'en') => rankSlashItems(items, query, locale).map((item) => item.titleKey);
 const first = (query: string, locale: Locale = 'en') => titles(query, locale)[0];
-const key = (name: string) => `editor.slash.${name}.title` as MessageKey;
+const key = (name: string) => `editor.slash.${name}.title` as SlashTitleKey;
 const itemNamed = (name: string) => {
   const item = items.find((candidate) => candidate.titleKey === key(name));
   if (!item) throw new Error(`No slash item ${name}`);

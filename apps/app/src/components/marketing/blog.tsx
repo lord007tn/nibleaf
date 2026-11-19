@@ -1,9 +1,8 @@
 import { NibleafMark } from '@nibleaf/design-system/brand';
-import type { MessageKey, MessageVariables } from '@nibleaf/i18n';
-import { translateFn } from '@nibleaf/i18n/react';
 import { ArrowLeft, ArrowRight, Check, Clock, Link2, Search } from 'lucide-react';
 import { type ComponentType, type ReactNode, useEffect, useState } from 'react';
 import { Eyebrow, invertedOutlineButton, MarketingShell, primaryButton } from '@/components/cloud-marketing';
+import { type BlogMessageKey, blogText } from '@/components/marketing/blog-messages';
 import { type BlogEntry, type BlogFaq, blogEntry, blogLanguage, blogReadingMinutes } from '@/lib/blog';
 import { MARKETING_ANALYTICS_CONSENT_EVENT, trackFirstPublishCta, trackFirstPublishLanding } from '@/lib/first-publish-activation';
 import { localeTag } from '@/lib/format';
@@ -50,7 +49,7 @@ function CardMeta({ entry }: { entry: BlogEntry }) {
       <span aria-hidden="true">·</span>
       <span className="inline-flex items-center gap-1">
         <Clock aria-hidden="true" className="size-3.5" />
-        {translateFn('blog.readingMinutes', { minutes: blogReadingMinutes(entry) }, language)}
+        {blogText('blog.readingMinutes', language, { minutes: blogReadingMinutes(entry) })}
       </span>
     </div>
   );
@@ -123,7 +122,7 @@ function ArticleCard({ entry, featured = false }: { entry: BlogEntry; featured?:
 export function BlogIndexPage({ entries, stars = 0 }: { entries: BlogEntry[]; stars?: number }) {
   // The blog index is an English marketing page: its chrome never follows the
   // visitor's interface language (that switched it after load), like its shell.
-  const t = (key: MessageKey, variables?: MessageVariables) => translateFn(key, variables, 'en');
+  const t = (key: BlogMessageKey, variables?: Parameters<typeof blogText>[2]) => blogText(key, 'en', variables);
   const [query, setQuery] = useState('');
   const q = query.trim().toLowerCase();
   const filtered =
@@ -257,7 +256,7 @@ function ArticleFaqSection({ faqs, language }: { faqs: BlogFaq[]; language: 'ar'
   return (
     <section className="mt-12">
       <h2 className="mb-4 border-border border-b pb-3 font-semibold text-2xl tracking-tight rtl:tracking-normal">
-        {translateFn('blog.faqTitle', undefined, language)}
+        {blogText('blog.faqTitle', language)}
       </h2>
       <dl className="flex flex-col gap-5">
         {faqs.map((faq) => (
@@ -281,14 +280,14 @@ function BlogCta({ language = 'en' }: { language?: 'ar' | 'en' }) {
           aria-hidden="true"
         />
         <div className="relative">
-          <h2 className="font-semibold text-3xl tracking-tight rtl:tracking-normal">{translateFn('blog.ctaTitle', undefined, language)}</h2>
-          <p className="mx-auto mt-3 max-w-xl text-background/75">{translateFn('blog.ctaBody', undefined, language)}</p>
+          <h2 className="font-semibold text-3xl tracking-tight rtl:tracking-normal">{blogText('blog.ctaTitle', language)}</h2>
+          <p className="mx-auto mt-3 max-w-xl text-background/75">{blogText('blog.ctaBody', language)}</p>
           <div className="mt-7 flex flex-wrap justify-center gap-3">
             <a className={primaryButton} href="/sign-up">
-              {translateFn('blog.createAccount', undefined, language)} <ArrowRight className="size-4 rtl:rotate-180" />
+              {blogText('blog.createAccount', language)} <ArrowRight className="size-4 rtl:rotate-180" />
             </a>
             <a className={invertedOutlineButton} href="/self-hosting">
-              {translateFn('blog.selfHostingGuide', undefined, language)}
+              {blogText('blog.selfHostingGuide', language)}
             </a>
           </div>
         </div>
@@ -325,10 +324,10 @@ function ShareRow({ entry }: { entry: BlogEntry }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="me-1 text-muted-foreground text-xs">{translateFn('blog.share', undefined, language)}</span>
+      <span className="me-1 text-muted-foreground text-xs">{blogText('blog.share', language)}</span>
       {canCopy ? (
         <button
-          aria-label={translateFn(copied ? 'blog.linkCopied' : 'blog.copyLink', undefined, language)}
+          aria-label={blogText(copied ? 'blog.linkCopied' : 'blog.copyLink', language)}
           className={shareButton}
           onClick={copyLink}
           type="button"
@@ -342,7 +341,7 @@ function ShareRow({ entry }: { entry: BlogEntry }) {
         rel="noopener noreferrer"
         target="_blank"
       >
-        <span className="sr-only">{translateFn('blog.shareX', undefined, language)}</span>
+        <span className="sr-only">{blogText('blog.shareX', language)}</span>
         <svg aria-hidden="true" className="size-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
         </svg>
@@ -353,7 +352,7 @@ function ShareRow({ entry }: { entry: BlogEntry }) {
         rel="noopener noreferrer"
         target="_blank"
       >
-        <span className="sr-only">{translateFn('blog.shareLinkedIn', undefined, language)}</span>
+        <span className="sr-only">{blogText('blog.shareLinkedIn', language)}</span>
         <svg aria-hidden="true" className="size-4" fill="currentColor" viewBox="0 0 24 24">
           <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 01-2.063-2.065 2.064 2.064 0 112.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.225 0z" />
         </svg>
@@ -398,7 +397,7 @@ export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNod
     <MarketingShell stars={stars}>
       <article className="mx-auto max-w-3xl px-6 pt-12 pb-20" dir={arabic ? 'rtl' : 'ltr'} lang={language}>
         <a className="inline-flex items-center gap-1.5 text-muted-foreground text-sm transition-colors hover:text-foreground" href="/blog">
-          <ArrowLeft className="size-4 rtl:rotate-180" /> {translateFn('blog.allArticles', undefined, language)}
+          <ArrowLeft className="size-4 rtl:rotate-180" /> {blogText('blog.allArticles', language)}
         </a>
         <header className="mt-6">
           <TagChips entry={entry} />
@@ -407,22 +406,22 @@ export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNod
           <div className="mt-5 flex flex-wrap items-center justify-between gap-4 border-border border-y py-4">
             <p className="text-muted-foreground text-sm">
               <time className="datePublished" dateTime={entry.datePublished}>
-                {translateFn('blog.published', undefined, language)} {dateFormatter(entry).format(new Date(entry.datePublished))}
+                {blogText('blog.published', language)} {dateFormatter(entry).format(new Date(entry.datePublished))}
               </time>
               {entry.dateModified !== entry.datePublished ? (
                 <>
                   {' · '}
                   <time dateTime={entry.dateModified}>
-                    {translateFn('blog.updated', undefined, language)} {dateFormatter(entry).format(new Date(entry.dateModified))}
+                    {blogText('blog.updated', language)} {dateFormatter(entry).format(new Date(entry.dateModified))}
                   </time>
                 </>
               ) : null}
               {' · '}
-              {translateFn('blog.readingMinutes', { minutes: blogReadingMinutes(entry) }, language)}
+              {blogText('blog.readingMinutes', language, { minutes: blogReadingMinutes(entry) })}
               {' · '}
-              {translateFn('blog.by', undefined, language)}{' '}
+              {blogText('blog.by', language)}{' '}
               <a className="author font-medium text-foreground hover:underline" href="/about" rel="author">
-                {translateFn('blog.team', undefined, language)}
+                {blogText('blog.team', language)}
               </a>
             </p>
             <ShareRow entry={entry} />
@@ -433,7 +432,7 @@ export function ArticlePage({ children, entry, stars = 0 }: { children: ReactNod
       </article>
       {related.length > 0 ? (
         <aside className="mx-auto max-w-6xl px-6 pb-16">
-          <h2 className={`mb-5 font-semibold text-xl ${arabic ? '' : 'tracking-tight'}`}>{translateFn('blog.readNext', undefined, language)}</h2>
+          <h2 className={`mb-5 font-semibold text-xl ${arabic ? '' : 'tracking-tight'}`}>{blogText('blog.readNext', language)}</h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {related.map((item) => (
               <ArticleCard entry={item} key={item.slug} />

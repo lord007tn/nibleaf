@@ -1,0 +1,74 @@
+{
+  "origin": "http://localhost:4310",
+  "build": "production",
+  "failedAssets": "real emitted chunks, blocked or answered 404 in the browser",
+  "nonLocalAttempts": 0,
+  "results": [
+    {
+      "name": "offline-during-startup",
+      "failedRequest": "catalog",
+      "documentLoads": 1,
+      "recoveredOnReconnect": true
+    },
+    {
+      "name": "offline-during-startup",
+      "failedRequest": "bootstrap",
+      "documentLoads": 1,
+      "recoveredOnReconnect": true
+    },
+    {
+      "name": "replaced-build-bootstrap",
+      "action": "تحديث",
+      "automaticReloads": 0,
+      "explicitReloadHydrated": true
+    },
+    {
+      "name": "replaced-build-at-hydration",
+      "automaticReloads": 0,
+      "explicitReloadHydrated": true
+    },
+    {
+      "name": "replaced-build-language-choice",
+      "firstAction": "Try again",
+      "afterRetryFailed": "Refresh",
+      "after": "opened German"
+    },
+    {
+      "name": "newer-language-choice-supersedes-recovery",
+      "failed": "ar",
+      "chosenNext": "fr",
+      "noticeRemoved": true,
+      "cookie": "fr"
+    },
+    {
+      "name": "replaced-build-on-navigation",
+      "automaticReloads": 0,
+      "refreshReloaded": true
+    }
+  ],
+  "earlierResults": [
+    {
+      "name": "mixed-case-hydration",
+      "path": "/JOIN/fixture-token",
+      "catalog": "ar",
+      "hydrationErrors": 0
+    },
+    {
+      "name": "mixed-case-hydration",
+      "path": "/join/fixture-token/",
+      "catalog": "ar",
+      "hydrationErrors": 0
+    },
+    {
+      "name": "mixed-case-hydration",
+      "path": "/APP/O/demo-mwmm9j6d/WEBSITES",
+      "catalog": "ar",
+      "hydrationErrors": 0
+    },
+    {
+      "name": "mixed-case-language-switch",
+      "url": "upper-case dashboard URL",
+      "documentLoads": 1
+    }
+  ]
+}

@@ -1,11 +1,12 @@
 import { createFileRoute, lazyRouteComponent, redirect } from '@tanstack/react-router';
 import { getSessionFn } from '@/functions/session';
+import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 
 const WelcomeNamePage = lazyRouteComponent(() => import('@/components/welcome-name-page'));
 
 export const Route = createFileRoute('/welcome/name')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
-  staticData: { interfaceLocale: true },
+  staticData: { interfaceLocale: true, dashboardLocale: true },
   validateSearch: (search: Record<string, unknown>): { redirect?: string } => ({
     redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
   }),
@@ -16,6 +17,9 @@ export const Route = createFileRoute('/welcome/name')({
     if (!session) throw redirect({ to: '/sign-in', search: { next: nameDestination } });
     if (session.user.name?.trim()) throw redirect({ href: nameDestination });
     return { nameDestination };
+  },
+  loader: async ({ preload }) => {
+    await loadRouteDashboardLocale(preload);
   },
   head: () => ({ meta: [{ title: 'Welcome — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   // Method shorthand is what TanStack's code splitter moves out of the route

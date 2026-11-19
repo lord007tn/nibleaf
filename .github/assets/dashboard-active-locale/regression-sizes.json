@@ -1,0 +1,475 @@
+{
+  "main": {
+    "label": "main 404c393b5f492835b402a2a9988dc8bb69e39414",
+    "method": "unique JS route preloads plus, where the route needs one, the locale bootstrap and catalog closure; each file gzip -9",
+    "profiles": {
+      "dashboard-home": {
+        "routePreloads": {
+          "raw": 6060921,
+          "gzip": 1750221
+        },
+        "files": 163,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": true
+      },
+      "dashboard-analytics": {
+        "routePreloads": {
+          "raw": 6402669,
+          "gzip": 1845782
+        },
+        "files": 162,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": true
+      },
+      "git-preview": {
+        "routePreloads": {
+          "raw": 5736136,
+          "gzip": 1633186
+        },
+        "files": 95,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": true
+      },
+      "welcome-name": {
+        "routePreloads": {
+          "raw": 5317707,
+          "gzip": 1495619
+        },
+        "files": 66,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": true
+      },
+      "oauth-consent": {
+        "routePreloads": {
+          "raw": 5626543,
+          "gzip": 1593723
+        },
+        "files": 96,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": true
+      },
+      "join-link": {
+        "routePreloads": {
+          "raw": 5701597,
+          "gzip": 1618113
+        },
+        "files": 111,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": true
+      },
+      "accept-invite": {
+        "routePreloads": {
+          "raw": 5701600,
+          "gzip": 1618108
+        },
+        "files": 111,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": true
+      },
+      "marketing-home": {
+        "routePreloads": {
+          "raw": 821313,
+          "gzip": 271747
+        },
+        "files": 57,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": false
+      },
+      "marketing-arabic": {
+        "routePreloads": {
+          "raw": 5623404,
+          "gzip": 1609380
+        },
+        "files": 62,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": true
+      },
+      "blog-article": {
+        "routePreloads": {
+          "raw": 6163416,
+          "gzip": 1763991
+        },
+        "files": 65,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": true
+      },
+      "auth-sign-in": {
+        "routePreloads": {
+          "raw": 956267,
+          "gzip": 323857
+        },
+        "files": 74,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": false
+      },
+      "public-docs": {
+        "routePreloads": {
+          "raw": 788569,
+          "gzip": 274170
+        },
+        "files": 68,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": false
+      }
+    }
+  },
+  "pullRequest": {
+    "label": "fixed implementation",
+    "method": "unique JS route preloads plus, where the route needs one, the locale bootstrap and catalog closure; each file gzip -9",
+    "profiles": {
+      "dashboard-home": {
+        "routePreloads": {
+          "raw": 2246720,
+          "gzip": 683655
+        },
+        "files": 155,
+        "dashboardCatalogCode": true,
+        "fullMessageNamespace": false,
+        "startup": {
+          "en": {
+            "total": {
+              "raw": 2249258,
+              "gzip": 684892
+            },
+            "extra": {
+              "raw": 2538,
+              "gzip": 1237
+            },
+            "extraFiles": 1
+          },
+          "ar": {
+            "total": {
+              "raw": 2753576,
+              "gzip": 803808
+            },
+            "extra": {
+              "raw": 506856,
+              "gzip": 120153
+            },
+            "extraFiles": 2
+          },
+          "ru": {
+            "total": {
+              "raw": 2803614,
+              "gzip": 806582
+            },
+            "extra": {
+              "raw": 556894,
+              "gzip": 122927
+            },
+            "extraFiles": 2
+          }
+        }
+      },
+      "dashboard-analytics": {
+        "routePreloads": {
+          "raw": 2588470,
+          "gzip": 779218
+        },
+        "files": 154,
+        "dashboardCatalogCode": true,
+        "fullMessageNamespace": false,
+        "startup": {
+          "en": {
+            "total": {
+              "raw": 2591008,
+              "gzip": 780455
+            },
+            "extra": {
+              "raw": 2538,
+              "gzip": 1237
+            },
+            "extraFiles": 1
+          },
+          "ar": {
+            "total": {
+              "raw": 3095326,
+              "gzip": 899371
+            },
+            "extra": {
+              "raw": 506856,
+              "gzip": 120153
+            },
+            "extraFiles": 2
+          },
+          "ru": {
+            "total": {
+              "raw": 3145364,
+              "gzip": 902145
+            },
+            "extra": {
+              "raw": 556894,
+              "gzip": 122927
+            },
+            "extraFiles": 2
+          }
+        }
+      },
+      "git-preview": {
+        "routePreloads": {
+          "raw": 1916300,
+          "gzip": 568871
+        },
+        "files": 86,
+        "dashboardCatalogCode": true,
+        "fullMessageNamespace": false,
+        "startup": {
+          "en": {
+            "total": {
+              "raw": 1919190,
+              "gzip": 570409
+            },
+            "extra": {
+              "raw": 2890,
+              "gzip": 1538
+            },
+            "extraFiles": 2
+          },
+          "ar": {
+            "total": {
+              "raw": 2423508,
+              "gzip": 689325
+            },
+            "extra": {
+              "raw": 507208,
+              "gzip": 120454
+            },
+            "extraFiles": 3
+          },
+          "ru": {
+            "total": {
+              "raw": 2473546,
+              "gzip": 692099
+            },
+            "extra": {
+              "raw": 557246,
+              "gzip": 123228
+            },
+            "extraFiles": 3
+          }
+        }
+      },
+      "welcome-name": {
+        "routePreloads": {
+          "raw": 1503152,
+          "gzip": 428951
+        },
+        "files": 59,
+        "dashboardCatalogCode": true,
+        "fullMessageNamespace": false,
+        "startup": {
+          "en": {
+            "total": {
+              "raw": 1505690,
+              "gzip": 430188
+            },
+            "extra": {
+              "raw": 2538,
+              "gzip": 1237
+            },
+            "extraFiles": 1
+          },
+          "ar": {
+            "total": {
+              "raw": 2010008,
+              "gzip": 549104
+            },
+            "extra": {
+              "raw": 506856,
+              "gzip": 120153
+            },
+            "extraFiles": 2
+          },
+          "ru": {
+            "total": {
+              "raw": 2060046,
+              "gzip": 551878
+            },
+            "extra": {
+              "raw": 556894,
+              "gzip": 122927
+            },
+            "extraFiles": 2
+          }
+        }
+      },
+      "oauth-consent": {
+        "routePreloads": {
+          "raw": 1812339,
+          "gzip": 527338
+        },
+        "files": 89,
+        "dashboardCatalogCode": true,
+        "fullMessageNamespace": false,
+        "startup": {
+          "en": {
+            "total": {
+              "raw": 1814877,
+              "gzip": 528575
+            },
+            "extra": {
+              "raw": 2538,
+              "gzip": 1237
+            },
+            "extraFiles": 1
+          },
+          "ar": {
+            "total": {
+              "raw": 2319195,
+              "gzip": 647491
+            },
+            "extra": {
+              "raw": 506856,
+              "gzip": 120153
+            },
+            "extraFiles": 2
+          },
+          "ru": {
+            "total": {
+              "raw": 2369233,
+              "gzip": 650265
+            },
+            "extra": {
+              "raw": 556894,
+              "gzip": 122927
+            },
+            "extraFiles": 2
+          }
+        }
+      },
+      "join-link": {
+        "routePreloads": {
+          "raw": 1887361,
+          "gzip": 551631
+        },
+        "files": 103,
+        "dashboardCatalogCode": true,
+        "fullMessageNamespace": false,
+        "startup": {
+          "en": {
+            "total": {
+              "raw": 1889899,
+              "gzip": 552868
+            },
+            "extra": {
+              "raw": 2538,
+              "gzip": 1237
+            },
+            "extraFiles": 1
+          },
+          "ar": {
+            "total": {
+              "raw": 2394217,
+              "gzip": 671784
+            },
+            "extra": {
+              "raw": 506856,
+              "gzip": 120153
+            },
+            "extraFiles": 2
+          },
+          "ru": {
+            "total": {
+              "raw": 2444255,
+              "gzip": 674558
+            },
+            "extra": {
+              "raw": 556894,
+              "gzip": 122927
+            },
+            "extraFiles": 2
+          }
+        }
+      },
+      "accept-invite": {
+        "routePreloads": {
+          "raw": 1887366,
+          "gzip": 551629
+        },
+        "files": 103,
+        "dashboardCatalogCode": true,
+        "fullMessageNamespace": false,
+        "startup": {
+          "en": {
+            "total": {
+              "raw": 1889904,
+              "gzip": 552866
+            },
+            "extra": {
+              "raw": 2538,
+              "gzip": 1237
+            },
+            "extraFiles": 1
+          },
+          "ar": {
+            "total": {
+              "raw": 2394222,
+              "gzip": 671782
+            },
+            "extra": {
+              "raw": 506856,
+              "gzip": 120153
+            },
+            "extraFiles": 2
+          },
+          "ru": {
+            "total": {
+              "raw": 2444260,
+              "gzip": 674556
+            },
+            "extra": {
+              "raw": 556894,
+              "gzip": 122927
+            },
+            "extraFiles": 2
+          }
+        }
+      },
+      "marketing-home": {
+        "routePreloads": {
+          "raw": 822156,
+          "gzip": 271897
+        },
+        "files": 57,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": false
+      },
+      "marketing-arabic": {
+        "routePreloads": {
+          "raw": 1115521,
+          "gzip": 378574
+        },
+        "files": 49,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": false
+      },
+      "blog-article": {
+        "routePreloads": {
+          "raw": 1647995,
+          "gzip": 543163
+        },
+        "files": 53,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": false
+      },
+      "auth-sign-in": {
+        "routePreloads": {
+          "raw": 955756,
+          "gzip": 323096
+        },
+        "files": 74,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": false
+      },
+      "public-docs": {
+        "routePreloads": {
+          "raw": 789231,
+          "gzip": 274316
+        },
+        "files": 66,
+        "dashboardCatalogCode": false,
+        "fullMessageNamespace": false
+      }
+    }
+  }
+}

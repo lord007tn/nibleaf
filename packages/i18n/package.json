@@ -19,6 +19,10 @@
     "./site-search": "./src/site-search.ts",
     "./marketing": "./src/marketing.ts",
     "./locale-state": "./src/runtime.ts",
+    "./dashboard-catalog": {
+      "nibleaf-dashboard": "./src/dashboard-catalog.client.ts",
+      "default": "./src/dashboard-catalog.server.ts"
+    },
     "./request-locale": "./src/request-locale.ts",
     "./messages": "./src/paraglide/messages.js",
     "./messages/*": "./src/paraglide/messages/*.js",
@@ -26,8 +30,8 @@
   },
   "scripts": {
     "untranslated": "node scripts/untranslated.mjs",
-    "setup": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy cookie preferredLanguage baseLocale --output-structure message-modules --emit-ts-declarations",
-    "clean": "git clean -xdf .cache .turbo dist node_modules src/paraglide",
+    "setup": "paraglide-js compile --project ./project.inlang --outdir ./src/paraglide --strategy cookie preferredLanguage baseLocale --output-structure message-modules --emit-ts-declarations && node scripts/generate-dashboard-catalogs.mjs",
+    "clean": "git clean -xdf .cache .turbo dist node_modules src/paraglide src/generated/dashboard",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --fsModuleCachePath node_modules/.vitest-cache"
   },

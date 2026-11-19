@@ -3,11 +3,14 @@ import { useStandaloneT } from '@nibleaf/i18n/standalone';
 import type { ErrorComponentProps } from '@tanstack/react-router';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
+import { reloadDocument } from '@/lib/document-recovery';
 
 export function ErrorPage({ error, reset }: ErrorComponentProps) {
   const t = useStandaloneT();
   const router = useRouter();
   const [retrying, setRetrying] = useState(false);
+  // Set by a loader whose retry cannot succeed in place; its text ships with that loader.
+  const reloadLabel = (error as { reloadLabel?: string }).reloadLabel;
   // People read a plain sentence, never an exception's (usually English, technical) text.
   // Developers get the real message below in development, and in the console.
   const detail = import.meta.env.DEV && error instanceof Error ? error.message : null;
@@ -25,6 +28,11 @@ export function ErrorPage({ error, reset }: ErrorComponentProps) {
           <Button
             loading={retrying}
             onClick={async () => {
+              // Repeating a request for a replaced build's file cannot succeed.
+              if (reloadLabel) {
+                reloadDocument();
+                return;
+              }
               setRetrying(true);
               try {
                 await router.invalidate();
@@ -35,7 +43,7 @@ export function ErrorPage({ error, reset }: ErrorComponentProps) {
             }}
             variant="outline"
           >
-            {t('error.tryAgain')}
+            {reloadLabel ?? t('error.tryAgain')}
           </Button>
           <Button nativeButton={false} render={<Link to="/" />}>
             {t('error.backHome')}
