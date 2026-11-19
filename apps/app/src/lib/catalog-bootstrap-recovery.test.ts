@@ -98,3 +98,15 @@ it('reveals Refresh when the connection returns but the bootstrap still fails', 
   window.dispatchEvent(new Event('online'));
   await vi.waitFor(() => expect(actionButton()?.hidden).toBe(false));
 });
+
+it('hides Refresh as soon as the connection drops, and never reloads an offline tab', async () => {
+  const online = vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(true);
+  startHydration();
+  await noticeShown();
+  expect(actionButton()?.hidden).toBe(false);
+  online.mockReturnValue(false);
+  window.dispatchEvent(new Event('offline'));
+  expect(actionButton()?.hidden).toBe(true);
+  actionButton()?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  expect(net.reload).not.toHaveBeenCalled();
+});

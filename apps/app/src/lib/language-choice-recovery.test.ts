@@ -189,3 +189,66 @@ describe('a chosen language whose catalog keeps failing', () => {
     expect(net.reload).not.toHaveBeenCalled();
   });
 });
+
+describe('a language chosen while the connection is down', () => {
+  const setOnline = (online: boolean) => {
+    vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(online);
+    window.dispatchEvent(new Event(online ? 'online' : 'offline'));
+  };
+
+  it('offers nothing to press offline, and retries the choice when the connection returns', async () => {
+    vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+    prepare = failing('ar');
+    await setLanguage('ar');
+    await actionShown();
+    expect(action().disabled).toBe(true);
+
+    prepare = async () => true;
+    setOnline(true);
+    await vi.waitFor(() => expect(document.documentElement.lang).toBe('ar'), { timeout: 300 });
+    expect(notice()).toBeNull();
+    expect(net.reload).not.toHaveBeenCalled();
+  });
+
+  it('disables a Refresh already shown when the connection drops, and never reloads offline', async () => {
+    prepare = failing('de');
+    await setLanguage('de');
+    await actionShown();
+    action().click();
+    await vi.waitFor(() => expect(action()?.textContent).toBe(refreshLabel()), { timeout: 300 });
+
+    setOnline(false);
+    expect(action().disabled).toBe(true);
+    action().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(net.reload).not.toHaveBeenCalled();
+    expect(cookieLocale()).not.toBe('de');
+  });
+
+  it('does not retry an older choice on reconnect', async () => {
+    vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+    const attempts: string[] = [];
+    prepare = async (locale) => {
+      attempts.push(locale);
+      return locale !== 'ar';
+    };
+    await setLanguage('ar');
+    await actionShown();
+    await setLanguage('fr');
+    setOnline(true);
+    await settle();
+    expect(attempts).toEqual(['ar', 'fr']);
+    expect(document.documentElement.lang).toBe('fr');
+  });
+
+  it('returns focus to the control that chose the language when the notice is closed', async () => {
+    const trigger = document.body.appendChild(document.createElement('button'));
+    trigger.focus();
+    prepare = failing('de');
+    await setLanguage('de');
+    await actionShown();
+    const close = notice()?.querySelector('button[aria-label]') as HTMLButtonElement;
+    close.focus();
+    close.click();
+    expect(document.activeElement).toBe(trigger);
+  });
+});

@@ -105,7 +105,9 @@ export async function hydrateDashboardLocale(): Promise<void> {
 }
 
 let failedChoice: Locale | undefined;
-let languageNotice: ReturnType<typeof showRecoveryNotice> | undefined;
+let languageNotice: { remove: () => void } | undefined;
+// Where focus was when the visitor chose the language: the picker's trigger.
+let languageOpener: HTMLElement | undefined;
 
 const dismissLanguageNotice = () => {
   languageNotice?.remove();
@@ -117,12 +119,15 @@ const dismissLanguageNotice = () => {
  * and offers one action, drawn here because a toast's own chunks may be gone too.
  * It retries first. If that fails online, it offers Refresh, which saves the
  * choice and loads the current build: safe whether or not the build was replaced.
- * The action belongs to this request, and a later choice removes it.
+ * The action belongs to this request, and a later choice removes it. Offline it
+ * is disabled, and the choice is retried when the connection returns.
  */
 function offerLanguageRecovery(locale: Locale): void {
   const choice = languageChoice();
   const shownIn = getLocale() as Locale;
   const refresh = failedChoice === locale && navigator.onLine !== false;
+  const focused = document.activeElement;
+  if (focused instanceof HTMLElement && focused !== document.body && !focused.closest('[role="alert"]')) languageOpener = focused;
   failedChoice = locale;
   dismissLanguageNotice();
   const notice = showRecoveryNotice(
@@ -130,7 +135,9 @@ function offerLanguageRecovery(locale: Locale): void {
     () => {
       if (choice !== languageChoice()) {
         dismissLanguageNotice();
-      } else if (refresh && navigator.onLine !== false) {
+      } else if (navigator.onLine === false) {
+        // Disabled offline; nothing here can work until the connection returns.
+      } else if (refresh) {
         rememberInterfaceLocale(locale);
         reloadDocument();
       } else {
@@ -144,9 +151,28 @@ function offerLanguageRecovery(locale: Locale): void {
   close.className = 'size-9 shrink-0 rounded-md';
   close.textContent = '×';
   close.setAttribute('aria-label', deploy_close({}, { locale: shownIn }));
-  close.addEventListener('click', dismissLanguageNotice);
+  close.addEventListener('click', () => {
+    dismissLanguageNotice();
+    if (languageOpener?.isConnected) languageOpener.focus();
+  });
   notice.action.after(close);
-  languageNotice = notice;
+  const offline = () => {
+    notice.action.disabled = navigator.onLine === false;
+  };
+  const online = () => {
+    offline();
+    if (choice === languageChoice()) void setLanguage(locale);
+  };
+  offline();
+  window.addEventListener('offline', offline);
+  window.addEventListener('online', online);
+  languageNotice = {
+    remove: () => {
+      window.removeEventListener('offline', offline);
+      window.removeEventListener('online', online);
+      notice.remove();
+    },
+  };
 }
 
 if (typeof document !== 'undefined') {

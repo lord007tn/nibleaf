@@ -22,7 +22,7 @@ export function showRecoveryNotice(locale: Locale, onAction: () => void, label =
     'fixed inset-x-4 bottom-4 z-50 mx-auto flex max-w-md items-center justify-between gap-3 rounded-lg border bg-card p-3 text-sm shadow-lg';
   message.textContent = translateStandalone('error.unexpected', locale);
   action.type = 'button';
-  action.className = 'min-h-9 shrink-0 rounded-md border px-3 font-medium';
+  action.className = 'min-h-9 shrink-0 rounded-md border px-3 font-medium disabled:opacity-60';
   action.textContent = label;
   notice.append(message, action);
   document.body.append(notice);

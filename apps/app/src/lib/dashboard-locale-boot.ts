@@ -31,7 +31,11 @@ function showRefreshNotice(label: string | undefined) {
   action.textContent = label ?? '';
   notice.append(translateStandalone('error.unexpected', renderedLocale()), action);
   document.body.append(notice);
-  window.addEventListener('click', (event) => event.target === action && reloadDocument(), true);
+  // Never reload an offline tab: it would lose the readable server page.
+  window.addEventListener('click', (event) => event.target === action && navigator.onLine && reloadDocument(), true);
+  window.addEventListener('offline', () => {
+    action.hidden = true;
+  });
   return { notice, action };
 }
 
@@ -52,7 +56,7 @@ export async function holdHydrationForDashboardLocale(refreshLabel?: string): Pr
     }
     if (attempt > 1) {
       shown ??= showRefreshNotice(refreshLabel);
-      shown.action.hidden = !refreshLabel || navigator.onLine === false;
+      shown.action.hidden = !refreshLabel || !navigator.onLine;
     }
     await new Promise<void>((resolve) => {
       window.addEventListener('online', () => resolve(), { once: true });
