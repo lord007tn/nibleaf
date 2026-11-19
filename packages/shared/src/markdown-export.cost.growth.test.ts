@@ -22,15 +22,18 @@ interface Sample {
 /** Garbage-collection pauses while measuring, as [start, end] on the performance.now() timeline. */
 const watchGc = () => {
   const pauses: Array<[number, number]> = [];
-  const observer = new PerformanceObserver((list) => {
-    for (const entry of list.getEntries()) pauses.push([entry.startTime, entry.startTime + entry.duration]);
-  });
+  const record = (entries: readonly PerformanceEntry[]) => {
+    for (const entry of entries) pauses.push([entry.startTime, entry.startTime + entry.duration]);
+  };
+  const observer = new PerformanceObserver((list) => record(list.getEntries()));
   observer.observe({ entryTypes: ['gc'] });
   return {
     pauses,
-    // Entries arrive asynchronously; let the observer catch up before reading them.
+    // Entries arrive asynchronously. Let queued deliveries run, then take any
+    // entry still buffered, so no pause before this call is lost.
     stop: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setImmediate(resolve));
+      record(observer.takeRecords());
       observer.disconnect();
     },
   };
@@ -50,21 +53,25 @@ describe.runIf(growthTestsEnabled)('real documentation corpus export cost', () =
     const pages = corpus.map(() => ({ main: [] as Sample[], head: [] as Sample[] }));
     const cpuSamples: number[] = [];
     const gc = watchGc();
-    for (let round = 0; round < 9; round++) {
-      const before = cpu();
-      for (const [index, [, source]] of corpus.entries()) {
-        for (const side of round % 2 ? [1, 0] : [0, 1]) {
-          const start = performance.now();
-          retained = side ? project(source) : baseline(source);
-          (side ? pages[index]?.head : pages[index]?.main)?.push({ start, end: performance.now() });
+    // Always release the observer, also when the rounds stop early.
+    try {
+      for (let round = 0; round < 9; round++) {
+        const before = cpu();
+        for (const [index, [, source]] of corpus.entries()) {
+          for (const side of round % 2 ? [1, 0] : [0, 1]) {
+            const start = performance.now();
+            retained = side ? project(source) : baseline(source);
+            (side ? pages[index]?.head : pages[index]?.main)?.push({ start, end: performance.now() });
+          }
         }
+        const after = cpu(),
+          used = 100 * (1 - (after.idle - before.idle) / Math.max(1, after.total - before.total));
+        if (used >= 70) context.skip('not measured: busy (CPU >= 70%)');
+        cpuSamples.push(used);
       }
-      const after = cpu(),
-        used = 100 * (1 - (after.idle - before.idle) / Math.max(1, after.total - before.total));
-      if (used >= 70) context.skip('not measured: busy (CPU >= 70%)');
-      cpuSamples.push(used);
+    } finally {
+      await gc.stop();
     }
-    await gc.stop();
     // A young-generation collection runs once the pages before it have filled
     // the nursery. The corpus runs in the same order every round, so the same
     // page tends to absorb that pause round after round, and its median with it
