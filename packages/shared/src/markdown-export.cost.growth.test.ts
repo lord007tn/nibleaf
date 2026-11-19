@@ -82,7 +82,25 @@ describe.runIf(growthTestsEnabled)('real documentation corpus export cost', () =
     const main = costs.reduce((sum, cost) => sum + cost.main, 0),
       head = costs.reduce((sum, cost) => sum + cost.head, 0);
     const gcPausedMs = gc.pauses.reduce((sum, [start, end]) => sum + end - start, 0);
-    console.info({ name, pages: corpus.length, meanAddedMs: mean, p99AddedMs: p99, pairedRatio: head / main, cpuSamples, gcPausedMs });
+    // Collection is still a cost the export causes. Where a pause lands is noise,
+    // but how much each side triggers in total is not: spread the head's extra
+    // collection time per round over every page, so an export that allocates
+    // more still counts against the mean budget.
+    const sideGc = (side: 'main' | 'head') =>
+      pages.reduce((sum, page) => sum + page[side].reduce((pageSum, sample) => pageSum + pausedWithin(gc.pauses, sample), 0), 0) /
+      Math.max(1, pages[0]?.[side].length ?? 1);
+    const addedGcPerPage = Math.max(0, sideGc('head') - sideGc('main')) / Math.max(1, corpus.length);
+    const meanWithGc = mean + addedGcPerPage;
+    console.info({
+      name,
+      pages: corpus.length,
+      meanAddedMs: mean,
+      meanAddedWithGcMs: meanWithGc,
+      p99AddedMs: p99,
+      pairedRatio: head / main,
+      cpuSamples,
+      gcPausedMs,
+    });
     // The pages that decide the p99, with each round's [time without GC, GC pause] in ms.
     const top = [...costs].sort((a, b) => b.added - a.added).slice(0, 5);
     console.info(
@@ -99,7 +117,7 @@ describe.runIf(growthTestsEnabled)('real documentation corpus export cost', () =
     );
     expect(typeof retained).toBe('string');
     // The master's absolute budget supersedes the old 1.3x/1.5x corpus caps.
-    expect(mean).toBeLessThanOrEqual(1);
+    expect(meanWithGc).toBeLessThanOrEqual(1);
     expect(p99).toBeLessThanOrEqual(5);
   });
   it.each([
