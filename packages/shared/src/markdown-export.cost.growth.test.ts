@@ -37,7 +37,7 @@ const observer = new PerformanceObserver((list) => {
     gcEntries.push({
       start: entry.startTime,
       end: entry.startTime + entry.duration,
-      kind: (entry.detail as { kind?: number } | undefined)?.kind ?? -1,
+      kind: (entry as { detail?: { kind?: number } }).detail?.kind ?? -1,
     });
 });
 observer.observe({ entryTypes: ['gc'] });
