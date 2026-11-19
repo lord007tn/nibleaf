@@ -134,8 +134,12 @@ createRoot(document.getElementById('root')).render(<RouterProvider router={route
       build: { outDir: join(harness, 'dist'), target: 'esnext', manifest: true },
     });
   }
+  // Capture serves these builds, so it must record the base they were built from.
+  await writeFile(join(scratch, 'baseline.txt'), `${baseline}\n`);
 } else {
   assert.ok(process.env.NIBLEAF_DEVSTACK_LOCK, 'Set the canonical devstack directory lock');
+  const built = (await readFile(join(scratch, 'baseline.txt'), 'utf8')).trim();
+  assert.equal(built, baseline, 'BASELINE must match the base the served fixtures were built from');
   // Bind and immediately close to verify the assigned app port is free. Pages
   // below are served through interception: no server process is started.
   await new Promise((resolvePort, reject) => {

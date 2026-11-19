@@ -111,7 +111,10 @@ export async function checkDevGeneration(root, scratch, browser, registerCleanup
     await replaceSource(changedSource);
     await page.waitForFunction((expected) => document.querySelector('#value')?.textContent === expected, changedText, { timeout: 15_000 });
     const after = await snapshot(output);
-    changed = Object.keys(after).filter((file) => after[file].hash !== before[file]?.hash || after[file].mtime !== before[file]?.mtime);
+    // A file missing on either side is a change too, so a deleted catalog cannot pass.
+    changed = [...new Set([...Object.keys(before), ...Object.keys(after)])].filter(
+      (file) => after[file]?.hash !== before[file]?.hash || after[file]?.mtime !== before[file]?.mtime,
+    );
     assert.deepEqual(changed, ['messages/ar.js'], 'Only the edited locale is republished');
     sampling = false;
     await reader;

@@ -8,8 +8,8 @@ import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 export const Route = createFileRoute('/oauth/project')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
   staticData: { interfaceLocale: true, dashboardLocale: true },
-  loader: async () => {
-    await loadRouteDashboardLocale();
+  loader: async ({ preload }) => {
+    await loadRouteDashboardLocale(preload);
   },
   head: () => ({ meta: [{ title: 'Connect an AI app — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: () => (

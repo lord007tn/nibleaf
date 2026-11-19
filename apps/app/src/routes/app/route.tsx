@@ -43,8 +43,8 @@ export const Route = createFileRoute('/app')({
   // The bell's unread count too, so its badge is there on first paint (audit WORKSPACE-28).
   // Lazily, from its own small module: this file is in the router's eager chunk,
   // which public docs pages load, so nothing here may add to their first load.
-  loader: async ({ context: { queryClient } }) => {
-    await loadRouteDashboardLocale();
+  loader: async ({ context: { queryClient }, preload }) => {
+    await loadRouteDashboardLocale(preload);
     prefetchRouteData(queryClient, switcherQueryOptions());
     const { unreadNotificationCountQueryOptions } = await import('@/hooks/api/notification-query-options');
     prefetchRouteData(queryClient, unreadNotificationCountQueryOptions());

@@ -110,3 +110,12 @@ it('hides Refresh as soon as the connection drops, and never reloads an offline 
   actionButton()?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
   expect(net.reload).not.toHaveBeenCalled();
 });
+
+it('keeps at most one online listener while it waits between retries', async () => {
+  const added = vi.spyOn(window, 'addEventListener');
+  const removed = vi.spyOn(window, 'removeEventListener');
+  startHydration();
+  await noticeShown();
+  const count = (spy: typeof added | typeof removed) => spy.mock.calls.filter(([type]) => type === 'online').length;
+  expect(count(added) - count(removed)).toBeLessThanOrEqual(1);
+});

@@ -43,7 +43,7 @@
     {
       "name": "replaced-build-on-navigation",
       "automaticReloads": 0,
-      "tryAgainReloaded": true
+      "refreshReloaded": true
     }
   ],
   "earlierResults": [

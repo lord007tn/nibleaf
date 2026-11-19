@@ -8,8 +8,8 @@ import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 export const Route = createFileRoute('/accept-invite/$invitationId')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
   staticData: { interfaceLocale: true, dashboardLocale: true },
-  loader: async ({ context: { queryClient }, params: { invitationId } }) => {
-    await loadRouteDashboardLocale();
+  loader: async ({ context: { queryClient }, params: { invitationId }, preload }) => {
+    await loadRouteDashboardLocale(preload);
     return prefetchRouteData(queryClient, getInvitationInfoQueryOptions(invitationId));
   },
   // Not under the (auth) layout, so noindex it directly: the URL carries a live

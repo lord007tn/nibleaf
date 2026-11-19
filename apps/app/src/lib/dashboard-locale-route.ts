@@ -10,15 +10,17 @@ let failedOnline = false;
  * Route loaders wait for the current language. A failure reaches the route's
  * error page rather than rendering another language. `reloadLabel` makes that
  * page offer Refresh: when the build was replaced, or a retry failed online.
+ * A hover preload is not an attempt the visitor saw, so it never counts as one.
  */
-export async function loadRouteDashboardLocale(): Promise<void> {
+export async function loadRouteDashboardLocale(preload = false): Promise<void> {
   try {
     const module = await dashboardLocaleModule();
     if (!module) throw new Error('The interface language module did not load');
     await module.loadDashboardLocale();
-    failedOnline = false;
+    if (!preload) failedOnline = false;
   } catch (cause) {
     const error = cause instanceof Error ? cause : new Error(String(cause));
+    if (preload) throw error;
     const retryFailed = failedOnline && navigator.onLine !== false;
     failedOnline = navigator.onLine !== false;
     const reload = retryFailed || (await isBuildRetired(cause));

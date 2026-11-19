@@ -59,8 +59,13 @@ export async function holdHydrationForDashboardLocale(refreshLabel?: string): Pr
       shown.action.hidden = !refreshLabel || !navigator.onLine;
     }
     await new Promise<void>((resolve) => {
-      window.addEventListener('online', () => resolve(), { once: true });
-      setTimeout(resolve, attempt < 2 ? 1000 : 5000);
+      const next = () => {
+        window.removeEventListener('online', next);
+        clearTimeout(timer);
+        resolve();
+      };
+      const timer = setTimeout(next, attempt < 2 ? 1000 : 5000);
+      window.addEventListener('online', next);
     });
   }
 }

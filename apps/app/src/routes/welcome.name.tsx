@@ -18,8 +18,8 @@ export const Route = createFileRoute('/welcome/name')({
     if (session.user.name?.trim()) throw redirect({ href: nameDestination });
     return { nameDestination };
   },
-  loader: async () => {
-    await loadRouteDashboardLocale();
+  loader: async ({ preload }) => {
+    await loadRouteDashboardLocale(preload);
   },
   head: () => ({ meta: [{ title: 'Welcome — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   // Method shorthand is what TanStack's code splitter moves out of the route

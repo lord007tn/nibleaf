@@ -183,6 +183,37 @@ describe('a catalog that fails while the document starts', () => {
   });
 });
 
+describe('a probe that never answers', () => {
+  const hangingProbe = () =>
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+          }),
+      ),
+    );
+
+  it('still shows the hydration notice, with an in-place retry', async () => {
+    hangingProbe();
+    startHydration();
+    await settle(10_000);
+    expect(button()?.textContent).toBe(translateStandalone('error.tryAgain', 'ar'));
+  });
+
+  it('still reaches the navigation error page', async () => {
+    hangingProbe();
+    const { loadRouteDashboardLocale } = await import('@/lib/dashboard-locale-route');
+    let failure: unknown;
+    void loadRouteDashboardLocale().catch((error: unknown) => {
+      failure = error;
+    });
+    await settle(10_000);
+    expect(failure).toMatchObject({ reloadLabel: undefined });
+  });
+});
+
 describe('a catalog that fails on navigation', () => {
   it('never reloads the document, and marks a replaced build for an explicit reload', async () => {
     serveAssets(404);
@@ -215,5 +246,18 @@ describe('a catalog that fails on navigation', () => {
     };
     expect(await attempt()).toMatchObject({ reloadLabel: undefined });
     expect(await attempt()).toMatchObject({ reloadLabel: REFRESH });
+  });
+
+  it('does not count a failed hover preload as an earlier attempt', async () => {
+    const { loadRouteDashboardLocale } = await import('@/lib/dashboard-locale-route');
+    net.down = false;
+    await loadRouteDashboardLocale();
+    net.down = true;
+    const preloaded = loadRouteDashboardLocale(true).catch((error: unknown) => error);
+    await settle();
+    await preloaded;
+    const visible = loadRouteDashboardLocale(false).catch((error: unknown) => error);
+    await settle();
+    expect(await visible).toMatchObject({ reloadLabel: undefined });
   });
 });

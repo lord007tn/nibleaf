@@ -61,3 +61,27 @@ describe('whether a failed load came from a replaced build', () => {
     expect(request).not.toHaveBeenCalled();
   });
 });
+
+it('gives up on a probe that never answers, so recovery is never held back', async () => {
+  vi.useFakeTimers();
+  try {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+          }),
+      ),
+    );
+    let answer: boolean | undefined;
+    void isBuildRetired(importFailure('/assets/ar-OLD.js')).then((retired) => {
+      answer = retired;
+    });
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(answer).toBe(false);
+  } finally {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});

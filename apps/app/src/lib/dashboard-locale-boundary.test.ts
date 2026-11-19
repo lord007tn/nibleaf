@@ -136,7 +136,7 @@ describe('dashboard catalog boundary', () => {
   ])('%s waits for its language before rendering', (file) => {
     expect(isDashboardLocaleRouteId(routeIdOf(join(routesDir, file)) ?? '')).toBe(true);
     const source = readFileSync(join(routesDir, file), 'utf8');
-    expect(source).toMatch(/await loadRouteDashboardLocale\(\)/);
+    expect(source).toMatch(/await loadRouteDashboardLocale\(preload\)/);
     expect(source).toMatch(/dashboardLocale: true/);
   });
 });

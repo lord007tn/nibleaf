@@ -121,8 +121,8 @@ Use the owner's heavy/devstack resource protocol. Install and generate in your o
 pnpm install --frozen-lockfile
 pnpm --filter @nibleaf/i18n run setup
 # Both measurements use these identical environment values:
-# NODE_OPTIONS=--max-old-space-size=6144 BUNDLE_ANALYZE=true
-# VITE_API_URL=http://127.0.0.1:4410 MARKETING_GITHUB_STARS=0
+export NODE_OPTIONS=--max-old-space-size=6144 BUNDLE_ANALYZE=true
+export VITE_API_URL=http://127.0.0.1:4410 MARKETING_GITHUB_STARS=0
 pnpm exec turbo run build -F '@nibleaf/app^...' --concurrency=1 --force
 pnpm --filter @nibleaf/app build
 node apps/app/scripts/check-bundle-budget.mjs --json /your/evidence/bundles.json

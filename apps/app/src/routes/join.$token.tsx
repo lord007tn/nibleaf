@@ -8,8 +8,8 @@ import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 export const Route = createFileRoute('/join/$token')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
   staticData: { interfaceLocale: true, dashboardLocale: true },
-  loader: async ({ context: { queryClient }, params: { token } }) => {
-    await loadRouteDashboardLocale();
+  loader: async ({ context: { queryClient }, params: { token }, preload }) => {
+    await loadRouteDashboardLocale(preload);
     prefetchRouteData(queryClient, joinLinkPreviewQueryOptions(token));
     prefetchRouteData(queryClient, getPublicMetaQueryOptions());
   },
