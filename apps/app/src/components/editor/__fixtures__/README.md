@@ -65,3 +65,11 @@ text. The draft compares clean, so nothing is written and no conflict is raised,
 keeps the other client's copy. The test names the seeds that end this way (95756 and 246217, the
 same on main) and allows that outcome for them only. The fixture was made against main's
 `editor.tsx`, `editor-draft.ts` and `editor-save-queue.ts` with `WRITE_AUTOSAVE_ADOPTION_MAIN=1`.
+
+`list-item-lead-main.json` holds, for each page and edit that `list-item-lead-matrix.test.ts` generates, a
+digest of main's (cc6a1e23) save and reloaded document, and main's four checks. The pages are lists
+opening with a quote, heading, fence, nested list or nothing, across marker widths and start numbers;
+the edits are typing, Enter, Backspace, Delete, paste, undo, redo, indent, outdent, list and heading
+toggles, block moves and copying to a blank page. The test checks no result is worse than main's. It
+was made by running that test against main's `fence-source.ts`, `paragraph-source.ts`, `tight-lists.ts`
+and `markdown-output.ts` with `WRITE_LIST_LEAD_MAIN` set to main's revision.

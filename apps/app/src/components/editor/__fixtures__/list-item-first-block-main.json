@@ -1,0 +1,522 @@
+{
+  "mainRevision": "f58477b6bbe9204ba65865881252c459438ee139",
+  "reason": "Main's result minus the #604 bug: keep the first block in its item, changing only container prefixes. An edit that reaches a lead runs on main's document, so pages 135, 418, 653, 785 save exactly as main after their corpus edits.",
+  "cases": [
+    {
+      "index": 42,
+      "source": "`code` **bold at the end** الصفحة [a link](/guide) **bold** المحرر\nx_y_z يحفظ x_y_z <kbd>K</kbd> page ~~gone~~ **bold**\n**bold** x_y_z **bold**\n<kbd>K</kbd> with *italic* tab\there [external](https://example.com/a_b) Wow\\![a link](/x) Markdown\n\n\n<Card title=\"A & B\" icon=\"rocket\">\n\n`code` 2 < 3 **bold at the end**\nSee![an image](/x.png) x_y_z the Markdown المحرر\n[a link](/guide) tab\there See![an image](/x.png)\n\n  ~~~js\n| a | b |\n<Card title=\"x\" />\n\tindented\n  ~~~\n\n</Card>\n\n\n<CodeGroup>\n\n  ~~~js\n  two\n  ~~~`\n\n```bash\n```\n\n</CodeGroup>\n\n\n> > \t```\n> > const a = 1;\n> >   two\n> > \t```\n\n> > > $$\n> > > x^2\n> > > $$\n\n\n+ ````bash\n  `````\n- <Tabs>\n  <Tab title=\"A\">\n\n  3. Markdown saves 🚀 🚀 دليل\n     snake_case_name <kbd>K</kbd> <kbd>K</kbd> {value} See![an image](/x.png) [a link](/guide) tab\there\n     **🚀** saves دليل [a link](/guide) Wow\\![a link](/x) المحرر [external](https://example.com/a_b) {value}\n\n  4. | b \\| c | دليل |  |\n     | :---: | --- | --- |\n     | **x** | a | b \\| c |\n\n  </Tab>\n  </Tabs>\n+ 2 < 3 a*b saves saves دليل Wow\\![a link](/x) \\*escaped\\* [a link](/guide)\n  يحفظ ~~gone~~ Wow\\![a link](/x) Markdown [external](https://example.com/a_b) the with x_y_z\n  snake_case_name ~~gone~~ \\*escaped\\* See![an image](/x.png) <kbd>K</kbd> الصفحة **bold** **🚀**\n  🚀 **bold at the end** snake_case_name snake_case_name **bold at the end** دليل يحفظ 2 < 3\n\n\n+ ~~~md title=\"x\"\n  | a | b |\n    two\n  ~~~\n\n\n> - snake_case_name [external](https://example.com/a_b) \\*escaped\\*\n\n>   the [a link](/guide) **🚀** يحفظ **bold at the end** الصفحة \\*escaped\\*\n> +  ~~~md title=\"x\"\n>    ~~~`\n> + a*b `code` #hash with **🚀**\n\n> -  ~~~\n>     two\n>   const a = 1;\n>    ~~~\n\n>   # المحرر a*b\n\n> + See![an image](/x.png) يحفظ snake_case_name *italic* [a link](/guide)\n\n>   + ## with page\n\n>   * *italic* #hash `code` `code` page **bold** saves\n>     المحرر **bold** المحرر [external](https://example.com/a_b) a*b\n>     **🚀** دليل See![an image](/x.png) #hash دليل\n\n>   - يحفظ See![an image](/x.png) *italic*\n>     🚀 with See![an image](/x.png) دليل\n>     [a link](/guide) saves *italic* page the 2 < 3\n",
+      "unmodified": {
+        "main": "`code` **bold at the end** الصفحة [a link](/guide) **bold** المحرر x_y_z يحفظ x_y_z <kbd>K</kbd> page ~~gone~~ **bold** **bold** x_y_z **bold** <kbd>K</kbd> with *italic* tab here [external](https://example.com/a_b) Wow\\![a link](/x) Markdown\n\n<Card title=\"A & B\" icon=\"rocket\">\n\n`code` 2 &lt; 3 **bold at the end** See\n\n![an image](/x.png)\n\nx_y_z the Markdown المحرر [a link](/guide) tab here See\n\n![an image](/x.png)\n\n  ~~~js\n| a | b |\n<Card title=\"x\" />\n\tindented\n  ~~~\n\n</Card>\n\n<CodeGroup>\n\n  ~~~js\n  two\n  ~~~`\n\n```bash\n```\n\n</CodeGroup>\n\n\n> > \t```\n> > const a = 1;\n> >   two\n> > \t```\n\n> > > $$\n> > > x^2\n> > > $$\n\n\n+ ````bash\n  `````\n- <Tabs>\n  <Tab title=\"A\">\n\n  3. Markdown saves 🚀 🚀 دليل\n     snake_case_name <kbd>K</kbd> <kbd>K</kbd> {value} See![an image](/x.png) [a link](/guide) tab\there\n     **🚀** saves دليل [a link](/guide) Wow\\![a link](/x) المحرر [external](https://example.com/a_b) {value}\n\n  4. | b \\| c | دليل |  |\n     | :---: | --- | --- |\n     | **x** | a | b \\| c |\n\n  </Tab>\n  </Tabs>\n+ 2 < 3 a*b saves saves دليل Wow\\![a link](/x) \\*escaped\\* [a link](/guide)\n  يحفظ ~~gone~~ Wow\\![a link](/x) Markdown [external](https://example.com/a_b) the with x_y_z\n  snake_case_name ~~gone~~ \\*escaped\\* See![an image](/x.png) <kbd>K</kbd> الصفحة **bold** **🚀**\n  🚀 **bold at the end** snake_case_name snake_case_name **bold at the end** دليل يحفظ 2 < 3\n\n\n+ ~~~md title=\"x\"\n  | a | b |\n    two\n  ~~~\n\n> - snake_case_name [external](https://example.com/a_b) \\*escaped\\*\n\n> the [a link](/guide) **🚀** يحفظ **bold at the end** الصفحة \\*escaped\\*\n>\n> - ~~~md title=\"x\"\n>   ~~~`\n>   ~~~\n> - a\\*b `code` #hash with **🚀**\n\n> - ~~~\n>    two\n>   ~~~\n>\n> const a = 1;\n>\n>    ~~~\n\n> # المحرر a\\*b\n\n> - See\n>\n>   ![an image](/x.png)\n>\n>    يحفظ snake_case_name *italic* [a link](/guide)\n\n> - \n>\n> ## with page\n\n> - *italic* #hash `code` `code` page **bold** saves المحرر **bold** المحرر [external](https://example.com/a_b) a\\*b **🚀** دليل See\n>\n>   ![an image](/x.png)\n>\n>   #hash دليل\n\n> - يحفظ See\n>\n>   ![an image](/x.png)\n>\n>   *italic* 🚀 with See\n>\n>   ![an image](/x.png)\n>\n>   دليل [a link](/guide) saves *italic* page the 2 &lt; 3\n\n</CodeGroup>",
+        "patches": [
+          {
+            "at": 1797,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "corpusEdit": {
+        "main": "`code` **bold at the end** الصفحة [a link](/guide) **bold** المحرر x_y_z يحفظ x_y_z <kbd>K</kbd> page ~~gone~~ **bold** **bold** x_y_z **bold** <kbd>K</kbd> with *italic* tab here [external](https://example.com/a_b) Wow\\![a link](/x) Markdown\n\n<Card title=\"A & B\" icon=\"rocket\">\n\n`code` 2 &lt; 3 **bold at the end** See\n\n![an image](/x.png)\n\nx_y_z the Markdown المحرر [a link](/guide) tab here See\n\n![an image](/x.png)\n\n  ~~~js\n| a | b |\n<Card title=\"x\" />\n\tindented\n  ~~~\n\n</Card>\n\n<CodeGroup>\n\n  ~~~js\n  two\n  ~~~`\n\n```bash\n```\n\n</CodeGroup>\n\n\n> > \t```\n> > const a = 1;\n> >   two\n> > \t```\n\n> > > $$\n> > > x^2\n> > > $$\n\n\n+ ````bash\n  `````\n- <Tabs>\n  <Tab title=\"A\">\n\n  3. Markdown saves 🚀 🚀 دليل\n     snake_case_name <kbd>K</kbd> <kbd>K</kbd> {value} See![an image](/x.png) [a link](/guide) tab\there\n     **🚀** saves دليل [a link](/guide) Wow\\![a link](/x) المحرر [external](https://example.com/a_b) {value}\n\n  4. | b \\| c | دليل |  |\n     | :---: | --- | --- |\n     | **x** | a | b \\| c |\n\n  </Tab>\n  </Tabs>\n+ 2 < 3 a*b saves saves دليل Wow\\![a link](/x) \\*escaped\\* [a link](/guide)\n  يحفظ ~~gone~~ Wow\\![a link](/x) Markdown [external](https://example.com/a_b) the with x_y_z\n  snake_case_name ~~gone~~ \\*escaped\\* See![an image](/x.png) <kbd>K</kbd> الصفحة **bold** **🚀**\n  🚀 **bold at the end** snake_case_name snake_case_name **bold at the end** دليل يحفظ 2 < 3\n\n\n+ ~~~md title=\"x\"\n  | a | b |\n    two\n  ~~~\n\n> - snake_case_name [external](https://example.com/a_b) \\*escaped\\*\n\n> the [a link](/guide) **🚀** يحفظ **bold at the end** الصفحة \\*escaped\\*\n>\n> - ~~~md title=\"x\"\n>   ~~~`\n>   ~~~\n> - a\\*b `code` #hash with **🚀**\n\n> - ~~~\n>    two\n>   ~~~\n>\n> const a = 1;\n>\n>    ~~~\n\n> # المحرر a\\*b\n\n> - See\n>\n>   ![an image](/x.png)\n>\n>    يحفظ snake_case_name *italic* [a link](/guide)\n\n> - \n>\n> ## with page\n\n> - *italic* #hash `code` `code` page **bold** saves المحرر **bold** المحرر [external](https://example.com/a_b) a\\*b **🚀** دليل See\n>\n>   ![an image](/x.png)\n>\n>   #hash دليل\n\n> - يحفظ See\n>\n>   ![an image](/x.png)\n>\n>   *italic* 🚀 with See\n>\n>   ![an image](/x.png)\n>\n>   دليل [a link](/guide) saves *italic* page the 2 &lt; 3\n\n</CodeGroup>",
+        "patches": [
+          {
+            "at": 1797,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "attributeEdit": {
+        "main": "`code` **bold at the end** الصفحة [a link](/guide) **bold** المحرر x_y_z يحفظ x_y_z <kbd>K</kbd> page ~~gone~~ **bold** **bold** x_y_z **bold** <kbd>K</kbd> with *italic* tab here [external](https://example.com/a_b) Wow\\![a link](/x) Markdown\n\n<Card title=\"Edited\" icon=\"rocket\">\n\n`code` 2 &lt; 3 **bold at the end** See\n\n![an image](/x.png)\n\nx_y_z the Markdown المحرر [a link](/guide) tab here See\n\n![an image](/x.png)\n\n  ~~~js\n| a | b |\n<Card title=\"x\" />\n\tindented\n  ~~~\n\n</Card>\n\n<CodeGroup>\n\n  ~~~js\n  two\n  ~~~`\n\n```bash\n```\n\n</CodeGroup>\n\n\n> > \t```\n> > const a = 1;\n> >   two\n> > \t```\n\n> > > $$\n> > > x^2\n> > > $$\n\n\n+ ````bash\n  `````\n- <Tabs>\n  <Tab title=\"A\">\n\n  3. Markdown saves 🚀 🚀 دليل\n     snake_case_name <kbd>K</kbd> <kbd>K</kbd> {value} See![an image](/x.png) [a link](/guide) tab\there\n     **🚀** saves دليل [a link](/guide) Wow\\![a link](/x) المحرر [external](https://example.com/a_b) {value}\n\n  4. | b \\| c | دليل |  |\n     | :---: | --- | --- |\n     | **x** | a | b \\| c |\n\n  </Tab>\n  </Tabs>\n+ 2 < 3 a*b saves saves دليل Wow\\![a link](/x) \\*escaped\\* [a link](/guide)\n  يحفظ ~~gone~~ Wow\\![a link](/x) Markdown [external](https://example.com/a_b) the with x_y_z\n  snake_case_name ~~gone~~ \\*escaped\\* See![an image](/x.png) <kbd>K</kbd> الصفحة **bold** **🚀**\n  🚀 **bold at the end** snake_case_name snake_case_name **bold at the end** دليل يحفظ 2 < 3\n\n\n+ ~~~md title=\"x\"\n  | a | b |\n    two\n  ~~~\n\n> - snake_case_name [external](https://example.com/a_b) \\*escaped\\*\n\n> the [a link](/guide) **🚀** يحفظ **bold at the end** الصفحة \\*escaped\\*\n>\n> - ~~~md title=\"x\"\n>   ~~~`\n>   ~~~\n> - a\\*b `code` #hash with **🚀**\n\n> - ~~~\n>    two\n>   ~~~\n>\n> const a = 1;\n>\n>    ~~~\n\n> # المحرر a\\*b\n\n> - See\n>\n>   ![an image](/x.png)\n>\n>    يحفظ snake_case_name *italic* [a link](/guide)\n\n> - \n>\n> ## with page\n\n> - *italic* #hash `code` `code` page **bold** saves المحرر **bold** المحرر [external](https://example.com/a_b) a\\*b **🚀** دليل See\n>\n>   ![an image](/x.png)\n>\n>   #hash دليل\n\n> - يحفظ See\n>\n>   ![an image](/x.png)\n>\n>   *italic* 🚀 with See\n>\n>   ![an image](/x.png)\n>\n>   دليل [a link](/guide) saves *italic* page the 2 &lt; 3\n\n</CodeGroup>",
+        "patches": [
+          {
+            "at": 1798,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      }
+    },
+    {
+      "index": 59,
+      "source": "> - > [external](https://example.com/a_b) the **bold**\n>   > a*b **bold** Wow\\![a link](/x)\n\n>   > #hash saves الصفحة page <kbd>K</kbd> Wow\\![a link](/x) **bold at the end**\n>   > [external](https://example.com/a_b) snake_case_name <kbd>K</kbd> Markdown Markdown #hash يحفظ page\n>   > saves tab\there **bold** 2 < 3 <kbd>K</kbd> **bold at the end**\n>   > a*b **🚀** page [external](https://example.com/a_b) 2 < 3 Wow\\![a link](/x) snake_case_name\n\n>   <Callout type=\"info\">\n\n>   ## See![an image](/x.png) *italic* Wow\\![a link](/x) الصفحة\n\n>   </Callout>\n\n\n````bash\n````\n\n\n> # <kbd>K</kbd> 2 < 3 page editor\n\n> `code` <kbd>K</kbd> saves #hash x_y_z\n> {value} a*b with `code` \\*escaped\\* **bold at the end** snake_case_name **bold at the end**\n> snake_case_name ~~gone~~ #hash يحفظ *italic* snake_case_name the\n> editor {value} <kbd>K</kbd> **bold** 2 < 3 tab\there saves the\n\n",
+      "unmodified": {
+        "main": "> - \n>\n> > [external](https://example.com/a_b) the **bold** a\\*b **bold** Wow\\![a link](/x)\n\n> > #hash saves الصفحة page <kbd>K</kbd> Wow\\![a link](/x) **bold at the end** [external](https://example.com/a_b) snake_case_name <kbd>K</kbd> Markdown Markdown #hash يحفظ page saves tab here **bold** 2 &lt; 3 <kbd>K</kbd> **bold at the end** a\\*b **🚀** page [external](https://example.com/a_b) 2 &lt; 3 Wow\\![a link](/x) snake_case_name\n\n> \n>\n> <Callout type=\"info\">\n>\n> </Callout>\n\n> ## See\n>\n> ![an image](/x.png)\n>\n> *italic* Wow\\![a link](/x) الصفحة\n\n> \n\n````bash\n````\n\n> # <kbd>K</kbd> 2 &lt; 3 page editor\n\n> `code` <kbd>K</kbd> saves #hash x_y_z {value} a\\*b with `code` \\*escaped\\* **bold at the end** snake_case_name **bold at the end** snake_case_name ~~gone~~ #hash يحفظ *italic* snake_case_name the editor {value} <kbd>K</kbd> **bold** 2 &lt; 3 tab here saves the",
+        "patches": [
+          {
+            "at": 3,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "corpusEdit": {
+        "main": "> - \n>\n> > [external](https://example.com/a_b) the **bold** a\\*b **bold** Wow\\![a link](/x)\n\n> > #hash saves الصفحة page <kbd>K</kbd> Wow\\![a lin!k](/x) **bold at the end** [external](https://example.com/a_b) snake_case_name <kbd>K</kbd> Markdown Markdown #hash يحفظ page saves tab here **bold** 2 &lt; 3 <kbd>K</kbd> **bold at the end** a\\*b **🚀** page [external](https://example.com/a_b) 2 &lt; 3 Wow\\![a link](/x) snake_case_name\n\n> \n>\n> <Callout type=\"info\">\n>\n> </Callout>\n\n> ## See\n>\n> ![an image](/x.png)\n>\n> *italic* Wow\\![a link](/x) الصفحة\n\n> \n\n````bash\n````\n\n> # <kbd>K</kbd> 2 &lt; 3 page editor\n\n> `code` <kbd>K</kbd> saves #hash x_y_z {value} a\\*b with `code` \\*escaped\\* **bold at the end** snake_case_name **bold at the end** snake_case_name ~~gone~~ #hash يحفظ *italic* snake_case_name the editor {value} <kbd>K</kbd> **bold** 2 &lt; 3 tab here saves the",
+        "patches": [
+          {
+            "at": 3,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "attributeEdit": {
+        "main": "> - \n>\n> > [external](https://example.com/a_b) the **bold** a\\*b **bold** Wow\\![a link](/x)\n\n> > #hash saves الصفحة page <kbd>K</kbd> Wow\\![a link](/x) **bold at the end** [external](https://example.com/a_b) snake_case_name <kbd>K</kbd> Markdown Markdown #hash يحفظ page saves tab here **bold** 2 &lt; 3 <kbd>K</kbd> **bold at the end** a\\*b **🚀** page [external](https://example.com/a_b) 2 &lt; 3 Wow\\![a link](/x) snake_case_name\n\n> \n>\n> <Callout type=\"info\">\n>\n> </Callout>\n\n> ## See\n>\n> ![an image](/x.png \"Edited\")\n>\n> *italic* Wow\\![a link](/x) الصفحة\n\n> \n\n````bash\n````\n\n> # <kbd>K</kbd> 2 &lt; 3 page editor\n\n> `code` <kbd>K</kbd> saves #hash x_y_z {value} a\\*b with `code` \\*escaped\\* **bold at the end** snake_case_name **bold at the end** snake_case_name ~~gone~~ #hash يحفظ *italic* snake_case_name the editor {value} <kbd>K</kbd> **bold** 2 &lt; 3 tab here saves the",
+        "patches": [
+          {
+            "at": 3,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      }
+    },
+    {
+      "index": 135,
+      "source": "# editor الصفحة `code` editor\n\n> [!TIP]\n> + <Callout type=\"info\">\n\n>   ```\n>   \tindented\n>   | a | b |\n\n>   ```\n\n>   ````md\n>   const a = 1;\n>   \tindented\n\n>   `````\n\n>   </Callout>\n> * See![an image](/x.png) a*b 2 < 3 **bold** المحرر المحرر [external](https://example.com/a_b) editor\n>   دليل يحفظ See![an image](/x.png) {value}\n\n>   1. # page دليل x_y_z يحفظ\n> + - ````bash\n>     const a = 1;\n>     ````\n\n>   * ```ts\n>     ```\n\n>   - ````python\n>     ```\n>       two\n>       two\n>     ````\n\n>   # المحرر page **bold**\n\n#hash x_y_z [a link](/guide) **🚀** 2 < 3\n#hash دليل snake_case_name 🚀 **bold at the end** \\*escaped\\* editor\nsnake_case_name **bold at the end** `code` [external](https://example.com/a_b) \\*escaped\\* *italic* tab\there [external](https://example.com/a_b)\n**bold** دليل **bold at the end**\n\n",
+      "unmodified": {
+        "main": "# editor الصفحة `code` editor\n\n> [!TIP]\n> - \n>\n> <Callout type=\"info\">\n>\n> </Callout>\n\n>   ```\n>   \tindented\n>   | a | b |\n\n>   ```\n\n>   ````md\n>   const a = 1;\n>   \tindented\n\n>   `````\n\n> \\* See!\\[an image\\](/x.png) a\\*b 2 &lt; 3 \\*\\*bold\\*\\* المحرر المحرر \\[external\\](https://example.com/a_b) editor دليل يحفظ See!\\[an image\\](/x.png) {value}\n\n> 1. \n>\n> # page دليل x_y_z يحفظ\n>\n> - \n>\n>\n> - ````bash\n>   const a = 1;\n>   ````\n\n> - ```ts\n>   \n>   ```\n\n> - ````python\n>   ```\n>     two\n>     two\n>   ````\n\n> # المحرر page **bold**\n\n#hash x_y_z [a link](/guide) **🚀** 2 &lt; 3 #hash دليل snake_case_name 🚀 **bold at the end** \\*escaped\\* editor snake_case_name **bold at the end** `code` [external](https://example.com/a_b) \\*escaped\\* *italic* tab here [external](https://example.com/a_b) **bold** دليل **bold at the end**",
+        "patches": [
+          {
+            "at": 351,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "corpusEdit": {
+        "main": "# editor الصفحة `code` editor\n\n> [!TIP]\n> - \n>\n> <Callout type=\"info\">\n>\n> </Callout>\n\n>   ```\n>   \tindented\n>   | a | b |\n\n>   ```\n\n>   ````md\n>   const a = 1;\n>   \tindented\n\n>   `````\n\n> \\* See!\\[an image\\](/x.png) a\\*b 2 &lt; 3 \\*\\*bold\\*\\* المحرر المحرر \\[external\\](https://example.com/a_b) editor دليل يحفظ See!\\[\n>\n> an image\\](/x.png) {value}\n\n> 1. \n>\n> # page دليل x_y_z يحفظ\n>\n> - \n>\n>\n> - ````bash\n>   const a = 1;\n>   ````\n\n> - ```ts\n>   \n>   ```\n\n> - ````python\n>   ```\n>     two\n>     two\n>   ````\n\n> # المحرر page **bold**\n\n#hash x_y_z [a link](/guide) **🚀** 2 &lt; 3 #hash دليل snake_case_name 🚀 **bold at the end** \\*escaped\\* editor snake_case_name **bold at the end** `code` [external](https://example.com/a_b) \\*escaped\\* *italic* tab here [external](https://example.com/a_b) **bold** دليل **bold at the end**",
+        "patches": [],
+        "mainFixed": false
+      },
+      "attributeEdit": null
+    },
+    {
+      "index": 246,
+      "source": "<Tabs>\n<Tab title=\"A\">\n\nالمحرر 🚀 المحرر with `code` الصفحة\nsaves <kbd>K</kbd> with **bold** tab\there x_y_z\nSee![an image](/x.png) 2 < 3 *italic* `code` #hash with\n\n</Tab>\n</Tabs>\n\n\nsaves <kbd>K</kbd> المحرر **bold** <kbd>K</kbd> **🚀**\n\n\n3. > ## ~~gone~~ See![an image](/x.png) a*b\n4. ```bash\n\n   | a | b |\n   \tindented\n   ```\n\n   <Steps>\n   <Step title=\"One\">\n\n   > يحفظ snake_case_name دليل `code` the\n   > يحفظ **bold at the end** دليل *italic* the See![an image](/x.png)\n   > دليل 2 < 3 المحرر الصفحة saves **bold**  \n   > المحرر [external](https://example.com/a_b) يحفظ with a*b [external](https://example.com/a_b)\n\n   </Step>\n   <Step title=\"Two\">\n\n   المحرر دليل ~~gone~~ {value}\n\n   </Step>\n   </Steps>\n5. > * # x_y_z *italic* saves `code`\n\n   >   # \\*escaped\\* ~~gone~~ snake_case_name *italic*\n   > - tab\there الصفحة snake_case_name\n   >   [a link](/guide) المحرر دليل\n   >   x_y_z Markdown a*b [external](https://example.com/a_b) **🚀** Wow\\![a link](/x)\n   > + snake_case_name snake_case_name **bold at the end**\n\n\n## Wow\\![a link](/x) [a link](/guide) the [external](https://example.com/a_b)\n\n\n~~~\n\tindented\n  two\nconst a = 1;\n~~~\n\n\n+ ```ts\n    two\n  ```\n\n",
+      "unmodified": {
+        "main": "<Tabs>\n\n<Tab title=\"A\">\n\nالمحرر 🚀 المحرر with `code` الصفحة saves <kbd>K</kbd> with **bold** tab here x_y_z See\n\n![an image](/x.png)\n\n2 &lt; 3 *italic* `code` #hash with\n\n</Tab>\n\n</Tabs>\n\nsaves <kbd>K</kbd> المحرر **bold** <kbd>K</kbd> **🚀**\n\n3. \n\n> ## ~~gone~~ See\n>\n> ![an image](/x.png)\n>\n>  a\\*b\n\n- ```bash\n  \n  | a | b |\n  \tindented\n  ```\n\n  <Steps>\n\n  <Step title=\"One\">\n\n  > يحفظ snake_case_name دليل `code` the يحفظ **bold at the end** دليل *italic* the See\n  >\n  > ![an image](/x.png)\n  >\n  > دليل 2 &lt; 3 المحرر الصفحة saves **bold**\\\n  > المحرر [external](https://example.com/a_b) يحفظ with a\\*b [external](https://example.com/a_b)\n\n  </Step>\n\n  <Step title=\"Two\">\n\n  المحرر دليل ~~gone~~ {value}\n\n  </Step>\n\n  </Steps>\n- \n\n> - \n>\n> # x_y_z *italic* saves `code`\n\n> # \\*escaped\\* ~~gone~~ snake_case_name *italic*\n>\n> - tab here الصفحة snake_case_name [a link](/guide) المحرر دليل x_y_z Markdown a\\*b [external](https://example.com/a_b) **🚀** Wow\\![a link](/x)\n>\n>\n> - snake_case_name snake_case_name **bold at the end**\n\n## Wow\\![a link](/x) [a link](/guide) the [external](https://example.com/a_b)\n\n~~~\n\tindented\n  two\nconst a = 1;\n~~~\n\n- ```ts\n    two\n  ```",
+        "patches": [
+          {
+            "at": 740,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "corpusEdit": {
+        "main": "<Tabs>\n\n<Tab title=\"A\">\n\nالمحرر 🚀 المحرر with `code` الصفحة saves <kbd>K</kbd> with **bold** tab here x_y_z See\n\n![an image](/x.png)\n\n2 &lt; 3 *italic* `code` #hash with\n\n</Tab>\n\n</Tabs>\n\nsaves <kbd>K</kbd> المحرر **bold** <kbd>K</kbd> **🚀**\n\n3. \n\n> ## ~~gone~~ See\n>\n> ![an image](/x.png)\n>\n>  a\\*b\n\n- ```bash\n  \n  | a | b |\n  \tindented\n  ```\n\n  <Steps>\n\n  <Step title=\"One\">\n\n  > يحفظ snake_case_name دليل `code` the يحفظ **bold at the end** دليل *italic* the See\n  >\n  > ![an image](/x.png)\n  >\n  > دليل 2 &lt; 3 المحرر الصفحة saves **bold**\\\n  > المحرر [external](https://example.com/a_b) يحفظ with a\\*b [external](https://example.com/a_b)\n\n  </Step>\n\n  <Step title=\"Two\">\n\n  المحرر دليل ~~gone~~ {value}\n\n  </Step>\n\n  </Steps>\n- \n\n> - \n>\n> # x_y_z *italic* saves `code`\n\n> # \\*escaped\\* ~~gone~~ snake_case_name *italic*\n>\n> - tab here الصفحة snake_case_name [a link](/guide) المحرر دليل x_y_z Markdown a\\*b [external](https://example.com/a_b) **🚀** Wow\\![a link](/x)\n>\n>\n> - snake_case_name snake_case_name **bold at the end**\n\n## Wow\\![a link](/x) [a link](/guide) the [external](https://example.com/a_b)\n\n~~~\n\tindented\n  two\nconst a = 1;\n~~~\n\n- ```ts\n    two\n  ```",
+        "patches": [
+          {
+            "at": 740,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "attributeEdit": {
+        "main": "<Tabs>\n\n<Tab title=\"Edited\">\n\nالمحرر 🚀 المحرر with `code` الصفحة saves <kbd>K</kbd> with **bold** tab here x_y_z See\n\n![an image](/x.png)\n\n2 &lt; 3 *italic* `code` #hash with\n\n</Tab>\n\n</Tabs>\n\nsaves <kbd>K</kbd> المحرر **bold** <kbd>K</kbd> **🚀**\n\n3. \n\n> ## ~~gone~~ See\n>\n> ![an image](/x.png)\n>\n>  a\\*b\n\n- ```bash\n  \n  | a | b |\n  \tindented\n  ```\n\n  <Steps>\n\n  <Step title=\"One\">\n\n  > يحفظ snake_case_name دليل `code` the يحفظ **bold at the end** دليل *italic* the See\n  >\n  > ![an image](/x.png)\n  >\n  > دليل 2 &lt; 3 المحرر الصفحة saves **bold**\\\n  > المحرر [external](https://example.com/a_b) يحفظ with a\\*b [external](https://example.com/a_b)\n\n  </Step>\n\n  <Step title=\"Two\">\n\n  المحرر دليل ~~gone~~ {value}\n\n  </Step>\n\n  </Steps>\n- \n\n> - \n>\n> # x_y_z *italic* saves `code`\n\n> # \\*escaped\\* ~~gone~~ snake_case_name *italic*\n>\n> - tab here الصفحة snake_case_name [a link](/guide) المحرر دليل x_y_z Markdown a\\*b [external](https://example.com/a_b) **🚀** Wow\\![a link](/x)\n>\n>\n> - snake_case_name snake_case_name **bold at the end**\n\n## Wow\\![a link](/x) [a link](/guide) the [external](https://example.com/a_b)\n\n~~~\n\tindented\n  two\nconst a = 1;\n~~~\n\n- ```ts\n    two\n  ```",
+        "patches": [
+          {
+            "at": 745,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      }
+    },
+    {
+      "index": 347,
+      "source": "Wow\\![a link](/x) **bold at the end** 🚀 2 < 3\ntab\there the 2 < 3 2 < 3 saves 🚀 [a link](/guide)\n**bold at the end** with a*b **bold at the end**\n\nWow\\![a link](/x) Markdown Wow\\![a link](/x) #hash [a link](/guide) الصفحة الصفحة\nwith **bold** *italic* Markdown\n\n- with the the **🚀**\n  الصفحة [external](https://example.com/a_b) See![an image](/x.png)\n  x_y_z x_y_z يحفظ\n\n  |  | a |\n  | :---: | :--- |\n  | دليل | `y` |\n  | **x** | دليل |\n  | **x** | **x** |\n+ ````js\n  `````\n* + **🚀** See![an image](/x.png) [external](https://example.com/a_b) saves editor See![an image](/x.png) #hash\n    <kbd>K</kbd> a*b يحفظ **bold** x_y_z\n    **bold at the end** 2 < 3 ~~gone~~\n    editor {value} page\n\n     ~~~python\n     ~~~\n\n  * #hash \\*escaped\\* Markdown x_y_z\n    *italic* \\*escaped\\* tab\there **bold at the end** 2 < 3 [a link](/guide) the Wow\\![a link](/x)\n    المحرر **🚀** **🚀**\n\n  + ### with **bold** with See![an image](/x.png)\n\nSee![an image](/x.png) Wow\\![a link](/x) {value}\nMarkdown with **bold at the end** See![an image](/x.png) *italic* 🚀\n~~gone~~ page tab\there\nSee![an image](/x.png) editor **🚀** المحرر saves\n\n> 1. ## **🚀** **bold at the end** with snake_case_name\n\n>    <Note>\n\n>    ### ~~gone~~ a*b **bold** *italic*\n\n>    ````python\n>    \tindented\n>    | a | b |\n>    ```\n>    ````\n\n>    </Note>\n\n> 2. \t````python\n>    <Card title=\"x\" />\n>    \t````\n\n>    <Tabs>\n>    <Tab title=\"A\">\n\n>    the Wow\\![a link](/x) Markdown snake_case_name\n>    Wow\\![a link](/x) saves 🚀\n>    2 < 3 **bold at the end** الصفحة Markdown with snake_case_name يحفظ saves\n\n>    ```md\n>    <Card title=\"x\" />\n>    ```\n\n>    </Tab>\n>    </Tabs>\n\n{value} See![an image](/x.png) Markdown page المحرر a*b #hash {value}\n\\*escaped\\* الصفحة دليل\n",
+      "unmodified": {
+        "main": "Wow\\![a link](/x) **bold at the end** 🚀 2 &lt; 3 tab here the 2 &lt; 3 2 &lt; 3 saves 🚀 [a link](/guide) **bold at the end** with a\\*b **bold at the end**\n\nWow\\![a link](/x) Markdown Wow\\![a link](/x) #hash [a link](/guide) الصفحة الصفحة\nwith **bold** *italic* Markdown\n\n- with the the **🚀** الصفحة [external](https://example.com/a_b) See\n\n  ![an image](/x.png)\n\n  x_y_z x_y_z يحفظ\n\n  |  | a |\n  | :---: | :--- |\n  | دليل | `y` |\n  | **x** | دليل |\n  | **x** | **x** |\n\n\n- ````js\n  \n  `````\n\n\n- \n\n\n- **🚀** See\n\n  ![an image](/x.png)\n\n  [external](https://example.com/a_b) saves editor See\n\n  ![an image](/x.png)\n\n  #hash <kbd>K</kbd> a\\*b يحفظ **bold** x_y_z **bold at the end** 2 &lt; 3 ~~gone~~ editor {value} page\n\n   ~~~python\n  \n   ~~~\n\n\n- #hash \\*escaped\\* Markdown x_y_z *italic* \\*escaped\\* tab here **bold at the end** 2 &lt; 3 [a link](/guide) the Wow\\![a link](/x) المحرر **🚀** **🚀**\n\n\n- \n\n### with **bold** with See\n\n![an image](/x.png)\n\nSee\n\n![an image](/x.png)\n\nWow\\![a link](/x) {value} Markdown with **bold at the end** See\n\n![an image](/x.png)\n\n*italic* 🚀 ~~gone~~ page tab here See\n\n![an image](/x.png)\n\neditor **🚀** المحرر saves\n\n> 1. \n>\n> ## **🚀** **bold at the end** with snake_case_name\n\n> \n>\n> <Note>\n>\n> </Note>\n\n> ### ~~gone~~ a\\*b **bold** *italic*\n\n>    ````python\n>    \tindented\n>    | a | b |\n>    ```\n>    ````\n\n> \n\n> 2. ````python\n>    \n>    ````\n>\n> <Card title=\"x\" />\n>\n>  \\`\\`\\`\\`\n\n> \n>\n> <Tabs>\n>\n> <Tab title=\"A\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> the Wow\\![a link](/x) Markdown snake_case_name Wow\\![a link](/x) saves 🚀 2 &lt; 3 **bold at the end** الصفحة Markdown with snake_case_name يحفظ saves\n\n>    ```md\n>    <Card title=\"x\" />\n>    ```\n\n> \n\n{value} See\n\n![an image](/x.png)\n\nMarkdown page المحرر a\\*b #hash {value} \\*escaped\\* الصفحة دليل",
+        "patches": [
+          {
+            "at": 1154,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "corpusEdit": {
+        "main": "Wow\\![a link](/x) **bold at the end** 🚀 2 &lt; 3 tab here the 2 &lt; 3 2 &lt; 3 saves 🚀 [a link](/guide) **bold at the end** with a\\*b **bold at the end**\n\nWow\\![a link](/x) Markdown Wow\\![a link](/x) #hash [a link](/guide) الصفحة الصفحة\nwith **bold** *italic* Markdown\n\n- with the the **🚀** الصفحة [external](https://example.com/a_b) See\n\n  ![an image](/x.png)\n\n  x_y_z x_y_z يحفظ\n\n  |  | a |\n  | :---: | :--- |\n  | دليل | `y` |\n  | **x** | دليل |\n  | **x** | **x** |\n\n\n- ````js\n  \n  `````\n\n\n- \n\n\n- **🚀** See\n\n  ![an image](/x.png)\n\n  [external](https://example.com/a_b) saves editor See\n\n  ![an image](/x.png)\n\n  #hash <kbd>K</kbd> a\\*b يحفظ **bold** x_y_z **bold at the end** 2 &lt; 3 ~~gone~~ editor {value} page\n\n   ~~~python\n  \n   ~~~\n\n\n- #hash \\*escaped\\* Markdown x_y_z *italic* \\*escaped\\* tab here **bold at the end** 2 &lt; 3 [a link](/guide) the Wow\\![a link](/x) المحرر **🚀** **🚀**\n\n\n- \n\n### with **bold** with See\n\n![an image](/x.png)\n\nSee\n\n![an image](/x.png)\n\nWow\\![a link](/x) {value} Markdown with **bold at the end** See\n\n![an image](/x.png)\n\n*italic* 🚀 ~~gone~~ page ta~~b~~ here See\n\n![an image](/x.png)\n\neditor **🚀** المحرر saves\n\n> 1. \n>\n> ## **🚀** **bold at the end** with snake_case_name\n\n> \n>\n> <Note>\n>\n> </Note>\n\n> ### ~~gone~~ a\\*b **bold** *italic*\n\n>    ````python\n>    \tindented\n>    | a | b |\n>    ```\n>    ````\n\n> \n\n> 2. ````python\n>    \n>    ````\n>\n> <Card title=\"x\" />\n>\n>  \\`\\`\\`\\`\n\n> \n>\n> <Tabs>\n>\n> <Tab title=\"A\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> the Wow\\![a link](/x) **Markdown s**nake_case_name Wow\\![a link](/x) saves 🚀 2 &lt; 3 **bold at the end** الصفحة Markdown with snake_case_name يحفظ saves\n\n>    ```md\n>    <Card title=\"x\" />\n>    ```\n\n> \n\n{value} See\n\n![an image](/x.png)\n\nMarkdown page المحرر a\\*b #hash {value} \\*escaped\\* الصفحة دليل",
+        "patches": [
+          {
+            "at": 1158,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "attributeEdit": {
+        "main": "Wow\\![a link](/x) **bold at the end** 🚀 2 &lt; 3 tab here the 2 &lt; 3 2 &lt; 3 saves 🚀 [a link](/guide) **bold at the end** with a\\*b **bold at the end**\n\nWow\\![a link](/x) Markdown Wow\\![a link](/x) #hash [a link](/guide) الصفحة الصفحة\nwith **bold** *italic* Markdown\n\n- with the the **🚀** الصفحة [external](https://example.com/a_b) See\n\n  ![an image](/x.png \"Edited\")\n\n  x_y_z x_y_z يحفظ\n\n  |  | a |\n  | :---: | :--- |\n  | دليل | `y` |\n  | **x** | دليل |\n  | **x** | **x** |\n\n\n- ````js\n  \n  `````\n\n\n- \n\n\n- **🚀** See\n\n  ![an image](/x.png)\n\n  [external](https://example.com/a_b) saves editor See\n\n  ![an image](/x.png)\n\n  #hash <kbd>K</kbd> a\\*b يحفظ **bold** x_y_z **bold at the end** 2 &lt; 3 ~~gone~~ editor {value} page\n\n   ~~~python\n  \n   ~~~\n\n\n- #hash \\*escaped\\* Markdown x_y_z *italic* \\*escaped\\* tab here **bold at the end** 2 &lt; 3 [a link](/guide) the Wow\\![a link](/x) المحرر **🚀** **🚀**\n\n\n- \n\n### with **bold** with See\n\n![an image](/x.png)\n\nSee\n\n![an image](/x.png)\n\nWow\\![a link](/x) {value} Markdown with **bold at the end** See\n\n![an image](/x.png)\n\n*italic* 🚀 ~~gone~~ page tab here See\n\n![an image](/x.png)\n\neditor **🚀** المحرر saves\n\n> 1. \n>\n> ## **🚀** **bold at the end** with snake_case_name\n\n> \n>\n> <Note>\n>\n> </Note>\n\n> ### ~~gone~~ a\\*b **bold** *italic*\n\n>    ````python\n>    \tindented\n>    | a | b |\n>    ```\n>    ````\n\n> \n\n> 2. ````python\n>    \n>    ````\n>\n> <Card title=\"x\" />\n>\n>  \\`\\`\\`\\`\n\n> \n>\n> <Tabs>\n>\n> <Tab title=\"A\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> the Wow\\![a link](/x) Markdown snake_case_name Wow\\![a link](/x) saves 🚀 2 &lt; 3 **bold at the end** الصفحة Markdown with snake_case_name يحفظ saves\n\n>    ```md\n>    <Card title=\"x\" />\n>    ```\n\n> \n\n{value} See\n\n![an image](/x.png)\n\nMarkdown page المحرر a\\*b #hash {value} \\*escaped\\* الصفحة دليل",
+        "patches": [
+          {
+            "at": 1163,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      }
+    },
+    {
+      "index": 418,
+      "source": "````ts title=\"x\"\n````\n\n\n<Note>\n\n| a | b \\| c | a |\n| :--- | ---: | ---: |\n| **x** | دليل | **x** |\n\n</Note>\n\n\n{value} a*b المحرر See![an image](/x.png)\n~~gone~~ \\*escaped\\* editor \\*escaped\\* a*b\neditor {value} page **🚀** x_y_z الصفحة [a link](/guide)\n\n\nwith `code` دليل *italic* a*b\nsnake_case_name 🚀 المحرر **bold at the end** **bold** editor\n\\*escaped\\* **bold at the end** page <kbd>K</kbd>\neditor يحفظ *italic* الصفحة <kbd>K</kbd> `code` Wow\\![a link](/x) page\n\n\n+ ## 🚀 x_y_z\n\n\n~~~js\n\n<Card title=\"x\" />\n\tindented\n~~~\n",
+      "unmodified": {
+        "main": "````ts title=\"x\"\n````\n\n<Note>\n\n| a | b \\| c | a |\n| :--- | ---: | ---: |\n| **x** | دليل | **x** |\n\n</Note>\n\n{value} a*b المحرر See*\n\n![an image](/x.png)\n\n*~~gone~~ \\*escaped\\* editor \\*escaped\\* a*b editor {value} page **🚀** x_y_z الصفحة [a link](/guide)\n\nwith `code` دليل *italic* a\\*b snake_case_name 🚀 المحرر **bold at the end** **bold** editor \\*escaped\\* **bold at the end** page <kbd>K</kbd> editor يحفظ *italic* الصفحة <kbd>K</kbd> `code` Wow\\![a link](/x) page\n\n- \n\n## 🚀 x_y_z\n\n~~~js\n\n<Card title=\"x\" />\n\tindented\n~~~",
+        "patches": [
+          {
+            "at": 472,
+            "remove": "\n\n",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "corpusEdit": {
+        "main": "````ts title=\"x\"\n````\n\n<Note>\n\n| a | b \\| c | a |\n| :--- | ---: | ---: |\n| **x** | دليل | **x** |\n\n</Note>\n\n{value} a*b المحرر See*\n\n![an image](/x.png)\n\n*~~gone~~ \\*escaped\\* editor \\*escaped\\* a*b editor {value} page **🚀** x_y_z الصفحة [a link](/guide)\n\nwith `code` دليل\n\n *italic* a\\*b snake_case_na`me 🚀 `المحرر **bold at the end** **bold** editor \\*escaped\\* **bold at the end** page <kbd>K</kbd> editor يحفظ *italic* الصفحة <kbd>K</kbd> `code` Wow\\![a link](/x) page\n\n- \n\n## 🚀 x_y_z\n\n~~~js\n\n<Card title=\"x\" />\n\tindented\n~~~",
+        "patches": [],
+        "mainFixed": false
+      },
+      "attributeEdit": {
+        "main": "````ts title=\"x\"\n````\n\n<Note>\n\n| a | b \\| c | a |\n| :--- | ---: | ---: |\n| **x** | دليل | **x** |\n\n</Note>\n\n{value} a*b المحرر See*\n\n![an image](/x.png \"Edited\")\n\n*~~gone~~ \\*escaped\\* editor \\*escaped\\* a*b editor {value} page **🚀** x_y_z الصفحة [a link](/guide)\n\nwith `code` دليل *italic* a\\*b snake_case_name 🚀 المحرر **bold at the end** **bold** editor \\*escaped\\* **bold at the end** page <kbd>K</kbd> editor يحفظ *italic* الصفحة <kbd>K</kbd> `code` Wow\\![a link](/x) page\n\n- \n\n## 🚀 x_y_z\n\n~~~js\n\n<Card title=\"x\" />\n\tindented\n~~~",
+        "patches": [
+          {
+            "at": 481,
+            "remove": "\n\n",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      }
+    },
+    {
+      "index": 550,
+      "source": "See![an image](/x.png) x_y_z snake_case_name editor [a link](/guide) **bold** [external](https://example.com/a_b) tab\there\n~~gone~~ <kbd>K</kbd> **🚀** Markdown #hash\nsaves a*b **🚀**\n\n~~~bash\n```\nconst a = 1;\n~~~\n\nthe a*b page\n\n### <kbd>K</kbd> الصفحة editor See![an image](/x.png)\n\n ~~~python\n ~~~\n\n> - ## المحرر #hash\n\n> - ````\n\n>     two\n>   ```\n>   `````\n\n> - دليل #hash يحفظ snake_case_name 🚀 Wow\\![a link](/x) {value}\\\n>   snake_case_name editor [external](https://example.com/a_b) يحفظ\n>   the دليل snake_case_name tab\there ~~gone~~ tab\there\n\n<CodeGroup>\n\n```js\n```\n<Card title=\"x\" />\n```\n\n~~~js\n\tindented\n\n~~~\n\n</CodeGroup>\n\n",
+      "unmodified": {
+        "main": "See\n\n![an image](/x.png)\n\nx_y_z snake_case_name editor [a link](/guide) **bold** [external](https://example.com/a_b) tab here ~~gone~~ <kbd>K</kbd> **🚀** Markdown #hash saves a\\*b **🚀**\n\n~~~bash\n```\nconst a = 1;\n~~~\n\nthe a\\*b page\n\n### <kbd>K</kbd> الصفحة editor See\n\n![an image](/x.png)\n\n ~~~python\n ~~~\n\n> - \n>\n> ## المحرر #hash\n\n> - ````\n\n> ```\n> two\n> ```\n>\n>   ```\n>   `````\n\n> - دليل #hash يحفظ snake_case_name 🚀 Wow\\![a link](/x) {value}\\\n>   snake_case_name editor [external](https://example.com/a_b) يحفظ the دليل snake_case_name tab here ~~gone~~ tab here\n\n<CodeGroup>\n\n```js\n```\n<Card title=\"x\" />\n```\n\n~~~js\n\tindented\n\n~~~\n\n</CodeGroup>\n\n",
+        "patches": [
+          {
+            "at": 309,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "corpusEdit": {
+        "main": "See\n\n![an image](/x.png)\n\nx_y_z snake_case_name editor [a link](/guide) **bold** [external](https://example.com/a_b) tab here ~~gone~~ <kbd>K</kbd> **🚀** Markdown #hash saves a\\*b **🚀**\n\n~~~bash\n```\nconst a = 1;\n~~~\n\nthe a\\*b page\n\n### <kbd>K</kbd> الصفحة editor See\n\n![an image](/x.png)\n\n ~~~python\n ~~~\n\n> - \n>\n> ## المحرر #hash\n\n> - ````\n\n> ```\n> two\n> ```\n>\n>   ```\n>   `````\n\n> - دليل #hash يحفظ snake_case_name 🚀 `Wow!`[`a lin`k](/x) {value}\\\n>   snake_case_name editor [external](https://example.com/a_b) يحفظ the دليل snake_case_name tab here ~~gone~~ tab here\n\n<CodeGroup>\n\n```js\n```\n<Card title=\"x\" />\n```\n\n~~~js\n\tindented\n\n~~~\n\n</CodeGroup>\n\n",
+        "patches": [
+          {
+            "at": 309,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "attributeEdit": {
+        "main": "See\n\n![an image](/x.png \"Edited\")\n\nx_y_z snake_case_name editor [a link](/guide) **bold** [external](https://example.com/a_b) tab here ~~gone~~ <kbd>K</kbd> **🚀** Markdown #hash saves a\\*b **🚀**\n\n~~~bash\n```\nconst a = 1;\n~~~\n\nthe a\\*b page\n\n### <kbd>K</kbd> الصفحة editor See\n\n![an image](/x.png)\n\n ~~~python\n ~~~\n\n> - \n>\n> ## المحرر #hash\n\n> - ````\n\n> ```\n> two\n> ```\n>\n>   ```\n>   `````\n\n> - دليل #hash يحفظ snake_case_name 🚀 Wow\\![a link](/x) {value}\\\n>   snake_case_name editor [external](https://example.com/a_b) يحفظ the دليل snake_case_name tab here ~~gone~~ tab here\n\n<CodeGroup>\n\n```js\n```\n<Card title=\"x\" />\n```\n\n~~~js\n\tindented\n\n~~~\n\n</CodeGroup>\n\n",
+        "patches": [
+          {
+            "at": 318,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      }
+    },
+    {
+      "index": 602,
+      "source": "|  |  |  |\n| :---: | :--- | --- |\n| b \\| c | `y` | **x** |\n\n\n|  |\n| :---: |\n| دليل |\n| a |\n\n\n> * ## المحرر دليل\n\n>   > [!TIP]\n>   > the Markdown ~~gone~~ See![an image](/x.png) <kbd>K</kbd> \\*escaped\\*\n>   > Markdown x_y_z `code` #hash `code` a*b editor **bold at the end**\n>   > snake_case_name **bold** الصفحة x_y_z `code`\n> - 10. ~~~python\n>       ```\n>       ~~~`\n\n>       2 < 3 *italic* **bold at the end** **bold** Wow\\![a link](/x) a*b 2 < 3 \\*escaped\\*\n>       ~~gone~~ الصفحة x_y_z\n>   11. ~~~ title=\"x\"\n>       ~~~\n\n>       Wow\\![a link](/x) {value} <kbd>K</kbd> page x_y_z a*b *italic*\n>       page tab\there `code` *italic* *italic*\n>       **🚀** دليل page **🚀** \\*escaped\\* Wow\\![a link](/x)\n> * ~~~python\n>   const a = 1;\n>   ```\n>   \tindented\n>   ~~~\n\n> <Tabs>\n> <Tab title=\"A\">\n\n> |  |  | a |\n> | :---: | :---: | :--- |\n> | b \\| c | `y` | b \\| c |\n> | b \\| c | دليل | `y` |\n> | a | دليل |  |\n\n> </Tab>\n> </Tabs>\n\n\n| **x** | a |\n| :--- | --- |\n| `y` | **x** |\n|  |  |\n\n\nWow\\![a link](/x) **bold** snake_case_name Wow\\![a link](/x) x_y_z editor `code`\nx_y_z المحرر <kbd>K</kbd> Markdown \\*escaped\\*\n\n\n|  |  |\n| :--- | ---: |\n| `y` | `y` |",
+      "unmodified": {
+        "main": "|  |  |  |\n| :---: | :--- | --- |\n| b \\| c | `y` | **x** |\n\n|  |\n| :---: |\n| دليل |\n| a |\n\n> - \n>\n> ## المحرر دليل\n\n> [!TIP]\n> > the Markdown ~~gone~~ See\n> >\n> > ![an image](/x.png)\n> >\n> > <kbd>K</kbd> \\*escaped\\* Markdown x_y_z `code` #hash `code` a\\*b editor **bold at the end** snake_case_name **bold** الصفحة x_y_z `code`\n>\n> - \n>\n> 10. ~~~python\n>     ```\n>     ~~~`\n>     ~~~\n\n> ```\n>   2 < 3 *italic* **bold at the end** **bold** Wow\\![a link](/x) a*b 2 < 3 \\*escaped\\*\n>   ~~gone~~ الصفحة x_y_z\n> ```\n>\n> 11. ~~~ title=\"x\"\n>     \n>     ~~~\n\n> ```\n>   Wow\\![a link](/x) <nibleaf-mdx-opaque-inline data-source=\"%7Bvalue%7D\" data-name=\"Expression\"></nibleaf-mdx-opaque-inline> <kbd>K</kbd> page x_y_z a*b *italic*\n>   page tab\there `code` *italic* *italic*\n>   **🚀** دليل page **🚀** \\*escaped\\* Wow\\![a link](/x)\n> ```\n>\n> - ~~~python\n>   const a = 1;\n>   ```\n>   \tindented\n>   ~~~\n\n> \n>\n> <Tabs>\n>\n> <Tab title=\"A\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> |  |  | a |\n> | :---: | :---: | :--- |\n> | b \\| c | `y` | b \\| c |\n> | b \\| c | دليل | `y` |\n> | a | دليل |  |\n\n> \n\n| **x** | a |\n| :--- | --- |\n| `y` | **x** |\n|  |  |\n\nWow\\![a link](/x) **bold** snake_case_name Wow\\![a link](/x) x_y_z editor `code` x_y_z المحرر <kbd>K</kbd> Markdown \\*escaped\\*\n\n|  |  |\n| :--- | ---: |\n| `y` | `y` |\n",
+        "patches": [
+          {
+            "at": 94,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "corpusEdit": {
+        "main": "|  |  |  |\n| :---: | :--- | --- |\n| b \\| c | `y` | **x** |\n\n|  |\n| :---: |\n| دليل |\n| a |\n\n> - \n>\n> ## المحرر دليل\n\n> [!TIP]\n> > the Markdown ~~gone~~ See\n> >\n> > ![an image](/x.png)\n> >\n> > <kbd>K</kbd> \\*escaped\\* Markdown x_y_z `code` #hash `code` a\\*b editor **bold at the end** snake_case`_name b`**old** الصفحة x_y_z `code`\n>\n> - \n>\n> 10. ~~~python\n>     ```\n>     ~~~`\n>     ~~~\n\n> ```js\n>   2 < 3 *italic* **bold at the end** **bold** Wow\\![a link](/x) a*b 2 < 3 \\*escaped\\*\n>   ~~gone~~ الصفحة x_y_z\n> ```\n>\n> 11. ~~~ title=\"x\"\n>     \n>     ~~~\n\n> ```\n>   Wow\\![a link](/x) <nibleaf-mdx-opaque-inline data-source=\"%7Bvalue%7D\" data-name=\"Expression\"></nibleaf-mdx-opaque-inline> <kbd>K</kbd> page x_y_z a*b *italic*\n>   page tab\there `code` *italic* *italic*\n>   **🚀** دليل page **🚀** \\*escaped\\* Wow\\![a link](/x)\n> ```\n>\n> - ~~~python\n>   const a = 1;\n>   ```\n>   \tindented\n>   ~~~\n\n> \n>\n> <Tabs>\n>\n> <Tab title=\"A\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> |  |  | a |\n> | :---: | :---: | :--- |\n> | b \\| c | `y` | b \\| c |\n> | b \\| c | دليل | `y` |\n> | a | دليل |  |\n\n> \n\n| **x** | a |\n| :--- | --- |\n| `y` | **x** |\n|  |  |\n\nWow\\![a link](/x) **bold** snake_case_name Wow\\![a link](/x) x_y_z editor `code` x_y_z المحرر <kbd>K</kbd> Markdown \\*escaped\\*\n\n|  |  |\n| :--- | ---: |\n| `y` | `y` |\n",
+        "patches": [
+          {
+            "at": 94,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "attributeEdit": {
+        "main": "|  |  |  |\n| :---: | :--- | --- |\n| b \\| c | `y` | **x** |\n\n|  |\n| :---: |\n| دليل |\n| a |\n\n> - \n>\n> ## المحرر دليل\n\n> [!TIP]\n> > the Markdown ~~gone~~ See\n> >\n> > ![an image](/x.png \"Edited\")\n> >\n> > <kbd>K</kbd> \\*escaped\\* Markdown x_y_z `code` #hash `code` a\\*b editor **bold at the end** snake_case_name **bold** الصفحة x_y_z `code`\n>\n> - \n>\n> 10. ~~~python\n>     ```\n>     ~~~`\n>     ~~~\n\n> ```\n>   2 < 3 *italic* **bold at the end** **bold** Wow\\![a link](/x) a*b 2 < 3 \\*escaped\\*\n>   ~~gone~~ الصفحة x_y_z\n> ```\n>\n> 11. ~~~ title=\"x\"\n>     \n>     ~~~\n\n> ```\n>   Wow\\![a link](/x) <nibleaf-mdx-opaque-inline data-source=\"%7Bvalue%7D\" data-name=\"Expression\"></nibleaf-mdx-opaque-inline> <kbd>K</kbd> page x_y_z a*b *italic*\n>   page tab\there `code` *italic* *italic*\n>   **🚀** دليل page **🚀** \\*escaped\\* Wow\\![a link](/x)\n> ```\n>\n> - ~~~python\n>   const a = 1;\n>   ```\n>   \tindented\n>   ~~~\n\n> \n>\n> <Tabs>\n>\n> <Tab title=\"A\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> |  |  | a |\n> | :---: | :---: | :--- |\n> | b \\| c | `y` | b \\| c |\n> | b \\| c | دليل | `y` |\n> | a | دليل |  |\n\n> \n\n| **x** | a |\n| :--- | --- |\n| `y` | **x** |\n|  |  |\n\nWow\\![a link](/x) **bold** snake_case_name Wow\\![a link](/x) x_y_z editor `code` x_y_z المحرر <kbd>K</kbd> Markdown \\*escaped\\*\n\n|  |  |\n| :--- | ---: |\n| `y` | `y` |\n",
+        "patches": [
+          {
+            "at": 94,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      }
+    },
+    {
+      "index": 621,
+      "source": "> ~~~\n> const a = 1;\n> <Card title=\"x\" />\n> ~~~`\n\n> <Tabs>\n> <Tab title=\"A\">\n\n> # the Wow\\![a link](/x) the\n\n> </Tab>\n> </Tabs>\n\n~~gone~~ \\*escaped\\* **bold** `code` ~~gone~~ **bold at the end**\n\nsaves 2 < 3 يحفظ\nWow\\![a link](/x) editor **bold at the end**\n[external](https://example.com/a_b) 🚀 🚀 tab\there `code` See![an image](/x.png) **🚀**\n**bold at the end** #hash 2 < 3 a*b page {value}\n\n- <Tabs>\n  <Tab title=\"A\">\n\n  1. # `code` **bold at the end** [external](https://example.com/a_b) Markdown\n\n  </Tab>\n  </Tabs>\n\n```bash\nconst a = 1;\nconst a = 1;\n\tindented\n```\n\n### 2 < 3 **🚀** *italic*",
+      "unmodified": {
+        "main": "> ~~~\n> const a = 1;\n> <Card title=\"x\" />\n> ~~~`\n\n> \n>\n> <Tabs>\n>\n> <Tab title=\"A\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> # the Wow\\![a link](/x) the\n\n> \n\n~~gone~~ \\*escaped\\* **bold** `code` ~~gone~~ **bold at the end**\n\nsaves 2 &lt; 3 يحفظ Wow\\![a link](/x) editor **bold at the end** [external](https://example.com/a_b) 🚀 🚀 tab here `code` See\n\n![an image](/x.png)\n\n**🚀** **bold at the end** #hash 2 &lt; 3 a\\*b page {value}\n\n- \n\n<Tabs>\n\n<Tab title=\"A\">\n\n1. \n\n# `code` **bold at the end** [external](https://example.com/a_b) Markdown\n\n</Tab>\n\n</Tabs>\n\n```bash\nconst a = 1;\nconst a = 1;\n\tindented\n```\n\n### 2 &lt; 3 **🚀** *italic*",
+        "patches": [
+          {
+            "at": 449,
+            "remove": "\n\n",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "corpusEdit": {
+        "main": "> ~~~\n> const a = 1;\n> <Card title=\"x\" />\n> ~~~`\n\n> \n>\n> <Tabs>\n>\n> <Tab title=\"A\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> # the Wow\\![a lin](/x)\n>\n> # [k](/x) the\n\n> \n\n~~gone~~ \\*escaped\\* **bold** `code` ~~gone~~ **bold at the end**\n\nsaves 2 &lt; 3 يحفظ Wow\\![a link](/x) editor **bold at the end** [external](https://example.com/a_b) 🚀 🚀 tab here `code` See\n\n![an image](/x.png)\n\n**🚀** **bold at the end** #hash 2 &lt; 3 a\\*b page {value}\n\n- \n\n<Tabs>\n\n<Tab title=\"A\">\n\n1. \n\n# `code` **bold at the end** [external](https://example.com/a_b) Markdown\n\n</Tab>\n\n</Tabs>\n\n```bash\nconst a = 1;\nconst a = 1;\n\tindented\n```\n\n### 2 &lt; 3 **🚀** *italic*",
+        "patches": [
+          {
+            "at": 462,
+            "remove": "\n\n",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "attributeEdit": {
+        "main": "> ~~~\n> const a = 1;\n> <Card title=\"x\" />\n> ~~~`\n\n> \n>\n> <Tabs>\n>\n> <Tab title=\"Edited\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> # the Wow\\![a link](/x) the\n\n> \n\n~~gone~~ \\*escaped\\* **bold** `code` ~~gone~~ **bold at the end**\n\nsaves 2 &lt; 3 يحفظ Wow\\![a link](/x) editor **bold at the end** [external](https://example.com/a_b) 🚀 🚀 tab here `code` See\n\n![an image](/x.png)\n\n**🚀** **bold at the end** #hash 2 &lt; 3 a\\*b page {value}\n\n- \n\n<Tabs>\n\n<Tab title=\"A\">\n\n1. \n\n# `code` **bold at the end** [external](https://example.com/a_b) Markdown\n\n</Tab>\n\n</Tabs>\n\n```bash\nconst a = 1;\nconst a = 1;\n\tindented\n```\n\n### 2 &lt; 3 **🚀** *italic*",
+        "patches": [
+          {
+            "at": 454,
+            "remove": "\n\n",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      }
+    },
+    {
+      "index": 653,
+      "source": "> <Tabs>\n> <Tab title=\"A\">\n\n> + ### يحفظ snake_case_name\n\n> </Tab>\n> </Tabs>\n\n> > > ````md\n> > > const a = 1;\n> > >   two\n> > > ````\n\n> > > ~~~md\n> > > \tindented\n> > > <Card title=\"x\" />\n> > > ~~~\n\n~~~bash\n  two\n\n~~~\n\n",
+      "unmodified": {
+        "main": "> \n>\n> <Tabs>\n>\n> <Tab title=\"A\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> - \n>\n> ### يحفظ snake_case_name\n\n> \n\n> > > ````md\n> > > const a = 1;\n> > >   two\n> > > ````\n\n> > > ~~~md\n> > > \tindented\n> > > <Card title=\"x\" />\n> > > ~~~\n\n~~~bash\n  two\n\n~~~",
+        "patches": [
+          {
+            "at": 61,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "corpusEdit": {
+        "main": "> \n>\n> <Tabs>\n>\n> <Tab title=\"A\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> - \n>\n> ### يحفظ snake_case_nameconst a = 1;\n>   two\n\n> > > ~~~md\n> > > \tindented\n> > > <Card title=\"x\" />\n> > > ~~~\n\n~~~bash\n  txwo\n~~~",
+        "patches": [],
+        "mainFixed": false
+      },
+      "attributeEdit": {
+        "main": "> \n>\n> <Tabs>\n>\n> <Tab title=\"Edited\">\n>\n> </Tab>\n>\n> </Tabs>\n\n> - \n>\n> ### يحفظ snake_case_name\n\n> \n\n> > > ````md\n> > > const a = 1;\n> > >   two\n> > > ````\n\n> > > ~~~md\n> > > \tindented\n> > > <Card title=\"x\" />\n> > > ~~~\n\n~~~bash\n  two\n\n~~~",
+        "patches": [
+          {
+            "at": 66,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      }
+    },
+    {
+      "index": 785,
+      "source": "| b \\| c |  |\n| --- | :--- |\n| b \\| c | `y` |\n| **x** |  |\n\n> + * the **bold at the end** a*b المحرر يحفظ يحفظ [a link](/guide) #hash\n>     \\*escaped\\* **bold** the\n\n>   | دليل |\n>   | :--- |\n>   | b \\| c |\n> + {value} *italic* with 🚀\n>   See![an image](/x.png) #hash يحفظ\n\n>   **bold** الصفحة المحرر Wow\\![a link](/x)\n\n> > [!WARNING]\n> > <Callout type=\"info\">\n\n> > ~~~md\n> > \tindented\n> > const a = 1;\n> > ~~~`\n\n> > </Callout>\n\n<Tabs>\n<Tab title=\"A\">\n\n\\*escaped\\* [external](https://example.com/a_b) \\*escaped\\* يحفظ **bold at the end** 🚀\nالصفحة 🚀 snake_case_name snake_case_name `code` 🚀\\\nMarkdown \\*escaped\\* [a link](/guide) snake_case_name  \nthe ~~gone~~ **🚀** 🚀 tab\there\n\n</Tab>\n</Tabs>\n",
+      "unmodified": {
+        "main": "| b \\| c |  |\n| --- | :--- |\n| b \\| c | `y` |\n| **x** |  |\n\n> - \n>\n>\n> - the **bold at the end** a\\*b المحرر يحفظ يحفظ [a link](/guide) #hash \\*escaped\\* **bold** the\n\n> | دليل |\n> | :--- |\n> | b \\| c |\n>\n> - {value} *italic* with 🚀 See\n>\n>   ![an image](/x.png)\n>\n>   #hash يحفظ\n\n> **bold** الصفحة المحرر Wow\\![a link](/x)\n\n> [!WARNING]\n> > \n> >\n> > <Callout type=\"info\">\n> >\n> > </Callout>\n\n> > ~~~md\n> > \tindented\n> > const a = 1;\n> > ~~~`\n\n> > \n\n<Tabs>\n\n<Tab title=\"A\">\n\n\\*escaped\\* [external](https://example.com/a_b) \\*escaped\\* يحفظ **bold at the end** 🚀 الصفحة 🚀 snake_case_name snake_case_name `code` 🚀\\\nMarkdown \\*escaped\\* [a link](/guide) snake_case_name\\\nthe ~~gone~~ **🚀** 🚀 tab here\n\n</Tab>\n\n</Tabs>",
+        "patches": [
+          {
+            "at": 63,
+            "remove": " \n>\n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      },
+      "corpusEdit": {
+        "main": "| b \\| c |  |\n| --- | :--- |\n| b \\| c | `y` |\n| **x** |  |\n\n> - \n>\n>\n> - the **bo**`ld at th`**e end** a\\*b المحرر يحفظ يحفظ [a link](/guide) #hash \\*escaped\\* **bold** the\n\n> | دليل |\n> | :--- |\n> | b \\| c |\n>\n> - {value} *italic* w🚀 See\n>\n>   ![an image](/x.png)\n>\n>   #hash يحفظ\n\n> **bold** الصفحة المحرر Wow\\![a link](/x)\n\n> [!WARNING]\n> > \n> >\n> > <Callout type=\"info\">\n> >\n> > </Callout>\n\n> > ~~~md\n> > \tindented\n> > const a = 1;\n> > ~~~`\n\n> > \n\n<Tabs>\n\n<Tab title=\"A\">\n\n\\*escaped\\* [external](https://example.com/a_b) \\*escaped\\* يحفظ **bold at the end** 🚀 الصفحة 🚀 snake_case_name snake_case_name `code` 🚀\\\nMarkdown \\*escaped\\* [a link](/guide) snake_case_name\\\nthe ~~gone~~ **🚀** 🚀 tab here\n\n</Tab>\n\n</Tabs>",
+        "patches": [],
+        "mainFixed": true
+      },
+      "attributeEdit": {
+        "main": "| b \\| c |  |\n| --- | :--- |\n| b \\| c | `y` |\n| **x** |  |\n\n> - \n>\n>\n> - the **bold at the end** a\\*b المحرر يحفظ يحفظ [a link](/guide) #hash \\*escaped\\* **bold** the\n\n> | دليل |\n> | :--- |\n> | b \\| c |\n>\n> - {value} *italic* with 🚀 See\n>\n>   ![an image](/x.png \"Edited\")\n>\n>   #hash يحفظ\n\n> **bold** الصفحة المحرر Wow\\![a link](/x)\n\n> [!WARNING]\n> > \n> >\n> > <Callout type=\"info\">\n> >\n> > </Callout>\n\n> > ~~~md\n> > \tindented\n> > const a = 1;\n> > ~~~`\n\n> > \n\n<Tabs>\n\n<Tab title=\"A\">\n\n\\*escaped\\* [external](https://example.com/a_b) \\*escaped\\* يحفظ **bold at the end** 🚀 الصفحة 🚀 snake_case_name snake_case_name `code` 🚀\\\nMarkdown \\*escaped\\* [a link](/guide) snake_case_name\\\nthe ~~gone~~ **🚀** 🚀 tab here\n\n</Tab>\n\n</Tabs>",
+        "patches": [
+          {
+            "at": 63,
+            "remove": " \n>\n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": true
+      }
+    },
+    {
+      "index": 809,
+      "source": "الصفحة <kbd>K</kbd> الصفحة الصفحة\neditor *italic* saves with editor with page <kbd>K</kbd>\n#hash ~~gone~~ **bold** المحرر #hash\nWow\\![a link](/x) 2 < 3 `code` tab\there a*b saves a*b\n\n> + * ## `code` Wow\\![a link](/x) with page\n\n>     المحرر {value} **🚀**\n>   + `code` a*b ~~gone~~ ~~gone~~ **bold** #hash \\*escaped\\*\n\n>   + a*b See![an image](/x.png) saves \\*escaped\\* with #hash Markdown Markdown\n>   * Wow\\![a link](/x) Wow\\![a link](/x) ~~gone~~ x_y_z [external](https://example.com/a_b) **bold** ~~gone~~\n>     Markdown الصفحة {value} يحفظ tab\there\n>     `code` Markdown {value}\n>   - \\*escaped\\* See![an image](/x.png) See![an image](/x.png) page tab\there\n>     الصفحة x_y_z **bold** tab\there **🚀** [a link](/guide) يحفظ\n> * ~~~bash\n>   ~~~\n\n>   > ```js\n>   > const a = 1;\n>   > ```\n> + > saves المحرر الصفحة Markdown <kbd>K</kbd> `code` editor المحرر  \n>   > saves **bold** a*b الصفحة x_y_z #hash `code` **🚀**\n>   > \\*escaped\\* الصفحة 2 < 3\n\n> | **x** |\n> | --- |\n> |  |\n\nالصفحة snake_case_name المحرر #hash with الصفحة #hash editor\n\n# 2 < 3 `code` 🚀 Wow\\![a link](/x)",
+      "unmodified": {
+        "main": "الصفحة <kbd>K</kbd> الصفحة الصفحة editor *italic* saves with editor with page <kbd>K</kbd> #hash ~~gone~~ **bold** المحرر #hash Wow\\![a link](/x) 2 &lt; 3 `code` tab here a*b saves a*b\n\n> - \n>\n>\n> - \n>\n> ## `code` Wow\\![a link](/x) with page\n\n> ```\n> المحرر <nibleaf-mdx-opaque-inline data-source=\"%7Bvalue%7D\" data-name=\"Expression\"></nibleaf-mdx-opaque-inline> **🚀**\n> ```\n>\n> - `code` a\\*b ~~gone~~ ~~gone~~ **bold** #hash \\*escaped\\*\n\n> - a\\*b See\n>\n>   ![an image](/x.png)\n>\n>    saves \\*escaped\\* with #hash Markdown Markdown\n>\n>\n> - Wow\\![a link](/x) Wow\\![a link](/x) ~~gone~~ x_y_z [external](https://example.com/a_b) **bold** ~~gone~~ Markdown الصفحة {value} يحفظ tab here `code` Markdown {value}\n>\n>\n> - \\*escaped\\* See\n>\n>   ![an image](/x.png)\n>\n>   See\n>\n>   ![an image](/x.png)\n>\n>   page tab here الصفحة x_y_z **bold** tab here **🚀** [a link](/guide) يحفظ\n>\n>\n> - ~~~bash\n>   \n>   ~~~\n\n>   > ```js\n>   > const a = 1;\n>   > ```\n>\n> - \n>\n> > saves المحرر الصفحة Markdown <kbd>K</kbd> `code` editor المحرر\\\n> > saves **bold** a\\*b الصفحة x_y_z #hash `code` **🚀** \\*escaped\\* الصفحة 2 &lt; 3\n\n> | **x** |\n> | --- |\n> |  |\n\nالصفحة snake_case_name المحرر #hash with الصفحة #hash editor\n\n# 2 &lt; 3 `code` 🚀 Wow\\![a link](/x)",
+        "patches": [
+          {
+            "at": 190,
+            "remove": "\n>\n>\n> ",
+            "insert": ""
+          },
+          {
+            "at": 198,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "corpusEdit": {
+        "main": "الصفحة <kbd>K</kbd> الصفحة الصفحة editor *italic* saves with editor with page <kbd>K</kbd> #hash ~~gone~~ **bold** المحرر #hash Wow\\![a link](/x) 2 &lt; 3 `code` tab here a*b saves a*b\n\n> - \n>\n>\n> - \n>\n> ## `code` Wow\\![a link](/x) with page\n\n> ```\n> المحرر <nibleaf-mdx-opaque-inline data-source=\"%7Bvalue%7D\" data-name=\"Expression\"></nibleaf-mdx-opaque-inline> **🚀**\n> ```\n>\n> - `code` a\\*b ~~gone~~ ~~gone~~ **bold** #hash \\*escaped\\*\n\n> - a\\*b See\n>\n>   ![an image](/x.png)\n>\n>    saves \\*escaped\\* with #hash Markdown Markdown\n>\n>\n> - Wow\\![a link](/x) Wow\\![a link](/x) ~~gone~~ x_y_z [external](https://example.com/a_b) **bold** ~~gone~~ Markdown الصفحة {value} يحفظ tab here `code` Markdown {value}\n>\n>\n> - \\*escaped\\* See\n>\n>   ![an image](/x.png)\n>\n>   See\n>\n>   ![an image](/x.png)\n>\n>   page tab here الصفحة x_y_z **bold** tab here **🚀** [a link](/guide) يحفظ\n>\n>\n> - ~~~bash\n>   \n>   ~~~\n\n>   > ```js\n>   > const a = 1;\n>   > ```\n>\n> - \n>\n> > saves المحرر الصفحة Markdown <kbd>K</kbd> `code` editor المحرر\\\n> > saves **bold** a\\*b الصفحة x_y_z #hash `code` **🚀** \\*escaped\\* الصفحة 2 &lt; 3\n\n> | **x** |\n> | --- |\n> |  |\n\nالصفحة snake_case_name المحرر #hash with الصفحة #hash editor\n\n# 2 &lt; 3 `code` 🚀 Wow\\![a link](/x)",
+        "patches": [
+          {
+            "at": 190,
+            "remove": "\n>\n>\n> ",
+            "insert": ""
+          },
+          {
+            "at": 198,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "attributeEdit": {
+        "main": "الصفحة <kbd>K</kbd> الصفحة الصفحة editor *italic* saves with editor with page <kbd>K</kbd> #hash ~~gone~~ **bold** المحرر #hash Wow\\![a link](/x) 2 &lt; 3 `code` tab here a*b saves a*b\n\n> - \n>\n>\n> - \n>\n> ## `code` Wow\\![a link](/x) with page\n\n> ```\n> المحرر <nibleaf-mdx-opaque-inline data-source=\"%7Bvalue%7D\" data-name=\"Expression\"></nibleaf-mdx-opaque-inline> **🚀**\n> ```\n>\n> - `code` a\\*b ~~gone~~ ~~gone~~ **bold** #hash \\*escaped\\*\n\n> - a\\*b See\n>\n>   ![an image](/x.png \"Edited\")\n>\n>    saves \\*escaped\\* with #hash Markdown Markdown\n>\n>\n> - Wow\\![a link](/x) Wow\\![a link](/x) ~~gone~~ x_y_z [external](https://example.com/a_b) **bold** ~~gone~~ Markdown الصفحة {value} يحفظ tab here `code` Markdown {value}\n>\n>\n> - \\*escaped\\* See\n>\n>   ![an image](/x.png)\n>\n>   See\n>\n>   ![an image](/x.png)\n>\n>   page tab here الصفحة x_y_z **bold** tab here **🚀** [a link](/guide) يحفظ\n>\n>\n> - ~~~bash\n>   \n>   ~~~\n\n>   > ```js\n>   > const a = 1;\n>   > ```\n>\n> - \n>\n> > saves المحرر الصفحة Markdown <kbd>K</kbd> `code` editor المحرر\\\n> > saves **bold** a\\*b الصفحة x_y_z #hash `code` **🚀** \\*escaped\\* الصفحة 2 &lt; 3\n\n> | **x** |\n> | --- |\n> |  |\n\nالصفحة snake_case_name المحرر #hash with الصفحة #hash editor\n\n# 2 &lt; 3 `code` 🚀 Wow\\![a link](/x)",
+        "patches": [
+          {
+            "at": 190,
+            "remove": "\n>\n>\n> ",
+            "insert": ""
+          },
+          {
+            "at": 198,
+            "remove": " \n>\n>",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      }
+    },
+    {
+      "index": 937,
+      "source": "[external](https://example.com/a_b) a*b **bold at the end** {value} editor\n\nSee![an image](/x.png) ~~gone~~ Wow\\![a link](/x)\n#hash ~~gone~~ `code` ~~gone~~ دليل\nsaves Wow\\![a link](/x) [external](https://example.com/a_b) a*b Markdown tab\there with\nsnake_case_name See![an image](/x.png) snake_case_name a*b المحرر tab\there Wow\\![a link](/x) x_y_z\n\n🚀 x_y_z **bold**\n\n- See![an image](/x.png) الصفحة {value} Wow\\![a link](/x) <kbd>K</kbd> المحرر المحرر page\n  tab\there with a*b 🚀 editor [a link](/guide) saves \\*escaped\\*\n+ #hash الصفحة with\n  ~~gone~~ a*b **bold** with {value} with **bold**\n  *italic* Wow\\![a link](/x) 🚀 {value} Markdown [external](https://example.com/a_b)\n+ 🚀 **bold** with\n  دليل الصفحة 🚀 \\*escaped\\* See![an image](/x.png)\n  **bold at the end** #hash **bold** المحرر **bold** Markdown *italic* x_y_z\n  <kbd>K</kbd> saves \\*escaped\\* x_y_z **bold at the end**\n\n<AccordionGroup>\n<Accordion title=\"Q\">\n\n**bold at the end** **bold at the end** Wow\\![a link](/x) {value}\nSee![an image](/x.png) يحفظ <kbd>K</kbd> دليل **bold at the end** with 🚀\nx_y_z دليل Markdown\nx_y_z **bold at the end** الصفحة دليل Markdown\n\n</Accordion>\n</AccordionGroup>\n\n| **x** | **x** |\n| ---: | :--- |\n| `y` | دليل |\n| دليل | a |\n| b \\| c | **x** |\n\n2 < 3 {value} <kbd>K</kbd> #hash\n[a link](/guide) دليل يحفظ *italic* ~~gone~~ <kbd>K</kbd>\n`code` <kbd>K</kbd> x_y_z\n\n> - + | دليل | **x** | a |\n>     | --- | --- | :--- |\n>     | b \\| c | **x** | b \\| c |\n>   -  ~~~python\n>     <Card title=\"x\" />\n>      ~~~\n>   + ```python\n>     \tindented\n>       two\n>     ```\n\n> + # x_y_z *italic* يحفظ\n\n>   > Markdown x_y_z 2 < 3 دليل **🚀** الصفحة <kbd>K</kbd> {value}\n\n> - <Callout type=\"info\">\n\n>    ````bash title=\"x\"\n>   ```\n>    `````\n\n>   \t````md\n>   \t````\n\n>   </Callout>\n\n",
+      "unmodified": {
+        "main": "[external](https://example.com/a_b) a\\*b **bold at the end** {value} editor\n\nSee\n\n![an image](/x.png)\n\n~~gone~~ Wow\\![a link](/x) #hash ~~gone~~ `code` ~~gone~~ دليل saves Wow\\![a link](/x) [external](https://example.com/a_b) a*b Markdown tab here with snake_case_name See*\n\n![an image](/x.png)\n\n *snake_case_name a*b المحرر tab here Wow\\![a link](/x) x_y_z\n\n🚀 x_y_z **bold**\n\n- See\n\n  ![an image](/x.png)\n\n  الصفحة {value} Wow\\![a link](/x) <kbd>K</kbd> المحرر المحرر page tab here with a\\*b 🚀 editor [a link](/guide) saves \\*escaped\\*\n\n\n- #hash الصفحة with ~~gone~~ a\\*b **bold** with {value} with **bold** *italic* Wow\\![a link](/x) 🚀 {value} Markdown [external](https://example.com/a_b)\n- 🚀 **bold** with دليل الصفحة 🚀 \\*escaped\\* See\n\n  ![an image](/x.png)\n\n  **bold at the end** #hash **bold** المحرر **bold** Markdown *italic* x_y_z <kbd>K</kbd> saves \\*escaped\\* x_y_z **bold at the end**\n\n<AccordionGroup>\n\n<Accordion title=\"Q\">\n\n**bold at the end** **bold at the end** Wow\\![a link](/x) {value} See\n\n![an image](/x.png)\n\nيحفظ <kbd>K</kbd> دليل **bold at the end** with 🚀 x_y_z دليل Markdown x_y_z **bold at the end** الصفحة دليل Markdown\n\n</Accordion>\n\n</AccordionGroup>\n\n| **x** | **x** |\n| ---: | :--- |\n| `y` | دليل |\n| دليل | a |\n| b \\| c | **x** |\n\n2 &lt; 3 {value} <kbd>K</kbd> #hash [a link](/guide) دليل يحفظ *italic* ~~gone~~ <kbd>K</kbd> `code` <kbd>K</kbd> x_y_z\n\n> - \n>\n>\n> - \n>\n> | دليل | **x** | a |\n> | --- | --- | :--- |\n> | b \\| c | **x** | b \\| c |\n>\n> - ~~~python\n>   \n>   ~~~\n>\n> <Card title=\"x\" />\n>\n>  \\~\\~\\~ + \\`\\`\\`python indented two \\`\\`\\`\n\n> - \n>\n> # x_y_z *italic* يحفظ\n\n> > Markdown x_y_z 2 &lt; 3 دليل **🚀** الصفحة <kbd>K</kbd> {value}\n\n> - <Callout type=\"info\">\n\n>    ````bash title=\"x\"\n>   ```\n>    `````\n\n>   \t````md\n>   \t````\n\n>   </Callout>",
+        "patches": [
+          {
+            "at": 1581,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "corpusEdit": {
+        "main": "[external](https://example.com/a_b) a\\*b **bold at the end** {value} editor\n\nSee\n\n![an image](/x.png)\n\n~~gone~~ Wow\\![a link](/x) #hash ~~gone~~ `code` ~~gone~~ دليل saves Wow\\![a link](/x) [external](https://example.com/a_b) a*b Markdown tab here with snake_case_name See*\n\n![an image](/x.png)\n\n *snak*`e_case_n`*ame a*b المحرر tab here Wow\\![a link](/x) x_y_z\n\n🚀 x_y_z **bold**\n\n- See\n\n  ![an image](/x.png)\n\n  الصفحة {value} Wow\\![a link](/x) <kbd>K</kbd> المحرر المحرر page tab here with a\\*b 🚀 editor [a link](/guide) saves \\*escaped\\*\n\n\n- #hash الصفحة with ~~gone~~ a\\*b **bold** with {value} with **bold** *italic* Wow\\![a link](/x) 🚀 {value} Markdown [external](https://example.com/a_b)\n- 🚀 **bold** with دليل الصفحة 🚀 \\*escaped\\* See\n\n  ![an image](/x.png)\n\n  **bold at the end** #hash **bold** المحرر **bold** Markdown *italic* x_y_z <kbd>K</kbd> saves \\*escaped\\* x_y_z **bold at the end**\n\n<AccordionGroup>\n\n<Accordion title=\"Q\">\n\n**bold !at the end** **bold at the end** Wow\\![a link](/x) {value} See\n\n![an image](/x.png)\n\nيحفظ <kbd>K</kbd> دليل **bold at the end** with 🚀 x_y_z دليل Markdown x_y_z **bold at the end** الصفحة دليل Markdown\n\n</Accordion>\n\n</AccordionGroup>\n\n| **x** | **x** |\n| ---: | :--- |\n| `y` | دليل |\n| دليل | a |\n| b \\| c | **x** |\n\n2 &lt; 3 {value} <kbd>K</kbd> #hash [a link](/guide) دليل يحفظ *italic* ~~gone~~ <kbd>K</kbd> `code` <kbd>K</kbd> x_y_z\n\n> - \n>\n>\n> - \n>\n> | دليل | **x** | a |\n> | --- | --- | :--- |\n> | b \\| c | **x** | b \\| c |\n>\n> - ~~~python\n>   \n>   ~~~\n>\n> <Card title=\"x\" />\n>\n>  \\~\\~\\~ + \\`\\`\\`python indented two \\`\\`\\`\n\n> - \n>\n> # x_y_z *italic* يحفظ\n\n> > Markdown x_y_z 2 &lt; 3 دليل **🚀** الصفحة <kbd>K</kbd> {value}\n\n> - <Callout type=\"info\">\n\n>    ````bash title=\"x\"\n>   ```\n>    `````\n\n>   \t````md\n>   \t````\n\n>   </Callout>",
+        "patches": [
+          {
+            "at": 1586,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      },
+      "attributeEdit": {
+        "main": "[external](https://example.com/a_b) a\\*b **bold at the end** {value} editor\n\nSee\n\n![an image](/x.png \"Edited\")\n\n~~gone~~ Wow\\![a link](/x) #hash ~~gone~~ `code` ~~gone~~ دليل saves Wow\\![a link](/x) [external](https://example.com/a_b) a*b Markdown tab here with snake_case_name See*\n\n![an image](/x.png)\n\n *snake_case_name a*b المحرر tab here Wow\\![a link](/x) x_y_z\n\n🚀 x_y_z **bold**\n\n- See\n\n  ![an image](/x.png)\n\n  الصفحة {value} Wow\\![a link](/x) <kbd>K</kbd> المحرر المحرر page tab here with a\\*b 🚀 editor [a link](/guide) saves \\*escaped\\*\n\n\n- #hash الصفحة with ~~gone~~ a\\*b **bold** with {value} with **bold** *italic* Wow\\![a link](/x) 🚀 {value} Markdown [external](https://example.com/a_b)\n- 🚀 **bold** with دليل الصفحة 🚀 \\*escaped\\* See\n\n  ![an image](/x.png)\n\n  **bold at the end** #hash **bold** المحرر **bold** Markdown *italic* x_y_z <kbd>K</kbd> saves \\*escaped\\* x_y_z **bold at the end**\n\n<AccordionGroup>\n\n<Accordion title=\"Q\">\n\n**bold at the end** **bold at the end** Wow\\![a link](/x) {value} See\n\n![an image](/x.png)\n\nيحفظ <kbd>K</kbd> دليل **bold at the end** with 🚀 x_y_z دليل Markdown x_y_z **bold at the end** الصفحة دليل Markdown\n\n</Accordion>\n\n</AccordionGroup>\n\n| **x** | **x** |\n| ---: | :--- |\n| `y` | دليل |\n| دليل | a |\n| b \\| c | **x** |\n\n2 &lt; 3 {value} <kbd>K</kbd> #hash [a link](/guide) دليل يحفظ *italic* ~~gone~~ <kbd>K</kbd> `code` <kbd>K</kbd> x_y_z\n\n> - \n>\n>\n> - \n>\n> | دليل | **x** | a |\n> | --- | --- | :--- |\n> | b \\| c | **x** | b \\| c |\n>\n> - ~~~python\n>   \n>   ~~~\n>\n> <Card title=\"x\" />\n>\n>  \\~\\~\\~ + \\`\\`\\`python indented two \\`\\`\\`\n\n> - \n>\n> # x_y_z *italic* يحفظ\n\n> > Markdown x_y_z 2 &lt; 3 دليل **🚀** الصفحة <kbd>K</kbd> {value}\n\n> - <Callout type=\"info\">\n\n>    ````bash title=\"x\"\n>   ```\n>    `````\n\n>   \t````md\n>   \t````\n\n>   </Callout>",
+        "patches": [
+          {
+            "at": 1590,
+            "remove": "\n>\n> ",
+            "insert": ""
+          }
+        ],
+        "mainFixed": false
+      }
+    },
+    {
+      "index": 997,
+      "source": "* > x_y_z with editor المحرر snake_case_name المحرر  \n  > `code` `code` saves with with\n  > tab\there Wow\\![a link](/x) saves #hash with [external](https://example.com/a_b)\n",
+      "unmodified": {
+        "main": "- \n\n> x_y_z with editor المحرر snake_case_name المحرر\\\n> `code` `code` saves with with tab here Wow\\![a link](/x) saves #hash with [external](https://example.com/a_b)",
+        "patches": [
+          {
+            "at": 2,
+            "remove": "\n\n",
+            "insert": ""
+          },
+          {
+            "at": 55,
+            "remove": "",
+            "insert": "  "
+          }
+        ],
+        "mainFixed": true
+      },
+      "corpusEdit": {
+        "main": "- \n\n> x_y_z with editor المحرر snake_case_name المحرر\\\n> `code` `code` saves with with tab here Wow\\![a link](/x) saves #hash with [external](https://example.com/a_b)",
+        "patches": [
+          {
+            "at": 2,
+            "remove": "\n\n",
+            "insert": ""
+          },
+          {
+            "at": 55,
+            "remove": "",
+            "insert": "  "
+          }
+        ],
+        "mainFixed": true
+      },
+      "attributeEdit": null
+    }
+  ],
+  "mainToggleOverlap": {
+    "index": 550,
+    "mainSerializerDigest": "34da8a48286bf30e",
+    "mainLfDigest": "254f1502adf0416a",
+    "expectedLfDigest": "e3227b1e697771a1",
+    "corpusEdit": {
+      "main": "See\n\n![an image](/x.png)\n\nx_y_z snake_case_name editor [a link](/guide) **bold** [external](https://example.com/a_b) tab here ~~gone~~ <kbd>K</kbd> **🚀** Markdown #hash saves a\\*b **🚀**\n\n~~~bash\n```\nconst a = 1;\n~~~\n\nthe a\\*b page\n\n### <kbd>K</kbd> الصفحة editor See\n\n![an image](/x.png)\n\n ~~~python\n ~~~\n\n> - \n>\n> ## المحرر #hash\n\n> - ````\n\n> ```\n> two\n> ```\n>\n>   ```\n>   `````\n\n> - دليل #hash يحفظ snake_case_name 🚀 `Wow!a lin`[k](/x) {value}\\\n>   snake_case_name editor [external](https://example.com/a_b) يحفظ the دليل snake_case_name tab here ~~gone~~ tab here\n\n<CodeGroup>\n\n```js\n```\n<Card title=\"x\" />\n```\n\n~~~js\n\tindented\n\n~~~\n\n</CodeGroup>\n\n",
+      "patches": [
+        {
+          "at": 309,
+          "remove": " \n>\n>",
+          "insert": ""
+        }
+      ],
+      "mainFixed": true
+    }
+  }
+}

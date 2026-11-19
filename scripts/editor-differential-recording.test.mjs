@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { stripTypeScriptTypes } from 'node:module';
 import test from 'node:test';
@@ -12,6 +13,17 @@ const modes = [
   ['frame-main', ['WRITE_NON_FRAME_MAIN', 'WRITE_NON_FRAME_714_MAIN']],
 ];
 const sourceOf = (name) => readFileSync(new URL(`${name}-differential.test.ts`, editor), 'utf8');
+// The comparison tails use these imports. Evaluate the real fixture bindings
+// without loading the editor, just as we execute the real comparison code below.
+const listItemSource = readFileSync(new URL('__fixtures__/list-item-first-block.ts', editor), 'utf8')
+  .replace(/^import fixture from '.\/list-item-first-block-main\.json';\r?\n/m, '')
+  .replace(/^export /gm, '');
+const listItems = new vm.Script(
+  stripTypeScriptTypes(
+    `(() => { ${listItemSource}; return { LIST_ITEM_FIRST_BLOCK_INDICES, LIST_ITEM_EDIT_REPAIR_INDICES, LIST_ITEM_MAIN_TOGGLE_OVERLAP, repairedListItem }; })()`,
+  ),
+).runInNewContext({ fixture: JSON.parse(readFileSync(new URL('__fixtures__/list-item-first-block-main.json', editor), 'utf8')) });
+const hash = (text) => createHash('sha256').update(text).digest('hex').slice(0, 16);
 
 // Execute the actual recording/comparison tail, leaving expensive editor/corpus
 // generation to the real differential suites. Fixture I/O stays entirely in memory.
@@ -29,12 +41,33 @@ const expect = (actual) => ({
   toHaveLength: (expected) => assert.equal(actual.length, expected),
 });
 
-function harness(env = {}, differing = 14) {
-  const count = Math.max(14, differing);
+const editRepairs = listItems.LIST_ITEM_EDIT_REPAIR_INDICES.length;
+
+function harness(env = {}, differing = 14, listDiffering = 14, editDiffering = editRepairs) {
+  const {
+    LIST_ITEM_FIRST_BLOCK_INDICES: listIndices,
+    LIST_ITEM_EDIT_REPAIR_INDICES: editIndices,
+    LIST_ITEM_MAIN_TOGGLE_OVERLAP: overlap,
+    repairedListItem,
+  } = listItems;
+  assert.equal(listIndices.length, 14);
+  // The two named sets share page 550: 14 + 14 - 1 = 27. Vary either set
+  // independently, with a fifteenth unnamed page to exercise the upper bound.
+  // Keep the overlap first so the 13-page case removes an unshared exception.
+  const keptLinks = [overlap.index, ...Array.from({ length: 13 }, (_, index) => index)];
+  const changed = new Set([...keptLinks, 13].slice(0, differing).concat([...listIndices, 14].slice(0, listDiffering)));
+  // The serializer corpus saves after its edits, where only some list repairs remain.
+  const editChanged = new Set([...keptLinks, 13].slice(0, differing).concat([...editIndices, 14].slice(0, editDiffering)));
+  const count = Math.max(...listIndices, overlap.index) + 1;
   const main = Array.from({ length: count }, (_, index) => `main-${index}`);
-  const outputs = main.map((value, index) => (index < differing ? `head-${index}` : value));
+  main[overlap.index] = overlap.mainLfDigest;
+  const serializerMain = [...main];
+  serializerMain[overlap.index] = overlap.mainSerializerDigest;
+  const outputs = serializerMain.map((value, index) => (editChanged.has(index) ? `head-${index}` : value));
+  const mainToggle = [...serializerMain];
+  mainToggle[overlap.index] = hash(repairedListItem(overlap.corpusEdit));
   const files = new Map([
-    ['fixture', JSON.stringify({ pages: count, digests: main, seed: 1, sources: 'sources', outputs: main })],
+    ['fixture', JSON.stringify({ pages: count, digests: main, seed: 1, sources: 'sources', outputs: serializerMain })],
     ['fixture714', JSON.stringify({ pages: count, records: [] })],
   ]);
   const writes = [];
@@ -55,17 +88,19 @@ function harness(env = {}, differing = 14) {
       },
       expect,
       pages: main.map((_, index) => ({ page: String(index), edits: [] })),
-      digests: outputs,
+      digests: main.map((value, index) => (changed.has(index) ? `head-${index}` : value)),
       results: [],
       crPages: [],
       CORPUS_START: 0,
-      CODE_TOGGLE_KEEPS_LINK_PAGES: Array.from({ length: 14 }, (_, index) => index),
-      digest: (page) => `main-${page}`,
+      CODE_TOGGLE_KEEPS_LINK_PAGES: keptLinks,
+      ...listItems,
+      hash,
+      digest: (page) => (Number(page) === overlap.index ? overlap.expectedLfDigest : main[Number(page)]),
       SERIALIZER_CORPUS_SEED: 1,
       SERIALIZER_CORPUS_SIZE: count,
       sources: 'sources',
       cases: main,
-      saveAll: async (_module, indexes) => (indexes ? indexes.map((index) => main[index]) : outputs),
+      saveAll: async (_module, indexes) => (indexes ? indexes.map((index) => mainToggle[index]) : outputs),
       importEditor: async () => ({}),
       pathToFileURL: (path) => ({ href: path }),
       join: (...parts) => parts.join('/'),
@@ -121,6 +156,16 @@ for (const differing of [0, 13, 14, 15]) {
   });
 }
 
+for (const differing of [0, 13, 14, 15]) {
+  test(`LF checking mode enforces the exact 14-page list exception (${differing} differences)`, async () => {
+    const { context, writes } = harness({}, 14, differing);
+    const result = execute(comparisonTail('lf-main'), context);
+    if (differing === 14) await result;
+    else await assert.rejects(result, assert.AssertionError);
+    assert.deepEqual(writes, []);
+  });
+}
+
 // The serializer already separates its record and check tests. Execute those
 // registrations too, so recording must keep skipping the exception-checking test.
 const serializer = sourceOf('serializer');
@@ -148,6 +193,16 @@ for (const differing of [0, 13, 14, 15]) {
     const { context, writes } = harness({}, differing);
     const run = serializerTests(context);
     if (differing === 14) await run();
+    else await assert.rejects(run(), assert.AssertionError);
+    assert.deepEqual(writes, []);
+  });
+}
+
+for (const differing of [0, editRepairs - 1, editRepairs, editRepairs + 1]) {
+  test(`serializer checking mode enforces the exact ${editRepairs}-page list exception (${differing} differences)`, async () => {
+    const { context, writes } = harness({}, 14, 14, differing);
+    const run = serializerTests(context);
+    if (differing === editRepairs) await run();
     else await assert.rejects(run(), assert.AssertionError);
     assert.deepEqual(writes, []);
   });

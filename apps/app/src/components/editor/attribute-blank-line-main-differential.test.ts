@@ -7,6 +7,7 @@ import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import jsxOpeners from './__fixtures__/jsx-openers-main.json';
+import { LIST_ITEM_FIRST_BLOCK_CASES, repairedListItem } from './__fixtures__/list-item-first-block';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { normalizeLineEndings, readLineEndings, restoreLineEndings } from './line-endings';
@@ -203,10 +204,20 @@ describe('pages without a blank line inside an attribute value read as on main',
     expect(main.pages).toBe(pages.length);
     expect(main.crAsLf.length).toBe(CR_PAGES);
     const crAsLf = new Map(crPages.map((index, at) => [index, main.crAsLf[at]]));
+    const listRepairs: number[] = [];
     const differences = digests.flatMap((value, index) => {
       const { page } = pages[index] as { page: string };
       const lfDigest = crAsLf.get(index);
-      if (lfDigest === undefined) return value === main.digests[index] ? [] : [page];
+      if (lfDigest === undefined) {
+        if (value === main.digests[index]) return [];
+        const fixture = LIST_ITEM_FIRST_BLOCK_CASES.find((entry) => seeded.length + entry.index === index);
+        if (!fixture) return [page];
+        expect(page).toBe(fixture.source);
+        expect(results[index]?.saved).toBe(repairedListItem(fixture.unmodified));
+        expect(results[index]?.edited).toBe(fixture.attributeEdit ? repairedListItem(fixture.attributeEdit) : null);
+        listRepairs.push(index);
+        return [];
+      }
       const { nodes, saved, edited } = results[index] as ReturnType<typeof result>;
       const endings = readLineEndings(page);
       const kept =
@@ -220,5 +231,7 @@ describe('pages without a blank line inside an attribute value read as on main',
       `[blank-line-differential] ${pages.length} pages (${crPages.length} with a CR, read as LF on main), ${differences.length} differences`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
+    expect(listRepairs).toEqual(LIST_ITEM_FIRST_BLOCK_CASES.map(({ index }) => seeded.length + index));
+    expect(listRepairs).toHaveLength(14);
   }, 600_000);
 });

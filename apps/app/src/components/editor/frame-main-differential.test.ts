@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { DOCUMENTATION_COMPONENTS } from '@nibleaf/shared/documentation-components';
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { LIST_ITEM_FIRST_BLOCK_CASES, repairedListItem } from './__fixtures__/list-item-first-block';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { replaceOpeningAttribute, SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
@@ -419,9 +420,19 @@ describe('pages without a Frame read as on main', () => {
     // with a `{…}` (`{/"/}`) that main's scan misread as a runaway string now loads as an
     // opaque inline expression node, kept byte for byte. Exactly these, by index.
     const nodesOnly: number[] = [];
+    const listStart = seeded.length;
+    const listRepairs: number[] = [];
     const changed = results.flatMap((result, index) => {
       if (result.digest === main.digests[index]) return [];
       const page = pages[index]?.page ?? '';
+      const listFixture = LIST_ITEM_FIRST_BLOCK_CASES.find((entry) => listStart + entry.index === index);
+      if (listFixture) {
+        expect(page).toBe(listFixture.source);
+        expect(result.saved).toBe(repairedListItem(listFixture.unmodified));
+        expect(result.edited).toBe(listFixture.attributeEdit ? repairedListItem(listFixture.attributeEdit) : null);
+        listRepairs.push(index);
+        return [];
+      }
       const record = lossyOnMain.get(index);
       if (record && result.saved === record.saved && result.edited === record.edited) nodesOnly.push(index);
       const seeded = pages[index]?.seeded;
@@ -466,6 +477,8 @@ describe('pages without a Frame read as on main', () => {
       `[frame-main-differential] ${pages.length} pages, ${differences.length} differences, ${kept.length} kept by #721, #714 ${exact.length} exact, ${plain.length} as a plain value and ${bodyNormalized.length} body-normalized`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
+    expect(listRepairs).toEqual(LIST_ITEM_FIRST_BLOCK_CASES.map(({ index }) => listStart + index));
+    expect(listRepairs).toHaveLength(14);
     expect(lost.map((result) => result.page)).toEqual([]);
     expect(kept.length).toBe(4);
     expect(exact.length).toBe(331);

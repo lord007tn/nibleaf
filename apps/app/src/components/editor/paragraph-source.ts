@@ -2,6 +2,7 @@ import Paragraph from '@tiptap/extension-paragraph';
 import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
+import { ITEM_LEAD_ATTRIBUTE, itemLeadForm, itemLeadPlacement, ListItemLeadFitting, ListItemLeadGuard } from './list-item-leads';
 import type { MarkdownOutput } from './markdown-output';
 import { markTightLists } from './tight-lists';
 
@@ -57,6 +58,7 @@ interface MarkdownToken {
   content: string;
   hidden: boolean;
   children: MarkdownToken[] | null;
+  attrGet(name: string): string | null;
   attrSet(name: string, value: string): void;
 }
 
@@ -90,7 +92,10 @@ function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>
     const list = lists[lists.length - 1];
     if (list && LIST_CLOSE.has(token.type)) {
       lists.pop();
-      if (list.revealed && !list.shown) list.token.attrSet('data-tight', 'true');
+      if (list.revealed && !list.shown) {
+        list.token.attrSet('data-tight', 'true');
+        if (list.token.attrGet('data-md-item-main-tight') !== null) list.token.attrSet('data-md-item-main-tight', 'true');
+      }
       const parent = lists[lists.length - 1];
       if (parent) {
         parent.shown ||= list.shown;
@@ -147,6 +152,9 @@ interface ParagraphSerializeState {
   text: (text: string, escapeText?: boolean) => void;
   renderInline: (node: PMNode) => void;
   closeBlock: (node: PMNode) => void;
+  ensureNewLine: () => void;
+  /** The nodes being rendered, outermost first (LinearMarkdownSerializerState). */
+  path?: ReadonlyArray<{ node: PMNode; parent: PMNode | Fragment; index: number }>;
 }
 
 /** The containers whose first line their serializer writes before their first child: a
@@ -158,8 +166,8 @@ const LINE_CONTAINERS: ReadonlySet<string> = new Set(['listItem', 'blockquote'])
  * after it. Markdown has no empty paragraph there: written (`- `, a blank line, then the
  * rest), it read back as an empty item and a paragraph outside the list, so a page with
  * one never saved to a fixed point. It is left out, and the paragraph after it opens the
- * item. Before any other block (a nested list, a quote) it is written as before: left
- * out, that block's own marker would share the item's line (`- - Beta`).
+ * item. Before a quote, heading or nested list, `itemLeadPlacement` (list-item-leads.ts) says
+ * where it goes.
  */
 const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: number | undefined): boolean =>
   index === 0 &&
@@ -176,6 +184,17 @@ const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: n
  */
 function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: PMNode | Fragment, index?: number): void {
   if (emptyLead(node, parent, index)) return;
+  const item = state.path?.[state.path.length - 2];
+  if (index === 0 && node.content.size === 0 && item && item.node === parent && 'type' in item.parent) {
+    const placement = itemLeadPlacement(item.node, item.parent, item.index);
+    if (placement === 'marker') return;
+    if (placement === 'above') {
+      // No blank line: it would end the item, and the block would load outside it.
+      state.write();
+      state.ensureNewLine();
+      return;
+    }
+  }
   const source = String(node.attrs.sourceParagraph ?? '');
   const joined = source ? joinedSourceLines(source) : null;
   if (joined === null) {
@@ -201,9 +220,20 @@ const paragraphParsers = new WeakSet<object>();
 
 /** StarterKit's paragraph, keeping its source lines (see the note at the top). */
 export const SourceParagraph = Paragraph.extend({
+  addExtensions() {
+    return [ListItemLeadFitting, ListItemLeadGuard];
+  },
   addAttributes() {
     return {
       ...this.parent?.(),
+      sourceItemLead: {
+        // Undefined keeps ordinary paragraphs' serialized JSON unchanged. Both halves of
+        // a split lead stay leads: the block after the second still needs its spacing.
+        default: undefined,
+        keepOnSplit: true,
+        parseHTML: (element) => itemLeadForm(element.getAttribute(ITEM_LEAD_ATTRIBUTE)),
+        rendered: false,
+      },
       sourceParagraph: {
         default: '',
         // A new paragraph after Enter starts without a source. (A split mid-paragraph

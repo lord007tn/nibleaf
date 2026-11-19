@@ -6,6 +6,7 @@ import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor, type JSONContent } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
+import { LIST_ITEM_FIRST_BLOCK_INDICES, LIST_ITEM_MAIN_TOGGLE_OVERLAP } from './__fixtures__/list-item-first-block';
 import {
   applyCorpusEdits,
   CODE_TOGGLE_KEEPS_LINK_PAGES,
@@ -144,7 +145,7 @@ describe('pages with LF only save as on main (#702)', () => {
     expect(pages.filter(({ page }) => page.includes('\r'))).toEqual([]);
   });
 
-  it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages, but #660’s`, () => {
+  it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages, with named #660 and #604 repairs`, () => {
     const digests = pages.map(({ page, edits }) => digest(page, edits));
     if (process.env.WRITE_LF_MAIN) {
       writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
@@ -155,17 +156,24 @@ describe('pages with LF only save as on main (#702)', () => {
     const changed = digests.flatMap((value, index) => (value === main.digests[index] ? [] : [index]));
     // #660: the corpus pages whose code toggle now keeps a link; with main's toggle each gives main's digest.
     const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.map((index) => CORPUS_START + index);
-    const differences = changed.filter((index) => !keptLink.includes(index)).map((index) => pages[index]?.page);
+    const listRepairs = LIST_ITEM_FIRST_BLOCK_INDICES.map((index) => CORPUS_START + index);
+    const expected = [...new Set([...keptLink, ...listRepairs])].sort((a, b) => a - b);
+    const differences = changed.filter((index) => !expected.includes(index)).map((index) => pages[index]?.page);
     console.info(
-      `[lf-main-differential] ${pages.length} pages, ${differences.length} differences, ${changed.length - differences.length} kept links by #660`,
+      `[lf-main-differential] ${pages.length} pages, ${differences.length} unexplained differences, 14 kept links by #660, 14 named list repairs by #604 (one overlap)`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
-    expect(changed).toEqual(keptLink);
-    expect(changed).toHaveLength(14);
+    expect(changed).toEqual(expected);
+    expect(changed).toHaveLength(27);
     const withMainToggle = keptLink.map((index) => {
       const { page, edits } = pages[index] as (typeof pages)[number];
       return digest(page, edits, (target) => withMainCodeToggle(target as unknown as MarkEditor));
     });
-    expect(withMainToggle).toEqual(keptLink.map((index) => main.digests[index]));
+    expect(main.digests[CORPUS_START + LIST_ITEM_MAIN_TOGGLE_OVERLAP.index]).toBe(LIST_ITEM_MAIN_TOGGLE_OVERLAP.mainLfDigest);
+    expect(withMainToggle).toEqual(
+      keptLink.map((index) =>
+        index === CORPUS_START + LIST_ITEM_MAIN_TOGGLE_OVERLAP.index ? LIST_ITEM_MAIN_TOGGLE_OVERLAP.expectedLfDigest : main.digests[index],
+      ),
+    );
   }, 600_000);
 });

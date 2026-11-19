@@ -1,5 +1,6 @@
 import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
 import { encodeMdxSource, fenceClosed, fenceContentLines } from './extensions/mdx-roundtrip';
+import { ITEM_LEAD_ATTRIBUTE, itemLeadMarker, stagesItemLeads } from './list-item-leads';
 import type { MarkdownOutput } from './markdown-output';
 
 /*
@@ -119,6 +120,9 @@ interface MarkdownCoreState<T extends MarkdownToken> {
 const LIST_OPEN = new Set(['bullet_list_open', 'ordered_list_open']);
 const LIST_CLOSE = new Set(['bullet_list_close', 'ordered_list_close']);
 
+// HTML/component-led items are intentionally left to their own serializers (#604).
+const ITEM_LEAD_BLOCKS = new Set(['blockquote_open', 'heading_open', 'bullet_list_open', 'ordered_list_open']);
+
 /**
  * A markdown-it core rule, run after the block rules. Each fence gets its source:
  * the opening and closing lines without their containers' prefixes (a quote's `>`,
@@ -126,10 +130,10 @@ const LIST_CLOSE = new Set(['bullet_list_close', 'ordered_list_close']);
  * and its lines exactly as written. Keeping the prefixes added another on every
  * save until the fence broke (`> ```js` saved as `> > ```js`; #574 in list items).
  *
- * A fence that opens on its list item's first line (`- ```js`) gets an empty
- * paragraph before it: the editor's list item starts with a paragraph, and without
- * one the code block was moved out of the list (#578). The serializer leaves that
- * paragraph out again (see `writeFence`).
+ * A list item starting with a fence, quote, heading or nested list gets an empty
+ * paragraph before that block: the editor's schema requires one (#578, #604).
+ * `itemLeadPlacement` (list-item-leads.ts) writes it back for a quote, heading or list;
+ * fences keep their existing source handling (see `writeFence`).
  */
 export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   const lines = state.src.split('\n');
@@ -146,6 +150,13 @@ export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState
   for (const token of state.tokens) {
     const after = previous;
     previous = token;
+    if (stagesItemLeads() && after?.type === 'list_item_open' && ITEM_LEAD_BLOCKS.has(token.type)) {
+      const lead = leadParagraph(state, token);
+      // Keep whether the block shared the marker's line. An item emptied by an edit
+      // writes its empty marker before the nested list, and reloads that way too.
+      lead[0]?.attrSet(ITEM_LEAD_ATTRIBUTE, itemLeadMarker(token.map?.[0] === after.map?.[0] ? 'inline' : 'block'));
+      tokens.push(...lead);
+    }
     if (token.type === 'blockquote_open') containers.push({ quote: true });
     if (token.type === 'list_item_open') {
       const line = token.map?.[0] ?? -1;

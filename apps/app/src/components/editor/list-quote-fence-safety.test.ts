@@ -14,17 +14,25 @@ const save = (source: string) => {
   return getMarkdown(editor);
 };
 
-describe('nested items that the editor moves out of their list', () => {
+describe('quote-led nested items (#604, #865)', () => {
+  // Four named exceptions to main's lossy bytes: quote only, tight sibling,
+  // loose sibling, and nested loose list. Keep the source's reader structure.
   it.each([
-    ['- Top\n  - > Alpha', '- Top\n\n  - \n\n  > Alpha'],
-    ['- Top\n  - > Alpha\n  - Beta', '- Top\n\n  - \n\n  > Alpha\n\n  - Beta'],
-    ['- Top\n  - > Alpha\n\n  - Beta', '- Top\n\n  - \n\n  > Alpha\n\n  - Beta'],
-    ['- Top\n  - > Alpha\n    - Beta\n  \n    - Gamma\n  - Delta', '- Top\n\n  - \n\n  > Alpha\n\n  - Beta\n\n  - Gamma\n\n\n  - Delta'],
-  ])('keeps main’s saved bytes and reader paragraphs for %j', (source, main) => {
-    const saved = save(source);
-    expect(saved).toBe(main);
+    ['- Top\n  - > Alpha', '- Top\n  - > Alpha'],
+    ['- Top\n  - > Alpha\n  - Beta', '- Top\n  - > Alpha\n  - Beta'],
+    ['- Top\n  - > Alpha\n\n  - Beta', '- Top\n  - > Alpha\n\n  - Beta'],
+    ['- Top\n  - > Alpha\n    - Beta\n  \n    - Gamma\n  - Delta', '- Top\n  - > Alpha\n    - Beta\n\n    - Gamma\n  - Delta'],
+  ])('keeps the nested quote and reader structure for %j', (source, expected) => {
+    let saved = source;
+    for (let cycle = 0; cycle < 4; cycle++) {
+      saved = save(saved);
+      expect(saved).toBe(expected);
+    }
     const html = renderToStaticMarkup(createElement(MarkdownRenderer, { content: saved }));
-    expect(html).toContain('<p dir="auto">Top</p>');
+    expect(html).toBe(renderToStaticMarkup(createElement(MarkdownRenderer, { content: source })));
+    const reader = document.createElement('div');
+    reader.innerHTML = html;
+    expect(reader.querySelector('li > ul > li > blockquote')?.textContent).toContain('Alpha');
     expect(html).not.toContain('<h2');
   });
 });
