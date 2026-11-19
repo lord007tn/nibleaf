@@ -1,12 +1,14 @@
+import type { Token } from 'markdown-it';
 import MarkdownIt from 'markdown-it';
 import { type DefaultTreeAdapterTypes, Parser, parseFragment, serialize } from 'parse5';
 import { expect, it } from 'vitest';
 import visibleRepros from './__fixtures__/markdown-export.visible-repros.json';
 import { AttributeReplay } from './export-html-replay';
-import { type ExportHtmlMetrics, readExportHtml } from './export-html-source';
+import { type ExportHtmlMetrics, parseExportTokens, readExportHtml } from './export-html-source';
 import { srcsetCandidates } from './export-url-policy';
 import { checkHazardMatrix, exportFanoutSource, exportTargets } from './testing/export-664-guard';
 import { readerSanitizedActiveHtml } from './testing/export-guard';
+import { htmlExportBoundaryCases, seededExportCases } from './testing/export-guard-cases';
 import { inspectExport } from './testing/export-oracle';
 
 const attacks = [
@@ -24,6 +26,25 @@ const attacks = [
   '<div title="\n\n[X](href=javascript:ATTACK)',
   "<div title='\n\n[X](/safe \"' onerror=ATTACK '\")",
 ];
+
+it('parses exactly as stock markdown-it, with the same token class', () => {
+  const stock = new MarkdownIt({ html: true });
+  const { prototype } = new stock.core.State('', stock, {}).Token;
+  const sameClass = (tokens: readonly Token[]): boolean =>
+    tokens.every((token) => Object.getPrototypeOf(token) === prototype && sameClass(token.children ?? []));
+  const sources = [
+    ...attacks,
+    ...visibleRepros,
+    ...htmlExportBoundaryCases().map(({ source }) => source),
+    ...seededExportCases().map(({ source }) => source),
+  ];
+  const different = sources.filter((source) => {
+    const tokens = parseExportTokens(source);
+    return !sameClass(tokens) || JSON.stringify(tokens) !== JSON.stringify(stock.parse(source, {}));
+  });
+  expect(different).toEqual([]);
+  expect(sources.length).toBeGreaterThan(6000);
+});
 
 it('fails on main for live handlers and URLs, then emits none in either export', () => {
   const activeMain = attacks.flatMap((source) => exportTargets.map((target) => inspectExport(target.baseline(source)).active));
