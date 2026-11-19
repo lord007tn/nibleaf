@@ -6,7 +6,7 @@
 // private-preview SSR uses the built app with a fictional read-only local API.
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { createServer } from 'node:net';
 import { freemem, tmpdir } from 'node:os';
@@ -49,6 +49,8 @@ if (mode === 'build') {
       execFileSync('git', ['show', `${baseline}:${file}`], { cwd: root, encoding: 'utf8' }),
     ]),
   );
+  // A failed rebuild must not leave an older receipt vouching for mixed fixtures.
+  await rm(join(scratch, 'baseline.txt'), { force: true });
   for (const phase of ['before', 'after']) {
     assert.ok(freemem() >= 5 * 1024 ** 3, 'At least 5 GiB free RAM before each build');
     const harness = join(scratch, phase);

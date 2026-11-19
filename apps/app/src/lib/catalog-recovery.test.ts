@@ -215,6 +215,14 @@ describe('a probe that never answers', () => {
 });
 
 describe('a catalog that fails on navigation', () => {
+  // Start each test after a visible load that worked, so no earlier failure carries over.
+  beforeEach(async () => {
+    const { loadRouteDashboardLocale } = await import('@/lib/dashboard-locale-route');
+    net.down = false;
+    await loadRouteDashboardLocale();
+    net.down = true;
+  });
+
   it('never reloads the document, and marks a replaced build for an explicit reload', async () => {
     serveAssets(404);
     getRouter();
