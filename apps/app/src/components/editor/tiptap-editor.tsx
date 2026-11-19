@@ -1,6 +1,6 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { type Locale, type MessageKey, translateFn } from '@nibleaf/i18n';
+import type { Locale, MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { type Editor, Extension } from '@tiptap/core';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -84,6 +84,7 @@ import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/sl
 import { VideoEmbed } from './extensions/video-embed';
 import { annotateFences, type FenceSerializeState, writeFence } from './fence-source';
 import { LinearMarkdown } from './markdown-output';
+import { pageLanguageText } from './page-language-messages';
 import { SourceParagraph } from './paragraph-source';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
@@ -380,8 +381,7 @@ export function buildEditorExtensions({
     // Markdown round-trip and our custom nodes can rebuild them on parse.
     LinearMarkdown.configure({ html: true, transformCopiedText: true, transformPastedText: true }),
     Placeholder.configure({
-      placeholder: ({ node }) =>
-        translateFn(node.type.name === 'heading' ? 'editor.placeholder.heading' : 'editor.placeholder.body', undefined, locale),
+      placeholder: ({ node }) => pageLanguageText(node.type.name === 'heading' ? 'editor.placeholder.heading' : 'editor.placeholder.body', locale),
     }),
     CodeBlock.configure({ lowlight }),
     Highlight.configure({ multicolor: false }),

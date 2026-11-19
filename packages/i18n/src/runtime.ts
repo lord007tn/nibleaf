@@ -58,8 +58,46 @@ export function rememberInterfaceLocale(locale: Locale): void {
   void setLocale(locale, { reload: false });
 }
 
+let prepareLanguage: ((locale: Locale) => Promise<boolean>) | undefined;
+let languageChange = 0;
+const languageFailureListeners = new Set<(locale: Locale) => void>();
+const languageChoiceListeners = new Set<(locale: Locale) => void>();
+
+/** Identifies the visitor's latest language choice, successful or not. */
+export const languageChoice = (): number => languageChange;
+
+/** Called as soon as the visitor chooses a language, before it is prepared. */
+export function subscribeLanguageChoice(listener: (locale: Locale) => void): () => void {
+  languageChoiceListeners.add(listener);
+  return () => languageChoiceListeners.delete(listener);
+}
+
+/** Called when the visitor's latest language choice could not be prepared. The
+ *  current language stays on screen; choosing again retries the download. */
+export function subscribeLanguageFailure(listener: (locale: Locale) => void): () => void {
+  languageFailureListeners.add(listener);
+  return () => languageFailureListeners.delete(listener);
+}
+
+/** Installed only by the dashboard client catalog. Scoped auth and published
+ * translators do not import or download dashboard messages. */
+export function registerLanguagePreparation(prepare: (locale: Locale) => Promise<boolean>): void {
+  if (typeof document !== 'undefined') prepareLanguage = prepare;
+}
+
 export async function setLanguage(locale: Locale): Promise<void> {
+  // Request rendering uses withInterfaceLocale's async context. UI choices
+  // must never change module-level locale state in a shared server process.
+  if (typeof document === 'undefined') return;
+  const change = ++languageChange;
+  for (const listener of languageChoiceListeners) listener(locale);
+  if (prepareLanguage && !(await prepareLanguage(locale))) {
+    if (change === languageChange) for (const listener of languageFailureListeners) listener(locale);
+    return;
+  }
+  if (change !== languageChange) return;
   await setLocale(locale, { reload: false });
+  if (change !== languageChange) return;
   chosenLocale = locale;
   synchronizeDocumentLanguageFn(locale);
   for (const listener of languageListeners) listener();

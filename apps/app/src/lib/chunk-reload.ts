@@ -12,13 +12,20 @@
  * skipped.
  */
 
-import { claimDocumentRecovery, isOptionalLoadFailure, onlySpeculativeLoads, registerPendingPreloadDecision } from '@/lib/document-recovery';
+import {
+  assetInMessage,
+  claimDocumentRecovery,
+  isOptionalLoadFailure,
+  onlySpeculativeLoads,
+  registerPendingPreloadDecision,
+  reloadDocument,
+} from '@/lib/document-recovery';
 
 /** The chunk or stylesheet that failed, from the preload error's message, or the page as a fallback. */
 function failedAsset(event: Event): string {
   const payload = (event as Event & { payload?: unknown }).payload;
   const message = payload instanceof Error ? payload.message : String(payload ?? '');
-  return message.match(/https?:\/\/[^\s'"]+|\/[^\s'"]+\.(?:m?js|css)\b/)?.[0] ?? `page:${window.location.pathname}`;
+  return assetInMessage(message) ?? `page:${window.location.pathname}`;
 }
 
 function reloadOnChunkLoadFailure(event: Event): void {
@@ -45,7 +52,7 @@ function reloadOnChunkLoadFailure(event: Event): void {
     // never reloads more than a couple of times, and one failure never triggers
     // two recoveries.
     if (!claimDocumentRecovery(`chunk:${asset}`)) return;
-    window.location.reload();
+    reloadDocument();
   }, 0);
 }
 

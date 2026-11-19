@@ -10,13 +10,14 @@ import { switcherQueryOptions } from '@/hooks/api/organization-query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
 import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { useDashboardIntentPreload } from '@/lib/dashboard-intent-preload';
+import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 import { useSession } from '@/services/auth-client';
 import { useDashboardSessionBoundary } from '@/services/dashboard-session';
 import { ProjectProvider } from '@/stores/active-project';
 
 export const Route = createFileRoute('/app')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
-  staticData: { interfaceLocale: true },
+  staticData: { interfaceLocale: true, dashboardLocale: true },
   beforeLoad: async ({ context: { queryClient }, location }) => {
     const routeSession = await getSessionFn();
     if (typeof window !== 'undefined') {
@@ -42,7 +43,8 @@ export const Route = createFileRoute('/app')({
   // The bell's unread count too, so its badge is there on first paint (audit WORKSPACE-28).
   // Lazily, from its own small module: this file is in the router's eager chunk,
   // which public docs pages load, so nothing here may add to their first load.
-  loader: async ({ context: { queryClient } }) => {
+  loader: async ({ context: { queryClient }, preload }) => {
+    await loadRouteDashboardLocale(preload);
     prefetchRouteData(queryClient, switcherQueryOptions());
     const { unreadNotificationCountQueryOptions } = await import('@/hooks/api/notification-query-options');
     prefetchRouteData(queryClient, unreadNotificationCountQueryOptions());

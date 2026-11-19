@@ -1,0 +1,50 @@
+{
+  "origin": "http://localhost:4310",
+  "build": "production",
+  "stack": "disposable local Postgres, Dragonfly, ClickHouse, Qdrant, object store and mail",
+  "nonLocalAttempts": 0,
+  "results": [
+    {
+      "name": "marketing-arabic-hydration:english-browser",
+      "url": "/blog/ai-ready-documentation-ar, /ar/documentation-platforms",
+      "hydrationErrors": 0,
+      "dashboardCatalogRequests": 0
+    },
+    {
+      "name": "marketing-arabic-hydration:arabic-cookie",
+      "url": "/blog/ai-ready-documentation-ar, /ar/documentation-platforms",
+      "hydrationErrors": 0,
+      "dashboardCatalogRequests": 0
+    },
+    {
+      "name": "product-route-arabic-hydration",
+      "url": "/join/fixture-token",
+      "catalogs": ["ar"],
+      "hydrationErrors": 0,
+      "serverTextHadArabic": true
+    },
+    {
+      "name": "dashboard-language-switching",
+      "path": "en > ar > en > de (failed, toast, retry) > en",
+      "documentReloads": 0,
+      "hydrationErrors": 0
+    },
+    {
+      "name": "dashboard-arabic-cold-load",
+      "catalogs": ["ar"],
+      "hydrationErrors": 0
+    },
+    {
+      "name": "dashboard-catalog-failure-at-hydration",
+      "heldServerHtml": true,
+      "notice": "حدث خطأ غير متوقع.",
+      "retryHydrated": true
+    },
+    {
+      "name": "dashboard-catalog-failure-on-navigation",
+      "firstFailure": "one recovery reload, then held German HTML with retry",
+      "afterRecoverySpent": "Etwas ist schief gelaufen",
+      "retryLoadedDashboard": true
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { cn } from '@nibleaf/design-system/lib/utils';
-import { translateFn, useT } from '@nibleaf/i18n/react';
+import { useT } from '@nibleaf/i18n/react';
 import { resolveTheme, THEME_COLOR_KEYS, THEME_PRESET_IDS, type ThemeColorKey } from '@nibleaf/shared/themes';
 import { useStore } from '@tanstack/react-form';
 import { LayoutTemplate, RotateCcw, Undo2 } from 'lucide-react';
@@ -36,6 +36,7 @@ import {
   withColor,
   withPart,
 } from '../model/theme';
+import { themePreviewText } from '../theme-preview-messages';
 import { ThemeExchange } from './theme-exchange';
 import { ThemeOptionSelect, ThemePresetThumbnail, ThemePreview } from './theme-preview';
 import { acquireWrite, type Operation, releaseWrite, useWriteFor, writeFor } from './theme-writes';
@@ -548,8 +549,8 @@ function ThemeForm({ project }: { project: Project }) {
             variant="outline"
           >
             {previewArabic
-              ? translateFn('settings.theme.preview.switchEnglish', undefined, 'en')
-              : translateFn('settings.theme.preview.switchArabic', undefined, 'ar')}
+              ? themePreviewText('settings.theme.preview.switchEnglish', 'en')
+              : themePreviewText('settings.theme.preview.switchArabic', 'ar')}
           </Button>
         </div>
         <ThemePreview arabic={previewArabic} config={shownConfig} mode={previewMode} />

@@ -1,5 +1,7 @@
 // First, before anything that uses zod: turns off its eval probe in the browser (READER-23).
 import '@/lib/zod-csp';
+import { documentInterfaceLocale } from '@nibleaf/i18n/locale-state';
+import { common_refresh } from '@nibleaf/i18n/messages/common_refresh';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { type AnyRouter, createRouter as createTanStackRouter } from '@tanstack/react-router';
 import { createIsomorphicFn } from '@tanstack/react-start';
@@ -9,6 +11,7 @@ import { PageLoader } from '@/components/page-loader';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { reloadOnceOnChunkLoadFailure } from '@/lib/chunk-reload';
 import { hydratedCustomDomainProjectId, rewriteCustomDomainInput, rewriteCustomDomainOutput } from '@/lib/custom-domain-rewrite';
+import { currentRouteNeedsDashboardLocale, holdHydrationForDashboardLocale, trackDashboardLocaleRouter } from '@/lib/dashboard-locale-boot';
 import { ssrNonce } from '@/lib/ssr-nonce.server';
 import { routeTree } from './routeTree.gen';
 
@@ -21,6 +24,15 @@ const requestNonce = createIsomorphicFn()
 const recoverFromStaleChunks = createIsomorphicFn()
   .server(() => undefined)
   .client(reloadOnceOnChunkLoadFailure);
+
+// The always-loaded chunk has no room for this word in every language, so product
+// documents carry it for the one notice that can show before any chunk loads.
+const dehydrateRefreshLabel = createIsomorphicFn()
+  .server(() => {
+    const locale = documentInterfaceLocale();
+    return locale ? { refreshLabel: common_refresh({}, { locale }) } : undefined;
+  })
+  .client(() => undefined);
 
 const prepareMarketingRouter = createIsomorphicFn()
   .server((router: AnyRouter) => {
@@ -64,12 +76,24 @@ export function getRouter() {
     // Runs in the browser before React hydrates. A page whose server HTML marks
     // code-split reader content (`data-hydration-module`, written by the
     // islands in lib/reader-hydration-modules.ts) loads it first, so hydrating
-    // keeps that HTML instead of swapping it for a fallback. Other pages, the
-    // dashboard and marketing, load nothing.
-    hydrate: () =>
-      document.querySelector('[data-hydration-module]')
-        ? import('@/lib/reader-hydration-modules').then((module) => module.loadServerRenderedReaderModules(document)).catch(() => undefined)
-        : undefined,
+    // keeps that HTML instead of swapping it for a fallback. Product documents
+    // that translate through the dashboard catalog first load the server's
+    // interface catalog, and stay as server HTML until it is available, so they
+    // never hydrate in another language. Auth, marketing and published docs
+    // never load that catalog.
+    // Nothing is sent for other documents, which the router's type does not express.
+    dehydrate: dehydrateRefreshLabel as () => { refreshLabel?: string },
+    hydrate: (dehydrated) => {
+      const dashboard = currentRouteNeedsDashboardLocale();
+      const reader = document.querySelector('[data-hydration-module]');
+      if (!dashboard && !reader) return;
+      return (async () => {
+        if (dashboard) await holdHydrationForDashboardLocale(dehydrated?.refreshLabel);
+        if (reader) {
+          await import('@/lib/reader-hydration-modules').then((module) => module.loadServerRenderedReaderModules(document)).catch(() => undefined);
+        }
+      })();
+    },
     rewrite: customDomainProjectId
       ? {
           input: ({ url }) => rewriteCustomDomainInput(url, customDomainProjectId),
@@ -78,6 +102,7 @@ export function getRouter() {
       : undefined,
   });
   prepareMarketingRouter(router);
+  if (typeof document !== 'undefined') trackDashboardLocaleRouter(router);
   return router;
 }
 

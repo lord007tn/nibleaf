@@ -65,6 +65,12 @@ export function claimDocumentRecovery(key: string, { ttlMs = Number.POSITIVE_INF
   return true;
 }
 
+/** Loads the page again. Only for a recovery claimed above or a visitor's explicit request. */
+export const reloadDocument = (): void => window.location.reload();
+
+/** The chunk or stylesheet a failed import names, when the browser names one. */
+export const assetInMessage = (message: string): string | undefined => message.match(/https?:\/\/[^\s'"]+|\/[^\s'"]+\.(?:m?js|css)\b/)?.[0];
+
 let speculativeLoads = 0;
 let navigationPending = false;
 

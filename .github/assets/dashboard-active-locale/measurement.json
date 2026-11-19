@@ -1,0 +1,154 @@
+{
+  "base": "4a054cc420dfd5b96f84160d94f5e45c331e01c2",
+  "initialBase": "53b68848c7aa553d9d6d14c1113c34002ebe81f8",
+  "date": "2026-11-17T17:45:51.500Z",
+  "node": "v26.13.0",
+  "pnpm": "10.34.9",
+  "compiler": "@inlang/paraglide-js@3.2.0",
+  "buildEnvironment": {
+    "NODE_OPTIONS": "--max-old-space-size=6144",
+    "BUNDLE_ANALYZE": "true",
+    "VITE_API_URL": "http://127.0.0.1:4410",
+    "MARKETING_GITHUB_STARS": "0"
+  },
+  "sourceFingerprintSha256": "e76c43be93d24912e1bf9ae21a66f0d96f17b0d0fe8352b2d84367fe2f71aa87",
+  "sourceFiles": [
+    "apps/app/scripts/check-bundle-budget.mjs",
+    "apps/app/scripts/dashboard-catalog-budget.mjs",
+    "apps/app/scripts/dashboard-catalog-budget.test.mjs",
+    "apps/app/scripts/dashboard-catalog-plugin.ts",
+    "apps/app/src/lib/dashboard-locale-path.ts",
+    "apps/app/src/lib/dashboard-locale.test.ts",
+    "apps/app/src/lib/dashboard-locale.ts",
+    "apps/app/src/router.tsx",
+    "apps/app/src/routes/-dashboard-catalog.hydration.test.tsx",
+    "apps/app/src/routes/app/route.tsx",
+    "apps/app/src/routes/git-preview.$token.tsx",
+    "apps/app/vite.config.ts",
+    "packages/i18n/package.json",
+    "packages/i18n/scripts/generate-dashboard-catalogs.d.mts",
+    "packages/i18n/scripts/generate-dashboard-catalogs.mjs",
+    "packages/i18n/src/dashboard-catalog-resolution.test.ts",
+    "packages/i18n/src/dashboard-catalog.client.test.ts",
+    "packages/i18n/src/dashboard-catalog.client.ts",
+    "packages/i18n/src/dashboard-catalog.server.ts",
+    "packages/i18n/src/dashboard-catalog.ssr.test.ts",
+    "packages/i18n/src/dashboard-catalog.test.ts",
+    "packages/i18n/src/runtime.ts",
+    "packages/i18n/src/translate.ts"
+  ],
+  "generation": {
+    "directBuildStartedWithoutDashboardOutputs": true,
+    "files": 38,
+    "byteIdentical": true,
+    "sha256ByFile": {
+      ".gitignore": "b883351b813b26c0b960de2b0d5c7d20178658f93089777e1db3411d03f3be19",
+      ".prettierignore": "b883351b813b26c0b960de2b0d5c7d20178658f93089777e1db3411d03f3be19",
+      "message-aliases.json": "aa4eae609614613ee8d1a499fa7a4421deb60b83f1b20dd2357d2f4c11dc1243",
+      "messages.d.ts": "8b91dea1682e69efb59cf70f26300e651a551fe0ceea1c4030751532a32c3ca2",
+      "messages.js": "39a9ca36b7cde8ef89011723c3b137ef0db319ddf59d9481fc3ae6e634453347",
+      "README.md": "9322c019246fbbcad27ebf8a6d2b37f9a35c0899162275b61cb9c2fe5fac8b97",
+      "registry.d.ts": "20e03e073a6203bb97efc0ec894701c864f0080a53947b4e8b066c8c9115e805",
+      "registry.js": "e9355c666e395f6ea343ac9cb3249def23fa09086be39ba38ab816d54514793f",
+      "runtime.d.ts": "e7d54b5efad477beaabebd7a112726fedac6a9dea2667fb11d7d76c92fc47632",
+      "runtime.js": "6d412b1bffa896d2247967eeb2b52982ce0a7116e0c2cf7c84f0359fe82842ba",
+      "server.d.ts": "fd37a9735b48d9f2b696bca6f4c9019b09a3cb0178586418f00ad89b12b2bb7d",
+      "server.js": "19d2542594807868eb1a09c22dc6a68019ff3d581dbc92408da1969027d52391",
+      "messages/ar.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/ar.js": "03b252a9bee9d3257e7c9ed09dc26d88a510982a899e8c9005ec7b1fbdea0e3f",
+      "messages/bn.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/bn.js": "53e48f510a02a52fcdf40ca43d9e24277e7c7283239872fcbc4797e825738c75",
+      "messages/de.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/de.js": "612fcde99dcd5802d4c936c227ca2573b2e720c7e767e9ad80c166f8ad5d84a3",
+      "messages/en.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/en.js": "b56307b831dfa1eaac8fc13faa5958e820e1dde3eba17baa594260f14825f90d",
+      "messages/es.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/es.js": "b28fec727db2ff2caf7221f5fdd5262bbee948e370bdcef0817971d9c29c8d2e",
+      "messages/fr.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/fr.js": "8daf36c2ea564b76699ae018b027c3c065d1082fa1b99cb5660ed3a604f6acc7",
+      "messages/hi.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/hi.js": "8a5daff468a3bba7ea8752b3bb2a8a09ee21bab915c64301b9218c6c925d07ec",
+      "messages/id.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/id.js": "0d49303e155f68a6b006bd1de3f2ee2548430c774490f53fc34703ad891371ec",
+      "messages/pt-BR.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/pt-BR.js": "916bfe0b3232381c16ca27268e6e1557c27a049857429de5126f014e77666fc9",
+      "messages/ru.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/ru.js": "2e506c2ec1572beeec0afb0c4fbe3538dfc7fc1f0363c09de93239d3ae7b5019",
+      "messages/ur.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/ur.js": "de6eef449b007d0836c441268f48325590c3654c9eddb87e8ad1184b30270696",
+      "messages/zh-CN.d.ts": "933a0d18caad4b999d1f11b7743370bfc3f4df88e20ede66c60501a21060c96a",
+      "messages/zh-CN.js": "1dead7e1d1ec40f952b8ce481e910a37e4bae3883079bcb5351d5c8309986525",
+      "messages/_index.d.ts": "353452551ce354b8d7803854ef6b076bbfa6cfc2a7411c62aa722b7f7c4bdb58",
+      "messages/_index.js": "2b2dcd480c3589fe3dd9084cc53f10397d4cb3f24c3f2337b423105a1d301021"
+    }
+  },
+  "baselineCatalogMessageModules": 4989,
+  "baselineLargestDashboardAsset": {
+    "url": "/assets/react-Bd8TLmvw.js",
+    "raw": 4355439,
+    "gzip": 1166162
+  },
+  "catalogModules": [
+    {
+      "file": "assets/ar-BTaLrh-B.js",
+      "module": "i18n/src/generated/dashboard/messages/ar.js",
+      "renderedBytes": 448298
+    },
+    {
+      "file": "assets/bn-mLaujsMs.js",
+      "module": "i18n/src/generated/dashboard/messages/bn.js",
+      "renderedBytes": 456397
+    },
+    {
+      "file": "assets/dashboard-catalog.client-CG_UDOmY.js",
+      "module": "i18n/src/generated/dashboard/messages/en.js",
+      "renderedBytes": 785678
+    },
+    {
+      "file": "assets/de-DFk4nO3s.js",
+      "module": "i18n/src/generated/dashboard/messages/de.js",
+      "renderedBytes": 492018
+    },
+    {
+      "file": "assets/es-CY1Lnk9E.js",
+      "module": "i18n/src/generated/dashboard/messages/es.js",
+      "renderedBytes": 479681
+    },
+    {
+      "file": "assets/fr-DOYUHADt.js",
+      "module": "i18n/src/generated/dashboard/messages/fr.js",
+      "renderedBytes": 488587
+    },
+    {
+      "file": "assets/hi-Crc-mYq8.js",
+      "module": "i18n/src/generated/dashboard/messages/hi.js",
+      "renderedBytes": 453483
+    },
+    {
+      "file": "assets/id-CL8qoW8t.js",
+      "module": "i18n/src/generated/dashboard/messages/id.js",
+      "renderedBytes": 465648
+    },
+    {
+      "file": "assets/pt-BR-COAX_t7Z.js",
+      "module": "i18n/src/generated/dashboard/messages/pt-BR.js",
+      "renderedBytes": 473058
+    },
+    {
+      "file": "assets/ru-CKXcp8zL.js",
+      "module": "i18n/src/generated/dashboard/messages/ru.js",
+      "renderedBytes": 473306
+    },
+    {
+      "file": "assets/ur-CF95PY-O.js",
+      "module": "i18n/src/generated/dashboard/messages/ur.js",
+      "renderedBytes": 455521
+    },
+    {
+      "file": "assets/zh-CN-KsS67HhP.js",
+      "module": "i18n/src/generated/dashboard/messages/zh-CN.js",
+      "renderedBytes": 352449
+    }
+  ],
+  "negativeFixturesRestored": true
+}

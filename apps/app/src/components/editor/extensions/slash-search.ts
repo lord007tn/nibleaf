@@ -1,5 +1,5 @@
 import type { Locale, MessageKey } from '@nibleaf/i18n';
-import { translateFn } from '@nibleaf/i18n/react';
+import { slashTitleText } from './slash-items/title-messages';
 import type { SlashItem } from './slash-items/types';
 
 /**
@@ -224,11 +224,11 @@ const entryCache = new WeakMap<SlashItem, Map<string, SearchEntry>>();
 
 const searchEntry = (item: SlashItem, locale: Locale): SearchEntry => {
   const rawTitles = uniq([
-    translateFn(item.titleKey, undefined, locale),
+    slashTitleText(item.titleKey, locale),
     // The interface language (the runtime locale), which can differ from the page's.
-    translateFn(item.titleKey),
-    translateFn(item.titleKey, undefined, 'en'),
-    translateFn(item.titleKey, undefined, 'ar'),
+    slashTitleText(item.titleKey),
+    slashTitleText(item.titleKey, 'en'),
+    slashTitleText(item.titleKey, 'ar'),
   ]);
   const cacheKey = rawTitles.join('\u0000');
   let cached = entryCache.get(item);

@@ -13,6 +13,8 @@ declare module '@tanstack/react-router' {
     /** The route renders the product UI (auth, dashboard, invitations) in the
      *  visitor's interface language, so `<html lang dir>` follows that locale. */
     interfaceLocale?: boolean;
+    /** The route translates through the dashboard catalog, so its language loads first. */
+    dashboardLocale?: boolean;
   }
 }
 

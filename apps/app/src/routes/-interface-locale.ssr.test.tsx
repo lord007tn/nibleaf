@@ -120,6 +120,6 @@ describe('product routes', () => {
     'oauth.project.tsx',
     'welcome.name.tsx',
   ])('%s declares staticData.interfaceLocale', (file) => {
-    expect(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8')).toMatch(/staticData: \{ interfaceLocale: true \}/);
+    expect(readFileSync(new URL(`./${file}`, import.meta.url), 'utf8')).toMatch(/staticData: \{ interfaceLocale: true\b/);
   });
 });

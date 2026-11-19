@@ -3,11 +3,15 @@ import { AuthProviders } from '@/components/auth-providers';
 import { AcceptInvitationView } from '@/features/people/components/admission';
 import { getInvitationInfoQueryOptions } from '@/hooks/api/query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
+import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 
 export const Route = createFileRoute('/accept-invite/$invitationId')({
   // <html lang dir> follows the interface language (lib/root-document.ts).
-  staticData: { interfaceLocale: true },
-  loader: ({ context: { queryClient }, params: { invitationId } }) => prefetchRouteData(queryClient, getInvitationInfoQueryOptions(invitationId)),
+  staticData: { interfaceLocale: true, dashboardLocale: true },
+  loader: async ({ context: { queryClient }, params: { invitationId }, preload }) => {
+    await loadRouteDashboardLocale(preload);
+    return prefetchRouteData(queryClient, getInvitationInfoQueryOptions(invitationId));
+  },
   // Not under the (auth) layout, so noindex it directly: the URL carries a live
   // invitation token that must never be crawled or indexed. The page sets a
   // title for the state it shows (invalid, expired, join <org>…).
