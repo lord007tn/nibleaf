@@ -280,6 +280,40 @@ it.each([
   expect(document.activeElement).toBe(document.body);
 });
 
+/** Sets the page's visibility as the browser would, firing `visibilitychange`. */
+const setVisibility = (state: DocumentVisibilityState) => {
+  Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
+  document.dispatchEvent(new Event('visibilitychange'));
+};
+
+it('keeps following through a visibilitychange that leaves the page visible (#820)', async () => {
+  await landOnRefunds();
+  try {
+    await act(async () => setVisibility('visible'));
+    await rerenderArticle();
+    await settle();
+    expect(document.activeElement).toBe(document.getElementById('refunds'));
+  } finally {
+    Reflect.deleteProperty(document, 'visibilityState');
+  }
+});
+
+it('never follows a heading that lands while the page is already hidden (#820)', async () => {
+  Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+  try {
+    await landOnRefunds();
+    await rerenderArticle();
+    await settle();
+    // Coming back later doesn't take focus either.
+    await act(async () => setVisibility('visible'));
+    await rerenderArticle();
+    await settle();
+    expect(document.activeElement).toBe(document.body);
+  } finally {
+    Reflect.deleteProperty(document, 'visibilityState');
+  }
+});
+
 it('keeps following through a lone modifier key', async () => {
   await landOnRefunds();
   await act(async () => {
@@ -338,17 +372,19 @@ it('leaves nothing running when the reader unmounts mid-navigation', async () =>
 it('stops following, with no timer or listener left, when the reader unmounts after landing', async () => {
   const setTimeoutSpy = vi.spyOn(window, 'setTimeout');
   const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
-  const added: Array<[EventTarget, string, unknown]> = [];
-  const removed: Array<[EventTarget, string, unknown]> = [];
+  // A listener is only removed by the same type, function and capture flag (#820).
+  const capture = (options: unknown) => (typeof options === 'boolean' ? options : Boolean((options as AddEventListenerOptions | undefined)?.capture));
+  const added: Array<[EventTarget, string, unknown, boolean]> = [];
+  const removed: Array<[EventTarget, string, unknown, boolean]> = [];
   for (const target of [window, document] as EventTarget[]) {
     const add = target.addEventListener.bind(target);
     const remove = target.removeEventListener.bind(target);
     vi.spyOn(target, 'addEventListener').mockImplementation((type, listener, options) => {
-      added.push([target, type, listener]);
+      added.push([target, type, listener, capture(options)]);
       add(type, listener, options);
     });
     vi.spyOn(target, 'removeEventListener').mockImplementation((type, listener, options) => {
-      removed.push([target, type, listener]);
+      removed.push([target, type, listener, capture(options)]);
       remove(type, listener, options);
     });
   }
@@ -365,7 +401,8 @@ it('stops following, with no timer or listener left, when the reader unmounts af
     const leaked = added
       .slice(0, landedAt)
       .filter(
-        ([target, type, listener]) => followListeners.has(type) && !removed.some(([t, ty, l]) => t === target && ty === type && l === listener),
+        ([target, type, listener, captured]) =>
+          followListeners.has(type) && !removed.some(([t, ty, l, c]) => t === target && ty === type && l === listener && c === captured),
       );
     expect(leaked).toEqual([]);
   } finally {
