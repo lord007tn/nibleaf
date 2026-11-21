@@ -56,6 +56,8 @@ function harness(env = {}, differing = 14) {
       expect,
       pages: main.map((_, index) => ({ page: String(index), edits: [] })),
       digests: outputs,
+      componentLayouts: 0,
+      replayedLayouts: new Set(),
       results: [],
       crPages: [],
       CORPUS_START: 0,
