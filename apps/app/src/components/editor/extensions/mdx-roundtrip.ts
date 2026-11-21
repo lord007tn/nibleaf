@@ -5,6 +5,7 @@ import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
+import { STRUCTURED_BLOCK_NODES, STRUCTURED_SOURCE_ATTRIBUTE, type StructuredHtmlSource, safeStructuredAttribute } from '../structured-html-source';
 
 type SerializeState = {
   write: (text: string) => void;
@@ -1734,10 +1735,9 @@ function keepRawHtml(
   return outermostRanges(kept);
 }
 
-function parseAttributes(raw: string, componentName: string): AttributeToken[] {
+function parseAttributes(raw: string, componentName: string, escapes = componentName !== 'Frame'): AttributeToken[] {
   const attrs: AttributeToken[] = [];
   // A Frame's quoted values have no backslash escapes (see scanTags, #579).
-  const escapes = componentName !== 'Frame';
   let cursor = raw.indexOf(componentName) + componentName.length;
   const limit = raw.length - (raw.endsWith('/>') ? 2 : 1);
   // One reader for the whole tag: its searches are shared, not repeated per attribute.
@@ -2050,9 +2050,42 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
     value: videoEmbedPlaceholder(range, frameOf(range)) ?? placeholder(range),
   }));
   const coveredByOpaque = spanIndex(opaque);
+  let structuredBodyEnd = -1;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
-    if (!token || token.html || coveredByOpaque(token.start, token.start + 1)) continue;
+    if (!token || coveredByOpaque(token.start, token.start + 1)) continue;
+    if (token.html) {
+      if (token.closing || (token.name !== 'a' && !Object.hasOwn(STRUCTURED_BLOCK_NODES, token.name))) continue;
+      const close = tokens[pairs.get(i) ?? -1];
+      if (!close || coveredByOpaque(close.start, close.end)) continue;
+      // HTML string attributes have the same no-backslash-escape rule as Frame.
+      const attributes = parseAttributes(token.raw, token.name, false);
+      if (!attributes.some(({ name }) => token.name !== 'a' || name.toLowerCase() !== 'href')) continue;
+      if (attributes.some(({ name, value }) => !safeStructuredAttribute(name, value))) continue;
+      const metadata: StructuredHtmlSource = { open: token.raw, close: close.raw };
+      if (token.name === 'ol') {
+        const start = attributes.find(({ name }) => name.toLowerCase() === 'start');
+        if (start) metadata.listStartRange = [start.start, start.end];
+        const ordinal = typeof start?.value === 'string' ? Number.parseInt(start.value, 10) : 1;
+        metadata.listStart = Number.isNaN(ordinal) ? 1 : ordinal;
+      }
+      if (token.name === 'a') {
+        const href = attributes.find(({ name }) => name.toLowerCase() === 'href');
+        if (typeof href?.value !== 'string') continue;
+        metadata.href = href.value;
+        metadata.hrefRange = [href.start, href.end];
+      } else if (token.start >= structuredBodyEnd) {
+        // Only disjoint original bodies are copied. Nested tags still carry their own attributes.
+        metadata.inner = source.slice(token.end, close.start);
+        structuredBodyEnd = close.end;
+      }
+      replacements.push({
+        start: token.start,
+        end: token.end,
+        value: `${token.raw.slice(0, -1)} ${STRUCTURED_SOURCE_ATTRIBUTE}="${encodeMdxSource(JSON.stringify(metadata))}">`,
+      });
+      continue;
+    }
     const element = HTML_ELEMENT_ALIASES.get(token.name);
     if (element) {
       // img is a void element: a stray closing tag has nothing to close.

@@ -5,6 +5,7 @@ import { Plugin, PluginKey, type Selection, type SelectionBookmark, type Transac
 import { type Mappable, ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import { MarkdownSerializerState } from 'prosemirror-markdown';
 import { Markdown } from 'tiptap-markdown';
+import { decodeMdxSource } from './extensions/mdx-roundtrip';
 import {
   createPositionedLineEndings,
   mapLineEndings,
@@ -17,6 +18,7 @@ import {
   type SerializedPage,
   type SourceLineEndings,
 } from './line-endings';
+import { STRUCTURED_BLOCK_NODES, STRUCTURED_SOURCE_ATTRIBUTE, structuredLinkSource, writeStructuredHtmlBlock } from './structured-html-source';
 
 /*
  * Saving a page writes its Markdown into one output buffer (#612). The serializer
@@ -397,7 +399,7 @@ class LinearMarkdownSerializerState extends SerializerState {
     }
     this.path.push({ node, parent, index, position });
     try {
-      super.render(node, parent, index);
+      if (!writeStructuredHtmlBlock(this, node)) super.render(node, parent, index);
     } finally {
       this.path.pop();
       this.output.owner =
@@ -432,6 +434,10 @@ class LinearMarkdownSerializerState extends SerializerState {
   }
 
   override markString(mark: Mark, open: boolean, parent: PMNode, index: number): string {
+    if (mark.type.name === 'link') {
+      const source = structuredLinkSource(mark);
+      if (source) return open ? source.open : source.close;
+    }
     const info = this.marks[mark.type.name];
     if (info?.expelEnclosingWhitespace) {
       if (open) this.inlines.push({ start: this.output.length, delimiter: String(info.open) });
@@ -551,6 +557,35 @@ function lineEndingReset(transaction: Transaction): LineEndingReset | undefined 
  *  builds its own state class; this one is the same with the output kept as pieces.
  *  A page is read with LF line endings and saved with its own (line-endings.ts). */
 export const LinearMarkdown = Markdown.extend({
+  addGlobalAttributes() {
+    return [
+      ...(this.parent?.() ?? []),
+      {
+        types: [...new Set(Object.values(STRUCTURED_BLOCK_NODES)), 'link'],
+        attributes: {
+          sourceStructuredHtml: {
+            default: undefined,
+            keepOnSplit: false,
+            rendered: false,
+            parseHTML: (element: HTMLElement) => {
+              const source = decodeMdxSource(element.getAttribute(STRUCTURED_SOURCE_ATTRIBUTE));
+              if (!source) return;
+              let parsed: { open?: unknown; close?: unknown; href?: string | null } | null;
+              try {
+                parsed = JSON.parse(source);
+              } catch {
+                return;
+              }
+              if (typeof parsed?.open === 'string' && typeof parsed.close === 'string') {
+                if (element.localName === 'a') parsed.href = element.getAttribute('href');
+                return parsed;
+              }
+            },
+          },
+        },
+      },
+    ];
+  },
   addCommands() {
     const commands = (this.parent?.() ?? {}) as { setContent?: SetContent };
     const setContent = commands.setContent as SetContent;

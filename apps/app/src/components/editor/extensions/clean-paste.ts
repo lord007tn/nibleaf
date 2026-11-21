@@ -393,9 +393,12 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
           return clean.content.textBetween(0, clean.content.size) ? [editor.schema.text(clean.content.textBetween(0, clean.content.size))] : [];
         return Array.from(clean.content.content);
       }
-      const marks = node.marks.filter((mark) => mark.type.name !== 'link' || safePasteHref(String(mark.attrs.href ?? '')));
+      const marks = node.marks
+        .filter((mark) => mark.type.name !== 'link' || safePasteHref(String(mark.attrs.href ?? '')))
+        .map((mark) => (mark.attrs.sourceStructuredHtml ? mark.type.create({ ...mark.attrs, sourceStructuredHtml: undefined }) : mark));
       if (node.isText) return [node.mark(marks)];
       const attrs = { ...node.attrs };
+      delete attrs.sourceStructuredHtml;
       if (typeof attrs.href === 'string' && !safePasteHref(attrs.href)) attrs.href = '';
       // Clipboard nodes cannot carry a raw-source cache around the allow list.
       if (!internal || unsafeSourceOpener(String(attrs.sourceOpen ?? '')))
