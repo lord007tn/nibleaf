@@ -201,6 +201,7 @@ export function collectPublishChecks(snapshot: SiteSnapshot): PublishCheck[] {
     // dialog can never hide a link the worker would block on.
     if (!hasBody(page.content)) add(page, 'empty-page');
     const facts = factsOf(page.content);
+    if (facts.parseLimit) add(page, 'markdown-parse-limit', facts.parseLimit, 'warning');
     addEach(page, 'broken-internal-link', brokenLinks.get(page.id) ?? [], linkSeverity);
     addEach(page, 'missing-alt', facts.imagesWithoutAlt);
     addEach(page, 'stray-characters', facts.strayText);

@@ -63,7 +63,9 @@ const headingsOf = (tree: ReaderHastNode, into: ReaderHeading[] = []): ReaderHea
 
 /** Every h1–h6 the reader renders for this page, in document order, with its id and text. */
 export const readerHeadings = (content: string): ReaderHeading[] => {
-  const processor = readerRenderMode(content).rich ? rich : base;
+  const { rich: useRichRenderer, parseLimit } = readerRenderMode(content);
+  if (parseLimit) return [];
+  const processor = useRichRenderer ? rich : base;
   const tree = processor.runSync(processor.parse(normalizeMdxBlocks(content))) as unknown as ReaderHastNode;
   return headingsOf(tree);
 };
@@ -142,6 +144,7 @@ const renderedSourceText = (depth: number, text: string): string => {
  */
 export const readerSections = (content: string): ReaderSection[] => {
   const rendered = readerHeadings(content);
+  if (!rendered.length) return [];
   const lines = content.split('\n');
   const sections: ReaderSection[] = [];
   let cursor = 0;

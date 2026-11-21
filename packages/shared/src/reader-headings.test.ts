@@ -6,6 +6,12 @@ const ids = (content: string) => readerHeadings(content).map(({ depth, text, id 
 const at = (content: string) => readerSections(content).map(({ line, depth, id }) => [line, depth, id]);
 
 describe('the reader’s headings', () => {
+  it('omits headings and sections from pages the reader displays as plain source', () => {
+    const content = lines('## Literal heading', '', '<h2>Literal HTML</h2>', '', 'x'.repeat(16_385));
+    expect(readerHeadings(content)).toEqual([]);
+    expect(readerSections(content)).toEqual([]);
+  });
+
   it('gives repeated headings -1, -2 across all six levels, as the renderer does', () => {
     expect(ids(lines('## Setup', '', '##### Install', '', '## Install', '', '###### Install'))).toEqual([
       [2, 'Setup', 'setup'],

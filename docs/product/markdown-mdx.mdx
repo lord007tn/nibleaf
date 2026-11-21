@@ -18,6 +18,19 @@ this reference when you choose **Edit as Markdown (advanced)** in the editor.
 Always check your changes in **Preview**. Text that is valid Markdown can still
 look different from what you expected.
 
+## Parsing limits
+
+The reader shows a page as plain text when the source exceeds any of these limits.
+
+- 512 KiB of UTF-8 source.
+- 16,384 UTF-16 code units on one line.
+- 1,024 Markdown syntax markers on one line.
+- 64 levels of nesting, measured from container markers, delimiters, and tags in the source.
+
+Publish checks name the exceeded limit, and the page can still publish. Split or
+simplify the page to restore formatting and content checks. The 2 MiB limit for
+writing a page still applies.
+
 ## Basic formatting
 
 Nibleaf supports standard Markdown and the GitHub extensions: headings, bold,

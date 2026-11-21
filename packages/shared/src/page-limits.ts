@@ -3,6 +3,54 @@
  *  exports are built from page content. */
 export const MAX_PAGE_CONTENT_BYTES = 2 * 1024 * 1024;
 
+/** Bounded synchronous Markdown parsing for the reader and publish checks. */
+export const MARKDOWN_PARSE_LIMITS = {
+  pageBytes: 512 * 1024,
+  lineCharacters: 16 * 1024,
+  syntaxMarkers: 1024,
+  nesting: 64,
+} as const;
+
+export type MarkdownParseLimit = keyof typeof MARKDOWN_PARSE_LIMITS;
+
+const MARKDOWN_OPENERS = '[({';
+const MARKDOWN_CLOSERS = '])}';
+const MARKDOWN_SYNTAX = '[](){}<>`*_~!#-|+\\';
+const VOID_TAGS = new Set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr']);
+
+/** Conservative checks on source spelling. The byte cap bounds the scan and
+ * per-line limits catch dense syntax before Markdown tries to parse it. */
+export const markdownParseLimit = (source: string): MarkdownParseLimit | null => {
+  if (exceedsUtf8Bytes(source, MARKDOWN_PARSE_LIMITS.pageBytes)) return 'pageBytes';
+  const nestedBlockStart = /[ \t]*(?:>|(?:[-*+]|\d{1,9}[.)])[ \t]+)/y;
+  for (const line of source.split(/\r\n?|\n/)) {
+    if (line.length > MARKDOWN_PARSE_LIMITS.lineCharacters) return 'lineCharacters';
+    nestedBlockStart.lastIndex = 0;
+    let blocks = 0;
+    while (nestedBlockStart.test(line)) if (++blocks > MARKDOWN_PARSE_LIMITS.nesting) return 'nesting';
+    let markers = 0;
+    let depth = 0;
+    for (const char of line) {
+      if (MARKDOWN_OPENERS.includes(char)) {
+        if (++depth > MARKDOWN_PARSE_LIMITS.nesting) return 'nesting';
+      } else if (MARKDOWN_CLOSERS.includes(char) && depth) depth--;
+      if (MARKDOWN_SYNTAX.includes(char) && ++markers > MARKDOWN_PARSE_LIMITS.syntaxMarkers) return 'syntaxMarkers';
+    }
+  }
+  const tags: string[] = [];
+  for (const [raw, slash, tag] of source.matchAll(/<(\/?)([a-z][\w.-]*)(?=[ \t\r\n/>])[^<>]*>/gi)) {
+    const name = tag?.toLowerCase() ?? '';
+    if (slash) {
+      const matched = tags.lastIndexOf(name);
+      if (matched >= 0) tags.length = matched;
+    } else if (!raw.endsWith('/>') && !VOID_TAGS.has(name)) {
+      tags.push(name);
+      if (tags.length > MARKDOWN_PARSE_LIMITS.nesting) return 'nesting';
+    }
+  }
+  return null;
+};
+
 const utf8Width = (code: number) => (code <= 0x7f ? 1 : code <= 0x7_ff ? 2 : code <= 0xff_ff ? 3 : 4);
 
 /** Count UTF-8 bytes only up to the limit. Even a huge single line fails early.

@@ -28,6 +28,26 @@ const check = (overrides: Partial<PublishCheck> & Pick<PublishCheck, 'code'>): P
 });
 
 describe('site structure checks in the publish dialog', () => {
+  it('names each exceeded Markdown parse limit and keeps the publish warning advisory', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToStaticMarkup(
+      <PublishChecks
+        checks={['pageBytes', 'lineCharacters', 'syntaxMarkers', 'nesting'].map((detail) =>
+          check({ code: 'markdown-parse-limit', pageId: detail, detail }),
+        )}
+        loading={false}
+        onFix={() => undefined}
+        projectId="project-1"
+      />,
+    );
+    expect(container.textContent).toContain('This page can publish and will display as plain text.');
+    expect(container.textContent).toContain('512 KiB of source text');
+    expect(container.textContent).toContain('16,384 characters');
+    expect(container.textContent).toContain('1,024 syntax markers');
+    expect(container.textContent).toContain('64 levels');
+    expect(container.querySelector('a[href*="fix=markdown-parse-limit"]')).not.toBeNull();
+  });
+
   it('names, for each language, the page its readers land on instead of the home page, and opens the home page to fix it', () => {
     const container = document.createElement('div');
     container.innerHTML = renderToStaticMarkup(

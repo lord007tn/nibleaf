@@ -1,3 +1,4 @@
+import { markdownParseLimit } from '@nibleaf/shared/page-limits';
 import type { LanguageFn } from 'highlight.js';
 import type { LazyHighlightLanguage } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, type HydrationModule, hydrationModule, loadServerRenderedModules } from '@/lib/hydration-modules';
@@ -55,6 +56,10 @@ export const articleRendererModules = (content: string) =>
  *  the article's island, which retries and says so inline (not the route's
  *  error page). */
 export const loadArticleRenderer = async (content: string): Promise<void> => {
+  if (typeof content !== 'string' || markdownParseLimit(content)) {
+    await articleMarkdownModule.load().catch(() => undefined);
+    return;
+  }
   const grammars = import('@/lib/highlight-languages')
     .then((languages) => Promise.all(languages.lazyHighlightLanguages(content).map((name) => highlightLanguageModule(name).load())))
     .catch(() => undefined);

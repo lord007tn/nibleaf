@@ -336,7 +336,7 @@ const LOCATABLE: Array<{ code: PublishCheckCode; content: string; target: string
 ];
 
 /** Where each locatable check's evidence comes from in the checks' reading of a page. */
-const FACTS: Record<string, keyof PageContentFacts> = {
+const FACTS = {
   'broken-internal-link': 'links',
   'missing-alt': 'imagesWithoutAlt',
   'video-poster-hidden': 'hiddenPosters',
@@ -345,10 +345,10 @@ const FACTS: Record<string, keyof PageContentFacts> = {
   'embed-untitled': 'untitledEmbeds',
   'embed-unclosed': 'unclosedEmbeds',
   'stray-characters': 'strayText',
-};
+} satisfies Partial<Record<PublishCheckCode, keyof PageContentFacts>>;
 /** How many places the publish check itself finds `target` on a page with `content`. */
 const checkCount = (code: PublishCheckCode, content: string, target: string): number =>
-  collectPageContentFacts(content)[FACTS[code] as keyof PageContentFacts].filter((detail) => detail === target).length;
+  collectPageContentFacts(content)[FACTS[code as keyof typeof FACTS]].filter((detail) => detail === target).length;
 
 /**
  * The evidence where the check doesn't look (a code block, inline code), then

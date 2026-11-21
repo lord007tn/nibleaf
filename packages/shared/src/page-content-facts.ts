@@ -20,6 +20,7 @@ import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { documentationComponentContractEntries, documentationReaderTag } from './documentation-component-contract';
 import { matchTags } from './markup-scan';
+import { type MarkdownParseLimit, markdownParseLimit } from './page-limits';
 import { READER_EMBED_TAG } from './reader-embeds';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { isAllowedMediaUrl, isSiteMediaPath, videoEmbedFrom, videoPageUrl } from './video-embeds';
@@ -44,6 +45,8 @@ type MarkdownNode = {
 
 /** What one page renders that the checks look at. */
 export interface PageContentFacts {
+  /** The reader shows this page as plain text once a parse limit is exceeded. */
+  parseLimit?: MarkdownParseLimit;
   /** Destinations of links that render, in document order. */
   links: string[];
   /** Sources of images that render without alt text. */
@@ -289,6 +292,22 @@ const htmlImagesWithoutAlt = (html: string): string[] =>
 
 /** What one page renders that the checks look at, read as the reader reads it (not cached). */
 export const collectPageContentFacts = (content: string): PageContentFacts => {
+  const facts: PageContentFacts = {
+    links: [],
+    imagesWithoutAlt: [],
+    strayText: [],
+    untitledEmbeds: [],
+    embedsAsLinks: [],
+    insecureVideos: [],
+    unclosedEmbeds: [],
+    hiddenPosters: [],
+  };
+  const limit = markdownParseLimit(content);
+  if (limit) {
+    facts.parseLimit = limit;
+    return facts;
+  }
+
   let tree: MarkdownNode;
   let isMdx = true;
   try {
@@ -332,16 +351,6 @@ export const collectPageContentFacts = (content: string): PageContentFacts => {
   };
   collectDefinitions(tree);
 
-  const facts: PageContentFacts = {
-    links: [],
-    imagesWithoutAlt: [],
-    strayText: [],
-    untitledEmbeds: [],
-    embedsAsLinks: [],
-    insecureVideos: [],
-    unclosedEmbeds: [],
-    hiddenPosters: [],
-  };
   const visit = (node: MarkdownNode) => {
     if (inCode(node) || NON_LINK_CONTEXTS.has(node.name?.toLowerCase() ?? '')) return;
     if (SILENT.has(node.type)) {

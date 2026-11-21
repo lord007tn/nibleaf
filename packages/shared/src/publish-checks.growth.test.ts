@@ -1,6 +1,12 @@
 import { growthMs, growthMsAsync, growthTestsEnabled, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
-import { buildInboundPageLinkMap, buildInboundPageLinkMapAsync, findBrokenInternalLinks, findInboundPageLinks } from './publish-checks';
+import {
+  buildInboundPageLinkMap,
+  buildInboundPageLinkMapAsync,
+  findBrokenInternalLinks,
+  findInboundPageLinks,
+  pageContentFacts,
+} from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
 
 let sequence = 0;
@@ -104,6 +110,16 @@ describe.runIf(growthTestsEnabled)('inbound draft page links: repeat-open cost',
     // cold with the page index (1/45 without it).
     expect(warmMs).toBeLessThanOrEqual(coldMs / 4 + 20);
   }, 60_000);
+});
+
+describe.runIf(growthTestsEnabled)('publish facts on pages beyond the Markdown budget', () => {
+  it('checks a long source line without starting the parser', () => {
+    const small = `[Guide](/guide)\n\n${'text'.repeat(10_000)}`;
+    const large = small.repeat(4);
+    const [smallMs, largeMs] = growthMs((body) => pageContentFacts(body, false), small, large);
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+    expect(pageContentFacts(large, false).parseLimit).toBe('lineCharacters');
+  });
 });
 
 describe.runIf(growthTestsEnabled)('publish checks on a site larger than the shared facts cache', () => {

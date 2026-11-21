@@ -47,6 +47,7 @@ const PAGE_LEVEL_TARGETS: Partial<Record<PublishCheckCode, PageLevelTarget>> = {
   'unreadable-slug': 'address',
   'home-untranslated': null,
   'blog-root-group': null,
+  'markdown-parse-limit': 'body',
 };
 
 /** Where a page-level check focuses (null for none, and for a check found by its evidence). */
@@ -68,6 +69,7 @@ export const FIX_LABELS: Record<PublishCheckCode, MessageKey> = {
   'video-poster-hidden': 'editor.fix.label.videoPosterHidden',
   'home-untranslated': 'editor.fix.label.homeUntranslated',
   'blog-root-group': 'editor.fix.label.blogRootGroup',
+  'markdown-parse-limit': 'publish.checks.markdownLimit',
 };
 
 /** What to do about a page-level problem, said in the bar. Locatable checks show their evidence instead. */
@@ -78,12 +80,13 @@ export const FIX_EXPLANATIONS: Partial<Record<PublishCheckCode, MessageKey>> = {
   'unreadable-slug': 'editor.fix.explain.unreadableSlug',
   'home-untranslated': 'editor.fix.explain.homeUntranslated',
   'blog-root-group': 'editor.fix.explain.blogRootGroup',
+  'markdown-parse-limit': 'publish.checks.markdownLimitHint',
 };
 
 type LocatableCode = (typeof LOCATABLE_PUBLISH_CHECK_CODES)[number];
 
 /** Where each locatable check's evidence comes from in the check's reading of a page. */
-const FACT_FIELDS: Record<LocatableCode, keyof PageContentFacts> = {
+const FACT_FIELDS = {
   'broken-internal-link': 'links',
   'missing-alt': 'imagesWithoutAlt',
   'video-poster-hidden': 'hiddenPosters',
@@ -92,7 +95,7 @@ const FACT_FIELDS: Record<LocatableCode, keyof PageContentFacts> = {
   'embed-untitled': 'untitledEmbeds',
   'embed-unclosed': 'unclosedEmbeds',
   'stray-characters': 'strayText',
-};
+} satisfies Record<LocatableCode, keyof PageContentFacts>;
 
 type FactsModule = typeof import('@nibleaf/shared/page-content-facts');
 let factsModule: Promise<FactsModule> | undefined;

@@ -15,6 +15,7 @@ const CASES: Array<[string, string, { rich: boolean; math: boolean }]> = [
   ['dollars only in code', 'Run `echo $HOME and $PATH`.\n\n```bash\necho $A $B\n```', { rich: false, math: false }],
   ['plain Markdown', '# Title\n\n- one\n- two', { rich: false, math: false }],
 ];
+const largeProse = `${'word '.repeat(2010)}\n\n`.repeat(40);
 
 describe('math detection', () => {
   it.each(CASES)('%s', (_name, content, expected) => {
@@ -56,7 +57,7 @@ describe('math detection', () => {
     ['an entity-encoded fence language', '<div></div>\n\n~~~m&#97;th\nx^2\n~~~'],
     ['a math class beside attribute backticks', '<code title="`" class="math-inline" data-x="`">x^2</code>'],
   ])('past the parser bounds, still loads KaTeX for %s on a rich page', (_name, body) => {
-    const content = `${body}\n\n${'word '.repeat(80_001)}`;
+    const content = `${body}\n\n${largeProse}`;
     expect(markdownCodeUsage(content)).toBeNull();
     expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
   });
@@ -75,7 +76,7 @@ describe('math detection', () => {
     ['a blockquote', '> ```math\n> x^2\n> ```'],
     ['a list item', '- ```math\n  x^2\n  ```'],
   ])('past the parser bounds, still loads KaTeX for a math fence in %s on a rich page', (_name, fence) => {
-    const content = `<Note>Hi</Note>\n\n${fence}\n\n${'word '.repeat(80_001)}`;
+    const content = `<Note>Hi</Note>\n\n${fence}\n\n${largeProse}`;
     expect(content.length).toBeGreaterThan(400_000);
     expect(markdownCodeUsage(content)).toBeNull();
     expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
@@ -83,11 +84,11 @@ describe('math detection', () => {
 
   it('past the parser bounds, gives every rich page KaTeX, even where only normalization reveals the math', () => {
     for (const body of ['<code class="ma{/* note */}th-inline">x^2</code>', '<Note>No math here</Note>']) {
-      const content = `${body}\n\n${'word '.repeat(80_001)}`;
+      const content = `${body}\n\n${largeProse}`;
       expect(readerRenderMode(content), body).toMatchObject({ rich: true, math: true, usage: null });
     }
     // A plain page past the bounds still gets neither.
-    expect(readerRenderMode(`# Title\n\n${'word '.repeat(80_001)}`)).toMatchObject({ rich: false, math: false });
+    expect(readerRenderMode(`# Title\n\n${largeProse}`)).toMatchObject({ rich: false, math: false });
   });
 
   it('scans a long backtick run in linear time', () => {

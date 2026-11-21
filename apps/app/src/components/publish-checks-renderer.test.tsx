@@ -3,7 +3,32 @@ import { parseHTML } from 'linkedom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it } from 'vitest';
 import { collectPublishChecks, collectPublishIssues, page, snapshot } from '../../../worker/src/processors/publish-links.test-helpers';
+import { Markdown, rendererModulesFor } from './markdown';
 import RichMarkdown from './markdown-rich';
+
+it('renders over-budget pages without selecting Markdown feature modules', () => {
+  const content = ['<em>Literal markup</em>', 'x'.repeat(16_385), '```rust\nfn main() {}\n```'].join('\n\n');
+  expect(rendererModulesFor(content)).toEqual([]);
+  const { document } = parseHTML(renderToStaticMarkup(<Markdown content={content} />));
+  expect(document.querySelector('pre')?.textContent).toBe(content);
+  expect(document.querySelector('[data-hydration-module]')).toBeNull();
+});
+
+it('publishes over-budget Markdown as plain text and warns about the specific limit', () => {
+  const content = `[Guide](/missing)\n\n<em>Literal markup</em>\n\n${'x'.repeat(16_385)}`;
+  const { document } = parseHTML(renderToStaticMarkup(<RichMarkdown content={content} />));
+  expect(document.querySelector('pre')).not.toBeNull();
+  expect(document.querySelector('pre')?.textContent).toBe(content);
+  expect(document.querySelectorAll('a[href]')).toHaveLength(0);
+  expect(document.querySelector('em')).toBeNull();
+
+  const site = snapshot([page({ path: 'start', content })]);
+  expect(pageContentFacts(content).links).toEqual([]);
+  expect(collectPublishChecks(site)).toEqual(
+    expect.arrayContaining([expect.objectContaining({ code: 'markdown-parse-limit', severity: 'warning', detail: 'lineCharacters' })]),
+  );
+  expect(collectPublishIssues(site).filter((issue) => issue.type === 'broken-link')).toEqual([]);
+});
 
 it.each([
   ['JSX Card', '<Card href="/card">Next</Card>\n\n[Markdown](/markdown)', ['/card', '/markdown']],

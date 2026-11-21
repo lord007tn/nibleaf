@@ -1,13 +1,16 @@
 import { type MarkdownCodeUsage, markdownCodeUsage } from './markdown-code-usage';
+import { type MarkdownParseLimit, markdownParseLimit } from './page-limits';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { needsRichMarkdown } from './reader-rich';
 
-/** How the reader renders a page: whether with its rich renderer (raw HTML/MDX
- *  and math), whether that also needs KaTeX (math), and the code it holds (null past the parser's safety bounds). Read
- *  with the renderer's own Markdown semantics where those bounds allow, and by the
- *  line scan otherwise. The article renderer and the heading parser
- *  (`./reader-headings`) both decide with it, so they read a page the same way. */
-export const readerRenderMode = (content: string): { rich: boolean; math: boolean; usage: MarkdownCodeUsage | null } => {
+/** The article renderer and heading parser use the same mode. Over-budget
+ *  sources render as plain text. Within the budget, prefer the renderer's
+ *  Markdown semantics and fall back to the line scan if code usage cannot parse. */
+export const readerRenderMode = (
+  content: string,
+): { rich: boolean; math: boolean; usage: MarkdownCodeUsage | null; parseLimit?: MarkdownParseLimit } => {
+  const parseLimit = markdownParseLimit(content);
+  if (parseLimit) return { rich: false, math: false, usage: null, parseLimit };
   const usage = markdownCodeUsage(normalizeMdxBlocks(content));
   if (usage) return { rich: usage.rich, math: usage.math, usage };
   // Past the parser's bounds no scan can promise to see math as the renderer

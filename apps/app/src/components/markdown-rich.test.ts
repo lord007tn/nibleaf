@@ -38,7 +38,8 @@ describe('conditional Markdown renderer', () => {
   it('loads what the renderer decides before a navigation, even where the line scan guessed no math', async () => {
     // Normalization joins the class into math-inline; past the parser bounds the
     // renderer gives this rich page KaTeX, while the line scan sees no math.
-    const content = `<code class="ma{/* note */}th-inline">x^2</code>\n\n${'word '.repeat(80_001)}`;
+    const largeProse = `${'word '.repeat(2010)}\n\n`.repeat(40);
+    const content = `<code class="ma{/* note */}th-inline">x^2</code>\n\n${largeProse}`;
     expect(articleRendererModules(content)).toEqual([richMarkdownModule]);
     expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
     expect(mathMarkdownModule.status()).toBe('idle');

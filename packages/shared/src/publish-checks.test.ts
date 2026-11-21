@@ -17,6 +17,18 @@ import type { SiteSnapshot, SnapshotPage } from './site';
 // timeout. Their cost stays linear; the *.growth.test.ts files pin that.
 vi.setConfig({ testTimeout: 60_000 });
 
+it.each([
+  ['pageBytes', `${'One paragraph of ordinary text. '.repeat(40)}\n\n`.repeat(500)],
+  ['lineCharacters', 'x'.repeat(16_385)],
+  ['syntaxMarkers', 'a*b* '.repeat(513)],
+  ['nesting', `${'> '.repeat(65)}Quoted text`],
+  ['nesting', `${'<section>\n'.repeat(65)}Nested tags`],
+])('stops parsing when the %s budget is exceeded', (reason, tail) => {
+  const facts = pageContentFacts(`[Guide](/missing)\n\n${tail}`, false);
+  expect(facts.links).toEqual([]);
+  expect(facts).toMatchObject({ parseLimit: reason });
+});
+
 let sequence = 0;
 const page = (overrides: Partial<SnapshotPage> & Pick<SnapshotPage, 'path'>): SnapshotPage => {
   sequence += 1;

@@ -1,4 +1,5 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { markdownParseLimit } from '@nibleaf/shared/page-limits';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import type { PathLanguage } from '@nibleaf/shared/site-language';
@@ -213,8 +214,7 @@ export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'merma
  *  render (server, hydration) always shows the content as given. */
 function useShownContent(content: string): string {
   const [shown, setShown] = useState(content);
-  const waitsForMath =
-    content !== shown && mathMarkdownModule.status() !== 'loaded' && readerRenderMode(content).math && readerRenderMode(content).rich;
+  const waitsForMath = content !== shown && mathMarkdownModule.status() !== 'loaded' && rendererModulesFor(content).includes(mathMarkdownModule);
   useEffect(() => {
     if (content === shown) return;
     if (!waitsForMath) {
@@ -289,12 +289,23 @@ const subscribeNever = () => () => undefined;
 const notHydrating = () => false;
 const isHydrating = () => true;
 
+function PlainMarkdown({ content, className }: Pick<MarkdownProps, 'content' | 'className'>) {
+  return (
+    <div className={cn('typeset nibleaf-content', className)}>
+      <pre className="whitespace-pre-wrap wrap-anywhere" dir="auto">
+        {content}
+      </pre>
+    </div>
+  );
+}
+
 function MarkdownContent(props: MarkdownProps) {
   // Read with the renderer's own Markdown semantics (nested fences, container
   // ends, `r&#117;st`), the same on the server and in the browser, so the
   // modules the server marked are the ones hydration expects. Past the parser's
   // safety bounds, the line-based checks decide, erring towards loading.
-  const { rich, math, usage } = readerRenderMode(props.content);
+  const { rich, math, usage, parseLimit } = readerRenderMode(props.content);
+  if (parseLimit) return <PlainMarkdown content={props.content} className={props.className} />;
   const languages = usage ? lazyHighlightLanguagesNamed(usage.languages, props.content) : lazyHighlightLanguages(props.content);
   if (languages.length === 0) return <MarkdownBody {...props} rich={rich} math={math} />;
   // Code in a language outside the core grammars: its grammars load like the
@@ -418,6 +429,7 @@ export function MarkdownRenderer({
     };
     return mergedComponents;
   }, [site, mdxComponents]);
+  if (markdownParseLimit(content)) return <PlainMarkdown content={content} className={className} />;
   return (
     // nibleaf-content: the tables, code blocks and task lists styled the same
     // in the editor (content-blocks.css).
