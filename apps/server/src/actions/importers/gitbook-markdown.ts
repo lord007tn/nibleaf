@@ -13,7 +13,7 @@ import {
   isImportMediaUrl,
   normalizeImportFidelity,
 } from './import-fidelity';
-import { importCodeLines, protectImportCode } from './import-markdown-code';
+import { importCodeLines, importParagraphEnds, protectImportCode } from './import-markdown-code';
 import { markdownReferences, replaceImportReferences } from './import-references';
 
 /**
@@ -389,20 +389,22 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
   const nextLineEnd = forwardIndexOf(protectedCode.content, '\n');
   const nextMediaLineEnd = forwardIndexOf(protectedCode.content, '\n');
   let lineStart = 0;
+  let lineNumber = 0;
   let previousLine = '';
   let lineEnd = nextLineEnd(0);
-  let containerPrefix = importContainerPrefix(protectedCode.content.slice(0, lineEnd < 0 ? undefined : lineEnd));
   let mediaPrefixLine = -1;
   let mediaPrefix = '';
   let mediaContentStart = 0;
+  let mediaHasListMarker = false;
+  let paragraphEnds: number[] | undefined;
   for (let index = 0; index < tokens.length; index++) {
     const token = tokens[index];
     if (!token || token.start < cursor) continue;
     while (lineEnd >= 0 && lineEnd < token.start) {
       previousLine = protectedCode.content.slice(lineStart, lineEnd);
       lineStart = lineEnd + 1;
+      lineNumber++;
       lineEnd = nextLineEnd(lineStart);
-      containerPrefix = importContainerPrefix(protectedCode.content.slice(lineStart, lineEnd < 0 ? undefined : lineEnd));
     }
     const copiedStart = cursor;
     output.push(protectedCode.content.slice(cursor, token.start));
@@ -460,23 +462,33 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
           token.name === 'video' ? 'video' : undefined,
         );
         const media = caption ? `<Frame caption="${attr(plainGitBookText(caption))}">\n\n${frame}\n\n</Frame>` : frame;
-        // Cache the continuation prefix once per source line, even when that
-        // line holds many embeds. A marker followed by prose keeps its item.
+        // Keep the copied item markers on the first line. Their continuation
+        // uses spaces of the same width, including quotes inside a list item.
         if (mediaPrefixLine !== lineStart) {
-          const marker = /^(?:[-*+]|\d{1,9}[.)]) +/.exec(
-            protectedCode.content.slice(lineStart + containerPrefix.length, lineEnd < 0 ? undefined : lineEnd),
-          )?.[0];
-          mediaPrefix = containerPrefix + ' '.repeat(marker?.length ?? 0);
-          mediaContentStart = lineStart + containerPrefix.length + (marker?.length ?? 0);
+          const line = protectedCode.content.slice(lineStart, lineEnd < 0 ? undefined : lineEnd);
+          let offset = 0;
+          mediaPrefix = '';
+          mediaHasListMarker = false;
+          for (;;) {
+            const prefix = importContainerPrefix(line.slice(offset));
+            offset += prefix.length;
+            mediaPrefix += prefix;
+            const marker = /^(?:[-*+]|\d{1,9}[.)])(?=[ \t])/.exec(line.slice(offset))?.[0];
+            if (!marker) break;
+            mediaHasListMarker = true;
+            offset += marker.length;
+            mediaPrefix += ' '.repeat(marker.length);
+          }
+          mediaContentStart = lineStart + offset;
           mediaPrefixLine = lineStart;
         }
         const leadingText = protectedCode.content.slice(Math.max(copiedStart, mediaContentStart), token.start).trim();
-        if (mediaPrefix && (mediaContentStart === lineStart + containerPrefix.length || leadingText)) {
+        if (mediaPrefix) {
           // The first prefix is already copied. Keep HTML block separators
           // inside the container, reusing any blank lines the author supplied.
           const blank = (line: string) => !line.trim() || line.trim() === mediaPrefix.trim();
           if (leadingText) output.push(`\n${mediaPrefix.trimEnd()}\n${mediaPrefix}`);
-          else if (copiedStart <= lineStart && !blank(previousLine)) output.push(`\n${mediaPrefix}`);
+          else if (!mediaHasListMarker && copiedStart <= lineStart && !blank(previousLine)) output.push(`\n${mediaPrefix}`);
           output.push(media.replaceAll('\n', `\n${mediaPrefix}`));
           const mediaLineEnd = nextMediaLineEnd(cursor);
           const remainderEnd = mediaLineEnd < 0 ? protectedCode.content.length : mediaLineEnd;
@@ -485,7 +497,25 @@ export const convertGitBookMarkdown = (source: string, context: GitBookConversio
           else if (mediaLineEnd >= 0) {
             const afterEnd = nextMediaLineEnd(mediaLineEnd + 1);
             const after = protectedCode.content.slice(mediaLineEnd + 1, afterEnd < 0 ? undefined : afterEnd);
-            if (!blank(after)) output.push(`\n${mediaPrefix.trimEnd()}`);
+            if (!blank(after)) {
+              output.push(`\n${mediaPrefix.trimEnd()}`);
+              const afterPrefix = importContainerPrefix(after);
+              const missingPrefix = afterPrefix.length < mediaPrefix.length || afterPrefix.split('>').length < mediaPrefix.split('>').length;
+              if (
+                missingPrefix &&
+                mediaLineEnd === lineEnd &&
+                (mediaHasListMarker || mediaPrefix.includes('>')) &&
+                !protectedCode.blocks.has(after.slice(afterPrefix.length).trim())
+              ) {
+                paragraphEnds ??= importParagraphEnds(protectedCode.content);
+                // Turning Liquid into an HTML block interrupts the original
+                // paragraph, so give its lazy next line an explicit prefix.
+                if ((paragraphEnds[lineNumber] ?? 0) > lineNumber + 1) {
+                  output.push(`\n${mediaPrefix}`);
+                  cursor = mediaLineEnd + 1 + afterPrefix.length;
+                }
+              }
+            }
           }
         } else output.push(block(media));
       } else {
