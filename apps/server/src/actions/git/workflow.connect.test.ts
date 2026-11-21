@@ -165,6 +165,7 @@ describe('connectGitHub with the real Git crypto', () => {
         importLanguageId: null,
         remoteBaseSha: 'base-sha',
         remoteHeadSha: 'head-sha',
+        settingsRevision: { increment: 1 },
       },
     });
     expect(result.webhookSecret).toBeNull();
@@ -337,6 +338,66 @@ describe('connectGitHub with the real Git crypto', () => {
 });
 
 /**
+ * #876: a settings form loaded before another save committed. The row version
+ * only protects requests that overlap; the form's own revision protects one
+ * that starts after the other save finished.
+ */
+describe('a connection save checks the revision its form was loaded with', () => {
+  const atRevision = (settingsRevision: number) => ({ ...storedConnection(), settingsRevision });
+  const body = { repository: 'acme/docs', baseBranch: 'main', headBranch: 'nibleaf/edit', contentPath: 'old-path' };
+  const expectNothingWritten = () => {
+    expect(mocks.providerTokens).toEqual([]);
+    expect(mocks.provider.verifyWriteAccess).not.toHaveBeenCalled();
+    expect(mocks.prisma.$transaction).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitConnection.update).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitConnection.create).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitFileState.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitFileState.upsert).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitAuditEvent.create).not.toHaveBeenCalled();
+  };
+
+  it('refuses a form loaded before another save committed, before contacting GitHub or writing anything', async () => {
+    // B saved (revision 1 → 2) before A's request began; A still shows revision 1.
+    installConnection(atRevision(2));
+    await expect(connectGitHub('project-1', 'user-1', { ...body, expectedRevision: 1 })).rejects.toMatchObject({
+      status: 409,
+      code: 'database:conflict',
+    });
+    expectNothingWritten();
+  });
+
+  it('refuses a first Connect when a connection was made meanwhile, and a save for a connection since removed', async () => {
+    installConnection(atRevision(1));
+    await expect(connectGitHub('project-1', 'user-1', { ...body, token: NEW_TOKEN, expectedRevision: null })).rejects.toMatchObject({ status: 409 });
+    expectNothingWritten();
+    installConnection(null);
+    await expect(connectGitHub('project-1', 'user-1', { ...body, token: NEW_TOKEN, expectedRevision: 3 })).rejects.toMatchObject({ status: 409 });
+    expectNothingWritten();
+  });
+
+  it('saves a form that shows the current revision and moves the revision on', async () => {
+    installConnection(atRevision(2));
+    const result = await connectGitHub('project-1', 'user-1', { ...body, expectedRevision: 2 });
+    expect(savedData()).toMatchObject({ headBranch: 'nibleaf/edit', contentPath: 'old-path', settingsRevision: { increment: 1 } });
+    expect(result.connection).not.toHaveProperty('saveVersion');
+    expect(mocks.prisma.gitAuditEvent.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('creates a first connection that expected none', async () => {
+    installConnection(null);
+    await connectGitHub('project-1', 'user-1', { ...body, token: NEW_TOKEN, expectedRevision: null });
+    expect(firstInput<{ data: Record<string, unknown> }>(mocks.prisma.gitConnection.create).data).not.toHaveProperty('settingsRevision');
+  });
+
+  it('accepts the revision through the real validator, and only a positive whole number or null', () => {
+    expect(gitConnectionBody.parse({ ...body, expectedRevision: 4 }).expectedRevision).toBe(4);
+    expect(gitConnectionBody.parse({ ...body, expectedRevision: null }).expectedRevision).toBeNull();
+    expect(gitConnectionBody.parse(body)).not.toHaveProperty('expectedRevision');
+    for (const expectedRevision of [0, -1, 1.5, '2']) expect(gitConnectionBody.safeParse({ ...body, expectedRevision }).success).toBe(false);
+  });
+});
+
+/**
  * The dashboard's connected Connection configuration save, end to end on the
  * server side: the body its own model builds from the typed values and the
  * latest confirmed status, through the real validator and `connectGitHub`, read
@@ -366,6 +427,29 @@ describe("the dashboard's Connection configuration save", () => {
     expect(savedData()).not.toHaveProperty('webhookSecretEncrypted');
     // A blank token is left out: the stored credential is the one used.
     expect(mocks.providerTokens).toEqual([STORED_TOKEN]);
+  });
+
+  it("refuses browser A's older form after browser B's save, keeping B's settings, credential and secret", async () => {
+    // A loaded revision 1. B then changed the path and saved: the row is at revision 2.
+    const afterB = { ...targeted(), contentPath: 'moved-by-b', settingsRevision: 2 };
+    installConnection(afterB);
+    const { credentialEncrypted: _credential, webhookSecretEncrypted: _webhook, ...statusAfterB } = afterB;
+    // A changes only the authoring branch; its form still holds the old path. The import targets come from a status
+    // read just now (revision 2), but the revision sent is the one A's form shows.
+    const aValues = typed({ headBranch: 'nibleaf/from-a' });
+    const payload = gitWorkflowConnectionPayload(aValues, statusAfterB, '', 1);
+    expect(payload).toMatchObject({ contentPath: 'docs', expectedRevision: 1 });
+
+    await expect(connectGitHub('project-1', 'user-1', gitConnectionBody.parse(payload))).rejects.toMatchObject({ status: 409 });
+    expect(mocks.prisma.gitConnection.update).not.toHaveBeenCalled();
+    expect(mocks.prisma.gitAuditEvent.create).not.toHaveBeenCalled();
+
+    // Once A's form shows B's save (revision 2, B's path), A's save goes through with B's path kept.
+    const refreshed = gitWorkflowConnectionPayload({ ...aValues, contentPath: 'moved-by-b' }, statusAfterB, '', 2);
+    const result = await connectGitHub('project-1', 'user-1', gitConnectionBody.parse(refreshed));
+    expect(gitWorkflowConnectionValues(result.connection)).toMatchObject({ headBranch: 'nibleaf/from-a', contentPath: 'moved-by-b' });
+    expect(savedData()).not.toHaveProperty('credentialEncrypted');
+    expect(savedData()).not.toHaveProperty('webhookSecretEncrypted');
   });
 
   it('stores the readback the form adopts for a typed URL', async () => {
