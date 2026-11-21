@@ -1,7 +1,7 @@
 import { forwardIndexOf, matchTags } from '@nibleaf/shared/markup-scan';
-import { scanAuthoredEmbeds, withEmbedAttribute } from '@nibleaf/shared/reader-embeds';
-import { isAllowedMediaUrl, parseVideoUrl, videoEmbedSrc } from '@nibleaf/shared/video-embeds';
-import { protectImportCode } from './import-markdown-code';
+import { readAuthoredMediaChild, scanAuthoredEmbeds, withEmbedAttribute } from '@nibleaf/shared/reader-embeds';
+import { hasUnsafeMediaUrlCharacters, isAllowedMediaUrl, parseVideoUrl, parseWebUrl, videoEmbedSrc } from '@nibleaf/shared/video-embeds';
+import { importContainerContinuation, protectImportCode } from './import-markdown-code';
 
 export interface ImportFidelityIssue {
   kind: 'embed' | 'link';
@@ -94,6 +94,34 @@ const inertRejectedOpeners = (source: string, onUnmapped: (url: string) => void)
   return output.join('');
 };
 
+const unclosedMediaFallback = (markup: string, url: string): string => {
+  const httpLink = /^http:\/\//i.test(url) && url === url.trim() && !hasUnsafeMediaUrlCharacters(url) && parseWebUrl(url);
+  if (isImportMediaUrl(url) || httpLink) return `<a href="${attr(url)}">${attr(url).replaceAll('>', '&gt;')}</a>`;
+  return `<code>${attr(markup).replaceAll('>', '&gt;')}</code>`;
+};
+
+/** An unclosed video owns adjacent media children in its Markdown block.
+ * Stop at a blank, other content, or container exit. */
+const appendOrphanVideoChildren = (source: string, from: number, prefix: string, output: string[]): number => {
+  const gap = /[ \t]*(?:\r?\n[ \t>]*)?/y;
+  let continuesContainer: ReturnType<typeof importContainerContinuation> | undefined;
+  let cursor = from;
+  for (;;) {
+    gap.lastIndex = cursor;
+    const separator = gap.exec(source)?.[0] ?? '';
+    const start = cursor + separator.length;
+    const child = readAuthoredMediaChild(source, start);
+    if (!child) return cursor;
+    const newline = separator.indexOf('\n');
+    if (newline >= 0) {
+      continuesContainer ??= importContainerContinuation(prefix);
+      if (!continuesContainer(separator.slice(newline + 1))) return cursor;
+    }
+    output.push(separator, unclosedMediaFallback(source.slice(start, child.end), child.src));
+    cursor = child.end;
+  }
+};
+
 /** Normalize source media and escaped block markers outside code. Scans are forward-only. */
 export const normalizeImportFidelity = (source: string, onUnmapped: (url: string) => void = () => undefined): string => {
   const protectedCode = protectImportCode(source);
@@ -126,11 +154,11 @@ export const normalizeImportFidelity = (source: string, onUnmapped: (url: string
     output.push(prose.slice(cursor, embed.start));
     if (!embed.closed) {
       onUnmapped(url);
-      if (embed.kind !== 'video') output.push(prose.slice(embed.start, embed.end));
-      else if (url.startsWith('https://') || url.startsWith('http://'))
-        output.push(`<a href="${attr(url)}">${attr(url).replaceAll('>', '&gt;')}</a>`);
-      else output.push(`<code>${attr(prose.slice(embed.start, embed.end)).replaceAll('>', '&gt;')}</code>`);
-    } else if (embed.kind === 'video' && !url) {
+      output.push(unclosedMediaFallback(prose.slice(embed.start, embed.end), url));
+      cursor = embed.kind === 'video' ? appendOrphanVideoChildren(prose, embed.end, prose.slice(lineStart, embed.start), output) : embed.end;
+      continue;
+    }
+    if (embed.kind === 'video' && !url) {
       // A source/track video is already canonical HTML; preserve its alternatives and captions.
       const children = prose.slice(embed.openEnd, embed.end);
       const sources = matchTags(children, /<source\b[^<>]*>/gi);
