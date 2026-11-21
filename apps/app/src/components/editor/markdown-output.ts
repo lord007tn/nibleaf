@@ -5,7 +5,7 @@ import { Plugin, PluginKey, type Selection, type SelectionBookmark, type Transac
 import { type Mappable, ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import { MarkdownSerializerState } from 'prosemirror-markdown';
 import { Markdown } from 'tiptap-markdown';
-import { decodeMdxSource } from './extensions/mdx-roundtrip';
+import { readStructuredSource } from './extensions/mdx-roundtrip';
 import {
   createPositionedLineEndings,
   mapLineEndings,
@@ -18,7 +18,7 @@ import {
   type SerializedPage,
   type SourceLineEndings,
 } from './line-endings';
-import { STRUCTURED_BLOCK_NODES, STRUCTURED_SOURCE_ATTRIBUTE, structuredLinkSource, writeStructuredHtmlBlock } from './structured-html-source';
+import { STRUCTURED_BLOCK_NODES, structuredLinkSource, writeStructuredHtmlBlock } from './structured-html-source';
 
 /*
  * Saving a page writes its Markdown into one output buffer (#612). The serializer
@@ -567,20 +567,7 @@ export const LinearMarkdown = Markdown.extend({
             default: undefined,
             keepOnSplit: false,
             rendered: false,
-            parseHTML: (element: HTMLElement) => {
-              const source = decodeMdxSource(element.getAttribute(STRUCTURED_SOURCE_ATTRIBUTE));
-              if (!source) return;
-              let parsed: { open?: unknown; close?: unknown; href?: string | null } | null;
-              try {
-                parsed = JSON.parse(source);
-              } catch {
-                return;
-              }
-              if (typeof parsed?.open === 'string' && typeof parsed.close === 'string') {
-                if (element.localName === 'a') parsed.href = element.getAttribute('href');
-                return parsed;
-              }
-            },
+            parseHTML: readStructuredSource,
           },
         },
       },

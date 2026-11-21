@@ -2,6 +2,7 @@ import { translateFn } from '@nibleaf/i18n';
 import { DOCUMENTATION_COMPONENTS, type DocumentationComponentDefinition } from '@nibleaf/shared/documentation-components';
 import { fencedMarkdownLines } from '@nibleaf/shared/markdown-code';
 import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
+import { randomUUID } from '@nibleaf/shared/uuid';
 import { mergeAttributes, Node } from '@tiptap/core';
 import type { DOMOutputSpec, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
@@ -413,6 +414,23 @@ function spanIndex(ranges: readonly Span[]): (start: number, end: number) => boo
       } else high = middle - 1;
     }
     return found >= 0 && (reach[found] ?? -1) >= end;
+  };
+}
+
+/** Answers whether any range intersects [start, end). */
+function overlapIndex(ranges: readonly Span[]): (start: number, end: number) => boolean {
+  const sorted = [...ranges].sort((a, b) => a.start - b.start);
+  const reach: number[] = [];
+  for (const range of sorted) reach.push(Math.max(reach.at(-1) ?? -1, range.end));
+  return (start, end) => {
+    let low = 0;
+    let high = sorted.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if ((sorted[middle]?.start ?? 0) < end) low = middle + 1;
+      else high = middle;
+    }
+    return (reach[low - 1] ?? -1) > start;
   };
 }
 
@@ -1782,6 +1800,28 @@ function parseAttributes(raw: string, componentName: string, escapes = component
 const attributeValue = (attrs: AttributeToken[], name: string): string | boolean | undefined =>
   attrs.find((attr) => attr.name.toLowerCase() === name.toLowerCase())?.value;
 
+// Only the current editor runtime can attach source metadata to the parsed DOM.
+const structuredSourcePrefix = `${randomUUID()}:`;
+
+export function readStructuredSource(element: HTMLElement): StructuredHtmlSource | undefined {
+  const attribute = element.getAttribute(STRUCTURED_SOURCE_ATTRIBUTE);
+  if (!attribute?.startsWith(structuredSourcePrefix)) return;
+  const source = JSON.parse(decodeMdxSource(attribute.slice(structuredSourcePrefix.length))) as StructuredHtmlSource;
+  if (element.localName === 'a') source.href = element.getAttribute('href') ?? undefined;
+  return source;
+}
+
+function removeStructuredSourceAttribute(raw: string, attributes: AttributeToken[]): string {
+  const parts: string[] = [];
+  let cursor = 0;
+  for (const attr of attributes) {
+    if (attr.name.toLowerCase() !== STRUCTURED_SOURCE_ATTRIBUTE) continue;
+    parts.push(raw.slice(cursor, attr.start).trimEnd());
+    cursor = attr.end;
+  }
+  return cursor === 0 ? raw : parts.join('') + raw.slice(cursor);
+}
+
 function effectiveAttributes(definition: SupportedDefinition, attrs: AttributeToken[]): Record<string, string | boolean> {
   const result: Record<string, string | boolean> = {};
   for (const name of definition.attrs) {
@@ -1993,23 +2033,7 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
   // inside JSX tags were consumed by scanTags and are excluded here.
   const tagSpans = tokens.filter((token) => !token.html || token.rawHtml).map((token) => ({ start: token.start, end: token.end }));
   const taken = spanIndex([...opaque, ...tagSpans]);
-  // Any range starting before `end` that reaches past `start` overlaps [start, end).
-  const sortedTaken = [...opaque, ...tagSpans].sort((a, b) => a.start - b.start);
-  const reach: number[] = [];
-  for (const range of sortedTaken) reach.push(Math.max(reach[reach.length - 1] ?? -1, range.end));
-  const overlaps = (start: number, end: number) => {
-    let low = 0;
-    let high = sortedTaken.length - 1;
-    let found = -1;
-    while (low <= high) {
-      const middle = (low + high) >> 1;
-      if ((sortedTaken[middle]?.start ?? 0) < end) {
-        found = middle;
-        low = middle + 1;
-      } else high = middle - 1;
-    }
-    return found >= 0 && (reach[found] ?? -1) > start;
-  };
+  const overlaps = overlapIndex([...opaque, ...tagSpans]);
   const modules: SourceRange[] = [];
   let offset = 0;
   for (const lineWithBreak of source.match(/.*(?:\n|$)/g) ?? []) {
@@ -2050,19 +2074,24 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
     value: videoEmbedPlaceholder(range, frameOf(range)) ?? placeholder(range),
   }));
   const coveredByOpaque = spanIndex(opaque);
+  // Images can leave their original paragraph or heading during DOM parsing.
+  // MDX and opaque nodes need their own Markdown serializers after editing.
+  const independentlySerialized = overlapIndex([...opaque, ...tagSpans, ...tokens.filter(({ name }) => /^img$/i.test(name))]);
   let structuredBodyEnd = -1;
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (!token || coveredByOpaque(token.start, token.start + 1)) continue;
     if (token.html) {
       if (token.closing || (token.name !== 'a' && !Object.hasOwn(STRUCTURED_BLOCK_NODES, token.name))) continue;
-      const close = tokens[pairs.get(i) ?? -1];
-      if (!close || coveredByOpaque(close.start, close.end)) continue;
       // HTML string attributes have the same no-backslash-escape rule as Frame.
-      const attributes = parseAttributes(token.raw, token.name, false);
+      let attributes = parseAttributes(token.raw, token.name, false);
+      const opener = removeStructuredSourceAttribute(token.raw, attributes);
+      const close = tokens[pairs.get(i) ?? -1];
+      if (!close || coveredByOpaque(close.start, close.end) || independentlySerialized(token.end, close.start)) continue;
+      if (opener !== token.raw) attributes = parseAttributes(opener, token.name, false);
       if (!attributes.some(({ name }) => token.name !== 'a' || name.toLowerCase() !== 'href')) continue;
       if (attributes.some(({ name, value }) => !safeStructuredAttribute(name, value))) continue;
-      const metadata: StructuredHtmlSource = { open: token.raw, close: close.raw };
+      const metadata: StructuredHtmlSource = { open: opener, close: close.raw };
       if (token.name === 'ol') {
         const start = attributes.find(({ name }) => name.toLowerCase() === 'start');
         if (start) metadata.listStartRange = [start.start, start.end];
@@ -2082,7 +2111,7 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
       replacements.push({
         start: token.start,
         end: token.end,
-        value: `${token.raw.slice(0, -1)} ${STRUCTURED_SOURCE_ATTRIBUTE}="${encodeMdxSource(JSON.stringify(metadata))}">`,
+        value: `${opener.slice(0, -1)} ${STRUCTURED_SOURCE_ATTRIBUTE}="${structuredSourcePrefix}${encodeMdxSource(JSON.stringify(metadata))}">`,
       });
       continue;
     }

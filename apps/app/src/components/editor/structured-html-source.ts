@@ -19,6 +19,8 @@ export const STRUCTURED_BLOCK_NODES: Readonly<Record<string, string>> = {
   pre: 'codeBlock',
 };
 
+const structuredNodeNames = new Set(Object.values(STRUCTURED_BLOCK_NODES));
+
 export interface StructuredHtmlSource {
   open: string;
   close: string;
@@ -34,6 +36,7 @@ const htmlDocument = () => document.implementation.createHTMLDocument('');
 const cachedBodies = new WeakMap<object, string | null>();
 
 export function safeStructuredAttribute(name: string, value: string | boolean): boolean {
+  if (name.toLowerCase() === STRUCTURED_SOURCE_ATTRIBUTE) return false;
   if (/^(?:on.*|srcdoc|formaction|srcset|dangerouslysetinnerhtml|xmlns(?::.*)?|xlink:href)$/i.test(name)) return false;
   return !/^(?:href|src|poster)$/i.test(name) || (typeof value === 'string' && allowedURL(value, ['http', 'https', 'mailto', 'tel']));
 }
@@ -75,7 +78,7 @@ function replaceAttribute(open: string, name: string, range: [number, number] | 
 // The rich editor's DOM omits source metadata. Within an HTML block we still need
 // the authored attributes of any structured child when the parent body was edited.
 function withStructuredChildren(serializer: DOMSerializer, doc: Document): DOMSerializer {
-  const restore = (spec: DOMOutputSpec, source?: StructuredHtmlSource): DOMOutputSpec => {
+  const restore = (spec: DOMOutputSpec, source?: StructuredHtmlSource, mergeRenderedAttributes = true): DOMOutputSpec => {
     if (!source || !Array.isArray(spec)) return spec;
     const parsed = doc.createElement('div');
     parsed.innerHTML = source.open + source.close;
@@ -84,19 +87,19 @@ function withStructuredChildren(serializer: DOMSerializer, doc: Document): DOMSe
     const [tag, first, ...rest] = spec;
     const hasAttributes = first !== null && typeof first === 'object' && !Array.isArray(first) && !('nodeType' in first);
     const attrs = Object.fromEntries(Array.from(element.attributes, ({ name, value }) => [name, value]));
-    if (hasAttributes) {
+    if (hasAttributes && mergeRenderedAttributes) {
       for (const [key, value] of Object.entries(first)) if (value != null) attrs[key] = String(value);
     }
     return [tag, attrs, ...(hasAttributes ? rest : [first, ...rest])];
   };
   const nodes = { ...serializer.nodes };
-  for (const name of new Set(Object.values(STRUCTURED_BLOCK_NODES))) {
+  for (const name of structuredNodeNames) {
     const draw = nodes[name];
     if (draw) nodes[name] = (node) => restore(draw(node), node.attrs.sourceStructuredHtml);
   }
   const marks = { ...serializer.marks };
   const link = marks.link;
-  if (link) marks.link = (mark, inline) => restore(link(mark, inline), mark.attrs.sourceStructuredHtml);
+  if (link) marks.link = (mark, inline) => restore(link(mark, inline), structuredLinkSource(mark), false);
   return new DOMSerializer(nodes, marks);
 }
 
@@ -105,6 +108,12 @@ export function writeStructuredHtmlBlock(state: MarkdownSerializerState, node: P
   // A Markdown list already emits its own item marker. The HTML list writer
   // restores attributed items through withStructuredChildren instead.
   if (!source || node.type.name === 'listItem' || STRUCTURED_BLOCK_NODES[sourceTag(source)] !== node.type.name) return false;
+  let nativeChildren = true;
+  node.descendants((child) => {
+    if (!child.isText && child.type.name !== 'hardBreak' && !structuredNodeNames.has(child.type.name)) nativeChildren = false;
+    return nativeChildren;
+  });
+  if (!nativeChildren) return false;
   const doc = htmlDocument();
   const serializer = DOMSerializer.fromSchema(node.type.schema);
   const canonical = canonicalBody(node, doc, serializer);
