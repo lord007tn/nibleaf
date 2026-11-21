@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { convertGitBookMarkdown } from './gitbook-markdown';
+import { normalizeImportFidelity } from './import-fidelity';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
@@ -11,6 +12,16 @@ const videos = [
   ['https://media.example.test/tour.mp4', 'https://media.example.test/tour.mp4'],
 ] as const;
 const gitbook = (text: string) => convertGitBookMarkdown(text, { resolveFile: () => undefined });
+
+it.each(['%s\t', '%s ', ' %s', '<%s\t>'])("doesn't promote a padded standalone URL: %j", (shape) => {
+  const source = shape.replace('%s', 'https://youtu.be/abcdefghijk');
+  expect(normalizeImportFidelity(source)).toBe(source);
+});
+
+it('promotes standalone URLs with structural quote and CRLF bytes', () => {
+  const source = '> https://youtu.be/abcdefghijk\r\n\r\nAfter.';
+  expect(normalizeImportFidelity(source)).toContain('> <iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk"');
+});
 
 describe('synthetic import fidelity', () => {
   for (const [url, canonical] of videos) {

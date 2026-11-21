@@ -24,15 +24,9 @@ const attr = (value: string): string => value.replaceAll('&', '&amp;').replaceAl
 /** Container bytes shared by standalone media links and Liquid embeds. */
 export const importContainerPrefix = (line: string): string => /^[\t >]*/.exec(line)?.[0] ?? '';
 
-// Keep rejected bytes inert even when the shared URL parser would trim them.
-export const isImportMediaUrl = (url: string): boolean => {
-  if (!isAllowedMediaUrl(url)) return false;
-  for (let index = 0; index < url.length; index++) {
-    const code = url.charCodeAt(index);
-    if (code <= 32 || code === 127) return false;
-  }
-  return true;
-};
+// Import is strict about padding as well as controls. Interactive input may
+// keep the shared parser's policy of accepting surrounding ordinary spaces.
+export const isImportMediaUrl = (url: string): boolean => url === url.trim() && isAllowedMediaUrl(url);
 
 /** A source-declared embed. HTTPS frames outside the player allowlist remain link cards. */
 export const importEmbed = (url: string, title: string, onUnmapped: (url: string) => void, kind?: 'video' | 'iframe'): string => {
@@ -160,14 +154,17 @@ export const normalizeImportFidelity = (source: string, onUnmapped: (url: string
   const lines = output.join('').split('\n');
   let title = '';
   for (let index = 0; index < lines.length; index++) {
-    const raw = lines[index] ?? '';
+    const stored = lines[index] ?? '';
+    const raw = index < lines.length - 1 && stored.endsWith('\r') ? stored.slice(0, -1) : stored;
     const prefix = importContainerPrefix(raw);
     const line = raw.slice(prefix.length).trimEnd();
     if (line === '<p>---</p>' || line === '\\---' || line === '\\-\\-\\-') lines[index] = `${prefix}\n${prefix}---\n${prefix}`;
     // A standalone provider link is how Markdown sources declare a video block.
     const link = /^\[([^\]\n]+)\]\((https:\/\/[^\s)]+)\)$/.exec(line);
-    const bare = line.startsWith('https://') || (line.startsWith('<https://') && line.endsWith('>')) ? line.replace(/^<|>$/g, '') : '';
-    const url = link?.[2] ?? bare;
+    // Remove only Markdown syntax from the destination. A bare URL retains
+    // its authored whitespace, and a generated </code> cannot be part of it.
+    const standalone = /^(?:<(https:\/\/[^<>]+)>|(https:\/\/[^<>]+))$/.exec(prefix.includes('>') ? raw.slice(prefix.length) : raw);
+    const url = link?.[2] ?? standalone?.[1] ?? standalone?.[2];
     if (url && isImportMediaUrl(url) && (parseVideoUrl(url) || /\.(?:mp4|webm|ogg)(?:[?#]|$)/i.test(url))) {
       const label = link?.[1]?.includes('\uE000') ? '' : link?.[1];
       lines[index] = prefix + importEmbed(url, decodeImportEntities(label || title || 'Video'), onUnmapped);
