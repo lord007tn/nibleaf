@@ -17,6 +17,7 @@ import {
   type SerializedPage,
   type SourceLineEndings,
 } from './line-endings';
+import { readsBackTight, writesTight } from './tight-lists';
 
 /*
  * Saving a page writes its Markdown into one output buffer (#612). The serializer
@@ -263,6 +264,15 @@ function trimInline(scanDelims: ScanDelims, text: string, delim: string, from: n
   return res;
 }
 
+/** A list item marker's bullet or ordered delimiter (`-`, `*`, `.`, `)`). */
+const markerOf = (marker: string): string => /^ *(?:([-*+])|\d+([.)]))/.exec(marker)?.slice(1).find(Boolean) ?? '';
+
+/** A list item's marker with the other bullet (`*` for `-`, `-` for the others) or delimiter (`.` and `)`). */
+const alternateMarker = (marker: string): string =>
+  marker.replace(/^( *)(?:([-*+])|(\d+)([.)]))/, (_match, indent: string, bullet?: string, number?: string, delimiter?: string) =>
+    bullet ? `${indent}${bullet === '-' ? '*' : '-'}` : `${indent}${number}${delimiter === '.' ? ')' : '.'}`,
+  );
+
 type NodeWriters = Record<string, (state: MarkdownSerializerState, node: PMNode, parent: PMNode, index: number) => void>;
 type MarkWriters = Record<string, { open: unknown; close: unknown; expelEnclosingWhitespace?: boolean }>;
 type SerializerOptions = { tightLists?: boolean; hardBreakNodeName?: string; strict?: boolean };
@@ -273,6 +283,8 @@ interface StateInternals {
   delim: string;
   closed: PMNode | null;
   atBlockStart: boolean;
+  inTightList: boolean;
+  readonly options: SerializerOptions;
   flushClose(size?: number): void;
   atBlank(): boolean;
 }
@@ -296,6 +308,8 @@ class LinearMarkdownSerializerState extends SerializerState {
     [];
   private readonly offsets = new WeakMap<object, number[]>();
   private closedOwner: SerializedLineOwner | null = null;
+  /** The marker each list was written with: its bullet, or its ordered delimiter (`renderList`). */
+  private readonly listMarkers = new WeakMap<PMNode, string>();
   private readonly inlines: InlineState[] = [];
   private readonly scanDelims: ScanDelims;
 
@@ -342,6 +356,49 @@ class LinearMarkdownSerializerState extends SerializerState {
           }
         : this.output.owner;
     }
+  }
+
+  /**
+   * prosemirror-markdown's renderList, with two changes:
+   * - a list marked tight is written loose when one of its items cannot be written on
+   *   consecutive lines (`writesTight`), and a list marked loose is written tight when it
+   *   reads back tight anyway (`readsBackTight`);
+   * - a list written after a list of its type, with nothing written between them (empty
+   *   paragraphs write nothing), takes the other marker when it would have the same one:
+   *   `*` for `-`, `)` for `.`. With the same marker, the blank lines between them did
+   *   not end the first, and the two read back as one loose list. (tiptap-markdown
+   *   alternates the `.` and `)` of ordered lists that are next to each other itself.)
+   */
+  override renderList(node: PMNode, delim: string, firstDelim: (index: number) => string): void {
+    const before = this.listWrittenBefore(node);
+    // After a list of its type, past empty paragraphs too: they read back as next to each other.
+    if (this.closed && (this.closed.type === node.type || before)) this.flushClose(3);
+    else if (this.inTightList) this.flushClose(1);
+    const alternate = !!before && markerOf(firstDelim(0)) === this.listMarkers.get(before);
+    const marked = Boolean(node.attrs.tight === undefined ? this.options.tightLists : node.attrs.tight);
+    const isTight = marked ? writesTight(node) : readsBackTight(node);
+    const previousTight = this.inTightList;
+    this.inTightList = isTight;
+    node.forEach((child, _offset, index) => {
+      if (index && isTight) this.flushClose(1);
+      const written = firstDelim(index);
+      const marker = alternate ? alternateMarker(written) : written;
+      if (index === 0) this.listMarkers.set(node, markerOf(marker));
+      this.wrapBlock(delim, marker, node, () => this.render(child, node, index));
+    });
+    this.inTightList = previousTight;
+  }
+
+  /** The list of `list`'s type written just before it, past empty paragraphs, if any. */
+  private listWrittenBefore(list: PMNode): PMNode | null {
+    const entry = this.path[this.path.length - 1];
+    if (entry?.node !== list) return null;
+    for (let index = entry.index - 1; index >= 0; index--) {
+      const sibling = entry.parent.child(index);
+      if (sibling.type === list.type) return sibling;
+      if (sibling.type.name !== 'paragraph' || sibling.content.size > 0) return null;
+    }
+    return null;
   }
 
   override atBlank(): boolean {

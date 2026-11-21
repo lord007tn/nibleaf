@@ -60,6 +60,11 @@ function harness(env = {}, differing = 14) {
       crPages: [],
       CORPUS_START: 0,
       CODE_TOGGLE_KEEPS_LINK_PAGES: Array.from({ length: 14 }, (_, index) => index),
+      // #604: no list item lead or loosened list pages in the synthetic fixture.
+      LIST_ITEM_LEAD_PAGES: [],
+      leadSources: new Set(),
+      LOOSENED_LIST_PAGES: {},
+      saveRecord: () => '',
       digest: (page) => `main-${page}`,
       SERIALIZER_CORPUS_SEED: 1,
       SERIALIZER_CORPUS_SIZE: count,

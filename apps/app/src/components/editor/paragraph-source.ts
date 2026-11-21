@@ -2,6 +2,7 @@ import Paragraph from '@tiptap/extension-paragraph';
 import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
+import { isItemLead, leadListItems } from './list-item-leads';
 import type { MarkdownOutput } from './markdown-output';
 import { markTightLists } from './tight-lists';
 
@@ -158,8 +159,8 @@ const LINE_CONTAINERS: ReadonlySet<string> = new Set(['listItem', 'blockquote'])
  * after it. Markdown has no empty paragraph there: written (`- `, a blank line, then the
  * rest), it read back as an empty item and a paragraph outside the list, so a page with
  * one never saved to a fixed point. It is left out, and the paragraph after it opens the
- * item. Before any other block (a nested list, a quote) it is written as before: left
- * out, that block's own marker would share the item's line (`- - Beta`).
+ * item. Before a quote, heading or nested list in a list item it is that item's lead,
+ * also left out, so that block opens the item's line (`- - Beta`, list-item-leads.ts).
  */
 const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: number | undefined): boolean =>
   index === 0 &&
@@ -175,7 +176,8 @@ const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: n
  * they do (see the note at the top), otherwise the serializer's single line.
  */
 function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: PMNode | Fragment, index?: number): void {
-  if (emptyLead(node, parent, index)) return;
+  // A list item's lead before a quote, heading or list (list-item-leads.ts) writes nothing.
+  if (emptyLead(node, parent, index) || isItemLead(node, parent, index)) return;
   const source = String(node.attrs.sourceParagraph ?? '');
   const joined = source ? joinedSourceLines(source) : null;
   if (joined === null) {
@@ -225,6 +227,7 @@ export const SourceParagraph = Paragraph.extend({
         parse: {
           setup(markdownit) {
             if (paragraphParsers.has(markdownit)) return;
+            leadListItems(markdownit);
             markdownit.core.ruler.after('block', 'nibleaf_paragraph_source', (state) => annotateParagraphs(state));
             // Reads markdown-it's tight lists before a hidden paragraph is shown (tight-lists.ts).
             markdownit.core.ruler.before('nibleaf_paragraph_source', 'nibleaf_tight_lists', (state) => markTightLists(state));

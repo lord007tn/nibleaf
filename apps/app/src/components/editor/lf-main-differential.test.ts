@@ -6,6 +6,7 @@ import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor, type JSONContent } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
+import { listItemLeadSources } from './__fixtures__/list-item-leads';
 import {
   applyCorpusEdits,
   CODE_TOGGLE_KEEPS_LINK_PAGES,
@@ -99,6 +100,33 @@ function seededPages(): string[] {
 }
 
 const corpus = serializerCorpus();
+/** #604: the corpus pages with a list item led by a quote, heading or list, checked against
+ *  main in list-item-leads-main.test.ts. */
+const leadSources = listItemLeadSources();
+/**
+ * #604: the seeded pages with a list read as tight whose item holds a block the
+ * serializer writes after a blank line (a lazy line read as a second paragraph, an HTML
+ * block, a fence after text). Main wrote such a list tight with that blank line inside
+ * the item, so it read back loose and the next save rewrote it; it is now written loose
+ * (tight-lists.ts `writesTight`). For each, main's save unedited (`p`) and edited (`e`):
+ * `F` when it was a fixed point, then the characters a reload of it lost. Each must be a
+ * fixed point where main's was, and lose no more.
+ */
+const LOOSENED_LIST_PAGES: Readonly<Record<number, string>> = {
+  29: 'p:-0 e:-0',
+  49: 'p:-32 e:-32',
+  66: 'p:-4 e:-4',
+  153: 'p:-0 e:-0',
+  313: 'p:-1 e:-1',
+  347: 'p:-0 e:-0',
+  354: 'p:-0 e:-0',
+  362: 'p:-0 e:-0',
+  426: 'p:-0 e:-0',
+  496: 'p:-1 e:-1',
+  506: 'p:-0 e:-0',
+  557: 'p:-0 e:-0',
+  571: 'p:-0 e:-0',
+};
 /** Where the serializer corpus's pages start in `pages`. */
 const CORPUS_START = SEEDED_PAGES;
 const pages: Array<{ page: string; edits: readonly CorpusEdit[] }> = [
@@ -124,6 +152,9 @@ describe('pages with LF only save as on main (#702)', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => editor.destroy());
 
+  const reader = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
+  afterAll(() => reader.destroy());
+
   /** The page's nodes, its save, its save after `edits` (run through `edit`, the
    *  editor itself by default), and the Markdown the editor emits for that. */
   const digest = (
@@ -140,11 +171,31 @@ describe('pages with LF only save as on main (#702)', () => {
     return createHash('sha256').update(JSON.stringify({ nodes, saved, edited, emitted })).digest('hex').slice(0, 16);
   };
 
+  /** Whether the page's save, unedited (`p`) and after `edits` (`e`), is a fixed point (`F`),
+   *  and how many characters a reload of it loses (LOOSENED_LIST_PAGES). */
+  const saveRecord = (page: string, edits: readonly CorpusEdit[]): string =>
+    (['p', 'e'] as const)
+      .map((kind) => {
+        editor.commands.setContent(page, { emitUpdate: false });
+        if (kind === 'e') applyCorpusEdits(editor as unknown as DifferentialEditor, edits);
+        const text = editor.state.doc.textContent;
+        const saved = getMarkdown(editor);
+        reader.commands.setContent(saved, { emitUpdate: false });
+        const counts = new Map<string, number>();
+        for (const character of text) counts.set(character, (counts.get(character) ?? 0) + 1);
+        for (const character of reader.state.doc.textContent) counts.set(character, (counts.get(character) ?? 0) - 1);
+        const lost = [...counts.values()].reduce((sum, count) => sum + Math.max(0, count), 0);
+        const again = getMarkdown(reader);
+        reader.commands.setContent(again, { emitUpdate: false });
+        return `${kind}:${again === saved && getMarkdown(reader) === saved ? 'F' : '-'}${lost}`;
+      })
+      .join(' ');
+
   it('the pages are LF only', () => {
     expect(pages.filter(({ page }) => page.includes('\r'))).toEqual([]);
   });
 
-  it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages, but #660’s`, () => {
+  it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages, but #660’s and #604’s`, () => {
     const digests = pages.map(({ page, edits }) => digest(page, edits));
     if (process.env.WRITE_LF_MAIN) {
       writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
@@ -153,15 +204,32 @@ describe('pages with LF only save as on main (#702)', () => {
     const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[] };
     expect(main.pages).toBe(pages.length);
     const changed = digests.flatMap((value, index) => (value === main.digests[index] ? [] : [index]));
+    // #604: the corpus pages with a list item lead, checked in list-item-leads-main.test.ts.
+    const leadPages = changed.filter((index) => leadSources.has(pages[index]?.page ?? ''));
+    expect(leadPages).toEqual(pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])));
+    // #604: the seeded pages whose tight list is now written loose (LOOSENED_LIST_PAGES).
+    const loosened = changed.filter((index) => index in LOOSENED_LIST_PAGES);
+    expect(loosened).toEqual(Object.keys(LOOSENED_LIST_PAGES).map(Number));
+    const worse = loosened.flatMap((index) => {
+      const { page, edits } = pages[index] as (typeof pages)[number];
+      const now = saveRecord(page, edits).split(' ');
+      return (LOOSENED_LIST_PAGES[index] as string).split(' ').some((before, at) => {
+        const after = now[at] as string;
+        return (before[2] === 'F' && after[2] !== 'F') || Number(after.slice(3)) > Number(before.slice(3));
+      })
+        ? [{ index, now: now.join(' '), main: LOOSENED_LIST_PAGES[index] }]
+        : [];
+    });
+    expect(worse, JSON.stringify(worse)).toEqual([]);
     // #660: the corpus pages whose code toggle now keeps a link; with main's toggle each gives main's digest.
-    const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.map((index) => CORPUS_START + index);
-    const differences = changed.filter((index) => !keptLink.includes(index)).map((index) => pages[index]?.page);
+    const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.map((index) => CORPUS_START + index).filter((index) => !leadPages.includes(index));
+    const differences = changed.filter((index) => !keptLink.includes(index) && !leadPages.includes(index) && !loosened.includes(index));
     console.info(
-      `[lf-main-differential] ${pages.length} pages, ${differences.length} differences, ${changed.length - differences.length} kept links by #660`,
+      `[lf-main-differential] ${pages.length} pages, ${differences.length} differences, ${keptLink.length} kept links by #660, ${leadPages.length} list item lead and ${loosened.length} loosened list pages by #604`,
     );
-    expect(differences.slice(0, 3)).toEqual([]);
-    expect(changed).toEqual(keptLink);
-    expect(changed).toHaveLength(14);
+    expect(differences.slice(0, 3).map((index) => pages[index]?.page)).toEqual([]);
+    expect(changed.filter((index) => !leadPages.includes(index) && !loosened.includes(index))).toEqual(keptLink);
+    expect(keptLink.length + CODE_TOGGLE_KEEPS_LINK_PAGES.filter((index) => leadPages.includes(CORPUS_START + index)).length).toBe(14);
     const withMainToggle = keptLink.map((index) => {
       const { page, edits } = pages[index] as (typeof pages)[number];
       return digest(page, edits, (target) => withMainCodeToggle(target as unknown as MarkEditor));

@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Editor } from '@tiptap/core';
 import { expect, it } from 'vitest';
+import { LIST_ITEM_LEAD_PAGES } from './__fixtures__/list-item-leads';
 import {
   applyCorpusEdits,
   CODE_TOGGLE_KEEPS_LINK_PAGES,
@@ -27,6 +28,10 @@ import {
  * over part of a link keeps the link where main dropped it. The pages that do so
  * (CODE_TOGGLE_KEEPS_LINK_PAGES, exactly 14) are counted, and each one, replayed
  * with main's code toggle, must still save exactly as main did.
+ *
+ * #604: a list item led by a quote, heading or list keeps that block. The corpus pages
+ * that hold one (LIST_ITEM_LEAD_PAGES, 256, three of them also #660's) are named and
+ * checked against main's record in list-item-leads-main.test.ts, so they are left out here.
  */
 
 interface SerializerBaseline {
@@ -87,7 +92,7 @@ it.runIf(baselineDir)(
 // gets its own timeout, well past what a loaded CI runner needs (#658). Saving
 // stays linear; serializer-work.test.ts and the *.growth.test.ts rows pin that.
 it.skipIf(baselineDir)(
-  `saves every corpus page byte for byte as main does (${SERIALIZER_CORPUS_SIZE} pages), but #660's`,
+  `saves every corpus page byte for byte as main does (${SERIALIZER_CORPUS_SIZE} pages), but #660's and #604's`,
   async () => {
     const baseline = JSON.parse(readFileSync(FIXTURE, 'utf8')) as SerializerBaseline;
     expect({ seed: baseline.seed, sources: baseline.sources, count: baseline.outputs.length }).toEqual({
@@ -97,10 +102,11 @@ it.skipIf(baselineDir)(
     });
     const module = await import('./tiptap-editor');
     const outputs = await saveAll(module);
-    const differing = outputs.flatMap((output, index) => (output === baseline.outputs[index] ? [] : [index]));
+    // #604: the named list item lead pages are checked against main in list-item-leads-main.test.ts.
+    const differing = outputs.flatMap((output, index) => (output === baseline.outputs[index] || LIST_ITEM_LEAD_PAGES.includes(index) ? [] : [index]));
     // #660: only the pages whose code toggle now keeps a link differ, and with main's toggle each saves as main did.
-    expect(differing, `${differing.length} pages save differently from main`).toEqual(CODE_TOGGLE_KEEPS_LINK_PAGES);
-    expect(differing).toHaveLength(14);
+    const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.filter((index) => !LIST_ITEM_LEAD_PAGES.includes(index));
+    expect(differing, `${differing.length} pages save differently from main`).toEqual(keptLink);
     const withMainToggle = await saveAll(module, differing, (editor) => withMainCodeToggle(editor as unknown as MarkEditor));
     expect(withMainToggle).toEqual(differing.map((index) => baseline.outputs[index]));
   },

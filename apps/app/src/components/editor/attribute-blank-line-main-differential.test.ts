@@ -7,6 +7,7 @@ import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import jsxOpeners from './__fixtures__/jsx-openers-main.json';
+import { listItemLeadSources } from './__fixtures__/list-item-leads';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { normalizeLineEndings, readLineEndings, restoreLineEndings } from './line-endings';
@@ -126,6 +127,9 @@ const corpora = [
   ...[HARD_WRAPPED_EN, HARD_WRAPPED_AR, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART].map((page) => ({ page, key: 'title' })),
 ];
 const pages = [...seeded, ...corpora];
+/** #604: the corpus pages with a list item led by a quote, heading or list, checked against
+ *  main in list-item-leads-main.test.ts. */
+const leadSources = listItemLeadSources();
 
 describe('the differential pages', () => {
   it(`cover every registry component on at least ${MIN_PAGES} pages, and none holds a blank line inside a value`, () => {
@@ -191,7 +195,7 @@ describe('pages without a blank line inside an attribute value read as on main',
     expect(crPages.every((index) => index < seeded.length)).toBe(true);
   });
 
-  it(`gives main’s nodes, save and edited save for all ${pages.length} pages`, () => {
+  it(`gives main’s nodes, save and edited save for all ${pages.length} pages, but #604’s`, () => {
     const results = pages.map(({ page, key }) => result(page, key));
     const digests = results.map(digest);
     if (process.env.WRITE_BLANK_LINE_MAIN) {
@@ -203,8 +207,13 @@ describe('pages without a blank line inside an attribute value read as on main',
     expect(main.pages).toBe(pages.length);
     expect(main.crAsLf.length).toBe(CR_PAGES);
     const crAsLf = new Map(crPages.map((index, at) => [index, main.crAsLf[at]]));
+    const leadPages: number[] = [];
     const differences = digests.flatMap((value, index) => {
       const { page } = pages[index] as { page: string };
+      if (value !== main.digests[index] && leadSources.has(page)) {
+        leadPages.push(index);
+        return [];
+      }
       const lfDigest = crAsLf.get(index);
       if (lfDigest === undefined) return value === main.digests[index] ? [] : [page];
       const { nodes, saved, edited } = results[index] as ReturnType<typeof result>;
@@ -220,5 +229,6 @@ describe('pages without a blank line inside an attribute value read as on main',
       `[blank-line-differential] ${pages.length} pages (${crPages.length} with a CR, read as LF on main), ${differences.length} differences`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
+    expect(leadPages).toEqual(pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])));
   }, 600_000);
 });

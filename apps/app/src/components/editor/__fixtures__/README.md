@@ -65,3 +65,12 @@ text. The draft compares clean, so nothing is written and no conflict is raised,
 keeps the other client's copy. The test names the seeds that end this way (95756 and 246217, the
 same on main) and allows that outcome for them only. The fixture was made against main's
 `editor.tsx`, `editor-draft.ts` and `editor-save-queue.ts` with `WRITE_AUTOSAVE_ADOPTION_MAIN=1`.
+
+`list-item-leads-main.json` and `list-item-lead-matrix-main.json` hold main's (3d23d292)
+results for the list item lead tests (#604, #865). The first holds, for each serializer
+corpus page, a hash of its nodes and saves (unedited and after the corpus edits) and how
+those saves did on the fixed point, reload, text and source checks, with the characters a
+reload lost; `list-item-leads-main.test.ts` checks the named pages in `list-item-leads.ts`
+against it. The second holds, for each page and edit of `list-item-lead-matrix.test.ts`, the
+save's hash and checks and the edit's target, caret, undo depth and draft change. Both are
+recorded by `list-item-leads-main.generate.mjs`, which runs the two tests against main's editor.

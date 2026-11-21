@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { DOCUMENTATION_COMPONENTS } from '@nibleaf/shared/documentation-components';
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { listItemLeadSources } from './__fixtures__/list-item-leads';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { replaceOpeningAttribute, SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
@@ -265,6 +266,9 @@ function seededPages(): SeededPage[] {
 }
 
 const seeded = seededPages();
+/** #604: the corpus pages with a list item led by a quote, heading or list, checked against
+ *  main in list-item-leads-main.test.ts. */
+const leadSources = listItemLeadSources();
 const pages: Array<{ page: string; key: string; seeded?: SeededPage }> = [
   ...seeded.map((seededPage) => ({ page: seededPage.page, key: seededPage.key, seeded: seededPage })),
   ...serializerCorpus()
@@ -322,7 +326,7 @@ describe('pages without a Frame read as on main', () => {
     return { digest: digestOf({ nodes, saved, edited }), nodes, saved, edited, blankLineValue, target: edit };
   };
 
-  it(`gives main’s nodes, save and edited save for all ${pages.length} pages, but #721’s and #714’s`, () => {
+  it(`gives main’s nodes, save and edited save for all ${pages.length} pages, but #721’s, #714’s and #604’s`, () => {
     const results = pages.map(({ page, key }) => digest(page, key));
     const digests = results.map((result) => result.digest);
     if (process.env.WRITE_NON_FRAME_MAIN) writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
@@ -419,9 +423,14 @@ describe('pages without a Frame read as on main', () => {
     // with a `{…}` (`{/"/}`) that main's scan misread as a runaway string now loads as an
     // opaque inline expression node, kept byte for byte. Exactly these, by index.
     const nodesOnly: number[] = [];
+    const leadPages: number[] = [];
     const changed = results.flatMap((result, index) => {
       if (result.digest === main.digests[index]) return [];
       const page = pages[index]?.page ?? '';
+      if (leadSources.has(page)) {
+        leadPages.push(index);
+        return [];
+      }
       const record = lossyOnMain.get(index);
       if (record && result.saved === record.saved && result.edited === record.edited) nodesOnly.push(index);
       const seeded = pages[index]?.seeded;
@@ -472,6 +481,7 @@ describe('pages without a Frame read as on main', () => {
     expect(plain.length).toBe(44);
     expect(bodyNormalized.length).toBe(8);
     expect(nodesOnly).toEqual([132, 943, 972, 1132]);
+    expect(leadPages).toEqual(pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])));
   }, 600_000);
 });
 
