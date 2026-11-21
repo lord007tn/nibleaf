@@ -1,0 +1,78 @@
+{
+  "baseline": "f485d6217aae0f2ab7d8c300e1edb37b2459dbcb",
+  "head": "e143276909c01395839423fe164ad0ecda1573b2",
+  "fixture": "production editor canvas; mocked router and page lookup hooks",
+  "outsideNetworkAttempts": 0,
+  "results": [
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "step": "selected",
+      "shot": "selected-after-en-1440.png",
+      "names": [
+        "index.ts",
+        "util.ts"
+      ],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "step": "cut",
+      "shot": "cut-after-en-1440.png",
+      "names": [
+        "util.ts"
+      ],
+      "markdown": "<FileTree>\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "after",
+      "locale": "en",
+      "width": 1440,
+      "step": "pasted",
+      "shot": "pasted-after-en-1440.png",
+      "names": [
+        "index.ts",
+        "util.ts"
+      ],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "step": "selected",
+      "shot": "selected-after-ar-390.png",
+      "names": [
+        "index.ts",
+        "util.ts"
+      ],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "step": "cut",
+      "shot": "cut-after-ar-390.png",
+      "names": [
+        "util.ts"
+      ],
+      "markdown": "<FileTree>\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "after",
+      "locale": "ar",
+      "width": 390,
+      "step": "pasted",
+      "shot": "pasted-after-ar-390.png",
+      "names": [
+        "index.ts",
+        "util.ts"
+      ],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    }
+  ]
+}

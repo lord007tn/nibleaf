@@ -450,3 +450,170 @@ describe('#670: saved Markdown is unchanged', () => {
     expect(getMarkdown(await make(saved))).toBe(saved);
   });
 });
+
+/** A browser cut or paste event, through the production clipboard plugins; `values` is the clipboard. */
+const clipboardEvent = async (editor: Editor, type: 'copy' | 'cut' | 'paste', values: Record<string, string>) => {
+  await act(async () => {
+    const event = new Event(type, { bubbles: true, cancelable: true });
+    Object.defineProperty(event, 'clipboardData', {
+      value: {
+        clearData: () => undefined,
+        getData: (format: string) => values[format] ?? '',
+        setData: (format: string, value: string) => {
+          values[format] = value;
+        },
+      },
+    });
+    editor.view.dom.dispatchEvent(event);
+  });
+  return values;
+};
+const selectNode = async (editor: Editor, pos: number) => {
+  await act(async () => {
+    editor.view.dispatch(editor.state.tr.setSelection(NodeSelection.create(editor.state.doc, pos)));
+  });
+};
+const placeCaret = async (editor: Editor, pos: number) => {
+  await act(async () => {
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, pos)));
+  });
+};
+const historyClosed = (editor: Editor) => editor.view.dispatch(closeHistory(editor.state.tr));
+
+const TWO_FILES = '<FileTree>\n\n<File name="index.ts" />\n\n<File name="util.ts" />\n\n</FileTree>';
+const THREE_FILES = '<FileTree>\n\n<File name="a.ts" />\n\n<File name="b.ts" />\n\n<File name="c.ts" />\n\n</FileTree>';
+const WITH_FOLDER =
+  '<FileTree>\n\n<Folder name="src">\n\n<File name="a.ts" />\n\n<File name="b.ts" />\n\n</Folder>\n\n<File name="c.ts" />\n\n</FileTree>';
+
+describe('#870: cutting a whole row and pasting it back restores the File tree', () => {
+  it.each([
+    ['mdxFile', 0, TWO_FILES],
+    ['mdxFile', 1, TWO_FILES],
+    ['mdxFile', 0, THREE_FILES],
+    ['mdxFile', 1, THREE_FILES],
+    ['mdxFile', 2, THREE_FILES],
+    ['mdxFolder', 0, WITH_FOLDER],
+    ['mdxFile', 0, WITH_FOLDER],
+    ['mdxFile', 1, WITH_FOLDER],
+    ['mdxFile', 2, WITH_FOLDER],
+  ] as const)('%s %i of %j', async (type, index, source) => {
+    const editor = await make(source);
+    const row = nodesOf(editor, type)[index];
+    if (!row) throw new Error(`No ${type} ${index}`);
+    await selectNode(editor, row.pos);
+    const values = await clipboardEvent(editor, 'cut', {});
+    const afterCut = getMarkdown(editor);
+    expect(afterCut).not.toBe(source);
+    historyClosed(editor);
+    await clipboardEvent(editor, 'paste', values);
+    expect(getMarkdown(editor)).toBe(source);
+    for (const { text, name } of fileNames(editor)) expect(text).toBe(name);
+    // One undo takes the paste back, a second the cut.
+    await act(async () => {
+      editor.commands.undo();
+    });
+    expect(getMarkdown(editor)).toBe(afterCut);
+    await act(async () => {
+      editor.commands.undo();
+    });
+    expect(getMarkdown(editor)).toBe(source);
+  });
+
+  it('cutting the only File takes its tree too, and pasting it back restores both', async () => {
+    const source = '<FileTree>\n\n<File name="index.ts" />\n\n</FileTree>';
+    const editor = await make(source);
+    const only = nodesOf(editor, 'mdxFile')[0];
+    if (!only) throw new Error('No file');
+    await selectNode(editor, only.pos);
+    const values = await clipboardEvent(editor, 'cut', {});
+    await clipboardEvent(editor, 'paste', values);
+    expect(fileNames(editor)).toEqual([{ text: 'index.ts', name: 'index.ts' }]);
+    expect(getMarkdown(editor)).toBe(source);
+  });
+
+  it('undo right after a cut puts the row back', async () => {
+    const editor = await make(TWO_FILES);
+    const first = nodesOf(editor, 'mdxFile')[0];
+    if (!first) throw new Error('No file');
+    await selectNode(editor, first.pos);
+    await clipboardEvent(editor, 'cut', {});
+    expect(fileNames(editor).map(({ name }) => name)).toEqual(['util.ts']);
+    await act(async () => {
+      editor.commands.undo();
+    });
+    expect(getMarkdown(editor)).toBe(TWO_FILES);
+  });
+
+  it('the caret ends after the pasted row, in its name', async () => {
+    const editor = await make(TWO_FILES);
+    const first = nodesOf(editor, 'mdxFile')[0];
+    if (!first) throw new Error('No file');
+    await selectNode(editor, first.pos);
+    await clipboardEvent(editor, 'paste', await clipboardEvent(editor, 'cut', {}));
+    const { $from } = editor.state.selection;
+    expect(editor.state.selection.empty).toBe(true);
+    expect($from.parent.textContent).toBe('index.ts');
+    expect($from.parentOffset).toBe('index.ts'.length);
+  });
+
+  it('a row pasted at the end of a name goes after that File', async () => {
+    const editor = await make(TWO_FILES);
+    const [first, second] = nodesOf(editor, 'mdxFile');
+    if (!first || !second) throw new Error('No files');
+    await selectNode(editor, first.pos);
+    const values = await clipboardEvent(editor, 'cut', {});
+    await placeCaret(editor, (nodesOf(editor, 'mdxFile')[0]?.pos ?? 0) + 1 + 'util.ts'.length);
+    await clipboardEvent(editor, 'paste', values);
+    expect(getMarkdown(editor)).toBe('<FileTree>\n\n<File name="util.ts" />\n\n<File name="index.ts" />\n\n</FileTree>');
+  });
+
+  it('a copied row pasted at the start of a name goes before that File, with no empty File', async () => {
+    const editor = await make(TWO_FILES);
+    const [first, second] = nodesOf(editor, 'mdxFile');
+    if (!first || !second) throw new Error('No files');
+    await selectNode(editor, first.pos);
+    const values = await clipboardEvent(editor, 'copy', {});
+    await placeCaret(editor, second.pos + 1);
+    await clipboardEvent(editor, 'paste', values);
+    expect(getMarkdown(editor)).toBe('<FileTree>\n\n<File name="index.ts" />\n\n<File name="index.ts" />\n\n<File name="util.ts" />\n\n</FileTree>');
+  });
+
+  it('a row pasted inside a name splits it as Enter does, the second half a File with its own tag', async () => {
+    const editor = await make('<FileTree>\n\n<File name="index.ts" />\n\n<File name="util.ts" icon="ts" />\n\n</FileTree>');
+    const [first, second] = nodesOf(editor, 'mdxFile');
+    if (!first || !second) throw new Error('No files');
+    await selectNode(editor, first.pos);
+    const values = await clipboardEvent(editor, 'copy', {});
+    await placeCaret(editor, second.pos + 1 + 'util'.length);
+    await clipboardEvent(editor, 'paste', values);
+    expect(fileNames(editor)).toEqual([
+      { text: 'index.ts', name: 'index.ts' },
+      { text: 'util', name: 'util' },
+      { text: 'index.ts', name: 'index.ts' },
+      { text: '.ts', name: '.ts' },
+    ]);
+    expect(getMarkdown(editor)).toBe(
+      '<FileTree>\n\n<File name="index.ts" />\n\n<File name="util" icon="ts" />\n\n<File name="index.ts" />\n\n<File name=".ts" />\n\n</FileTree>',
+    );
+  });
+
+  it('a row pasted into an empty File takes its place', async () => {
+    const editor = await make('<FileTree>\n\n<File name="index.ts" />\n\n<File name="" />\n\n</FileTree>');
+    const [first, empty] = nodesOf(editor, 'mdxFile');
+    if (!first || !empty) throw new Error('No files');
+    await selectNode(editor, first.pos);
+    const values = await clipboardEvent(editor, 'copy', {});
+    await placeCaret(editor, empty.pos + 1);
+    await clipboardEvent(editor, 'paste', values);
+    expect(getMarkdown(editor)).toBe('<FileTree>\n\n<File name="index.ts" />\n\n<File name="index.ts" />\n\n</FileTree>');
+  });
+
+  it('text pasted into a name is still text in that name', async () => {
+    const editor = await make(TWO_FILES);
+    const second = nodesOf(editor, 'mdxFile')[1];
+    if (!second) throw new Error('No file');
+    await placeCaret(editor, second.pos + 1 + 'util'.length);
+    await clipboardEvent(editor, 'paste', { 'text/plain': '-core' });
+    expect(fileNames(editor).map(({ name }) => name)).toEqual(['index.ts', 'util-core.ts']);
+  });
+});
