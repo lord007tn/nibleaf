@@ -1,78 +1,128 @@
 {
   "baseline": "f485d6217aae0f2ab7d8c300e1edb37b2459dbcb",
-  "head": "e143276909c01395839423fe164ad0ecda1573b2",
+  "head": "43946ef17632a15cff576818d775e37a66c22008",
   "fixture": "production editor canvas; mocked router and page lookup hooks",
   "outsideNetworkAttempts": 0,
   "results": [
     {
       "phase": "after",
+      "scenario": "rows",
       "locale": "en",
       "width": 1440,
       "step": "selected",
       "shot": "selected-after-en-1440.png",
-      "names": [
-        "index.ts",
-        "util.ts"
-      ],
+      "names": ["index.ts", "util.ts"],
       "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
     },
     {
       "phase": "after",
+      "scenario": "rows",
       "locale": "en",
       "width": 1440,
       "step": "cut",
       "shot": "cut-after-en-1440.png",
-      "names": [
-        "util.ts"
-      ],
+      "names": ["util.ts"],
       "markdown": "<FileTree>\n\n<File name=\"util.ts\" />\n\n</FileTree>"
     },
     {
       "phase": "after",
+      "scenario": "rows",
       "locale": "en",
       "width": 1440,
       "step": "pasted",
       "shot": "pasted-after-en-1440.png",
-      "names": [
-        "index.ts",
-        "util.ts"
-      ],
+      "names": ["index.ts", "util.ts"],
       "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
     },
     {
       "phase": "after",
+      "scenario": "rows",
       "locale": "ar",
       "width": 390,
       "step": "selected",
       "shot": "selected-after-ar-390.png",
-      "names": [
-        "index.ts",
-        "util.ts"
-      ],
+      "names": ["index.ts", "util.ts"],
       "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
     },
     {
       "phase": "after",
+      "scenario": "rows",
       "locale": "ar",
       "width": 390,
       "step": "cut",
       "shot": "cut-after-ar-390.png",
-      "names": [
-        "util.ts"
-      ],
+      "names": ["util.ts"],
       "markdown": "<FileTree>\n\n<File name=\"util.ts\" />\n\n</FileTree>"
     },
     {
       "phase": "after",
+      "scenario": "rows",
       "locale": "ar",
       "width": 390,
       "step": "pasted",
       "shot": "pasted-after-ar-390.png",
-      "names": [
-        "index.ts",
-        "util.ts"
-      ],
+      "names": ["index.ts", "util.ts"],
       "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "after",
+      "scenario": "rule",
+      "locale": "en",
+      "width": 1440,
+      "step": "selected",
+      "shot": "rule-selected-after-en-1440.png",
+      "names": ["index.ts"],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n</FileTree>\n\n---\n\ntail"
+    },
+    {
+      "phase": "after",
+      "scenario": "rule",
+      "locale": "en",
+      "width": 1440,
+      "step": "cut",
+      "shot": "rule-cut-after-en-1440.png",
+      "names": [],
+      "markdown": "---\n\ntail"
+    },
+    {
+      "phase": "after",
+      "scenario": "rule",
+      "locale": "en",
+      "width": 1440,
+      "step": "pasted",
+      "shot": "rule-pasted-after-en-1440.png",
+      "names": ["index.ts"],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n</FileTree>\n\n---\n\ntail"
+    },
+    {
+      "phase": "after",
+      "scenario": "rule",
+      "locale": "ar",
+      "width": 390,
+      "step": "selected",
+      "shot": "rule-selected-after-ar-390.png",
+      "names": ["index.ts"],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n</FileTree>\n\n---\n\ntail"
+    },
+    {
+      "phase": "after",
+      "scenario": "rule",
+      "locale": "ar",
+      "width": 390,
+      "step": "cut",
+      "shot": "rule-cut-after-ar-390.png",
+      "names": [],
+      "markdown": "---\n\ntail"
+    },
+    {
+      "phase": "after",
+      "scenario": "rule",
+      "locale": "ar",
+      "width": 390,
+      "step": "pasted",
+      "shot": "rule-pasted-after-ar-390.png",
+      "names": ["index.ts"],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n</FileTree>\n\n---\n\ntail"
     }
   ]
 }

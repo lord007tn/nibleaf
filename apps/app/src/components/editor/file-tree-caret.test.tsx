@@ -478,7 +478,19 @@ const placeCaret = async (editor: Editor, pos: number) => {
     editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, pos)));
   });
 };
-const historyClosed = (editor: Editor) => editor.view.dispatch(closeHistory(editor.state.tr));
+/** What the editor remembers about the last cut row, if anything. */
+const rememberedCut = (editor: Editor) =>
+  editor.state.plugins.find((plugin) => (plugin as unknown as { key: string }).key.startsWith('mdxCutRow$'))?.getState(editor.state) as unknown;
+const undo = async (editor: Editor) => {
+  await act(async () => {
+    editor.commands.undo();
+  });
+};
+const redo = async (editor: Editor) => {
+  await act(async () => {
+    editor.commands.redo();
+  });
+};
 
 const TWO_FILES = '<FileTree>\n\n<File name="index.ts" />\n\n<File name="util.ts" />\n\n</FileTree>';
 const THREE_FILES = '<FileTree>\n\n<File name="a.ts" />\n\n<File name="b.ts" />\n\n<File name="c.ts" />\n\n</FileTree>';
@@ -504,19 +516,100 @@ describe('#870: cutting a whole row and pasting it back restores the File tree',
     const values = await clipboardEvent(editor, 'cut', {});
     const afterCut = getMarkdown(editor);
     expect(afterCut).not.toBe(source);
-    historyClosed(editor);
+    // Straight after the cut, well within the history's grouping delay: the paste is still its own undo step.
     await clipboardEvent(editor, 'paste', values);
     expect(getMarkdown(editor)).toBe(source);
     for (const { text, name } of fileNames(editor)) expect(text).toBe(name);
-    // One undo takes the paste back, a second the cut.
-    await act(async () => {
-      editor.commands.undo();
-    });
+    // One undo takes the paste back, a second the cut; redo replays them one at a time.
+    await undo(editor);
     expect(getMarkdown(editor)).toBe(afterCut);
-    await act(async () => {
-      editor.commands.undo();
-    });
+    await undo(editor);
     expect(getMarkdown(editor)).toBe(source);
+    await redo(editor);
+    expect(getMarkdown(editor)).toBe(afterCut);
+    await redo(editor);
+    expect(getMarkdown(editor)).toBe(source);
+  });
+
+  it.each([
+    ['a horizontal rule', '---'],
+    ['an image', '![shot](https://example.com/shot.png)'],
+  ])('cutting the only File of a tree before %s and pasting it back restores the tree and keeps that block', async (_, block) => {
+    const source = `<FileTree>\n\n<File name="cut" />\n\n</FileTree>\n\n${block}\n\ntail`;
+    const editor = await make(source);
+    const only = nodesOf(editor, 'mdxFile')[0];
+    if (!only) throw new Error('No file');
+    await selectNode(editor, only.pos);
+    const values = await clipboardEvent(editor, 'cut', {});
+    const afterCut = getMarkdown(editor);
+    expect(afterCut).toBe(`${block}\n\ntail`);
+    await clipboardEvent(editor, 'paste', values);
+    expect(getMarkdown(editor)).toBe(source);
+    await undo(editor);
+    expect(getMarkdown(editor)).toBe(afterCut);
+  });
+
+  it('a quick cut and paste of one of two Files undoes and redoes as two steps', async () => {
+    const source = '<FileTree>\n\n<File name="cut" />\n\n<File name="other" />\n\n</FileTree>\n\nend';
+    const editor = await make(source);
+    const first = nodesOf(editor, 'mdxFile')[0];
+    if (!first) throw new Error('No file');
+    await selectNode(editor, first.pos);
+    await clipboardEvent(editor, 'paste', await clipboardEvent(editor, 'cut', {}));
+    expect(fileNames(editor).map(({ name }) => name)).toEqual(['cut', 'other']);
+    await undo(editor);
+    expect(fileNames(editor).map(({ name }) => name)).toEqual(['other']);
+    await redo(editor);
+    expect(getMarkdown(editor)).toBe(source);
+  });
+
+  it.each([
+    ['caret in its only, empty File', '<File />', 0],
+    ['whole name of its only File selected', '<File name="other" />', 'other'.length],
+  ] as const)('a copied row pasted into another tree with the %s replaces that File, with no Folder added', async (_, row, selected) => {
+    const editor = await make(`<FileTree>\n\n<File name="copy" />\n\n</FileTree>\n\nmiddle\n\n<FileTree>\n\n${row}\n\n</FileTree>`);
+    const [first, target] = nodesOf(editor, 'mdxFile');
+    if (!first || !target) throw new Error('No files');
+    await selectNode(editor, first.pos);
+    const values = await clipboardEvent(editor, 'copy', {});
+    await act(async () => {
+      editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, target.pos + 1, target.pos + 1 + selected)));
+    });
+    await clipboardEvent(editor, 'paste', values);
+    expect(nodesOf(editor, 'mdxFolder')).toHaveLength(0);
+    expect(getMarkdown(editor)).toBe(
+      '<FileTree>\n\n<File name="copy" />\n\n</FileTree>\n\nmiddle\n\n<FileTree>\n\n<File name="copy" />\n\n</FileTree>',
+    );
+    await undo(editor);
+    expect(fileNames(editor)[1]?.name).toBe(selected ? 'other' : '');
+  });
+
+  it('the remembered cut is gone once the editor is destroyed', async () => {
+    const editor = await make(TWO_FILES);
+    const first = nodesOf(editor, 'mdxFile')[0];
+    if (!first) throw new Error('No file');
+    await selectNode(editor, first.pos);
+    await clipboardEvent(editor, 'cut', {});
+    expect(rememberedCut(editor)).toBeTruthy();
+    for (const root of roots.splice(0)) await act(async () => root.unmount());
+    editor.destroy();
+    expect(rememberedCut(editor)).toBeNull();
+  });
+
+  it('the remembered cut is gone once the document is replaced', async () => {
+    const editor = await make(TWO_FILES);
+    const first = nodesOf(editor, 'mdxFile')[0];
+    if (!first) throw new Error('No file');
+    await selectNode(editor, first.pos);
+    const values = await clipboardEvent(editor, 'cut', {});
+    const caret = editor.state.selection.head;
+    await act(async () => {
+      editor.commands.setContent(TWO_FILES, { emitUpdate: false });
+      editor.commands.setTextSelection(caret);
+    });
+    expect(rememberedCut(editor)).toBeNull();
+    await clipboardEvent(editor, 'paste', values);
+    expect(fileNames(editor).map(({ name }) => name)).toEqual(['index.ts', 'index.ts', 'util.ts']);
   });
 
   it('cutting the only File takes its tree too, and pasting it back restores both', async () => {

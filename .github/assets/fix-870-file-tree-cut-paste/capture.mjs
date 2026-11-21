@@ -25,6 +25,12 @@ const baseline = process.env.BASE ?? git('merge-base', 'HEAD', 'origin/main');
 const out = resolve(root, '.github/assets/fix-870-file-tree-cut-paste');
 const origin = 'http://editor-canvas.fixture.test';
 const SOURCE = '<FileTree>\n\n<File name="index.ts" />\n\n<File name="util.ts" />\n\n</FileTree>';
+// A tree's only File before a rule: the cut takes the tree and selects the rule (#906 review).
+const RULE_SOURCE = '<FileTree>\n\n<File name="index.ts" />\n\n</FileTree>\n\n---\n\ntail';
+const SCENARIOS = [
+  { scenario: 'rows', prefix: '', source: SOURCE },
+  { scenario: 'rule', prefix: 'rule-', source: RULE_SOURCE },
+];
 const results = [];
 const devstack = await acquireDevstackLock('editor/870');
 let harness;
@@ -67,7 +73,7 @@ const direction=locale==='ar'?'rtl':'ltr';
 await setLanguage(locale);
 document.documentElement.classList.add('light');
 const editor=new Editor({extensions:buildEditorExtensions({dir:direction})});
-seedMarkdown(editor,${JSON.stringify(SOURCE)});
+seedMarkdown(editor,params.get('scenario')==='rule'?${JSON.stringify(RULE_SOURCE)}:${JSON.stringify(SOURCE)});
 const clipboard=new DataTransfer();
 const send=(type)=>editor.view.dom.dispatchEvent(new ClipboardEvent(type,{clipboardData:clipboard,bubbles:true,cancelable:true}));
 window.fixture={
@@ -120,10 +126,12 @@ createRoot(document.getElementById('root')).render(<DirectionProvider direction=
   await withLocalOnlyBrowser(
     { allowedHosts: ['editor-canvas.fixture.test:80'], launch: { headless: true } },
     async ({ browser, attempted: outside }) => {
-      for (const { width, locale } of [
-        { width: 1440, locale: 'en' },
-        { width: 390, locale: 'ar' },
-      ]) {
+      for (const { width, locale, scenario, prefix, source: expected } of SCENARIOS.flatMap((entry) =>
+        [
+          { width: 1440, locale: 'en' },
+          { width: 390, locale: 'ar' },
+        ].map((canvas) => ({ ...entry, ...canvas })),
+      )) {
         const height = width === 390 ? 844 : 900;
         const context = await browser.newContext({
           viewport: { width, height },
@@ -140,17 +148,17 @@ createRoot(document.getElementById('root')).render(<DirectionProvider direction=
         });
         const page = await context.newPage();
         page.on('pageerror', (error) => console.error(error.message));
-        await page.goto(`${origin}/?${new URLSearchParams({ locale })}`);
+        await page.goto(`${origin}/?${new URLSearchParams({ locale, scenario })}`);
         await page.locator('.ProseMirror').waitFor({ timeout: 60_000 });
         await page.evaluate(() => document.fonts.ready);
         assert.equal(await page.evaluate(() => window.fixture.direction()), locale === 'ar' ? 'rtl' : 'ltr');
         const name = `${PHASE}-${locale}-${width}`;
         const step = async (label) => {
           await page.waitForTimeout(700);
-          const shot = `${label}-${name}.png`;
+          const shot = `${prefix}${label}-${name}.png`;
           await page.screenshot({ path: resolve(out, shot) });
           const state = await page.evaluate(() => ({ names: window.fixture.names(), markdown: window.fixture.markdown() }));
-          results.push({ phase: PHASE, locale, width, step: label, shot, ...state });
+          results.push({ phase: PHASE, scenario, locale, width, step: label, shot, ...state });
           return state;
         };
         await page.evaluate(() => window.fixture.selectFirstFile());
@@ -159,13 +167,10 @@ createRoot(document.getElementById('root')).render(<DirectionProvider direction=
         await step('cut');
         await page.evaluate(() => window.fixture.paste());
         const pasted = await step('pasted');
-        if (PHASE === 'after') {
-          assert.equal(pasted.markdown, SOURCE);
-          assert.deepEqual(pasted.names, ['index.ts', 'util.ts']);
-        }
+        if (PHASE === 'after') assert.equal(pasted.markdown, expected);
         const recording = page.video();
         await context.close();
-        if (recording) await rename(await recording.path(), resolve(out, `flow-${name}.webm`));
+        if (recording) await rename(await recording.path(), resolve(out, `flow-${prefix}${name}.webm`));
       }
       attempted = outside.length;
     },
