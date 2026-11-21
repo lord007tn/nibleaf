@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { constantGrowthLimit, growthMs, growthMsAsync, growthTestsEnabled, linearGrowthLimit } from './growth';
+import { constantGrowthLimit, growthMs, growthMsAsync, growthTestsEnabled, linearGrowthLimit, superlinearGrowthLimit } from './growth';
 
 /** Work proportional to the input's length. */
 const linear = (input: string) => {
@@ -13,6 +13,16 @@ const quadratic = (input: string) => {
   for (let outer = 0; outer < input.length; outer += 1) for (let inner = outer; inner < input.length; inner += 1) sum += input.charCodeAt(inner);
   return sum;
 };
+/** Work proportional to n^1.5: every character against a sqrt(n) window. */
+const superlinear = (input: string) => {
+  const window = Math.ceil(Math.sqrt(input.length));
+  let sum = 0;
+  for (let outer = 0; outer < input.length; outer += 1)
+    for (let inner = 0; inner < window; inner += 1) sum += input.charCodeAt((outer + inner) % input.length);
+  return sum;
+};
+/** Work proportional to n log n: a sort. */
+const sorting = (input: number[]) => [...input].sort((a, b) => a - b).length;
 /** Work that ignores the input's length. */
 const constant = (input: string) => input.charCodeAt(0);
 
@@ -33,6 +43,18 @@ describe.runIf(growthTestsEnabled)('growth bounds', () => {
     expect(constantLarge).toBeLessThanOrEqual(constantGrowthLimit(constantSmall));
     const [linearSmall, linearLarge] = growthMs(linear, 'a'.repeat(50_000), 'a'.repeat(200_000), { minMs: 30 });
     expect(linearLarge).toBeGreaterThan(constantGrowthLimit(linearSmall));
+  });
+
+  // #730: quadrupling n^1.5 work costs exactly 8x, inside linearGrowthLimit's 8x + 20 ms. At an 8x step it costs
+  // 22.6x against linear's 8x (n log n about 9-10x), and superlinearGrowthLimit's 12x + 20 ms tells them apart.
+  it('fail n^1.5 work and pass linear and n log n work at an 8x step', () => {
+    const [linearSmall, linearLarge] = growthMs(linear, 'a'.repeat(50_000), 'a'.repeat(400_000), { factor: 8 });
+    expect(linearLarge).toBeLessThanOrEqual(superlinearGrowthLimit(linearSmall));
+    const numbers = (n: number) => Array.from({ length: n }, (_, index) => (index * 7919) % n);
+    const [sortSmall, sortLarge] = growthMs(sorting, numbers(20_000), numbers(160_000), { factor: 8 });
+    expect(sortLarge).toBeLessThanOrEqual(superlinearGrowthLimit(sortSmall));
+    const [superSmall, superLarge] = growthMs(superlinear, 'a'.repeat(4000), 'a'.repeat(32_000), { factor: 8, minMs: 10 });
+    expect(superLarge).toBeGreaterThan(superlinearGrowthLimit(superSmall));
   });
 
   // The setting the editor's longest rows use (one large call of tens of ms):
@@ -134,6 +156,26 @@ describe.runIf(growthTestsEnabled)('growth calibration', () => {
     expect(calls.large).toBe(4 * 7);
     expect(() => growthMs(work, 'a', 'aaaa', { samples: 4 })).toThrow(/odd integer/);
     expect(() => growthMs(work, 'a', 'aaaa', { largeRuns: 0 })).toThrow(/positive integer/);
+  });
+
+  it('runs an 8x larger input an eighth as often with factor 8, and refuses other factors (#730)', async () => {
+    const calls = { small: 0, large: 0 };
+    const work = (input: string) => {
+      calls[input.length === 1 ? 'small' : 'large'] += 1;
+      return spin(5 * input.length);
+    };
+    const [small, large] = growthMs(work, 'a', 'a'.repeat(8), { samples: 5, largeRuns: 2, factor: 8 });
+    // Two warmups and five samples, two large calls each, and sixteen small calls a sample.
+    expect(calls.large).toBe(2 * 7);
+    expect(calls.small).toBe(16 * 7);
+    // Eight times the work per call reads as about eight times the time.
+    expect(large / small).toBeGreaterThan(6);
+    expect(large / small).toBeLessThan(10);
+    calls.small = 0;
+    calls.large = 0;
+    await growthMsAsync(async (input: string) => work(input), 'a', 'a'.repeat(8), { samples: 5, largeRuns: 2, factor: 8 });
+    expect(calls.large).toBe(2 * 7);
+    expect(() => growthMs(work, 'a', 'aaaa', { factor: 5 as 4 })).toThrow(/factor must be 4 or 8/);
   });
 
   it('gives every call a fresh input when asked, with a counter unique across the measurement', () => {
