@@ -78,6 +78,12 @@ const importFenceBody = (line: string, containers: readonly ImportContainer[]): 
   return line.slice(cursor);
 };
 
+/** Match a continuation prefix against the containers on an opener's line. */
+export const importContainerContinuation = (prefix: string): ((continuation: string) => boolean) => {
+  const { containers } = importFenceLine(expandedColumns(prefix));
+  return (continuation) => importFenceBody(expandedColumns(`${continuation}<`), containers)?.trimStart() === '<';
+};
+
 /** Read each component opener once, including multiline attributes. The cap
  * also bounds malformed quotes/braces; continuation lines are not rescanned. */
 export const readImportComponentTag = (source: string, start: number): { end: number; complete: boolean; selfClosing: boolean } => {
