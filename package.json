@@ -67,6 +67,7 @@
     "test:capture-network:browser": "node tests/integration/lib/capture-network.browser.mjs",
     "test:settings:browser": "node tests/integration/settings-leave-guard/browser.mjs",
     "test:ds:forced-colors": "node tests/integration/design-system/forced-colors.mjs",
+    "test:editor-table-wrapping:browser": "node tests/integration/editor-table-wrapping/browser.mjs",
     "build": "turbo run build",
     "build:server": "turbo run build -F @nibleaf/server...",
     "build:worker": "turbo run build -F @nibleaf/worker...",
