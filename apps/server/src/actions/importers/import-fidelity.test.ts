@@ -13,9 +13,27 @@ const videos = [
 ] as const;
 const gitbook = (text: string) => convertGitBookMarkdown(text, { resolveFile: () => undefined });
 
-it.each(['%s\t', '%s ', ' %s', '<%s\t>'])("doesn't promote a padded standalone URL: %j", (shape) => {
+it.each(['%s\t', '%s ', '<%s\t>', '< %s>'])("doesn't promote a padded standalone URL: %j", (shape) => {
   const source = shape.replace('%s', 'https://youtu.be/abcdefghijk');
   expect(normalizeImportFidelity(source)).toBe(source);
+});
+
+// Leading spaces, tabs and quote markers are Markdown container syntax, not URL padding.
+const indentedYoutube = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+const youtubeFrame = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"';
+it.each([
+  ['list continuation', `- item\n\n  ${indentedYoutube}\n`, `\n  ${youtubeFrame}`],
+  ['one space', ` ${indentedYoutube}\n`, youtubeFrame],
+  ['three spaces', `   ${indentedYoutube}`, youtubeFrame],
+  ['three spaces after prose', `Intro.\n\n   ${indentedYoutube}`, `\n   ${youtubeFrame}`],
+  ['quote with spaces', `>   ${indentedYoutube}`, `>   ${youtubeFrame}`],
+  ['indented angle link', `Intro.\n\n  <${indentedYoutube}>`, `\n  ${youtubeFrame}`],
+  ['angle link with a trailing space', `<${indentedYoutube}> `, youtubeFrame],
+  ['indented .mp4', '  https://example.com/v.mp4\n', 'src="https://example.com/v.mp4"'],
+])('promotes an indented standalone URL: %s', (_name, source, expected) => {
+  const output = normalizeImportFidelity(source);
+  expect(output).toContain(expected);
+  if (source.includes('.mp4')) expect(output).toMatch(/^<video\b/);
 });
 
 it('promotes standalone URLs with structural quote and CRLF bytes', () => {

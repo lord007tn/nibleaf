@@ -161,9 +161,11 @@ export const normalizeImportFidelity = (source: string, onUnmapped: (url: string
     if (line === '<p>---</p>' || line === '\\---' || line === '\\-\\-\\-') lines[index] = `${prefix}\n${prefix}---\n${prefix}`;
     // A standalone provider link is how Markdown sources declare a video block.
     const link = /^\[([^\]\n]+)\]\((https:\/\/[^\s)]+)\)$/.exec(line);
-    // Remove only Markdown syntax from the destination. A bare URL retains
-    // its authored whitespace, and a generated </code> cannot be part of it.
-    const standalone = /^(?:<(https:\/\/[^<>]+)>|(https:\/\/[^<>]+))$/.exec(prefix.includes('>') ? raw.slice(prefix.length) : raw);
+    // Remove only Markdown syntax from the destination. Leading indentation and
+    // quote markers are container syntax, so they never count as padding. A
+    // bare URL retains its trailing whitespace, and a generated </code> cannot
+    // be part of it. Space after a closing `>` is outside the address.
+    const standalone = /^(?:<(https:\/\/[^<>]+)>[ \t]*|(https:\/\/[^<>]+))$/.exec(raw.slice(prefix.length));
     const url = link?.[2] ?? standalone?.[1] ?? standalone?.[2];
     if (url && isImportMediaUrl(url) && (parseVideoUrl(url) || /\.(?:mp4|webm|ogg)(?:[?#]|$)/i.test(url))) {
       const label = link?.[1]?.includes('\uE000') ? '' : link?.[1];
