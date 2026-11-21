@@ -32,6 +32,31 @@ describe('buildMintlifyRouteMap', () => {
 });
 
 describe('rewriteMintlifyInternalLinks', () => {
+  it.each([
+    '[r]: </topic/next> "Quoted"',
+    "[r]: /topic/next 'Single quotes'",
+    '[r]: /topic/next (Parenthesized)',
+    '> [r]: </topic/next>\n>   "Multiline title"',
+    '- [r]: /topic/next "In a list"',
+    '<Note>\n[r]: /topic/next "In a component"\n</Note>',
+  ])('preserves definition spelling outside the final destination: %s', (definition) => {
+    const source = `[Go][R]\n\n${definition}`;
+    const routes = new Map([['topic/next', '/topic-2/next']]);
+    expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source.replace('/topic/next', '/topic-2/next'));
+  });
+
+  it.each([
+    '[r]: /topic/next "Title" extra text',
+    '~~~\n[r]: /topic/next\n~~~',
+    '    [r]: /topic/next',
+    '<Note>\n    ~~~\n    [r]: /topic/next\n    ~~~\n</Note>',
+    '`[r]: /topic/next`',
+  ])('preserves definition look-alikes outside rendered links: %s', (definition) => {
+    const source = `[Go][R]\n\n${definition}`;
+    const routes = new Map([['topic/next', '/topic-2/next']]);
+    expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source);
+  });
+
   it('does not discover or rewrite page links inside code examples', () => {
     const literal = ['~~~mdx', '[Hidden](./hidden)', '<Card href="./quickstart" />', '~~~', '`[Inline](./hidden)`'].join('\n');
     const input = `${literal}\n[Start](./quickstart)`;
