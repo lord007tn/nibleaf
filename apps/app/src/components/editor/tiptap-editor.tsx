@@ -76,7 +76,7 @@ import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions
 import { InternalLinkClicks } from './extensions/internal-link-clicks';
 import { LinkableCode } from './extensions/linkable-code';
 import { mdxNodes } from './extensions/mdx';
-import { decodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
+import { decodeMdxSource, indentedComponentCodeText, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { MarkdownBlockquote } from './extensions/quote';
 import { SectionTarget } from './extensions/section-target';
 import { SelectionShortcuts } from './extensions/selection-shortcuts';
@@ -186,6 +186,11 @@ const CodeBlock = CodeBlockLowlight.extend({
         parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-tail')),
         rendered: false,
       },
+      sourceIndentedCode: {
+        default: undefined,
+        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-indented-code')) || undefined,
+        rendered: false,
+      },
     };
   },
   renderHTML({ node, HTMLAttributes }) {
@@ -198,11 +203,24 @@ const CodeBlock = CodeBlockLowlight.extend({
         serialize(state, node, parent, index) {
           const sourceOpen = String(node.attrs.sourceFenceOpen ?? '');
           const language = String(node.attrs.language ?? '');
+          const indented = node.attrs.sourceIndentedCode;
+          const fenceState = state as unknown as FenceSerializeState;
+          if (
+            typeof indented === 'string' &&
+            !language &&
+            !fenceState.delim &&
+            parent.attrs?.sourceOpen &&
+            indentedComponentCodeText(indented) === node.textContent
+          ) {
+            state.write(indented);
+            state.closeBlock(node);
+            return;
+          }
           const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
           let open = `\`\`\`${language}`;
           if (sourceOpen) open = language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language);
           // `output`, `delim` and `closed`: see LinearMarkdownSerializerState (markdown-output.ts).
-          writeFence(state as unknown as FenceSerializeState, node, parent, index, open);
+          writeFence(fenceState, node, parent, index, open);
         },
         parse: {
           setup(markdownit) {

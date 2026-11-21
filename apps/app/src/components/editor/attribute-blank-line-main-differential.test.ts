@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { DOCUMENTATION_COMPONENTS } from '@nibleaf/shared/documentation-components';
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { restoreMainComponentLayout } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import jsxOpeners from './__fixtures__/jsx-openers-main.json';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
@@ -148,8 +149,10 @@ describe('pages without a blank line inside an attribute value read as on main',
 
   /** The page's nodes with their attributes, its save, and its save after the first
    *  node with `key` has it set to `Edited`. */
+  let componentLayouts = 0;
   const result = (page: string, key: string): { nodes: string[]; saved: string; edited: string | null } => {
     editor.commands.setContent(page, { emitUpdate: false });
+    if (restoreMainComponentLayout(editor)) componentLayouts++;
     const nodes: string[] = [];
     let target: { pos: number; attrs: Record<string, unknown> } | undefined;
     editor.state.doc.descendants((node, pos) => {
@@ -217,7 +220,7 @@ describe('pages without a blank line inside an attribute value read as on main',
       return kept ? [] : [page];
     });
     console.info(
-      `[blank-line-differential] ${pages.length} pages (${crPages.length} with a CR, read as LF on main), ${differences.length} differences`,
+      `[blank-line-differential] ${pages.length} pages (${crPages.length} with a CR, read as LF on main), ${differences.length} differences, ${componentLayouts} replayed with main's #625 layout`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
   }, 600_000);

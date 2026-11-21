@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor, type JSONContent } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { restoreMainComponentLayout } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import {
   applyCorpusEdits,
@@ -123,6 +124,7 @@ const mainFileShape = (node: JSONContent): JSONContent => {
 describe('pages with LF only save as on main (#702)', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => editor.destroy());
+  let componentLayouts = 0;
 
   /** The page's nodes, its save, its save after `edits` (run through `edit`, the
    *  editor itself by default), and the Markdown the editor emits for that. */
@@ -132,6 +134,7 @@ describe('pages with LF only save as on main (#702)', () => {
     edit: (target: Editor) => DifferentialEditor = (target) => target as unknown as DifferentialEditor,
   ): string => {
     editor.commands.setContent(page, { emitUpdate: false });
+    if (restoreMainComponentLayout(editor)) componentLayouts++;
     const nodes = JSON.stringify(mainFileShape(editor.state.doc.toJSON()));
     const saved = getMarkdown(editor);
     applyCorpusEdits(edit(editor), edits);
@@ -157,7 +160,7 @@ describe('pages with LF only save as on main (#702)', () => {
     const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.map((index) => CORPUS_START + index);
     const differences = changed.filter((index) => !keptLink.includes(index)).map((index) => pages[index]?.page);
     console.info(
-      `[lf-main-differential] ${pages.length} pages, ${differences.length} differences, ${changed.length - differences.length} kept links by #660`,
+      `[lf-main-differential] ${pages.length} pages, ${differences.length} differences, ${changed.length - differences.length} kept links by #660, ${componentLayouts} replayed with main's #625 layout`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
     expect(changed).toEqual(keptLink);

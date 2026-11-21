@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Editor } from '@tiptap/core';
 import { expect, it } from 'vitest';
+import { restoreMainComponentLayout } from './__fixtures__/component-source-layout';
 import {
   applyCorpusEdits,
   CODE_TOGGLE_KEEPS_LINK_PAGES,
@@ -45,6 +46,7 @@ const sources = createHash('sha256')
   .digest('hex');
 
 type EditorModule = Pick<typeof import('./tiptap-editor'), 'buildEditorExtensions' | 'getMarkdown'>;
+const replayedLayouts = new Set<number>();
 
 /** Each corpus page loaded, edited and saved, hashed: all of them, or the `indexes`
  *  given, with the edits run through `edit` (the editor itself by default). */
@@ -59,6 +61,7 @@ const saveAll = async (
       const { source, edits } = cases[index] as (typeof cases)[number];
       editor.commands.setContent(source, { emitUpdate: false });
       applyCorpusEdits(edit(editor), edits);
+      if (restoreMainComponentLayout(editor)) replayedLayouts.add(index);
       return hash(module.getMarkdown(editor));
     });
   } finally {
@@ -97,6 +100,7 @@ it.skipIf(baselineDir)(
     });
     const module = await import('./tiptap-editor');
     const outputs = await saveAll(module);
+    console.info(`[serializer-differential] ${replayedLayouts.size} pages replayed with main's #625 layout`);
     const differing = outputs.flatMap((output, index) => (output === baseline.outputs[index] ? [] : [index]));
     // #660: only the pages whose code toggle now keeps a link differ, and with main's toggle each saves as main did.
     expect(differing, `${differing.length} pages save differently from main`).toEqual(CODE_TOGGLE_KEEPS_LINK_PAGES);

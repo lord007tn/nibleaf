@@ -76,9 +76,9 @@ describe('angle-bracket autolinks next to component tags (#861)', () => {
     }
   });
 
-  it('keeps the existing blank-line layout for real adjacent component tags', () => {
+  it('keeps authored adjacent component tags adjacent (#625)', () => {
     const page = '<Note>\n<Card title="Tour">\n\nBody.\n\n</Card>\n</Note>';
-    expectRoundTrip(page, '<Note>\n\n<Card title="Tour">\n\nBody.\n\n</Card>\n\n</Note>');
+    expectRoundTrip(page);
     expect(nodeTypes(page)).toContain('mdxCard');
   });
 
