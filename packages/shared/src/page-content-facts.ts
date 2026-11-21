@@ -142,18 +142,18 @@ const htmlNonLinkRanges = (tree: Root, content: string): { start: number; end: n
 };
 
 /**
- * Whether an offset lies inside any of the ranges, answered in O(log n) per
- * offset: the ranges are sorted once by start, with the largest end seen so
+ * Whether an offset or a complete half-open span lies inside one range,
+ * answered in O(log n): sort once by start, with the largest end seen so
  * far, so a page with many contexts and many links or embeds stays linear.
  * Same answer as checking every range (an unclosed context can overlap later ones).
  */
-export const offsetInRanges = (ranges: { start: number; end: number }[]): ((offset: number) => boolean) => {
+export const offsetInRanges = (ranges: { start: number; end: number }[]): ((offset: number, end?: number) => boolean) => {
   if (ranges.length === 0) return () => false;
   const sorted = [...ranges].sort((a, b) => a.start - b.start);
   const starts = sorted.map((range) => range.start);
   const maxEnds: number[] = [];
   for (const range of sorted) maxEnds.push(Math.max(range.end, maxEnds.at(-1) ?? range.end));
-  return (offset) => {
+  return (offset, end = offset + 1) => {
     // The last range starting at or before the offset.
     let low = 0;
     let high = starts.length - 1;
@@ -165,7 +165,7 @@ export const offsetInRanges = (ranges: { start: number; end: number }[]): ((offs
         low = middle + 1;
       } else high = middle - 1;
     }
-    return last >= 0 && (maxEnds[last] as number) > offset;
+    return last >= 0 && (maxEnds[last] as number) >= end;
   };
 };
 
@@ -309,10 +309,11 @@ export const collectPageContentFacts = (content: string): PageContentFacts => {
     };
     collectCode(markdownParser.parse(content) as MarkdownNode);
   }
+  const containsCode = offsetInRanges(codeRanges);
   const inCode = (node: MarkdownNode): boolean => {
     const start = node.position?.start.offset;
     const end = node.position?.end.offset;
-    return start !== undefined && end !== undefined && codeRanges.some((range) => start >= range.start && end <= range.end);
+    return start !== undefined && end !== undefined && containsCode(start, end);
   };
 
   // CommonMark: the first definition of a label wins.
