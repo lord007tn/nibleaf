@@ -84,11 +84,15 @@ export const markdownReferences = (source: string): ImportReference[] => {
   return references;
 };
 
+// micromark's inline resolution can be quadratic in paragraph length. Bound the
+// entire parse, since a reference and its definition can be anywhere on the page.
+const MAX_DEFINITION_PARSE_LENGTH = 4096;
+
 /** Read valid destination spans from the parser while keeping source spelling,
  * including escapes. Only the first definition of an actual link qualifies.
  * A definition shared with an image keeps the image's destination. */
 export const markdownLinkDefinitions = (source: string): ImportReference[] => {
-  if (!source.includes(']:')) return [];
+  if (source.length > MAX_DEFINITION_PARSE_LENGTH || !source.includes(']:')) return [];
   const collect = (mdx: boolean): ImportReference[] => {
     const destinations = new Map<string, ImportReference>();
     const spans: Extension = {

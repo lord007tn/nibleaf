@@ -57,6 +57,25 @@ describe('rewriteMintlifyInternalLinks', () => {
     expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source);
   });
 
+  it('retains inline and HTML rewrites above the reference-definition parse limit', () => {
+    const links = '[Inline](/topic/next) <Card href="/topic/next" /> [Reference][r]';
+    const definition = '\n\n[r]: /topic/next "Title"\n\n';
+    const routes = new Map([['topic/next', '/topic-2/next']]);
+    const rewrittenLinks = links.replaceAll('/topic/next', '/topic-2/next');
+    const withinLimit = 'a'.repeat(4096 - links.length - definition.length);
+    expect(rewriteMintlifyInternalLinks(links + definition + withinLimit, 'intro', routes)).toBe(
+      rewrittenLinks + definition.replace('/topic/next', '/topic-2/next') + withinLimit,
+    );
+    const overLimit = `${withinLimit}a`;
+    expect(rewriteMintlifyInternalLinks(links + definition + overLimit, 'intro', routes)).toBe(rewrittenLinks + definition + overLimit);
+  });
+
+  it('keeps footnotes, empty destinations and definitions shared with images unchanged', () => {
+    const source = '[^note] [Empty][empty] [Page][shared] ![Image][shared]\n\n[^note]: /topic/next\n[empty]: <>\n[shared]: /topic/next';
+    const routes = new Map([['topic/next', '/topic-2/next']]);
+    expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source);
+  });
+
   it('does not discover or rewrite page links inside code examples', () => {
     const literal = ['~~~mdx', '[Hidden](./hidden)', '<Card href="./quickstart" />', '~~~', '`[Inline](./hidden)`'].join('\n');
     const input = `${literal}\n[Start](./quickstart)`;
