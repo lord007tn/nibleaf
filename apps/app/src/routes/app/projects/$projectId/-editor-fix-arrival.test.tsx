@@ -112,7 +112,12 @@ vi.mock('@/components/editor/ai-assist', () => ({ AiAssist: () => null }));
 vi.mock('@/components/editor/branch-switcher', () => ({ BranchSwitcher: () => null }));
 vi.mock('@/components/editor/comments-panel', () => ({ CommentsPanel: () => null }));
 vi.mock('@/components/editor/language-settings-dialog', () => ({ LanguageSettingsDialog: () => null }));
-vi.mock('@/components/editor/markdown-source-editor', () => ({ MarkdownSourceEditor: () => null }));
+// The page's Markdown source, as a plain textarea, so a Fix can land on one of its lines.
+vi.mock('@/components/editor/markdown-source-editor', () => ({
+  MarkdownSourceEditor: ({ value, label }: { value: string; label: string }) => (
+    <textarea aria-label={label} data-testid="markdown-source" readOnly value={value} />
+  ),
+}));
 vi.mock('@/components/editor/page-settings-dialog', () => ({
   PageSettingsDialog: (props: { initialField?: string; page: { id: string } }) => {
     mocks.settings = props;
@@ -689,6 +694,29 @@ describe('P1-ED-002: a publish check’s Fix lands on the problem', () => {
     expect(status()).toContain('editor.fix.explain.emptyPage');
     await advance(20_000);
     expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('markdown-parse-limit names the line and what went over, and opens the page’s Markdown at that line', async () => {
+    const content = `Intro.\n\n${'<span>\n'.repeat(70)}`;
+    await open(content, { fix: 'markdown-parse-limit' });
+    expect(status()).toContain('publish.checks.markdownLimit');
+    expect(status()).toContain('publish.checks.markdownLimitNestingTags {"line":"67","count":"70","limit":"64"}');
+    expect(status()).not.toContain('publish.checks.markdownLimitHint');
+    const source = container.querySelector<HTMLTextAreaElement>('[data-testid="markdown-source"]');
+    expect(document.activeElement).toBe(source);
+    const lineStart = content.split('\n').slice(0, 66).join('\n').length + 1;
+    expect([source?.selectionStart, source?.selectionEnd]).toEqual([lineStart, lineStart + '<span>'.length]);
+    expect(droppedFix()?.replace).toBe(true);
+    // Back in the visual editor, the bar takes the writer to the line again.
+    expect(button('editor.editSource')).toBeDefined();
+    await advance(20_000);
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it('markdown-parse-limit says so when the page is back within the budget', async () => {
+    await open('Within the budget.', { fix: 'markdown-parse-limit' });
+    expect(status()).toContain('editor.fix.notFound');
+    expect(container.querySelector('[data-testid="markdown-source"]')).toBeNull();
   });
 
   it('unreadable-slug opens the page’s address field in Page settings', async () => {

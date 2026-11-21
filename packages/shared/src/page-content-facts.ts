@@ -20,7 +20,7 @@ import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { documentationComponentContractEntries, documentationReaderTag } from './documentation-component-contract';
 import { matchTags } from './markup-scan';
-import { type MarkdownParseLimit, markdownParseLimit } from './page-limits';
+import { type MarkdownParseOverflow, markdownParseBudget } from './page-limits';
 import { READER_EMBED_TAG } from './reader-embeds';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { isAllowedMediaUrl, isSiteMediaPath, videoEmbedFrom, videoPageUrl } from './video-embeds';
@@ -45,8 +45,9 @@ type MarkdownNode = {
 
 /** What one page renders that the checks look at. */
 export interface PageContentFacts {
-  /** The reader shows this page as plain text once a parse limit is exceeded. */
-  parseLimit?: MarkdownParseLimit;
+  /** The first parse limit the page exceeds. The reader shows the blocks over it as
+   *  plain text (the whole page past the size cap), and the checks skip them too. */
+  parseLimit?: MarkdownParseOverflow;
   /** Destinations of links that render, in document order. */
   links: string[];
   /** Sources of images that render without alt text. */
@@ -291,7 +292,7 @@ const htmlImagesWithoutAlt = (html: string): string[] =>
   });
 
 /** What one page renders that the checks look at, read as the reader reads it (not cached). */
-export const collectPageContentFacts = (content: string): PageContentFacts => {
+export const collectPageContentFacts = (source: string): PageContentFacts => {
   const facts: PageContentFacts = {
     links: [],
     imagesWithoutAlt: [],
@@ -302,11 +303,11 @@ export const collectPageContentFacts = (content: string): PageContentFacts => {
     unclosedEmbeds: [],
     hiddenPosters: [],
   };
-  const limit = markdownParseLimit(content);
-  if (limit) {
-    facts.parseLimit = limit;
-    return facts;
-  }
+  const budget = markdownParseBudget(source);
+  if (budget.overflow) facts.parseLimit = budget.overflow;
+  if (budget.whole) return facts;
+  // Blocks over budget are plain-text fences here, as they are for the reader.
+  const { content } = budget;
 
   let tree: MarkdownNode;
   let isMdx = true;

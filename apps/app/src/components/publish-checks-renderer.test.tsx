@@ -1,4 +1,6 @@
+import { markdownParseBudget } from '@nibleaf/shared/page-limits';
 import { pageContentFacts } from '@nibleaf/shared/publish-checks';
+import { ORDINARY_PAGES } from '@nibleaf/shared/testing/markdown-parse-budget-cases';
 import { parseHTML } from 'linkedom';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { expect, it } from 'vitest';
@@ -6,28 +8,50 @@ import { collectPublishChecks, collectPublishIssues, page, snapshot } from '../.
 import { Markdown, rendererModulesFor } from './markdown';
 import RichMarkdown from './markdown-rich';
 
-it('renders over-budget pages without selecting Markdown feature modules', () => {
-  const content = ['<em>Literal markup</em>', 'x'.repeat(16_385), '```rust\nfn main() {}\n```'].join('\n\n');
+it('renders a page over the size cap as its plain source, without selecting Markdown feature modules', () => {
+  const content = ['<em>Literal markup</em>', 'Ordinary text. '.repeat(36_000), '```rust\nfn main() {}\n```'].join('\n\n');
   expect(rendererModulesFor(content)).toEqual([]);
   const { document } = parseHTML(renderToStaticMarkup(<Markdown content={content} />));
   expect(document.querySelector('pre')?.textContent).toBe(content);
+  expect(document.querySelector('em')).toBeNull();
   expect(document.querySelector('[data-hydration-module]')).toBeNull();
 });
 
-it('publishes over-budget Markdown as plain text and warns about the specific limit', () => {
-  const content = `[Guide](/missing)\n\n<em>Literal markup</em>\n\n${'x'.repeat(16_385)}`;
+it('shows only the block over budget as plain text, renders the rest, and warns about that line', () => {
+  const block = `<em>Inside</em> [Hidden](/hidden)\n${'*a* '.repeat(600)}`;
+  const content = `[Guide](/missing)\n\n<em>Rendered</em>\n\n${block}\n\n## After\n\n[After](/after)`;
   const { document } = parseHTML(renderToStaticMarkup(<RichMarkdown content={content} />));
-  expect(document.querySelector('pre')).not.toBeNull();
-  expect(document.querySelector('pre')?.textContent).toBe(content);
-  expect(document.querySelectorAll('a[href]')).toHaveLength(0);
-  expect(document.querySelector('em')).toBeNull();
+  const plain = document.querySelectorAll('[data-markdown-plain]');
+  expect(plain).toHaveLength(1);
+  expect(plain[0]?.textContent).toBe(block);
+  expect(plain[0]?.getAttribute('dir')).toBe('auto');
+  expect([...document.querySelectorAll('a[href]:not(.heading-anchor)')].map((link) => link.getAttribute('href'))).toEqual(['/missing', '/after']);
+  expect([...document.querySelectorAll('em')].map((element) => element.textContent)).toEqual(['Rendered']);
+  expect(document.querySelector('h2')?.textContent).toBe('After');
+  // Never drawn as code: no code panel, copy button or language badge.
+  expect(document.querySelector('[data-theme-component="code"]')).toBeNull();
 
   const site = snapshot([page({ path: 'start', content })]);
-  expect(pageContentFacts(content).links).toEqual([]);
+  expect(pageContentFacts(content).links).toEqual(['/missing', '/after']);
   expect(collectPublishChecks(site)).toEqual(
-    expect.arrayContaining([expect.objectContaining({ code: 'markdown-parse-limit', severity: 'warning', detail: 'lineCharacters' })]),
+    expect.arrayContaining([expect.objectContaining({ code: 'markdown-parse-limit', severity: 'warning', detail: 'syntaxMarkers:6:1200' })]),
   );
-  expect(collectPublishIssues(site).filter((issue) => issue.type === 'broken-link')).toEqual([]);
+  expect(
+    collectPublishIssues(site)
+      .filter((issue) => issue.type === 'broken-link')
+      .map((issue) => issue.detail),
+  ).toEqual([
+    // The link inside the plain block (/hidden) doesn't render, so it isn't checked.
+    'Link to "/missing" does not match any page.',
+    'Link to "/after" does not match any page.',
+  ]);
+});
+
+it.each(ORDINARY_PAGES)('renders %s richly, from the same source main renders', (_name, content) => {
+  expect(markdownParseBudget(content).content).toBe(content);
+  const { document } = parseHTML(renderToStaticMarkup(<RichMarkdown content={content} />));
+  expect(document.querySelector('[data-markdown-plain]')).toBeNull();
+  expect(document.querySelector('.typeset > pre:only-child')).toBeNull();
 });
 
 it.each([

@@ -28,24 +28,51 @@ const check = (overrides: Partial<PublishCheck> & Pick<PublishCheck, 'code'>): P
 });
 
 describe('site structure checks in the publish dialog', () => {
-  it('names each exceeded Markdown parse limit and keeps the publish warning advisory', () => {
+  it('names the line and what went over each Markdown parse limit, and keeps the publish warning advisory', () => {
     const container = document.createElement('div');
     container.innerHTML = renderToStaticMarkup(
       <PublishChecks
-        checks={['pageBytes', 'lineCharacters', 'syntaxMarkers', 'nesting'].map((detail) =>
-          check({ code: 'markdown-parse-limit', pageId: detail, detail }),
-        )}
+        checks={[
+          'pageBytes:0:600000',
+          'lineCharacters:3:140000',
+          'syntaxMarkers:9:2048',
+          'nesting:12:70',
+          'nesting:412:70:tags',
+          'lineCharacters',
+        ].map((detail) => check({ code: 'markdown-parse-limit', pageId: detail, detail }))}
         loading={false}
         onFix={() => undefined}
         projectId="project-1"
       />,
     );
-    expect(container.textContent).toContain('This page can publish and will display as plain text.');
-    expect(container.textContent).toContain('512 KiB of source text');
-    expect(container.textContent).toContain('16,384 characters');
-    expect(container.textContent).toContain('1,024 syntax markers');
-    expect(container.textContent).toContain('64 levels');
+    const text = container.textContent ?? '';
+    expect(text).toContain('Readers see the part over the limit as plain text and the rest of the page as usual.');
+    expect(text).toContain('The page has 586 KiB of source text (limit 512 KiB), so all of it shows as plain text.');
+    expect(text).toContain('Line 3 has 140,000 characters (limit 131,072).');
+    expect(text).toContain('Line 9 has 2,048 Markdown markers (limit 1,024).');
+    expect(text).toContain('Line 12 nests 70 levels of quotes, lists or brackets (limit 64).');
+    expect(text).toContain('Line 412 nests 70 tags (limit 64).');
     expect(container.querySelector('a[href*="fix=markdown-parse-limit"]')).not.toBeNull();
+  });
+
+  it('lists the Markdown parse limit after every other check, not beside empty pages', () => {
+    const container = document.createElement('div');
+    container.innerHTML = renderToStaticMarkup(
+      <PublishChecks
+        checks={[
+          check({ code: 'markdown-parse-limit', pageId: 'long', detail: 'nesting:412:70:tags' }),
+          check({ code: 'empty-page', pageId: 'empty' }),
+          check({ code: 'blog-root-group', pageId: 'blog' }),
+        ]}
+        loading={false}
+        onFix={() => undefined}
+        projectId="project-1"
+      />,
+    );
+    const text = container.textContent ?? '';
+    const titles = ['Empty pages', 'Docs filed under “Blog”', 'Markdown parsing limit'].map((title) => text.indexOf(title));
+    expect(titles.every((at) => at >= 0)).toBe(true);
+    expect([...titles].sort((a, b) => a - b)).toEqual(titles);
   });
 
   it('names, for each language, the page its readers land on instead of the home page, and opens the home page to fix it', () => {

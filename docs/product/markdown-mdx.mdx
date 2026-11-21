@@ -20,16 +20,25 @@ look different from what you expected.
 
 ## Parsing limits
 
-The reader shows a page as plain text when the source exceeds any of these limits.
+The reader shows a block of the page as plain text when it goes over one of
+these limits, and the rest of the page as usual.
 
-- 512 KiB of UTF-8 source.
-- 16,384 UTF-16 code units on one line.
-- 1,024 Markdown syntax markers on one line.
-- 64 levels of nesting, measured from container markers, delimiters, and tags in the source.
+- 131,072 UTF-16 code units on one line.
+- 1,024 Markdown syntax markers on one line, such as `*`, `_`, `[`, `]` and
+  backticks. A table's delimiter row has no limit.
+- 64 levels of nesting: quotes, list markers and brackets on one line, or HTML
+  elements and components inside each other. Void elements such as `<br>`, and
+  elements whose end tag is optional, such as `<li>` and `<p>`, don't nest.
 
-Publish checks name the exceeded limit, and the page can still publish. Split or
-simplify the page to restore formatting and content checks. The 2 MiB limit for
-writing a page still applies.
+Code blocks and inline code don't count toward any of them, so a generic type
+such as `Promise<User>` is fine. The block runs from the blank line before the
+part over the limit to the blank line after it. A page over 512 KiB of UTF-8
+source shows entirely as plain text.
+
+Publish checks name the line and the limit, and the page can still publish.
+**Fix** opens the page's Markdown at that line. Simplify that part, or split the
+page, to restore its formatting. The 2 MiB limit for writing a page still
+applies.
 
 ## Basic formatting
 

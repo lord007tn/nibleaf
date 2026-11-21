@@ -80,7 +80,6 @@ export const FIX_EXPLANATIONS: Partial<Record<PublishCheckCode, MessageKey>> = {
   'unreadable-slug': 'editor.fix.explain.unreadableSlug',
   'home-untranslated': 'editor.fix.explain.homeUntranslated',
   'blog-root-group': 'editor.fix.explain.blogRootGroup',
-  'markdown-parse-limit': 'publish.checks.markdownLimitHint',
 };
 
 type LocatableCode = (typeof LOCATABLE_PUBLISH_CHECK_CODES)[number];

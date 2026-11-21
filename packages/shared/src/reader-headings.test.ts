@@ -6,10 +6,20 @@ const ids = (content: string) => readerHeadings(content).map(({ depth, text, id 
 const at = (content: string) => readerSections(content).map(({ line, depth, id }) => [line, depth, id]);
 
 describe('the reader’s headings', () => {
-  it('omits headings and sections from pages the reader displays as plain source', () => {
-    const content = lines('## Literal heading', '', '<h2>Literal HTML</h2>', '', 'x'.repeat(16_385));
-    expect(readerHeadings(content)).toEqual([]);
-    expect(readerSections(content)).toEqual([]);
+  it('omits headings and sections only from the blocks the reader displays as plain text', () => {
+    const content = lines('## Kept', '', `## Kept ${'x'.repeat(131_073)}`, '', '## After', '', '## Kept');
+    expect(ids(content)).toEqual([
+      [2, 'Kept', 'kept'],
+      [2, 'After', 'after'],
+      [2, 'Kept', 'kept-1'],
+    ]);
+    // The long heading line is plain text: the later `## Kept` keeps its own line.
+    expect(at(content)).toEqual([
+      [0, 2, 'kept'],
+      [4, 2, 'after'],
+      [6, 2, 'kept-1'],
+    ]);
+    expect(readerHeadings(`## Literal heading\n\n${'One paragraph. '.repeat(40_000)}`)).toEqual([]);
   });
 
   it('gives repeated headings -1, -2 across all six levels, as the renderer does', () => {

@@ -1,5 +1,6 @@
 import { growthMs, growthMsAsync, growthTestsEnabled, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
+import { markdownParseBudget } from './page-limits';
 import {
   buildInboundPageLinkMap,
   buildInboundPageLinkMapAsync,
@@ -113,12 +114,32 @@ describe.runIf(growthTestsEnabled)('inbound draft page links: repeat-open cost',
 });
 
 describe.runIf(growthTestsEnabled)('publish facts on pages beyond the Markdown budget', () => {
-  it('checks a long source line without starting the parser', () => {
-    const small = `[Guide](/guide)\n\n${'text'.repeat(10_000)}`;
+  it('checks the rest of the page, never parsing the blocks over budget', () => {
+    const small = `[Guide](/guide)\n\n${'*a* '.repeat(600)}\n\n`.repeat(8);
     const large = small.repeat(4);
     const [smallMs, largeMs] = growthMs((body) => pageContentFacts(body, false), small, large);
     expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
-    expect(pageContentFacts(large, false).parseLimit).toBe('lineCharacters');
+    const facts = pageContentFacts(large, false);
+    expect(facts.parseLimit).toMatchObject({ limit: 'syntaxMarkers', line: 3 });
+    expect(facts.links).toHaveLength(32);
+  });
+
+  it.each([
+    // Each within the size and line caps, so the scan reads all of it.
+    [
+      'backtick runs of many lengths',
+      (size: number) => Array.from({ length: size }, (_, index) => `${'`'.repeat((index % 40) + 1)}x${index % 200 === 199 ? '\n' : ' '}`).join(''),
+    ],
+    ['complete and unfinished tags', (size: number) => `${'<a b="1" c=\'2\' d=e> <a b="'.repeat(20)}\n`.repeat(size / 20)],
+    ['deep tags', (size: number) => `${'<div>\n'.repeat(size)}${'</div>\n'.repeat(size)}`],
+    ['quotes and lists', (size: number) => `${'> - '.repeat(80)}x\n`.repeat(size / 40)],
+  ])('reads %s against the budget in linear time', (_name, shape) => {
+    expect(shape(16_000).length).toBeLessThan(512 * 1024);
+    // A new string each run: the budget remembers the last pages it read.
+    let run = 0;
+    const read = (text: string) => markdownParseBudget(`${text}${run++}`);
+    const [smallMs, largeMs] = growthMs(read, shape(4000), shape(16_000));
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
   });
 });
 

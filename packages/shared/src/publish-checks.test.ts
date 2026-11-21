@@ -18,15 +18,16 @@ import type { SiteSnapshot, SnapshotPage } from './site';
 vi.setConfig({ testTimeout: 60_000 });
 
 it.each([
-  ['pageBytes', `${'One paragraph of ordinary text. '.repeat(40)}\n\n`.repeat(500)],
-  ['lineCharacters', 'x'.repeat(16_385)],
-  ['syntaxMarkers', 'a*b* '.repeat(513)],
-  ['nesting', `${'> '.repeat(65)}Quoted text`],
-  ['nesting', `${'<section>\n'.repeat(65)}Nested tags`],
-])('stops parsing when the %s budget is exceeded', (reason, tail) => {
-  const facts = pageContentFacts(`[Guide](/missing)\n\n${tail}`, false);
-  expect(facts.links).toEqual([]);
-  expect(facts).toMatchObject({ parseLimit: reason });
+  ['pageBytes', `${'One paragraph of ordinary text. '.repeat(40)}\n\n`.repeat(500), 0],
+  ['lineCharacters', 'x'.repeat(131_073), 3],
+  ['syntaxMarkers', 'a*b* '.repeat(513), 3],
+  ['nesting', `${'> '.repeat(65)}Quoted text`, 3],
+  ['nesting', `${'<section>\n'.repeat(65)}Nested tags\n${'</section>\n'.repeat(65)}`, 67],
+])('names the line over the %s budget and checks the rest of the page', (reason, tail, line) => {
+  const facts = pageContentFacts(`[Guide](/missing)\n\n${tail}\n\n[After](/after)`, false);
+  expect(facts.parseLimit).toMatchObject({ limit: reason, line });
+  // Past the size cap nothing is parsed; otherwise only the block over budget is skipped.
+  expect(facts.links).toEqual(reason === 'pageBytes' ? [] : ['/missing', '/after']);
 });
 
 let sequence = 0;

@@ -293,14 +293,14 @@ const interruptsParagraph = (content: string): boolean => {
  * or HTML block's container). Shared by the reader's MDX normalizer, heading
  * extraction and search sections, so all three agree on what is code.
  */
-const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
+const scanMarkdownLines = (lines: readonly string[], indentedCode = false): MarkdownBlockLineKind[] => {
   let fence: MarkdownFence | undefined;
   let html: HtmlBlockEnd | undefined;
   const stack: ContainerStack = { items: [], quotes: [] };
   let paragraph = false;
   let components = 0;
   let pendingOpener = false;
-  const read = (line: string, continued: Continuation): MarkdownLineKind => {
+  const read = (line: string, continued: Continuation): MarkdownBlockLineKind => {
     if (continued.blank) {
       closeContainers(stack, continued.matched);
       paragraph = false;
@@ -324,7 +324,8 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
     const indent = content.length - content.trimStart().length;
     // Indented 4 or more columns past its containers: indented code, or a lazy
     // paragraph line, but never a fence (except inside a component).
-    if (components === 0 && indent >= 4) return 'prose';
+    // Outside a paragraph that is indented code (CommonMark: it can't interrupt one).
+    if (components === 0 && indent >= 4) return indentedCode && !paragraph ? 'indented' : 'prose';
     const opening = openingMarkdownFence(content, components > 0 ? Number.POSITIVE_INFINITY : 3);
     if (opening) {
       fence = opening;
@@ -388,10 +389,15 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
 /** What a line is to CommonMark: `code` (a fence or its body), `html` (a line of an
  * HTML block, types 1 to 7), or `prose` (anything else, blank lines included). */
 export type MarkdownLineKind = 'prose' | 'code' | 'html';
+/** A line kind that also tells indented code (`indented`) from prose. */
+export type MarkdownBlockLineKind = MarkdownLineKind | 'indented';
 
 /** Each line's kind, from the same single pass as `fencedMarkdownLines`: heading
  * extraction skips both code and HTML-block lines, as the reader renders them. */
-export const markdownLineKinds = (lines: readonly string[]): MarkdownLineKind[] => scanMarkdownLines(lines);
+export const markdownLineKinds = (lines: readonly string[]): MarkdownLineKind[] => scanMarkdownLines(lines) as MarkdownLineKind[];
+
+/** Each line's kind with indented code told apart: what the parse budget skips as code. */
+export const markdownBlockLineKinds = (lines: readonly string[]): MarkdownBlockLineKind[] => scanMarkdownLines(lines, true);
 
 /** Whether each line belongs to fenced code (see `scanMarkdownLines`). */
 export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => scanMarkdownLines(lines).map((kind) => kind === 'code');
