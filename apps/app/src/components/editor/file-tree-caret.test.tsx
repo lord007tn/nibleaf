@@ -269,7 +269,7 @@ describe('#670: the keyboard in a file’s name', () => {
     // One undo puts the name back together, with its authored tag.
     editor.commands.undo();
     expect(fileNames(editor)).toEqual([{ text: 'ab.ts', name: 'ab.ts' }]);
-    expect(getMarkdown(editor)).toBe('<FileTree>\n\n<File name="ab.ts" />\n\n</FileTree>');
+    expect(getMarkdown(editor)).toBe('<FileTree>\n<File name="ab.ts" />\n</FileTree>');
   });
 
   it('a slash in a name is part of the path, never the block menu; no Markdown shortcuts or typography either', async () => {
@@ -417,20 +417,19 @@ describe('#846 structural clipboard controls', () => {
 });
 
 /**
- * Each source, and the Markdown main writes for it (read from main at bc5e35d70): the editor
- * spaces block tags with blank lines, and keeps each tag as authored (quotes, spacing,
- * expressions, character references, a closing tag).
+ * Caret edits preserve the source of File tags. #625 also preserves a single
+ * line break at supported component boundaries. FileTree still normalizes indentation.
  */
-const SAVED_ON_MAIN: Array<[source: string, saved: string]> = [
+const FILE_SOURCE_ROUND_TRIPS: Array<[source: string, saved: string]> = [
   ['<FileTree>\n\nRead me.\n\n</FileTree>', '<FileTree>\n\n<Folder>\n\nRead me.\n\n</Folder>\n\n</FileTree>'],
   ['<FileTree>\n\n</FileTree>', '<FileTree>\n\n<Folder>\n\n</Folder>\n\n</FileTree>'],
   [
     '<FileTree>\n  <Folder name="src">\n    <File name="a.ts" />\n  </Folder>\n  <File name={x} icon="y" />\n  <File name="&amp;b" ></File>\n</FileTree>',
-    '<FileTree>\n\n<Folder name="src">\n\n<File name="a.ts" />\n\n</Folder>\n\n<File name={x} icon="y" />\n\n<File name="&amp;b" ></File>\n\n</FileTree>',
+    '<FileTree>\n<Folder name="src">\n<File name="a.ts" />\n</Folder>\n\n<File name={x} icon="y" />\n\n<File name="&amp;b" ></File>\n\n</FileTree>',
   ],
   ['<File name="solo.md" />\n\nText after.', '<File name="solo.md" />\n\nText after.'],
-  ['<FileTree>\n  <File name="" />\n</FileTree>', '<FileTree>\n\n<File name="" />\n\n</FileTree>'],
-  ['<FileTree>\n<File   name=\'quoted.md\'   icon="book"/>\n</FileTree>', '<FileTree>\n\n<File   name=\'quoted.md\'   icon="book"/>\n\n</FileTree>'],
+  ['<FileTree>\n  <File name="" />\n</FileTree>', '<FileTree>\n<File name="" />\n</FileTree>'],
+  ['<FileTree>\n<File   name=\'quoted.md\'   icon="book"/>\n</FileTree>', '<FileTree>\n<File   name=\'quoted.md\'   icon="book"/>\n</FileTree>'],
   [
     '<FileTree>\n\n<File name="a.ts" />\n\n<File name="b.ts" />\n\n</FileTree>',
     '<FileTree>\n\n<File name="a.ts" />\n\n<File name="b.ts" />\n\n</FileTree>',
@@ -441,8 +440,8 @@ const SAVED_ON_MAIN: Array<[source: string, saved: string]> = [
   ],
 ];
 
-describe('#670: saved Markdown is unchanged', () => {
-  it.each(SAVED_ON_MAIN)('%j reads in with its name as text and saves exactly as main does', async (source, saved) => {
+describe('#670: File names retain their source', () => {
+  it.each(FILE_SOURCE_ROUND_TRIPS)('%j reads in with its name as text and saves with its expected tag layout', async (source, saved) => {
     const editor = await make(source);
     for (const { text, name } of fileNames(editor)) expect(text).toBe(name);
     expect(getMarkdown(editor)).toBe(saved);

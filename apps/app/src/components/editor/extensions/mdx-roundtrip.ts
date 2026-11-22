@@ -25,6 +25,7 @@ const separateBlock = (state: SerializeState, node: PMNode): void => {
 
 /** Write a block-level MDX tag on its own blank-line-separated line. */
 export const writeBlockTag = (state: SerializeState, node: PMNode, tag: string): void => {
+  if (tag.startsWith('<') && !tag.startsWith('</')) writeAdjacentComponent(state as ChildrenState, node);
   separateBlock(state, node);
   state.write(tag);
   state.closeBlock(node);
@@ -48,6 +49,7 @@ type ChildrenState = SerializeState & {
   /** The prefix of the containers being written (`> `, a list item's indent). */
   delim?: string;
   output?: ChildrenOutput;
+  path?: ReadonlyArray<{ parent: Pick<PMNode, 'child'>; index: number }>;
 };
 
 /** For each serializer, the tight openers written and not yet closed, innermost last: the
@@ -61,6 +63,30 @@ const openTight = new WeakMap<object, Array<{ node: PMNode; start: number }>>();
  */
 const tightLine = (line: string): boolean => !blankInContainers(line) && (!TAG_LINE.test(line) || AUTOLINK_LINE.test(line));
 
+const COMPONENT_BOUNDARY = /^[ \t>]*<\/?([A-Z][\w.:-]*)(?=[ \t/>])/;
+const isBlockComponentLine = (line: string): boolean => {
+  const name = COMPONENT_BOUNDARY.exec(line)?.[1];
+  const definition = name && SUPPORTED_MDX_COMPONENTS[name.toLowerCase()];
+  return Boolean(definition && !definition.inline);
+};
+
+const isAuthoredBlockComponent = (node: PMNode | null): boolean =>
+  Boolean(node?.isBlock && isBlockComponentLine(String(node.attrs.sourceOpen ?? '')));
+
+function writeAdjacentComponent(state: ChildrenState, node: PMNode): void {
+  const current = state.path?.at(-1);
+  if (!node.attrs.sourceAdjacent || !current || current.index === 0 || !state.closed) return;
+  const previous = current.parent.child(current.index - 1);
+  if (isAuthoredBlockComponent(previous) && isBlockComponentLine(state.output?.lastLine() ?? '')) state.flushClose(1);
+}
+
+function frameImageIndent(node: PMNode, delim: string | undefined): string | undefined {
+  const indent = node.attrs.sourceImageIndent;
+  if (delim || typeof indent !== 'string' || !/^ {0,3}$/.test(indent) || node.type.name !== 'mdxFrame' || node.childCount !== 1) return undefined;
+  const imageType = node.firstChild?.type.name;
+  return imageType === 'image' || imageType === 'legacyImage' ? indent : undefined;
+}
+
 /**
  * A component's opening tag before its children (#606). Where the author started the
  * children on the line right after the tag, they start there again; otherwise a blank
@@ -69,7 +95,9 @@ const tightLine = (line: string): boolean => !blankInContainers(line) && (!TAG_L
  */
 export const writeChildrenOpener = (state: SerializeState, node: PMNode, tag: string): void => {
   const children = state as ChildrenState;
-  if (!isTightOpen(node) || !children.output) {
+  writeAdjacentComponent(children, node);
+  const nested = node.attrs.sourceNestedOpen && isAuthoredBlockComponent(node.firstChild);
+  if ((!isTightOpen(node) && !nested && frameImageIndent(node, children.delim) === undefined) || !children.output) {
     writeBlockTag(state, node, tag);
     return;
   }
@@ -94,6 +122,7 @@ export const writeChildrenCloser = (state: SerializeState, node: PMNode, tag: st
   const { output } = children;
   const open = openTight.get(state);
   const opened = open?.[open.length - 1]?.node === node ? open.pop() : undefined;
+  const imageIndent = frameImageIndent(node, children.delim);
   if (output && opened) {
     const empty = output.length === opened.start;
     const first = empty ? '' : output.lineFrom(opened.start);
@@ -101,7 +130,10 @@ export const writeChildrenCloser = (state: SerializeState, node: PMNode, tag: st
     // A first line blank in the component's own containers is already the blank line a
     // block tag gets (an empty first paragraph wrote it); anything else that isn't a
     // Markdown line (a quote's `> ` left empty, a tag) gets one, in the same containers.
-    if (empty || (first.trim() !== containers.trim() && !tightLine(first))) output.insertAt(opened.start, `${containers}\n`);
+    const component = isBlockComponentLine(first) && isAuthoredBlockComponent(node.firstChild);
+    if (empty || (first.trim() !== containers.trim() && !tightLine(first) && !component && imageIndent === undefined))
+      output.insertAt(opened.start, `${containers}\n`);
+    if (imageIndent) output.insertAt(opened.start, imageIndent);
     if (empty) {
       // No child wrote anything (an emptied paragraph): main's `<Note>⏎⏎</Note>`, with no
       // more blank lines owed for the empty child.
@@ -113,7 +145,9 @@ export const writeChildrenCloser = (state: SerializeState, node: PMNode, tag: st
   // The children's last line: the block written last still owes its line break, or wrote it
   // itself (a table); a line break written with no block owing one leaves a blank line.
   const last = output && (children.closed || state.atBlank?.() === false) ? output.lastLine() : '';
-  if (!isTightClose(node) || !output || !tightLine(last)) {
+  const component = isBlockComponentLine(last) && isAuthoredBlockComponent(node.lastChild);
+  const tight = isTightClose(node) || (node.attrs.sourceNestedClose && component) || imageIndent !== undefined;
+  if (!tight || !output || (!tightLine(last) && !component && imageIndent === undefined)) {
     writeBlockTag(state, node, tag);
     return;
   }
@@ -246,6 +280,7 @@ interface MarkdownLayout {
   fenced: Span[];
   /** True for positions in indented code. */
   indented: Uint8Array;
+  indentedBlocks: Array<Span & { content: string }>;
   /** Index of the paragraph each line is in, or -1. */
   paragraphOfLine: Int32Array;
   paragraphs: Array<[number, number]>;
@@ -269,6 +304,7 @@ function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undef
   const layout: MarkdownLayout = {
     fenced: [],
     indented: new Uint8Array(source.length),
+    indentedBlocks: [],
     paragraphOfLine: new Int32Array(lineStarts.length).fill(-1),
     paragraphs: [],
     lineStarts,
@@ -290,8 +326,12 @@ function markdownLayout(source: string, blockTokens: MarkdownBlockTokens | undef
     if (token.type === 'fence') {
       layout.fenced.push({ start: at(first), end: at(last) });
       if (at(last) === source.length && !fenceClosed(token, source.slice(at(last - 1), at(last)))) layout.unclosedFence = at(first);
-    } else if (token.type === 'code_block') layout.indented.fill(1, at(first), at(last));
-    else if (token.type === 'blockquote_open' || token.type === 'list_item_open') {
+    } else if (token.type === 'code_block') {
+      const start = at(first);
+      const end = at(last);
+      layout.indented.fill(1, start, end);
+      layout.indentedBlocks.push({ start, end, content: token.content });
+    } else if (token.type === 'blockquote_open' || token.type === 'list_item_open') {
       // The innermost container ends first.
       for (let line = first; line < last; line++) layout.containerEnd[line] = Math.min(layout.containerEnd[line] ?? last, last);
     } else if (token.type === 'paragraph_open') {
@@ -1833,11 +1873,20 @@ function placeholder(range: SourceRange): string {
   return `<${tag} data-source="${encodeMdxSource(range.source)}" data-name="${escapeHtmlAttribute(range.name)}"${broken}></${tag}>`;
 }
 
+interface ChildrenLayout {
+  open?: string;
+  close: boolean;
+  nestedOpen?: boolean;
+  nestedClose?: boolean;
+  imageIndent?: string;
+}
+
 function metadataAttributes(
   open: TagToken,
   close: TagToken | undefined,
   definition: SupportedDefinition,
-  layout: { open?: string; close: boolean } | null = null,
+  layout: ChildrenLayout | null,
+  adjacent: boolean,
 ): string {
   // A tight layout (#606) is kept as a line break after the opener and before the closer.
   const sourceOpen = layout?.open === undefined ? open.raw : `${open.raw}\n`;
@@ -1850,9 +1899,13 @@ function metadataAttributes(
       return value === '' || value === false || value == null ? '' : ` data-${name}="${escapeOpenerAttribute(String(value))}"`;
     })
     .join('');
+  const imageIndent = layout?.imageIndent === undefined ? '' : ` data-mdx-source-image-indent="${encodeMdxSource(layout.imageIndent)}"`;
+  const sourceAdjacent = adjacent ? ' data-mdx-source-adjacent=""' : '';
+  const nestedOpen = layout?.nestedOpen ? ' data-mdx-nested-open=""' : '';
+  const nestedClose = layout?.nestedClose ? ' data-mdx-nested-close=""' : '';
   return ` data-mdx-source-open="${encodeMdxSource(sourceOpen)}" data-mdx-source-close="${encodeMdxSource(sourceClose)}" data-mdx-source-original="${encodeMdxSource(
     JSON.stringify(effective),
-  )}"${known}`;
+  )}"${known}${imageIndent}${sourceAdjacent}${nestedOpen}${nestedClose}`;
 }
 
 /** Where the line holding `at` starts. */
@@ -1894,7 +1947,13 @@ const NEXT_LINE = /^[ \t]*(\r\n|\r|\n)([^\r\n]*)/;
  * blank line in the same quote follows the tag. Both need a tag that starts its own
  * line, and an opener that ends its own.
  */
-function childrenLayout(source: string, open: TagToken, close: TagToken | undefined): { open?: string; close: boolean } | null {
+function childrenLayout(
+  source: string,
+  open: TagToken,
+  close: TagToken | undefined,
+  image: TagToken | undefined,
+  nestedComponent: (line: string, lineStart: number, open: TagToken, close: TagToken) => boolean,
+): ChildrenLayout | null {
   const leadStart = leadStartOf(source, open.start);
   if (leadStart < 0) return null;
   const lead = source.slice(leadStart, open.start);
@@ -1903,22 +1962,39 @@ function childrenLayout(source: string, open: TagToken, close: TagToken | undefi
   const next = NEXT_LINE.exec(source.slice(open.end, open.end + 4096));
   if (!next) return null;
   const [, lineBreak = '\n', firstLine = ''] = next;
+  const bodyStart = open.end + next[0].length - firstLine.length;
+  const nestedOpen = Boolean(close && nestedComponent(firstLine, bodyStart, open, close));
   const tightOpen = tightLine(firstLine);
+  if (open.name === 'Frame' && close && !lead && isNextLine(source, open.end, bodyStart)) {
+    const bodyEnd = bodyStart + firstLine.length;
+    const indent = /^ {0,3}(?=\S)/.exec(firstLine)?.[0];
+    if (indent !== undefined && isNextLine(source, bodyEnd, close.start)) {
+      if (image && /^(?:img|IMG)$/.test(image.name) && image.start === bodyStart + indent.length && image.end === bodyEnd)
+        return { close: false, imageIndent: indent };
+      if (/^ {0,3}!\[/.test(firstLine)) return { open: lineBreak, close: true, imageIndent: indent };
+    }
+  }
   let tightClose = false;
+  let nestedClose = false;
   if (close) {
     // The line before the closing tag is read only once the tag is known to start its line.
     const closeLine = leadStartOf(source, close.start);
     if (closeLine > open.end) {
       const previousEnd = source[closeLine - 1] === '\n' && source[closeLine - 2] === '\r' ? closeLine - 2 : closeLine - 1;
-      const previous = source.slice(lineStartOf(source, previousEnd), previousEnd);
+      const previousStart = lineStartOf(source, previousEnd);
+      const previous = source.slice(previousStart, previousEnd);
       tightClose = tightLine(previous);
+      nestedClose = nestedComponent(previous, previousStart, open, close);
     }
   }
-  if (!tightOpen && !tightClose) return null;
+  if (!tightOpen && !tightClose && !nestedOpen && !nestedClose) return null;
   // The quotes the tag is in: the children may open a quote of their own.
   const markers = lead.replace(/[ \t]+$/, '');
-  return { open: tightOpen ? `${lineBreak}${markers}` : undefined, close: tightClose };
+  return { open: tightOpen ? `${lineBreak}${markers}` : undefined, close: tightClose, nestedOpen, nestedClose };
 }
+
+const isNextLine = (source: string, from: number, to: number): boolean =>
+  (to - from === 1 && (source[from] === '\r' || source[from] === '\n')) || (to - from === 2 && source.startsWith('\r\n', from));
 
 /** A component tag at the start of a line, read in place from `lastIndex` (sticky). */
 const COMPONENT_TAG_LINE = /[ \t]*<\/?[A-Z]/y;
@@ -1937,6 +2013,49 @@ function maskFence(source: string, layout: MarkdownLayout, mask: Uint8Array, rea
     COMPONENT_TAG_LINE.lastIndex = start;
     if (readerCode[start] === 1 || !COMPONENT_TAG_LINE.test(source)) mask.fill(1, start, end);
   }
+}
+
+/** The editable text of a code block indented directly inside an MDX component. */
+export function indentedComponentCodeText(source: string): string | undefined {
+  const lines = source.split('\n');
+  // An indented fence marker can still be read as a fence by the MDX tag scan
+  // on reload. Let the ordinary code serializer fence that block instead.
+  if (!lines.every((line) => /^(?: {4}|\t| *$)/.test(line) && !lineIsFence(line))) return undefined;
+  return lines.map((line) => line.replace(/^(?: {4}|\t| *$)/, '')).join('\n');
+}
+
+function indentedComponentCode(
+  source: string,
+  layout: MarkdownLayout,
+  tokens: TagToken[],
+  pairs: Map<number, number>,
+  overlaps: (start: number, end: number) => boolean,
+): Array<{ start: number; end: number; value: string }> {
+  if (layout.indentedBlocks.length === 0) return [];
+  const containers = containerTree(
+    [...pairs].flatMap(([openAt, closeAt]) => {
+      const open = tokens[openAt];
+      const close = tokens[closeAt];
+      if (!open || open.html || open.broken || !close || !isComponentTag(open)) return [];
+      return [{ start: open.end, end: close.start, name: open.name, html: false }];
+    }),
+  );
+  const innermost = innermostContainers(containers, layout.indentedBlocks);
+  return layout.indentedBlocks.flatMap(({ start, end, content }, index) => {
+    const component = containers[innermost[index] ?? -1];
+    if (!component || !hasRoom(component) || overlaps(start, end)) return [];
+    const authored = source.slice(start, end).replace(/(?:\r\n?|\n)$/, '');
+    const raw = authored.replace(/\r\n?/g, '\n');
+    const text = content.replace(/\n$/, '');
+    if (indentedComponentCodeText(raw) !== text) return [];
+    return [
+      {
+        start,
+        end: start + authored.length,
+        value: `<pre><code data-mdx-indented-code="${encodeMdxSource(raw)}">${escapeHtmlAttribute(content)}</code></pre>`,
+      },
+    ];
+  });
 }
 
 /**
@@ -2051,12 +2170,41 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
     end: range.end,
     value: videoEmbedPlaceholder(range, frameOf(range)) ?? placeholder(range),
   }));
+  replacements.push(...indentedComponentCode(source, layout, tokens, pairs, overlaps));
   const coveredByOpaque = spanIndex(opaque);
+  const componentBounds = new Map<number, Span>();
+  const onOwnLines = (token: TagToken): boolean =>
+    leadStartOf(source, token.start) >= 0 && (token.end === source.length || source[token.end] === '\r' || source[token.end] === '\n');
+  for (const [index, token] of tokens.entries()) {
+    if (
+      token.html ||
+      token.broken ||
+      token.closing ||
+      !isBlockComponentLine(token.raw) ||
+      !onOwnLines(token) ||
+      coveredByOpaque(token.start, token.end)
+    )
+      continue;
+    const close = tokens[pairs.get(index) ?? -1];
+    if (!token.selfClosing && (!close || !onOwnLines(close) || coveredByOpaque(close.start, close.end))) continue;
+    const span = { start: token.start, end: close?.end ?? token.end };
+    componentBounds.set(token.start, span);
+    if (close) componentBounds.set(close.start, span);
+  }
+  const nestedComponent = (line: string, start: number, open: TagToken, close: TagToken): boolean => {
+    if (!isBlockComponentLine(line)) return false;
+    const childStart = start + line.indexOf('<');
+    const child = componentBounds.get(childStart);
+    const tag = tokens[tokenAt.get(childStart) ?? -1];
+    return Boolean(child && tag?.end === start + line.length && child.start >= open.end && child.end <= close.start);
+  };
+  const frameImages = new Set<number>();
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
     if (!token || token.html || coveredByOpaque(token.start, token.start + 1)) continue;
     const element = HTML_ELEMENT_ALIASES.get(token.name);
     if (element) {
+      if (frameImages.has(token.start)) continue;
       // img is a void element: a stray closing tag has nothing to close.
       replacements.push({ start: token.start, end: token.end, value: token.closing ? '' : `<${element}${token.raw.slice(token.name.length + 1)}` });
       continue;
@@ -2078,8 +2226,18 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
             : definition.calloutVariant,
         )}"`
       : ` data-mdx="${definition.canonical}"`;
-    const layout = definition.inline || token.selfClosing ? null : childrenLayout(source, token, close);
-    const open = `<${wrapper}${marker}${metadataAttributes(token, close, definition, layout)}>`;
+    const image = tokens[i + 1];
+    const layout = definition.inline || token.selfClosing ? null : childrenLayout(source, token, close, image, nestedComponent);
+    if (layout?.imageIndent !== undefined && image?.name === 'IMG') frameImages.add(image.start);
+    const previous = tokens[i - 1];
+    const adjacent =
+      !definition.inline &&
+      previous &&
+      componentBounds.has(token.start) &&
+      componentBounds.has(previous.start) &&
+      (previous.closing || previous.selfClosing) &&
+      isNextLine(source, previous.end, token.start);
+    const open = `<${wrapper}${marker}${metadataAttributes(token, close, definition, layout, Boolean(adjacent))}>`;
     // Children on the very next line would be read as the raw text of the HTML block the
     // tag opens: a blank line there, in the same quote, has them read as Markdown (#606).
     replacements.push({ start: token.start, end: token.end, value: token.selfClosing ? `${open}</${wrapper}>` : `${open}${layout?.open ?? ''}` });
@@ -2135,6 +2293,27 @@ export function sourceMetadataAttributes() {
     sourceOriginal: {
       default: '',
       parseHTML: (element: HTMLElement) => decodeMdxSource(element.getAttribute('data-mdx-source-original')),
+      rendered: false,
+    },
+    sourceAdjacent: {
+      default: undefined,
+      parseHTML: (element: HTMLElement) => element.hasAttribute('data-mdx-source-adjacent') || undefined,
+      rendered: false,
+    },
+    sourceImageIndent: {
+      default: undefined,
+      parseHTML: (element: HTMLElement) =>
+        element.hasAttribute('data-mdx-source-image-indent') ? decodeMdxSource(element.getAttribute('data-mdx-source-image-indent')) : undefined,
+      rendered: false,
+    },
+    sourceNestedOpen: {
+      default: undefined,
+      parseHTML: (element: HTMLElement) => element.hasAttribute('data-mdx-nested-open') || undefined,
+      rendered: false,
+    },
+    sourceNestedClose: {
+      default: undefined,
+      parseHTML: (element: HTMLElement) => element.hasAttribute('data-mdx-nested-close') || undefined,
       rendered: false,
     },
   };
