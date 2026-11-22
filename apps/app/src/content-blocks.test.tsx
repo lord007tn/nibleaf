@@ -125,6 +125,47 @@ describe('content blocks shared by the editor and the reader', () => {
     });
   });
 
+  describe('table cell wrapping (#570)', () => {
+    // The layout itself is checked in Chromium by
+    // tests/integration/editor-table-wrapping/browser.mjs; this pins the rules it depends on.
+    const host = document.createElement('div');
+    host.innerHTML = [
+      '<div class="typeset nibleaf-content"><div class="typeset-scroll"><table><tbody><tr><td id="reader">Support <code>--out</code></td></tr></tbody></table></div></div>',
+      '<div class="pl-editor"><div class="ProseMirror nibleaf-content"><div class="tableWrapper"><table><tbody><tr><td id="editor"><p>Support <code>--out</code></p></td></tr></tbody></table></div></div></div>',
+    ].join('');
+    const reader = host.querySelector('#reader') as Element;
+    const editor = host.querySelector('#editor') as Element;
+    /** Every value of `property` that `file` declares on a rule matching `element`, in source order. */
+    const declared = (file: string, element: Element, property: string) =>
+      rules(source(file))
+        .filter(({ selector }) => {
+          try {
+            return element.matches(selector.replaceAll('&', '').trim());
+          } catch {
+            return false;
+          }
+        })
+        .flatMap(({ body }) => [...body.matchAll(new RegExp(`(?<![-\\w])${property}:\\s*([^;]+);`, 'g'))].map(([, value]) => value?.trim()));
+
+    it('wraps a cell only at word boundaries on both surfaces, never anywhere', () => {
+      // The editor's root wraps anywhere, and its cells would inherit it…
+      expect(declared('components/editor/tiptap.css', editor.closest('.ProseMirror') as Element, 'overflow-wrap')).toEqual(['anywhere']);
+      // …but the shared cell rule sets break-word on the cells themselves, which beats inheritance,
+      expect(declared('content-blocks.css', editor, 'overflow-wrap')).toEqual(['break-word']);
+      expect(declared('content-blocks.css', reader, 'overflow-wrap')).toEqual(['break-word']);
+      // and the editor's own stylesheet sets nothing on a cell that would undo it.
+      expect(declared('components/editor/tiptap.css', editor, 'overflow-wrap')).toEqual([]);
+      expect(declared('components/editor/tiptap.css', editor.querySelector('p') as Element, 'overflow-wrap')).toEqual([]);
+    });
+
+    it('gives the editor’s columns the reader’s readable minimum and keeps inline code whole', () => {
+      expect(declared('typeset.css', reader, 'min-width')).toEqual(['8ch']);
+      expect(declared('content-blocks.css', editor, 'min-width')).toEqual(['8ch']);
+      expect(declared('typeset.css', reader.querySelector('code') as Element, 'white-space')).toEqual(['nowrap']);
+      expect(declared('content-blocks.css', editor.querySelector('code') as Element, 'white-space')).toEqual(['nowrap']);
+    });
+  });
+
   describe('task checkboxes', () => {
     const css = source('content-blocks.css');
     const all = rules(css);

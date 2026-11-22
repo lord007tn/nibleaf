@@ -1,6 +1,6 @@
 import { ScriptOnce } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
-import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, startTransition, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 export type Theme = 'light' | 'dark' | 'system';
 type ResolvedTheme = Exclude<Theme, 'system'>;
@@ -68,9 +68,18 @@ export function ThemeProvider({
       // Storage can be unavailable in privacy-restricted browsing contexts.
     }
     const initialTheme = isTheme(stored) ? stored : defaultTheme;
-    setThemeState(initialTheme);
-    setResolvedTheme(resolveTheme(initialTheme));
-    setMounted(true);
+    // A transition, never a default-priority update (#650). This runs right
+    // after hydration, and it changes the context above every Suspense
+    // boundary still waiting for its code (a lazy marketing page, a reader
+    // island). React can't hydrate a boundary that changed under it: at default
+    // priority it drops the server HTML for the fallback until the code
+    // arrives. A transition waits for those boundaries to hydrate instead. The
+    // document already shows this theme, set by the script below.
+    startTransition(() => {
+      setThemeState(initialTheme);
+      setResolvedTheme(resolveTheme(initialTheme));
+      setMounted(true);
+    });
   }, [defaultTheme, storageKey]);
 
   useEffect(() => {
@@ -102,8 +111,12 @@ export function ThemeProvider({
     [storageKey],
   );
 
+  // The same value until the theme changes, so a re-render alone never counts
+  // as a context change for the boundaries above.
+  const value = useMemo(() => ({ theme, resolvedTheme, setTheme }), [theme, resolvedTheme, setTheme]);
+
   return (
-    <ThemeContext.Provider value={{ theme, resolvedTheme, setTheme }}>
+    <ThemeContext.Provider value={value}>
       <ScriptOnce>{initialThemeScript ?? getThemeScript(storageKey, defaultTheme)}</ScriptOnce>
       {children}
     </ThemeContext.Provider>

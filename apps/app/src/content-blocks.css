@@ -56,6 +56,20 @@
       padding: 0.5em 0.75em;
       text-align: start;
       vertical-align: top;
+      /* A word breaks only when it can't fit on a line of its own (#570).
+         The editor's root wraps `anywhere`, which also lets the table
+         algorithm squeeze a column below its longest word ("Supp / ort");
+         `break-word` keeps the reader's column widths on both surfaces. */
+      overflow-wrap: break-word;
+    }
+    /* The editor's columns keep the reader's readable minimum (typeset.css):
+       a cell's longest word, and never under 8ch; past that the table scrolls
+       in its wrapper. Inline code in a cell is a value to read whole. */
+    &:where(.tableWrapper :is(th, td)) {
+      min-width: 8ch;
+    }
+    &:where(.tableWrapper :is(th, td) code) {
+      white-space: nowrap;
     }
     /* A cell lays its text out by its own script (dir from the renderer) but
        keeps its column's alignment, set by the table's direction: an English

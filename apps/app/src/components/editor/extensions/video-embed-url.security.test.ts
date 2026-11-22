@@ -49,6 +49,30 @@ const importerVideo = (url: string): VideoEmbed | null => {
 
 const longVideoUrl = (length: number): string => `https://www.youtube.com/watch?v=${YT}&t=90&x=`.padEnd(length, 'a');
 
+it.each(['C0', 'C1'] as const)('rejects %s controls at every provider URL position', (range) => {
+  const url = `https://www.youtube.com/watch?v=${YT}&ignored=value`;
+  const start = range === 'C0' ? 0 : 0x80;
+  const failures: string[] = [];
+  for (let code = start; code < start + 32; code++) {
+    for (let offset = 0; offset <= url.length; offset++) {
+      const input = url.slice(0, offset) + String.fromCharCode(code) + url.slice(offset);
+      const frame = `<iframe src="${input.replaceAll('&', '&amp;')}"></iframe>`;
+      if (
+        parseVideoUrl(input) ||
+        readerVideo(input) ||
+        providerVideoOf(input) ||
+        embedTargetFor(input, 'embed') ||
+        importerVideo(input) ||
+        rewriteReaderEmbeds(frame).includes('provider="youtube"') ||
+        normalizeImportFidelity(frame).includes('youtube-nocookie.com/embed/')
+      ) {
+        failures.push(`${code.toString(16)} at ${offset}`);
+      }
+    }
+  }
+  expect(failures.length, failures.slice(0, 10).join(', ')).toBe(0);
+});
+
 it('preserves main answers at 2,048, 2,049 and 8,192 characters across every embed path', () => {
   const video: VideoEmbed = { provider: 'youtube', id: YT, start: 90 };
   const player = `<iframe src="${videoEmbedSrc(video)}" title="Video"></iframe>`;

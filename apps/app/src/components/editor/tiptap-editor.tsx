@@ -95,6 +95,13 @@ const lowlight = createLowlight(common);
 
 const fenceParsers = new WeakSet<object>();
 
+/** A quoted indented code block can contain literal fence markers (#607). */
+function quotedCodeFenceLength(code: string): number {
+  let length = 3;
+  for (const [closer] of code.matchAll(/^ {0,3}`{3,}(?=[ \t]*$)/gm)) length = Math.max(length, closer.trimStart().length + 1);
+  return length;
+}
+
 const replaceFenceLanguage = (opening: string, language: string): string => {
   const match = /^(\s*(?:`{3,}|~{3,}))(\s*)(\S*)?(.*)$/.exec(opening);
   if (!match) return opening;
@@ -191,6 +198,11 @@ const CodeBlock = CodeBlockLowlight.extend({
         parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-indented-code')) || undefined,
         rendered: false,
       },
+      sourceFenceQuoteTab: {
+        default: undefined,
+        parseHTML: (element) => element.firstElementChild?.getAttribute('data-mdx-fence-quote-tab') ?? undefined,
+        rendered: false,
+      },
     };
   },
   renderHTML({ node, HTMLAttributes }) {
@@ -217,7 +229,8 @@ const CodeBlock = CodeBlockLowlight.extend({
             return;
           }
           const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
-          let open = `\`\`\`${language}`;
+          const length = node.attrs.sourceFenceQuoteTab === 'indented' ? quotedCodeFenceLength(node.textContent) : 3;
+          let open = `${'`'.repeat(length)}${language}`;
           if (sourceOpen) open = language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language);
           // `output`, `delim` and `closed`: see LinearMarkdownSerializerState (markdown-output.ts).
           writeFence(fenceState, node, parent, index, open);
@@ -226,6 +239,16 @@ const CodeBlock = CodeBlockLowlight.extend({
           setup(markdownit) {
             markdownit.set({ langPrefix: 'language-' });
             if (fenceParsers.has(markdownit)) return;
+            const codeBlock = markdownit.renderer.rules.code_block;
+            if (codeBlock) {
+              markdownit.renderer.rules.code_block = (...args) => {
+                const [tokens, index] = args;
+                const html = codeBlock(...args);
+                return tokens[index]?.attrGet('data-mdx-fence-quote-tab') === 'indented'
+                  ? html.replace('<code>', '<code data-mdx-fence-quote-tab="indented">')
+                  : html;
+              };
+            }
             markdownit.core.ruler.after('block', 'nibleaf_fence_source', (state) => annotateFences(state));
             fenceParsers.add(markdownit);
           },

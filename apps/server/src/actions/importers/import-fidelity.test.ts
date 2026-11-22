@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { convertGitBookMarkdown } from './gitbook-markdown';
+import { normalizeImportFidelity } from './import-fidelity';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
@@ -11,6 +12,34 @@ const videos = [
   ['https://media.example.test/tour.mp4', 'https://media.example.test/tour.mp4'],
 ] as const;
 const gitbook = (text: string) => convertGitBookMarkdown(text, { resolveFile: () => undefined });
+
+it.each(['%s\t', '%s ', '<%s\t>', '< %s>'])("doesn't promote a padded standalone URL: %j", (shape) => {
+  const source = shape.replace('%s', 'https://youtu.be/abcdefghijk');
+  expect(normalizeImportFidelity(source)).toBe(source);
+});
+
+// Leading spaces, tabs and quote markers are Markdown container syntax, not URL padding.
+const indentedYoutube = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+const youtubeFrame = '<iframe src="https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ"';
+it.each([
+  ['list continuation', `- item\n\n  ${indentedYoutube}\n`, `\n  ${youtubeFrame}`],
+  ['one space', ` ${indentedYoutube}\n`, youtubeFrame],
+  ['three spaces', `   ${indentedYoutube}`, youtubeFrame],
+  ['three spaces after prose', `Intro.\n\n   ${indentedYoutube}`, `\n   ${youtubeFrame}`],
+  ['quote with spaces', `>   ${indentedYoutube}`, `>   ${youtubeFrame}`],
+  ['indented angle link', `Intro.\n\n  <${indentedYoutube}>`, `\n  ${youtubeFrame}`],
+  ['angle link with a trailing space', `<${indentedYoutube}> `, youtubeFrame],
+  ['indented .mp4', '  https://example.com/v.mp4\n', 'src="https://example.com/v.mp4"'],
+])('promotes an indented standalone URL: %s', (_name, source, expected) => {
+  const output = normalizeImportFidelity(source);
+  expect(output).toContain(expected);
+  if (source.includes('.mp4')) expect(output).toMatch(/^<video\b/);
+});
+
+it('promotes standalone URLs with structural quote and CRLF bytes', () => {
+  const source = '> https://youtu.be/abcdefghijk\r\n\r\nAfter.';
+  expect(normalizeImportFidelity(source)).toContain('> <iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk"');
+});
 
 describe('synthetic import fidelity', () => {
   for (const [url, canonical] of videos) {
@@ -88,6 +117,62 @@ it('keeps unreadable raw media byte for byte and reports it for repair', () => {
   const result = gitbook(source);
   expect(result.content).toBe(source);
   expect(result.issues).toHaveLength(1);
+});
+
+it.each([
+  {
+    name: 'video with source and track',
+    opener: '<video>\n<source src="https://cdn.test/a.mp4">\n<track src="/captions.vtt">',
+    report: '',
+    addresses: ['https://cdn.test/a.mp4', '/captions.vtt'],
+  },
+  {
+    name: 'video with missing child addresses',
+    opener: '<video>\n<source>\n<track>',
+    report: '',
+    addresses: [],
+  },
+  {
+    name: 'HTTPS iframe',
+    opener: '<iframe src="https://youtu.be/abcdefghijk">',
+    report: 'https://youtu.be/abcdefghijk',
+    addresses: ['https://youtu.be/abcdefghijk'],
+  },
+  {
+    name: 'HTTP iframe',
+    opener: '<iframe src="http://frame.test/tour">',
+    report: 'http://frame.test/tour',
+    addresses: ['http://frame.test/tour'],
+  },
+  { name: 'iframe without an address', opener: '<iframe>', report: '', addresses: [] },
+])('imports an unclosed $name as repairable text and links in both converters', ({ opener, report, addresses }) => {
+  const source = `${opener}\n\nFollow with [Guide](/guide).`;
+  const gitbookResult = gitbook(source);
+  const reports: string[] = [];
+  const mintlify = normalizeMintlifyMdx(source, (reference) => reports.push(reference));
+  expect(gitbookResult.issues).toEqual([{ kind: 'embed', page: '', reference: report }]);
+  expect(reports).toEqual([report]);
+  for (const content of [gitbookResult.content, mintlify]) {
+    expect(content).not.toMatch(/<(?:video|source|track|iframe)\b/i);
+    expect(content.endsWith('Follow with [Guide](/guide).')).toBe(true);
+    expect([...content.matchAll(/<a href="([^"]+)">/g)].map((match) => match[1])).toEqual(addresses);
+    if (addresses.length === 0) expect(content).toContain('&lt;');
+  }
+});
+
+it.each(['<video>\n\n', '> <video>\n', '- <video>\n'])('leaves media after a blank or container exit untouched: %j', (prefix) => {
+  const outside = '<source src="https://cdn.test/unrelated.mp4">';
+  const source = `${prefix}${outside}\n\nFollow.`;
+  for (const content of [gitbook(source).content, normalizeMintlifyMdx(source)]) {
+    expect(content.endsWith(`${outside}\n\nFollow.`)).toBe(true);
+  }
+});
+
+it('keeps sources and tracks on a closed video', () => {
+  const children = '<source src="https://cdn.test/a.mp4">\n<track src="/captions.vtt">';
+  const source = `<video controls>\n${children}\n</video>\n\nFollow.`;
+  expect(gitbook(source).content).toBe(source);
+  expect(normalizeMintlifyMdx(source)).toBe(source);
 });
 
 it('keeps a Mintlify Frame caption and uses it as an absent video title', () => {

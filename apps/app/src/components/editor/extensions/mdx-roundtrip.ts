@@ -2063,7 +2063,9 @@ function indentedComponentCode(
  * to ProseMirror. Serializers restore the source metadata before persistence.
  */
 function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens): string {
-  if (!source || (!source.includes('<') && !source.includes('{') && !/^\s*(?:import|export)\s/m.test(source))) return source;
+  // Stop at the end of each line. A multiline whitespace match would retry
+  // the entire trailing blank suffix once per line (#647).
+  if (!source || (!source.includes('<') && !source.includes('{') && !/^[^\S\r\n\u2028\u2029]*(?:import|export)\s/m.test(source))) return source;
   const readerCode = readerCodeMask(source);
   const mask = codeMask(source, readerCode);
   // Nothing inside code is ever replaced: code is found the way the Markdown

@@ -5,7 +5,7 @@ import { stableHash } from './content';
 import { safeDecodeUri as safeDecode } from './gitbook-markdown';
 import { decodeImportEntities } from './import-fidelity';
 import { protectImportCode } from './import-markdown-code';
-import { markdownReferences, replaceImportReferences } from './import-references';
+import { markdownLinkDefinitions, markdownReferences, replaceImportReferences } from './import-references';
 import { type MintlifyLanguageNavigation, type NavNode, partitionMintlifyVersions } from './mintlify-mapping';
 
 const HREF_ATTRIBUTE = /(\bhref\s*=\s*["'])([^"']+)(["'])/gi;
@@ -238,11 +238,20 @@ export const rewriteMintlifyInternalLinks = (
     for (const [name, value] of destination.searchParams) params.set(name, value);
     return `${destination.pathname}?${params}${suffixUrl.hash}`;
   };
-  const markdown = replaceImportReferences(
-    protectedCode.content,
-    markdownReferences(protectedCode.content).filter((reference) => !reference.image),
-    (reference) => rewrite(reference.value),
-  );
+  const references = markdownReferences(protectedCode.content).filter((reference) => !reference.image);
+  const definitions = markdownLinkDefinitions(protectedCode.content);
+  // The legacy inline scan can see link-shaped text inside an angle destination.
+  // Prefer the parser's complete definition span so patches never overlap.
+  let index = 0;
+  const inline = definitions.length
+    ? references.filter((reference) => {
+        let definition = definitions[index];
+        while (definition && definition.end <= reference.start) definition = definitions[++index];
+        return !definition || reference.end <= definition.start;
+      })
+    : references;
+  const destinations = definitions.length ? [...inline, ...definitions].sort((a, b) => a.start - b.start) : inline;
+  const markdown = replaceImportReferences(protectedCode.content, destinations, (reference) => rewrite(reference.value));
   return protectedCode.restore(
     markdown.replace(HREF_ATTRIBUTE, (match, before: string, reference: string, after: string) => {
       const decoded = decodeImportEntities(reference);
