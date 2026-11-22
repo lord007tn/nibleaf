@@ -316,11 +316,19 @@ describe('a Connect sends the wizard’s values as pressed and shows the new con
     await tab.review(raw, '  acme-fixture/handbook  ');
     await tab.connect();
     expect(tab.busy()).toBe(true);
-    // As main sends it: the fields as typed, the wizard's defaults, the token as typed, and no import targets.
+    // As main sends it: the fields as typed, the wizard's defaults, the token as typed, and no import targets; and
+    // that it expects no connection yet, so one made meanwhile is refused rather than replaced (#876).
     expect(puts()).toEqual([
       {
         param: { projectId: 'site-a' },
-        json: { repository: '  acme-fixture/handbook  ', baseBranch: 'main', headBranch: 'nibleaf/docs', contentPath: 'docs', token: raw },
+        json: {
+          repository: '  acme-fixture/handbook  ',
+          baseBranch: 'main',
+          headBranch: 'nibleaf/docs',
+          contentPath: 'docs',
+          token: raw,
+          expectedRevision: null,
+        },
       },
     ]);
     // The server's own validator accepts that exact body: it trims the settings, never the token (connectGitHub then
@@ -331,6 +339,7 @@ describe('a Connect sends the wizard’s values as pressed and shows the new con
       headBranch: 'nibleaf/docs',
       contentPath: 'docs',
       token: raw,
+      expectedRevision: null,
     });
     expect(refreshed()).toEqual([detail('site-a')]);
     await answer(0, stored());

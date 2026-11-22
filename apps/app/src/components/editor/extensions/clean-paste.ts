@@ -7,6 +7,7 @@ import type { EditorProps, EditorView } from '@tiptap/pm/view';
 import { allowedURL, escapeImageAttribute, IMAGE_UPLOAD_PLACEHOLDER_PREFIX, imageClasses, imageDimension, normalizedURL } from './html-safety';
 import { imageAttributeNames } from './image-source';
 import { canEditImages, type ImageUploader, uploadEditorImage } from './image-upload';
+import { pasteFileRows } from './mdx/file-tree';
 import { fileFromPastedImage } from './pasted-image';
 import { pastedVideoEmbedAttributes, VIDEO_EMBED_CLIPBOARD_ATTRIBUTES, VIDEO_EMBED_NODE, type VideoEmbedAttributes } from './video-embed';
 import { embedTargetFor } from './video-embed-url';
@@ -495,7 +496,8 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
               uploads.clear();
               const slice = sanitizedSlice(Slice.fromJSON(editor.schema, record.slice.toJSON()), true);
               event.preventDefault();
-              insertWithUploads(view, view.state.tr.replaceSelection(slice).setMeta('uiEvent', 'paste'));
+              // Whole File or Folder rows are rows of the tree, never text in a File's name (#870).
+              insertWithUploads(view, (pasteFileRows(view.state, slice) ?? view.state.tr.replaceSelection(slice)).setMeta('uiEvent', 'paste'));
               return true;
             },
           },

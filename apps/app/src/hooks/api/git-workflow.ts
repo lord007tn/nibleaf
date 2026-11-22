@@ -36,6 +36,8 @@ export interface GitWorkflowStatus {
   /** The Nibleaf branch and language the connection syncs; null for the site's default. */
   importBranchId: string | null;
   importLanguageId: string | null;
+  /** Moves on with every connection save (#876): the connection form sends the one it shows. Absent from a server older than it. */
+  settingsRevision?: number;
   credentialConfigured: boolean;
   webhookConfigured: boolean;
   lastSyncStatus: string;

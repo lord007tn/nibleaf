@@ -1,6 +1,12 @@
 import { growthMs, growthMsAsync, growthTestsEnabled, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
-import { buildInboundPageLinkMap, buildInboundPageLinkMapAsync, findBrokenInternalLinks, findInboundPageLinks } from './publish-checks';
+import {
+  buildInboundPageLinkMap,
+  buildInboundPageLinkMapAsync,
+  findBrokenInternalLinks,
+  findInboundPageLinks,
+  pageContentFacts,
+} from './publish-checks';
 import type { SiteSnapshot, SnapshotPage } from './site';
 
 let sequence = 0;
@@ -39,6 +45,18 @@ const site = (pages: SnapshotPage[]): SiteSnapshot => ({
   },
   pages,
   generatedAt: '2026-11-01T00:00:00.000Z',
+});
+
+describe.runIf(growthTestsEnabled)('publish facts on many raw HTML fragments', () => {
+  it('retains all links with linear growth across four times as many fragments', () => {
+    const block = '<a href="/guide" title="Guide">Guide</a>\n\n';
+    const count = 3000;
+    const small = block.repeat(count);
+    const large = block.repeat(count * 4);
+    const [smallMs, largeMs] = growthMs((content) => pageContentFacts(content, false), small, large, { budgetMs: 20_000 });
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+    expect(pageContentFacts(large, false).links).toHaveLength(count * 4);
+  }, 120_000);
 });
 
 describe.runIf(growthTestsEnabled)('cold inbound page map: growth', () => {

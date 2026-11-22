@@ -1638,6 +1638,7 @@
   "settings_git_workflow_loaderrorhint": "पुनः प्रयास करें या सर्वर कनेक्शन की जाँच करें।",
   "settings_git_workflow_connected": "GitHub कनेक्शन सहेजा गया।",
   "settings_git_workflow_connecterror": "GitHub कनेक्ट नहीं हो सका।",
+  "settings_git_workflow_savedelsewhere": "आपके खोलने के बाद किसी और ने ये सेटिंग्स सहेज दीं। उनके बदलाव अब दिख रहे हैं। उन्हें जाँचें, फिर दोबारा सहेजें।",
   "settings_git_workflow_disconnected": "GitHub डिस्कनेक्ट और एन्क्रिप्टेड क्रेडेंशियल हटा दिए गए।",
   "settings_git_workflow_disconnecterror": "GitHub को डिस्कनेक्ट नहीं किया जा सका।",
   "settings_git_workflow_operationerror": "Git ऑपरेशन को कतारबद्ध नहीं किया जा सका।",
