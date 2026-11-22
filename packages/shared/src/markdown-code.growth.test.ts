@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fencedMarkdownLines, protectMarkdownCode } from './markdown-code';
-import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growth';
+import { growthMs, growthTestsEnabled, linearGrowthLimit, superlinearGrowthLimit } from './testing/growth';
 
 // Timing bounds, run on their own (pnpm test:growth; see testing/growth).
 describe.runIf(growthTestsEnabled)('protectMarkdownCode growth', () => {
@@ -36,7 +36,8 @@ describe.runIf(growthTestsEnabled)('fencedMarkdownLines growth', () => {
     // rescanning the rest of it per ancestor would be quadratic (#590 council).
     const nested = (depth: number) => [`${'- '.repeat(depth)}\`\`\``, `${' '.repeat(2 * depth)}x`, `${' '.repeat(2 * depth)}\`\`\``, '## After'];
     expect(fencedMarkdownLines(nested(3))).toEqual([true, true, true, false]);
-    const [small, large] = growthMs(fencedMarkdownLines, nested(4000), nested(16_000));
-    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+    // An 8x step: n^1.5 work here passed the 4x linear bound at 7.3x in #727's review (#730).
+    const [small, large] = growthMs(fencedMarkdownLines, nested(4000), nested(32_000), { factor: 8 });
+    expect(large).toBeLessThanOrEqual(superlinearGrowthLimit(small));
   });
 });

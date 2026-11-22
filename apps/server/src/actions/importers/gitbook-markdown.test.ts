@@ -91,6 +91,59 @@ describe('neighbouring untitled GitBook embeds (#599)', () => {
   });
 });
 
+describe('containers around GitBook embeds (#597)', () => {
+  const embed = '{% embed url="https://youtu.be/abcdefghijk" %}';
+  const following = 'Then continue with [Guide](/guide) and ![Diagram](/diagram.png).';
+  const markdown = new MarkdownIt({ html: true });
+  const outline = (source: string) => {
+    const tokens = markdown.parse(source, {});
+    const stack: string[] = [];
+    const media: string[][] = [];
+    const next: string[][] = [];
+    for (const token of tokens) {
+      if (['list_item_open', 'blockquote_open'].includes(token.type)) stack.push(token.type);
+      if (['list_item_close', 'blockquote_close'].includes(token.type)) stack.pop();
+      if (token.content.includes('{% embed') || token.content.includes('<iframe')) media.push([...stack]);
+      if (token.content.includes('Then continue')) next.push([...stack]);
+    }
+    const inline = tokens.flatMap((token) => token.children ?? []);
+    return {
+      media,
+      next,
+      links: inline.filter((token) => token.type === 'link_open').length,
+      images: inline.filter((token) => token.type === 'image').length,
+    };
+  };
+
+  it.each([
+    ['bullet marker', `- ${embed}\n\n  ${following}`],
+    ['ordered marker', `12. ${embed}\n\n    ${following}`],
+    ['list in quote', `> - ${embed}\n>\n>   ${following}`],
+    ['quote in list', `- > ${embed}\n  >\n  > ${following}`],
+    ['lazy quote', `> Step\n> ${embed}\n${following}`],
+    ['lazy nested quote', `> > Step\n> > ${embed}\n> ${following}`],
+    ['heading outside quote', `> Step\n> ${embed}\n# ${following}`],
+  ])('keeps media and following text in their source container after %s', (_shape, source) => {
+    const before = outline(source);
+    const after = outline(convert(source).content);
+    expect(before.media).toHaveLength(1);
+    expect(before.next).toHaveLength(1);
+    expect(after.media).toEqual(before.media);
+    expect(after.next).toEqual(before.next);
+    expect(after.links).toBeGreaterThanOrEqual(before.links);
+    expect(after.images).toBeGreaterThanOrEqual(before.images);
+  });
+
+  it('leaves a following fence outside the quote with its exact text', () => {
+    const code = '~~~md\n[Literal](/untouched)\n~~~';
+    const content = convert(`> Step\n> ${embed}\n${code}`).content;
+    expect(content.endsWith(code)).toBe(true);
+    const fence = markdown.parse(content, {}).find((token) => token.type === 'fence');
+    expect(fence?.level).toBe(0);
+    expect(fence?.content).toBe('[Literal](/untouched)\n');
+  });
+});
+
 describe('parseGitBookFrontmatter', () => {
   it('reads folded descriptions, icons, visibility, and layout', () => {
     const { meta, body } = parseGitBookFrontmatter(

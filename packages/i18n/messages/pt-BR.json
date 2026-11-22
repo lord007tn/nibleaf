@@ -1692,6 +1692,7 @@
   "settings_git_workflow_loaderrorhint": "Tente novamente ou verifique a conexão do servidor.",
   "settings_git_workflow_connected": "GitHub conexão salva.",
   "settings_git_workflow_connecterror": "Não foi possível conectar GitHub.",
+  "settings_git_workflow_savedelsewhere": "Outra pessoa salvou estas configurações depois que você as abriu. As alterações dela já aparecem. Confira e salve novamente.",
   "settings_git_workflow_disconnected": "GitHub credenciais desconectadas e criptografadas removidas.",
   "settings_git_workflow_disconnecterror": "Não foi possível desconectar GitHub.",
   "settings_git_workflow_operationerror": "Não foi possível enfileirar a operação do Git.",

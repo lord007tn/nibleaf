@@ -24,6 +24,7 @@ describe.runIf(growthTestsEnabled)('importer markup reading: growth', () => {
       (n: number) => `[${'\\\\'.repeat(n)}`,
     ],
     ['unclosed media openers', normalizeImportFidelity, (n: number) => '<video src="https://cdn.test/a.mp4">\n\nAfter.\n\n'.repeat(n)],
+    ['same-line unclosed videos and children', normalizeImportFidelity, (n: number) => '<video><source src="https://cdn.test/a.mp4">'.repeat(n)],
     [
       'unclosed component container fences',
       normalizeImportFidelity,
