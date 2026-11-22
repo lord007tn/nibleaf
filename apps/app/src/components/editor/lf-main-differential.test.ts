@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor, type JSONContent } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
-import { restoreMainComponentLayout } from './__fixtures__/component-source-layout';
+import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import {
   applyCorpusEdits,
@@ -102,6 +102,19 @@ function seededPages(): string[] {
 const corpus = serializerCorpus();
 /** Where the serializer corpus's pages start in `pages`. */
 const CORPUS_START = SEEDED_PAGES;
+// The LF suite has nine additional seeded pages with adjacent component tags.
+const LF_COMPONENT_LAYOUT_PAGES = new Set([
+  27,
+  87,
+  107,
+  115,
+  140,
+  142,
+  189,
+  332,
+  580,
+  ...COMPONENT_LAYOUT_CORPUS_PAGES.map((index) => CORPUS_START + index),
+]);
 const pages: Array<{ page: string; edits: readonly CorpusEdit[] }> = [
   ...seededPages().map((page) => ({ page, edits: [{ kind: 'insert', at: 3, text: 'x' }] as CorpusEdit[] })),
   ...corpus.map(({ source, edits }) => ({ page: source, edits })),
@@ -132,9 +145,10 @@ describe('pages with LF only save as on main (#702)', () => {
     page: string,
     edits: readonly CorpusEdit[],
     edit: (target: Editor) => DifferentialEditor = (target) => target as unknown as DifferentialEditor,
+    replayLayout = false,
   ): string => {
     editor.commands.setContent(page, { emitUpdate: false });
-    if (restoreMainComponentLayout(editor)) componentLayouts++;
+    if (replayLayout && replayMainComponentLayout(editor)) componentLayouts++;
     const nodes = JSON.stringify(mainFileShape(editor.state.doc.toJSON()));
     const saved = getMarkdown(editor);
     applyCorpusEdits(edit(editor), edits);
@@ -148,7 +162,10 @@ describe('pages with LF only save as on main (#702)', () => {
   });
 
   it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages, but #660’s`, () => {
-    const digests = pages.map(({ page, edits }) => digest(page, edits));
+    const digests = pages.map(({ page, edits }, index) =>
+      digest(page, edits, undefined, !process.env.WRITE_LF_MAIN && LF_COMPONENT_LAYOUT_PAGES.has(index)),
+    );
+    if (!process.env.WRITE_LF_MAIN) expect(componentLayouts).toBe(177);
     if (process.env.WRITE_LF_MAIN) {
       writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
       return;
@@ -167,7 +184,7 @@ describe('pages with LF only save as on main (#702)', () => {
     expect(changed).toHaveLength(14);
     const withMainToggle = keptLink.map((index) => {
       const { page, edits } = pages[index] as (typeof pages)[number];
-      return digest(page, edits, (target) => withMainCodeToggle(target as unknown as MarkEditor));
+      return digest(page, edits, (target) => withMainCodeToggle(target as unknown as MarkEditor), LF_COMPONENT_LAYOUT_PAGES.has(index));
     });
     expect(withMainToggle).toEqual(keptLink.map((index) => main.digests[index]));
   }, 600_000);

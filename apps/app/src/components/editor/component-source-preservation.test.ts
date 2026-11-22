@@ -55,4 +55,23 @@ describe.each(languages)('first-save component source preservation (#625), %s', 
       editor.destroy();
     }
   });
+
+  it.each([
+    ['Tabs', '<Tabs>\n<Tab title="A">\n\n\t````md\nconst a = 1;\n\t````\n\n</Tab>\n</Tabs>'],
+    ['CodeGroup', '<CodeGroup>\n\n\t~~~md\n<Card title="x" />\n\n\t~~~\n\n</CodeGroup>'],
+  ])('keeps trailing prose outside %s when indented code looks like a fence', (tag, block) => {
+    const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
+    try {
+      const trailing = `${next} <kbd>K</kbd>`;
+      editor.commands.setContent(`${block}\n\n${trailing}`, { emitUpdate: false });
+      const first = getMarkdown(editor);
+      expect(first.endsWith(`</${tag}>\n\n${trailing}`)).toBe(true);
+      for (let cycle = 2; cycle <= 3; cycle++) {
+        editor.commands.setContent(first, { emitUpdate: false });
+        expect(getMarkdown(editor), `save ${cycle}`).toBe(first);
+      }
+    } finally {
+      editor.destroy();
+    }
+  });
 });

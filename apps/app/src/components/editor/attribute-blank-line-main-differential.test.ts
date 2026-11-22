@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { DOCUMENTATION_COMPONENTS } from '@nibleaf/shared/documentation-components';
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
-import { restoreMainComponentLayout } from './__fixtures__/component-source-layout';
+import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import jsxOpeners from './__fixtures__/jsx-openers-main.json';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
@@ -150,9 +150,9 @@ describe('pages without a blank line inside an attribute value read as on main',
   /** The page's nodes with their attributes, its save, and its save after the first
    *  node with `key` has it set to `Edited`. */
   let componentLayouts = 0;
-  const result = (page: string, key: string): { nodes: string[]; saved: string; edited: string | null } => {
+  const result = (page: string, key: string, replayLayout = false): { nodes: string[]; saved: string; edited: string | null } => {
     editor.commands.setContent(page, { emitUpdate: false });
-    if (restoreMainComponentLayout(editor)) componentLayouts++;
+    if (replayLayout && replayMainComponentLayout(editor)) componentLayouts++;
     const nodes: string[] = [];
     let target: { pos: number; attrs: Record<string, unknown> } | undefined;
     editor.state.doc.descendants((node, pos) => {
@@ -195,7 +195,11 @@ describe('pages without a blank line inside an attribute value read as on main',
   });
 
   it(`gives main’s nodes, save and edited save for all ${pages.length} pages`, () => {
-    const results = pages.map(({ page, key }) => result(page, key));
+    const recording = process.env.WRITE_BLANK_LINE_MAIN;
+    const results = pages.map(({ page, key }, index) =>
+      result(page, key, !recording && COMPONENT_LAYOUT_CORPUS_PAGES.includes(index - seeded.length)),
+    );
+    if (!recording) expect(componentLayouts).toBe(168);
     const digests = results.map(digest);
     if (process.env.WRITE_BLANK_LINE_MAIN) {
       const crAsLf = crPages.map((index) => digest(result(normalizeLineEndings(pages[index]?.page as string), pages[index]?.key as string)));

@@ -2018,7 +2018,9 @@ function maskFence(source: string, layout: MarkdownLayout, mask: Uint8Array, rea
 /** The editable text of a code block indented directly inside an MDX component. */
 export function indentedComponentCodeText(source: string): string | undefined {
   const lines = source.split('\n');
-  if (!lines.every((line) => /^(?: {4}|\t| *$)/.test(line))) return undefined;
+  // An indented fence marker can still be read as a fence by the MDX tag scan
+  // on reload. Let the ordinary code serializer fence that block instead.
+  if (!lines.every((line) => /^(?: {4}|\t| *$)/.test(line) && !lineIsFence(line))) return undefined;
   return lines.map((line) => line.replace(/^(?: {4}|\t| *$)/, '')).join('\n');
 }
 
