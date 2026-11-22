@@ -84,13 +84,16 @@ const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'AltGraph', 'C
  * It ends for good on the first of: focus moving to anything but the followed
  * heading, a pointer press (touch included), a key other than a lone modifier,
  * the window losing focus or the page being hidden (so coming back never takes
- * focus), or the caller's returned stop (the next navigation, or unmount).
+ * focus), or the caller's returned stop (the next navigation, or unmount). A
+ * page already hidden when focus lands isn't followed at all (#820).
  * Reader actions that raise none of these events, such as a screen reader's
  * virtual cursor moving, aren't seen; the deadline bounds those. A plain
  * function, outside the hook, for the React Compiler's sake (see
  * takeDestinationFocusRequest).
  */
 function followLandedHeading(first: HTMLElement, find: () => HTMLElement | null, focus: (target: HTMLElement) => void): () => void {
+  // Nobody is reading a hidden page, and coming back to it must never take focus.
+  if (document.visibilityState === 'hidden') return () => undefined;
   let followed = first;
   const observer = new MutationObserver(() => {
     if (followed.isConnected) return;
