@@ -5,9 +5,10 @@ import { resolve } from 'node:path';
 import { DOCUMENTATION_COMPONENTS } from '@nibleaf/shared/documentation-components';
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import jsxOpeners from './__fixtures__/jsx-openers-main.json';
-import { listItemLeadSources, quotedMarkSources } from './__fixtures__/list-item-leads';
+import { attributeEditHolds, listItemLeadSources, quotedMarkSources } from './__fixtures__/list-item-leads';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { normalizeLineEndings, readLineEndings, restoreLineEndings } from './line-endings';
@@ -154,11 +155,22 @@ describe('the differential pages', () => {
 describe('pages without a blank line inside an attribute value read as on main', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => editor.destroy());
+  /** Every node's attributes in `markdown`, loaded. */
+  const attributesOf = (markdown: string): Array<Record<string, unknown>> => {
+    editor.commands.setContent(markdown, { emitUpdate: false });
+    const all: Array<Record<string, unknown>> = [];
+    editor.state.doc.descendants((node) => {
+      all.push(node.attrs);
+    });
+    return all;
+  };
 
   /** The page's nodes with their attributes, its save, and its save after the first
    *  node with `key` has it set to `Edited`. */
-  const result = (page: string, key: string): { nodes: string[]; saved: string; edited: string | null } => {
+  let componentLayouts = 0;
+  const result = (page: string, key: string, replayLayout = false): { nodes: string[]; saved: string; edited: string | null } => {
     editor.commands.setContent(page, { emitUpdate: false });
+    if (replayLayout && replayMainComponentLayout(editor)) componentLayouts++;
     const nodes: string[] = [];
     let target: { pos: number; attrs: Record<string, unknown> } | undefined;
     editor.state.doc.descendants((node, pos) => {
@@ -201,7 +213,11 @@ describe('pages without a blank line inside an attribute value read as on main',
   });
 
   it(`gives main’s nodes, save and edited save for all ${pages.length} pages, but #604’s`, () => {
-    const results = pages.map(({ page, key }) => result(page, key));
+    const recording = process.env.WRITE_BLANK_LINE_MAIN;
+    const results = pages.map(({ page, key }, index) =>
+      result(page, key, !recording && COMPONENT_LAYOUT_CORPUS_PAGES.includes(index - seeded.length)),
+    );
+    if (!recording) expect(componentLayouts).toBe(168);
     const digests = results.map(digest);
     if (process.env.WRITE_BLANK_LINE_MAIN) {
       const crAsLf = crPages.map((index) => digest(result(normalizeLineEndings(pages[index]?.page as string), pages[index]?.key as string)));
@@ -213,10 +229,14 @@ describe('pages without a blank line inside an attribute value read as on main',
     expect(main.crAsLf.length).toBe(CR_PAGES);
     const crAsLf = new Map(crPages.map((index, at) => [index, main.crAsLf[at]]));
     const leadPages: number[] = [];
+    const editBroken: number[] = [];
     const differences = digests.flatMap((value, index) => {
       const { page } = pages[index] as { page: string };
       if (value !== main.digests[index] && isNamed(page)) {
         leadPages.push(index);
+        // Its attribute-edited save must still change only the attribute (attributeEditHolds).
+        const { saved, edited } = results[index] as { saved: string; edited: string | null };
+        if (!attributeEditHolds(attributesOf, saved, edited, pages[index]?.key ?? '')) editBroken.push(index);
         return [];
       }
       const lfDigest = crAsLf.get(index);
@@ -231,7 +251,7 @@ describe('pages without a blank line inside an attribute value read as on main',
       return kept ? [] : [page];
     });
     console.info(
-      `[blank-line-differential] ${pages.length} pages (${crPages.length} with a CR, read as LF on main), ${differences.length} differences`,
+      `[blank-line-differential] ${pages.length} pages (${crPages.length} with a CR, read as LF on main), ${differences.length} differences, ${componentLayouts} replayed with main's #625 layout`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
     const quotedPages = leadPages.filter((index) => quotedSources.has(pages[index]?.page ?? ''));
@@ -239,5 +259,6 @@ describe('pages without a blank line inside an attribute value read as on main',
       pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])),
     );
     expect(quotedPages.length).toBe(QUOTED_MARK_CHANGES);
+    expect(editBroken, 'named pages whose attribute edit changes more than the attribute').toEqual([]);
   }, 600_000);
 });

@@ -1,12 +1,14 @@
 // @vitest-environment jsdom
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor, type JSONContent } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
-import { listItemLeadSources, quotedMarkSources } from './__fixtures__/list-item-leads';
+import { listItemLeadSources, quotedMarkSources, textChange } from './__fixtures__/list-item-leads';
 import {
   applyCorpusEdits,
   CODE_TOGGLE_KEEPS_LINK_PAGES,
@@ -19,6 +21,8 @@ import {
 import { markdownToEmit } from './editor-change-origin';
 import { SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
+
+type EditorModule = Pick<typeof import('./tiptap-editor'), 'buildEditorExtensions' | 'getMarkdown'>;
 
 /*
  * #702 keeps a CRLF page's line endings and nothing else. A page with LF only
@@ -114,26 +118,41 @@ const QUOTED_MARK_CHANGES = 8;
  * block, a fence after text). Main wrote such a list tight with that blank line inside
  * the item, so it read back loose and the next save rewrote it; it is now written loose
  * (tight-lists.ts `writesTight`). For each, main's save unedited (`p`) and edited (`e`):
- * `F` when it was a fixed point, then the characters a reload of it lost. Each must be a
- * fixed point where main's was, and lose no more.
+ * `F` when it was a fixed point (`.` when not), then the characters a reload of it lost (`-`) and added
+ * (`+`, a delimiter read back as text; textChange). Each must be a fixed point where main's
+ * was, and lose and add no more. Recorded from main's editor with LF_LOOSENED_BASELINE_DIR
+ * (a copy of main's editor directory inside apps/app/src, as list-item-leads-main.generate.mjs makes).
  */
 const LOOSENED_LIST_PAGES: Readonly<Record<number, string>> = {
-  29: 'p:-0 e:-0',
-  49: 'p:-32 e:-32',
-  66: 'p:-4 e:-4',
-  153: 'p:-0 e:-0',
-  313: 'p:-1 e:-1',
-  347: 'p:-0 e:-0',
-  354: 'p:-0 e:-0',
-  362: 'p:-0 e:-0',
-  426: 'p:-0 e:-0',
-  496: 'p:-1 e:-1',
-  506: 'p:-0 e:-0',
-  557: 'p:-0 e:-0',
-  571: 'p:-0 e:-0',
+  29: 'p:.-0+0 e:.-0+0',
+  49: 'p:.-32+0 e:.-32+0',
+  66: 'p:.-4+0 e:.-4+0',
+  153: 'p:.-0+0 e:.-0+0',
+  313: 'p:.-1+0 e:.-1+0',
+  347: 'p:.-0+3 e:.-0+3',
+  354: 'p:.-0+0 e:.-0+0',
+  362: 'p:.-0+0 e:.-0+0',
+  426: 'p:.-0+0 e:.-0+0',
+  496: 'p:.-1+0 e:.-1+0',
+  506: 'p:.-0+0 e:.-0+0',
+  557: 'p:.-0+0 e:.-0+0',
+  571: 'p:.-0+0 e:.-0+0',
 };
 /** Where the serializer corpus's pages start in `pages`. */
 const CORPUS_START = SEEDED_PAGES;
+// The LF suite has nine additional seeded pages with adjacent component tags.
+const LF_COMPONENT_LAYOUT_PAGES = new Set([
+  27,
+  87,
+  107,
+  115,
+  140,
+  142,
+  189,
+  332,
+  580,
+  ...COMPONENT_LAYOUT_CORPUS_PAGES.map((index) => CORPUS_START + index),
+]);
 const pages: Array<{ page: string; edits: readonly CorpusEdit[] }> = [
   ...seededPages().map((page) => ({ page, edits: [{ kind: 'insert', at: 3, text: 'x' }] as CorpusEdit[] })),
   ...corpus.map(({ source, edits }) => ({ page: source, edits })),
@@ -156,6 +175,7 @@ const mainFileShape = (node: JSONContent): JSONContent => {
 describe('pages with LF only save as on main (#702)', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => editor.destroy());
+  let componentLayouts = 0;
 
   const reader = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => reader.destroy());
@@ -166,8 +186,10 @@ describe('pages with LF only save as on main (#702)', () => {
     page: string,
     edits: readonly CorpusEdit[],
     edit: (target: Editor) => DifferentialEditor = (target) => target as unknown as DifferentialEditor,
+    replayLayout = false,
   ): string => {
     editor.commands.setContent(page, { emitUpdate: false });
+    if (replayLayout && replayMainComponentLayout(editor)) componentLayouts++;
     const nodes = JSON.stringify(mainFileShape(editor.state.doc.toJSON()));
     const saved = getMarkdown(editor);
     applyCorpusEdits(edit(editor), edits);
@@ -177,31 +199,56 @@ describe('pages with LF only save as on main (#702)', () => {
   };
 
   /** Whether the page's save, unedited (`p`) and after `edits` (`e`), is a fixed point (`F`),
-   *  and how many characters a reload of it loses (LOOSENED_LIST_PAGES). */
-  const saveRecord = (page: string, edits: readonly CorpusEdit[]): string =>
-    (['p', 'e'] as const)
-      .map((kind) => {
-        editor.commands.setContent(page, { emitUpdate: false });
-        if (kind === 'e') applyCorpusEdits(editor as unknown as DifferentialEditor, edits);
-        const text = editor.state.doc.textContent;
-        const saved = getMarkdown(editor);
-        reader.commands.setContent(saved, { emitUpdate: false });
-        const counts = new Map<string, number>();
-        for (const character of text) counts.set(character, (counts.get(character) ?? 0) + 1);
-        for (const character of reader.state.doc.textContent) counts.set(character, (counts.get(character) ?? 0) - 1);
-        const lost = [...counts.values()].reduce((sum, count) => sum + Math.max(0, count), 0);
-        const again = getMarkdown(reader);
-        reader.commands.setContent(again, { emitUpdate: false });
-        return `${kind}:${again === saved && getMarkdown(reader) === saved ? 'F' : '-'}${lost}`;
-      })
-      .join(' ');
+   *  and how many characters a reload of it loses and adds (LOOSENED_LIST_PAGES): with this
+   *  editor, or with `module`'s (main's, to record them). */
+  const saveRecord = (page: string, edits: readonly CorpusEdit[], module?: EditorModule): string => {
+    const own = module ? new Editor({ element: document.createElement('div'), extensions: module.buildEditorExtensions() }) : editor;
+    const ownReader = module ? new Editor({ element: document.createElement('div'), extensions: module.buildEditorExtensions() }) : reader;
+    const save = module ? module.getMarkdown : getMarkdown;
+    try {
+      return (['p', 'e'] as const)
+        .map((kind) => {
+          own.commands.setContent(page, { emitUpdate: false });
+          if (kind === 'e') applyCorpusEdits(own as unknown as DifferentialEditor, edits);
+          const text = own.state.doc.textContent;
+          const saved = save(own);
+          ownReader.commands.setContent(saved, { emitUpdate: false });
+          const { lost, added } = textChange(text, ownReader.state.doc.textContent);
+          const again = save(ownReader);
+          ownReader.commands.setContent(again, { emitUpdate: false });
+          return `${kind}:${again === saved && save(ownReader) === saved ? 'F' : '.'}-${lost}+${added}`;
+        })
+        .join(' ');
+    } finally {
+      if (module) {
+        own.destroy();
+        ownReader.destroy();
+      }
+    }
+  };
+
+  it.runIf(process.env.LF_LOOSENED_BASELINE_DIR)('prints main’s records for the loosened list pages', async () => {
+    const dir = process.env.LF_LOOSENED_BASELINE_DIR as string;
+    const module = (await import(/* @vite-ignore */ pathToFileURL(join(dir, 'tiptap-editor.tsx')).href)) as EditorModule;
+    const records = Object.keys(LOOSENED_LIST_PAGES).map((index) => {
+      const { page, edits } = pages[Number(index)] as (typeof pages)[number];
+      return [index, saveRecord(page, edits, module)];
+    });
+    // Written out (LF_LOOSENED_OUT, or printed), for LOOSENED_LIST_PAGES.
+    const out = JSON.stringify(Object.fromEntries(records), null, 2);
+    if (process.env.LF_LOOSENED_OUT) writeFileSync(process.env.LF_LOOSENED_OUT, `${out}\n`);
+    else console.info(`[lf-main-differential] main's loosened list records: ${out}`);
+  }, 120_000);
 
   it('the pages are LF only', () => {
     expect(pages.filter(({ page }) => page.includes('\r'))).toEqual([]);
   });
 
   it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages, but #660’s and #604’s`, () => {
-    const digests = pages.map(({ page, edits }) => digest(page, edits));
+    const digests = pages.map(({ page, edits }, index) =>
+      digest(page, edits, undefined, !process.env.WRITE_LF_MAIN && LF_COMPONENT_LAYOUT_PAGES.has(index)),
+    );
+    if (!process.env.WRITE_LF_MAIN) expect(componentLayouts).toBe(177);
     if (process.env.WRITE_LF_MAIN) {
       writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
       return;
@@ -223,8 +270,10 @@ describe('pages with LF only save as on main (#702)', () => {
       const { page, edits } = pages[index] as (typeof pages)[number];
       const now = saveRecord(page, edits).split(' ');
       return (LOOSENED_LIST_PAGES[index] as string).split(' ').some((before, at) => {
-        const after = now[at] as string;
-        return (before[2] === 'F' && after[2] !== 'F') || Number(after.slice(3)) > Number(before.slice(3));
+        const [, fixedBefore, lostBefore, addedBefore] = /^.:(.)-(d+)+(d+)$/.exec(before) ?? [];
+        const [, fixedNow, lostNow, addedNow] = /^.:(.)-(d+)+(d+)$/.exec(now[at] ?? '') ?? [];
+        if (fixedBefore === undefined || fixedNow === undefined) throw new Error(`Unreadable record ${before} or ${now[at]}`);
+        return (fixedBefore === 'F' && fixedNow !== 'F') || Number(lostNow) > Number(lostBefore) || Number(addedNow) > Number(addedBefore);
       })
         ? [{ index, now: now.join(' '), main: LOOSENED_LIST_PAGES[index] }]
         : [];
@@ -234,14 +283,14 @@ describe('pages with LF only save as on main (#702)', () => {
     const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.map((index) => CORPUS_START + index).filter((index) => !leadPages.includes(index));
     const differences = changed.filter((index) => !keptLink.includes(index) && !leadPages.includes(index) && !loosened.includes(index));
     console.info(
-      `[lf-main-differential] ${pages.length} pages, ${differences.length} differences, ${keptLink.length} kept links by #660, ${leadPages.length} list item lead and ${loosened.length} loosened list pages by #604`,
+      `[lf-main-differential] ${pages.length} pages, ${differences.length} differences, ${keptLink.length} kept links by #660, ${leadPages.length} list item lead and ${loosened.length} loosened list pages by #604, ${componentLayouts} replayed with main's #625 layout`,
     );
     expect(differences.slice(0, 3).map((index) => pages[index]?.page)).toEqual([]);
     expect(changed.filter((index) => !leadPages.includes(index) && !loosened.includes(index))).toEqual(keptLink);
     expect(keptLink.length + CODE_TOGGLE_KEEPS_LINK_PAGES.filter((index) => leadPages.includes(CORPUS_START + index)).length).toBe(14);
     const withMainToggle = keptLink.map((index) => {
       const { page, edits } = pages[index] as (typeof pages)[number];
-      return digest(page, edits, (target) => withMainCodeToggle(target as unknown as MarkEditor));
+      return digest(page, edits, (target) => withMainCodeToggle(target as unknown as MarkEditor), LF_COMPONENT_LAYOUT_PAGES.has(index));
     });
     expect(withMainToggle).toEqual(keptLink.map((index) => main.digests[index]));
   }, 600_000);

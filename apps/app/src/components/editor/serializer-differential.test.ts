@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Editor } from '@tiptap/core';
 import { expect, it } from 'vitest';
+import { COMPONENT_LAYOUT_CORPUS_PAGES, MAIN_SECOND_SAVE_CHANGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
 import { LIST_ITEM_LEAD_DIFFERENTIAL_PAGES } from './__fixtures__/list-item-leads';
 import {
   applyCorpusEdits,
@@ -58,6 +59,7 @@ const saveAll = async (
   module: EditorModule,
   indexes: readonly number[] = cases.map((_, index) => index),
   edit: (editor: Editor) => DifferentialEditor = (editor) => editor as unknown as DifferentialEditor,
+  replayLayout = false,
 ): Promise<string[]> => {
   const editor = new Editor({ element: document.createElement('div'), extensions: module.buildEditorExtensions() });
   try {
@@ -65,12 +67,53 @@ const saveAll = async (
       const { source, edits } = cases[index] as (typeof cases)[number];
       editor.commands.setContent(source, { emitUpdate: false });
       applyCorpusEdits(edit(editor), edits);
+      if (replayLayout && COMPONENT_LAYOUT_CORPUS_PAGES.includes(index)) {
+        expect(replayMainComponentLayout(editor), `#625 metadata on page ${index}`).toBe(true);
+      }
       return hash(module.getMarkdown(editor));
     });
   } finally {
     editor.destroy();
   }
 };
+
+async function compareComponentLayouts(module: EditorModule, outputs: readonly string[]): Promise<string[]> {
+  const replayed = await saveAll(module, COMPONENT_LAYOUT_CORPUS_PAGES, undefined, true);
+  const compared = [...outputs];
+  const changed = COMPONENT_LAYOUT_CORPUS_PAGES.filter((index, at) => {
+    const previousLayout = replayed[at] as string;
+    compared[index] = previousLayout;
+    return outputs[index] !== previousLayout;
+  });
+  expect(changed).toHaveLength(168);
+  expect(changed).toEqual(COMPONENT_LAYOUT_CORPUS_PAGES);
+  return compared;
+}
+
+function expectSecondSaveStability(module: EditorModule): void {
+  const editor = new Editor({ element: document.createElement('div'), extensions: module.buildEditorExtensions() });
+  try {
+    const changed = cases.flatMap(({ source }, index) => {
+      editor.commands.setContent(source, { emitUpdate: false });
+      const first = module.getMarkdown(editor);
+      editor.commands.setContent(first, { emitUpdate: false });
+      return module.getMarkdown(editor) === first ? [] : [index];
+    });
+    // #604: no page becomes unstable, and the pages main saved unstably that now reach a
+    // fixed point are all named list item lead or quoted mark pages.
+    expect(
+      changed.filter((index) => !MAIN_SECOND_SAVE_CHANGES.includes(index)),
+      'pages whose unedited second save now differs',
+    ).toEqual([]);
+    const stabilized = MAIN_SECOND_SAVE_CHANGES.filter((index) => !changed.includes(index));
+    expect(stabilized.filter((index) => !LIST_ITEM_LEAD_DIFFERENTIAL_PAGES.includes(index)), 'unnamed pages now stable').toEqual([]);
+    console.info(`[serializer-differential] ${changed.length} pages change on the second save, ${stabilized.length} of main's 280 now stable by #604`);
+    expect(MAIN_SECOND_SAVE_CHANGES).toHaveLength(280);
+    expect(stabilized).toHaveLength(-1);
+  } finally {
+    editor.destroy();
+  }
+}
 
 const baselineDir = process.env.SERIALIZER_BASELINE_DIR;
 
@@ -102,7 +145,7 @@ it.skipIf(baselineDir)(
       count: cases.length,
     });
     const module = await import('./tiptap-editor');
-    const outputs = await saveAll(module);
+    const outputs = await compareComponentLayouts(module, await saveAll(module));
     // #604: the named list item lead pages are checked against main in list-item-leads-main.test.ts.
     const differing = outputs.flatMap((output, index) =>
       output === baseline.outputs[index] || LIST_ITEM_LEAD_DIFFERENTIAL_PAGES.includes(index) ? [] : [index],
@@ -110,8 +153,10 @@ it.skipIf(baselineDir)(
     // #660: only the pages whose code toggle now keeps a link differ, and with main's toggle each saves as main did.
     const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.filter((index) => !LIST_ITEM_LEAD_DIFFERENTIAL_PAGES.includes(index));
     expect(differing, `${differing.length} pages save differently from main`).toEqual(keptLink);
-    const withMainToggle = await saveAll(module, differing, (editor) => withMainCodeToggle(editor as unknown as MarkEditor));
+    expect(keptLink.length + CODE_TOGGLE_KEEPS_LINK_PAGES.filter((index) => LIST_ITEM_LEAD_DIFFERENTIAL_PAGES.includes(index)).length).toBe(14);
+    const withMainToggle = await saveAll(module, differing, (editor) => withMainCodeToggle(editor as unknown as MarkEditor), true);
     expect(withMainToggle).toEqual(differing.map((index) => baseline.outputs[index]));
+    expectSecondSaveStability(module);
   },
   600_000,
 );

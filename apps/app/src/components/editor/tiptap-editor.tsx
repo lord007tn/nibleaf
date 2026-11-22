@@ -76,7 +76,7 @@ import { ImageUpload, type ImageUploader, uploadEditorImage } from './extensions
 import { InternalLinkClicks } from './extensions/internal-link-clicks';
 import { LinkableCode } from './extensions/linkable-code';
 import { mdxNodes } from './extensions/mdx';
-import { decodeMdxSource, opaqueMdxNodes } from './extensions/mdx-roundtrip';
+import { decodeMdxSource, indentedComponentCodeText, opaqueMdxNodes } from './extensions/mdx-roundtrip';
 import { MarkdownBlockquote } from './extensions/quote';
 import { SectionTarget } from './extensions/section-target';
 import { SelectionShortcuts } from './extensions/selection-shortcuts';
@@ -94,6 +94,13 @@ import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
 const lowlight = createLowlight(common);
 
 const fenceParsers = new WeakSet<object>();
+
+/** A quoted indented code block can contain literal fence markers (#607). */
+function quotedCodeFenceLength(code: string): number {
+  let length = 3;
+  for (const [closer] of code.matchAll(/^ {0,3}`{3,}(?=[ \t]*$)/gm)) length = Math.max(length, closer.trimStart().length + 1);
+  return length;
+}
 
 const replaceFenceLanguage = (opening: string, language: string): string => {
   const match = /^(\s*(?:`{3,}|~{3,}))(\s*)(\S*)?(.*)$/.exec(opening);
@@ -145,6 +152,20 @@ function getCounts(editor: Editor): { words: number; characters: number } {
   return { words: storage.characterCount?.words() ?? 0, characters: storage.characterCount?.characters() ?? 0 };
 }
 
+/**
+ * Whether the code block at `index` in `parent` is written back as its authored indented
+ * source (#625). Two indented chunks separated only by a blank line read back as one
+ * block, so a block right after another indented one is written fenced instead.
+ */
+function writesIndentedSource(parent: PMNode, index: number): boolean {
+  const node = parent.maybeChild(index);
+  const indented = node?.attrs.sourceIndentedCode;
+  if (!node || typeof indented !== 'string' || node.attrs.language || !parent.attrs?.sourceOpen) return false;
+  if (indentedComponentCodeText(indented) !== node.textContent) return false;
+  const previous = parent.maybeChild(index - 1);
+  return !(previous?.type === node.type && writesIndentedSource(parent, index - 1));
+}
+
 /** CodeBlockLowlight that mirrors the chosen language onto the <pre> as `data-language`,
  * so the dark chrome's label bar (CSS ::before) can display it. */
 const CodeBlock = CodeBlockLowlight.extend({
@@ -186,6 +207,16 @@ const CodeBlock = CodeBlockLowlight.extend({
         parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-fence-tail')),
         rendered: false,
       },
+      sourceIndentedCode: {
+        default: undefined,
+        parseHTML: (element) => decodeMdxSource(element.firstElementChild?.getAttribute('data-mdx-indented-code')) || undefined,
+        rendered: false,
+      },
+      sourceFenceQuoteTab: {
+        default: undefined,
+        parseHTML: (element) => element.firstElementChild?.getAttribute('data-mdx-fence-quote-tab') ?? undefined,
+        rendered: false,
+      },
     };
   },
   renderHTML({ node, HTMLAttributes }) {
@@ -198,16 +229,34 @@ const CodeBlock = CodeBlockLowlight.extend({
         serialize(state, node, parent, index) {
           const sourceOpen = String(node.attrs.sourceFenceOpen ?? '');
           const language = String(node.attrs.language ?? '');
+          const indented = node.attrs.sourceIndentedCode;
+          const fenceState = state as unknown as FenceSerializeState;
+          if (!fenceState.delim && writesIndentedSource(parent, index)) {
+            state.write(indented);
+            state.closeBlock(node);
+            return;
+          }
           const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
-          let open = `\`\`\`${language}`;
+          const length = node.attrs.sourceFenceQuoteTab === 'indented' ? quotedCodeFenceLength(node.textContent) : 3;
+          let open = `${'`'.repeat(length)}${language}`;
           if (sourceOpen) open = language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language);
           // `output`, `delim` and `closed`: see LinearMarkdownSerializerState (markdown-output.ts).
-          writeFence(state as unknown as FenceSerializeState, node, parent, index, open);
+          writeFence(fenceState, node, parent, index, open);
         },
         parse: {
           setup(markdownit) {
             markdownit.set({ langPrefix: 'language-' });
             if (fenceParsers.has(markdownit)) return;
+            const codeBlock = markdownit.renderer.rules.code_block;
+            if (codeBlock) {
+              markdownit.renderer.rules.code_block = (...args) => {
+                const [tokens, index] = args;
+                const html = codeBlock(...args);
+                return tokens[index]?.attrGet('data-mdx-fence-quote-tab') === 'indented'
+                  ? html.replace('<code>', '<code data-mdx-fence-quote-tab="indented">')
+                  : html;
+              };
+            }
             markdownit.core.ruler.after('block', 'nibleaf_fence_source', (state) => annotateFences(state));
             fenceParsers.add(markdownit);
           },

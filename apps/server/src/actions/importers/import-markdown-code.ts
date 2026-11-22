@@ -8,6 +8,19 @@ const markdownWithoutHtml = new MarkdownIt({ html: false });
 type ImportContainer = { kind: 'quote' | 'list'; indent: number };
 const LIST_MARKER = /(?:[-*+]|\d{1,9}[.)])(?= )/y;
 
+/** End line of each source paragraph, including lazy continuation lines. */
+export const importParagraphEnds = (source: string): number[] => {
+  const blocks: Token[] = [];
+  markdown.block.parse(source, markdown, {}, blocks);
+  const ends: number[] = [];
+  for (const block of blocks) {
+    if (block.type !== 'paragraph_open' || !block.map) continue;
+    const [start, end] = block.map;
+    for (let line = start; line < end; line++) ends[line] = end;
+  }
+  return ends;
+};
+
 /** Expand tabs only for parsing. In particular, `>\t` consumes one column of
  * the tab as optional quote spacing; its remaining columns are indentation. */
 const expandedColumns = (line: string): string => {
@@ -63,6 +76,12 @@ const importFenceBody = (line: string, containers: readonly ImportContainer[]): 
     }
   }
   return line.slice(cursor);
+};
+
+/** Match a continuation prefix against the containers on an opener's line. */
+export const importContainerContinuation = (prefix: string): ((continuation: string) => boolean) => {
+  const { containers } = importFenceLine(expandedColumns(prefix));
+  return (continuation) => importFenceBody(expandedColumns(`${continuation}<`), containers)?.trimStart() === '<';
 };
 
 /** Read each component opener once, including multiline attributes. The cap

@@ -12,7 +12,10 @@
  *   when left out. The form never shows them, so a save sends them back
  *   exactly as the latest confirmed status holds them;
  * - it keeps the stored credential unless a token is sent, and always keeps
- *   the webhook secret.
+ *   the webhook secret;
+ * - it refuses (409) a save whose `expectedRevision` is no longer the
+ *   connection's `settingsRevision`: another save committed after the form
+ *   loaded what it shows (#876). Each save moves the revision on.
  */
 
 /** The four settings the form edits. */
@@ -27,6 +30,8 @@ export type GitWorkflowConnectionValues = {
 export type StoredGitWorkflowConnection = GitWorkflowConnectionValues & {
   importBranchId?: string | null;
   importLanguageId?: string | null;
+  /** Moves on with every connection save; a form sends the one it shows as `expectedRevision`. */
+  settingsRevision?: number;
 };
 
 export function gitWorkflowConnectionValues(stored: StoredGitWorkflowConnection): GitWorkflowConnectionValues {
@@ -60,6 +65,7 @@ export type GitWorkflowConnectionPayload = GitWorkflowConnectionValues & {
   importBranchId?: string;
   importLanguageId?: string;
   token?: string;
+  expectedRevision?: number;
 };
 
 /** The token a save sends: one the person typed, never a blank one (blank keeps the stored credential). */
@@ -73,12 +79,16 @@ export function gitWorkflowTokenToSend(token: string): string | undefined {
  * - the four settings as typed (the server trims and normalizes them);
  * - the import branch and language exactly as `stored` (the latest confirmed
  *   status) holds them, left out only where it holds none;
- * - the token only when one was typed.
+ * - the token only when one was typed;
+ * - `expectedRevision`: the revision of the connection the form shows, never
+ *   `stored`'s, which may be a status read just now that the form hasn't
+ *   reconciled. Left out when the form has none.
  */
 export function gitWorkflowConnectionPayload(
   values: GitWorkflowConnectionValues,
   stored: StoredGitWorkflowConnection | null | undefined,
   token = '',
+  expectedRevision?: number,
 ): GitWorkflowConnectionPayload {
   const sentToken = gitWorkflowTokenToSend(token);
   return {
@@ -89,6 +99,7 @@ export function gitWorkflowConnectionPayload(
     ...(stored?.importBranchId ? { importBranchId: stored.importBranchId } : {}),
     ...(stored?.importLanguageId ? { importLanguageId: stored.importLanguageId } : {}),
     ...(sentToken ? { token: sentToken } : {}),
+    ...(expectedRevision === undefined ? {} : { expectedRevision }),
   };
 }
 

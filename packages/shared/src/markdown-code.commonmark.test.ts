@@ -1,6 +1,6 @@
 import { performance } from 'node:perf_hooks';
 import MarkdownIt from 'markdown-it';
-import { fromMarkdown } from 'mdast-util-from-markdown';
+import { fromMarkdown, type Extension as MdastExtension } from 'mdast-util-from-markdown';
 import { expect, it, vi } from 'vitest';
 import { fencedMarkdownLines, openingMarkdownFence } from './markdown-code';
 import { readerSections } from './reader-headings';
@@ -33,24 +33,45 @@ vi.setConfig({ testTimeout: 60_000 });
 
 const markdown = new MarkdownIt({ html: true });
 
-/** An independent CommonMark parser for markdown-it's nested-tab discrepancies.
- * A code node's source starts at its fence or at indented content; only the
- * former has an opening delimiter within three spaces. */
-const micromarkFences = (source: string): boolean[] => {
+type CodeNode = Extract<ReturnType<typeof fromMarkdown>['children'][number], { type: 'code' }>;
+
+/** The lines of each code node micromark builds for which `isFenced` holds. */
+const codeLines = (source: string, isFenced: (node: CodeNode) => boolean, extensions: MdastExtension[] = []): boolean[] => {
   const flags = source.split('\n').map(() => false);
-  const tree = fromMarkdown(source);
+  const tree = fromMarkdown(source, { mdastExtensions: extensions });
   const visit = (node: (typeof tree)['children'][number] | typeof tree): void => {
-    if (node.type === 'code' && node.position) {
-      const start = node.position.start.offset ?? 0;
-      const newline = source.indexOf('\n', start);
-      if (openingMarkdownFence(source.slice(start, newline < 0 ? source.length : newline)))
-        for (let line = node.position.start.line - 1; line < node.position.end.line; line++) flags[line] = true;
-    }
+    if (node.type === 'code' && node.position && isFenced(node))
+      for (let line = node.position.start.line - 1; line < node.position.end.line; line++) flags[line] = true;
     if ('children' in node) for (const child of node.children) visit(child);
   };
   visit(tree);
   return flags;
 };
+
+/** Code nodes micromark opened with a fence: its own `codeFencedFence` event marks the open code node.
+ * mdast-util-from-markdown has no enter handler of its own for that event, so the tree it builds is unchanged. */
+const fencedByMicromark = new WeakSet<object>();
+const markFencedCode: MdastExtension = {
+  enter: {
+    codeFencedFence() {
+      const open = this.stack.findLast((node) => node.type === 'code');
+      if (open) fencedByMicromark.add(open);
+    },
+  },
+};
+
+/** An independent CommonMark parser for markdown-it's nested-tab discrepancies: the lines of every code block
+ * micromark itself parsed as fenced (#646). */
+const micromarkFences = (source: string): boolean[] => codeLines(source, (node) => fencedByMicromark.has(node), [markFencedCode]);
+
+/** The helper before #646, kept only to pin what it got wrong: it inferred a fence from the code node's first
+ * source line, which for indented code inside a quote can read like one (`>\t  ~~~`). */
+const fencesInferredFromSource = (source: string): boolean[] =>
+  codeLines(source, (node) => {
+    const start = node.position?.start.offset ?? 0;
+    const newline = source.indexOf('\n', start);
+    return openingMarkdownFence(source.slice(start, newline < 0 ? source.length : newline)) !== undefined;
+  });
 
 it('measures tabs after quote markers in columns, including nested quotes, list items and indented code (#595)', () => {
   const examples = [
@@ -221,6 +242,38 @@ it('reads ordered siblings, thematic breaks, lazy lines, setext underlines and H
     const lines = source.split('\n');
     expect(commonMarkCode(lines).fence.map(Number).join(''), name).toBe(code);
     expect(mainFencedMarkdownLines(lines).map(Number).join(''), `${name}: main`).toBe(code);
+  }
+});
+
+it('pins fenced code with micromark’s own codeFenced events, never a fence inferred from the source (#646)', () => {
+  // Indented code inside a quote whose content reads like a fence: only `>~~~` opens one (an unclosed fence).
+  const repro = '>\t  ~~~\n># literal\n>~~~\nafter';
+  const lines = repro.split('\n');
+  expect(micromarkFences(repro).map(Number).join('')).toBe('0010');
+  expect(fencedMarkdownLines(lines).map(Number).join('')).toBe('0010');
+  expect(commonMarkCode(lines).fence.map(Number).join('')).toBe('0010');
+  // What the old source-slice helper said.
+  expect(fencesInferredFromSource(repro).map(Number).join('')).toBe('1010');
+
+  // Every differential case the inference got wrong: the events agree with the scanner and markdown-it there.
+  const misread: Array<{ index: number; events: string; inferred: string; scanner: string; markdownIt: string }> = [];
+  for (const { index, source } of differentialCases()) {
+    const events = micromarkFences(source).map(Number).join('');
+    const inferred = fencesInferredFromSource(source).map(Number).join('');
+    if (events === inferred) continue;
+    const caseLines = source.split('\n');
+    misread.push({
+      index,
+      events,
+      inferred,
+      scanner: fencedMarkdownLines(caseLines).map(Number).join(''),
+      markdownIt: commonMarkCode(caseLines).fence.map(Number).join(''),
+    });
+  }
+  expect(misread).toHaveLength(19);
+  for (const { index, events, scanner, markdownIt } of misread) {
+    expect(scanner, `case ${index}: the scanner`).toBe(events);
+    expect(markdownIt, `case ${index}: markdown-it`).toBe(events);
   }
 });
 
