@@ -5,6 +5,7 @@ import { Plugin, PluginKey, type Selection, type SelectionBookmark, type Transac
 import { type Mappable, ReplaceAroundStep, ReplaceStep } from '@tiptap/pm/transform';
 import { MarkdownSerializerState } from 'prosemirror-markdown';
 import { Markdown } from 'tiptap-markdown';
+import { readStructuredSource } from './extensions/mdx-roundtrip';
 import {
   createPositionedLineEndings,
   mapLineEndings,
@@ -17,6 +18,13 @@ import {
   type SerializedPage,
   type SourceLineEndings,
 } from './line-endings';
+import {
+  escapeStructuredHtmlBraces,
+  STRUCTURED_BLOCK_NODES,
+  type StructuredHtmlSource,
+  structuredLinkSource,
+  writeStructuredHtmlBlock,
+} from './structured-html-source';
 import { readsBackTight, writesTight } from './tight-lists';
 
 /*
@@ -307,6 +315,7 @@ class LinearMarkdownSerializerState extends SerializerState {
   readonly path: Array<{ node: PMNode; parent: PMNode | Fragment; index: number; position: number; lastChildEnd?: number; lastChildIndex?: number }> =
     [];
   private readonly offsets = new WeakMap<object, number[]>();
+  private readonly writtenHeadings = new WeakSet<StructuredHtmlSource>();
   private closedOwner: SerializedLineOwner | null = null;
   /** The marker each list was written with: its bullet, or its ordered delimiter (`renderList`). */
   private readonly listMarkers = new WeakMap<PMNode, string>();
@@ -416,7 +425,13 @@ class LinearMarkdownSerializerState extends SerializerState {
   }
 
   override text(text: string, shouldEscape = true): void {
-    const lines = text.split('\n');
+    let content = text;
+    if (shouldEscape && /[{}]/.test(text)) {
+      const node = this.path.at(-1)?.node;
+      const link = node?.isText && node.type.schema.marks.link?.isInSet(node.marks);
+      if (link && structuredLinkSource(link)) content = escapeStructuredHtmlBraces(text);
+    }
+    const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
       this.write();
       const line = lines[i] ?? '';
@@ -454,7 +469,7 @@ class LinearMarkdownSerializerState extends SerializerState {
     }
     this.path.push({ node, parent, index, position });
     try {
-      super.render(node, parent, index);
+      if (!writeStructuredHtmlBlock(this, node, this.writtenHeadings)) super.render(node, parent, index);
     } finally {
       this.path.pop();
       this.output.owner =
@@ -489,6 +504,10 @@ class LinearMarkdownSerializerState extends SerializerState {
   }
 
   override markString(mark: Mark, open: boolean, parent: PMNode, index: number): string {
+    if (mark.type.name === 'link') {
+      const source = structuredLinkSource(mark);
+      if (source) return open ? source.open : source.close;
+    }
     const info = this.marks[mark.type.name];
     if (info?.expelEnclosingWhitespace) {
       if (open) {
@@ -615,6 +634,22 @@ function lineEndingReset(transaction: Transaction): LineEndingReset | undefined 
  *  builds its own state class; this one is the same with the output kept as pieces.
  *  A page is read with LF line endings and saved with its own (line-endings.ts). */
 export const LinearMarkdown = Markdown.extend({
+  addGlobalAttributes() {
+    return [
+      ...(this.parent?.() ?? []),
+      {
+        types: [...new Set(Object.values(STRUCTURED_BLOCK_NODES)), 'link'],
+        attributes: {
+          sourceStructuredHtml: {
+            default: undefined,
+            keepOnSplit: false,
+            rendered: false,
+            parseHTML: readStructuredSource,
+          },
+        },
+      },
+    ];
+  },
   addCommands() {
     const commands = (this.parent?.() ?? {}) as { setContent?: SetContent };
     const setContent = commands.setContent as SetContent;

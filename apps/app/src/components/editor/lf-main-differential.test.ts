@@ -161,15 +161,22 @@ const pages: Array<{ page: string; edits: readonly CorpusEdit[] }> = [
   ),
 ];
 
-/** Project only #670's duplicated File name text to the historical atom shape.
- * The name attribute, every other node, and all Markdown remain in the digest. */
-const mainFileShape = (node: JSONContent): JSONContent => {
+/** Project #670's duplicated File text and #575's unused metadata slot to the
+ * historical shape. Authored values, every other node, and all Markdown remain
+ * in the digest. */
+const mainNodeShape = (node: JSONContent): JSONContent => {
   if (node.type === 'mdxFile') {
     expect(node.content?.map((child) => child.text ?? '').join('') ?? '').toBe(node.attrs?.name ?? '');
     const { content: _name, ...atom } = node;
     return atom;
   }
-  return node.content ? { ...node, content: node.content.map(mainFileShape) } : node;
+  let projected = node;
+  if (node.attrs && Object.hasOwn(node.attrs, 'sourceStructuredHtml') && node.attrs.sourceStructuredHtml === undefined) {
+    const { attrs, ...rest } = node;
+    const { sourceStructuredHtml: _empty, ...existing } = attrs;
+    projected = Object.keys(existing).length === 0 ? rest : { ...node, attrs: existing };
+  }
+  return node.content ? { ...projected, content: node.content.map(mainNodeShape) } : projected;
 };
 
 describe('pages with LF only save as on main (#702)', () => {
@@ -190,7 +197,7 @@ describe('pages with LF only save as on main (#702)', () => {
   ): string => {
     editor.commands.setContent(page, { emitUpdate: false });
     if (replayLayout && replayMainComponentLayout(editor)) componentLayouts++;
-    const nodes = JSON.stringify(mainFileShape(editor.state.doc.toJSON()));
+    const nodes = JSON.stringify(mainNodeShape(editor.state.doc.toJSON()));
     const saved = getMarkdown(editor);
     applyCorpusEdits(edit(editor), edits);
     const edited = getMarkdown(editor);
