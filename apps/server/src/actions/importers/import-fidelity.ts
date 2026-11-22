@@ -1,7 +1,7 @@
 import { forwardIndexOf, matchTags } from '@nibleaf/shared/markup-scan';
-import { scanAuthoredEmbeds, withEmbedAttribute } from '@nibleaf/shared/reader-embeds';
-import { isAllowedMediaUrl, parseVideoUrl, videoEmbedSrc } from '@nibleaf/shared/video-embeds';
-import { protectImportCode } from './import-markdown-code';
+import { readAuthoredMediaChild, scanAuthoredEmbeds, withEmbedAttribute } from '@nibleaf/shared/reader-embeds';
+import { hasUnsafeMediaUrlCharacters, isAllowedMediaUrl, parseVideoUrl, parseWebUrl, videoEmbedSrc } from '@nibleaf/shared/video-embeds';
+import { importContainerContinuation, protectImportCode } from './import-markdown-code';
 
 export interface ImportFidelityIssue {
   kind: 'embed' | 'link';
@@ -24,15 +24,9 @@ const attr = (value: string): string => value.replaceAll('&', '&amp;').replaceAl
 /** Container bytes shared by standalone media links and Liquid embeds. */
 export const importContainerPrefix = (line: string): string => /^[\t >]*/.exec(line)?.[0] ?? '';
 
-// Keep rejected bytes inert even when the shared URL parser would trim them.
-export const isImportMediaUrl = (url: string): boolean => {
-  if (!isAllowedMediaUrl(url)) return false;
-  for (let index = 0; index < url.length; index++) {
-    const code = url.charCodeAt(index);
-    if (code <= 32 || code === 127) return false;
-  }
-  return true;
-};
+// Import is strict about padding as well as controls. Interactive input may
+// keep the shared parser's policy of accepting surrounding ordinary spaces.
+export const isImportMediaUrl = (url: string): boolean => url === url.trim() && isAllowedMediaUrl(url);
 
 /** A source-declared embed. HTTPS frames outside the player allowlist remain link cards. */
 export const importEmbed = (url: string, title: string, onUnmapped: (url: string) => void, kind?: 'video' | 'iframe'): string => {
@@ -94,6 +88,34 @@ const inertRejectedOpeners = (source: string, onUnmapped: (url: string) => void)
   return output.join('');
 };
 
+const unclosedMediaFallback = (markup: string, url: string): string => {
+  const httpLink = /^http:\/\//i.test(url) && url === url.trim() && !hasUnsafeMediaUrlCharacters(url) && parseWebUrl(url);
+  if (isImportMediaUrl(url) || httpLink) return `<a href="${attr(url)}">${attr(url).replaceAll('>', '&gt;')}</a>`;
+  return `<code>${attr(markup).replaceAll('>', '&gt;')}</code>`;
+};
+
+/** An unclosed video owns adjacent media children in its Markdown block.
+ * Stop at a blank, other content, or container exit. */
+const appendOrphanVideoChildren = (source: string, from: number, prefix: string, output: string[]): number => {
+  const gap = /[ \t]*(?:\r?\n[ \t>]*)?/y;
+  let continuesContainer: ReturnType<typeof importContainerContinuation> | undefined;
+  let cursor = from;
+  for (;;) {
+    gap.lastIndex = cursor;
+    const separator = gap.exec(source)?.[0] ?? '';
+    const start = cursor + separator.length;
+    const child = readAuthoredMediaChild(source, start);
+    if (!child) return cursor;
+    const newline = separator.indexOf('\n');
+    if (newline >= 0) {
+      continuesContainer ??= importContainerContinuation(prefix);
+      if (!continuesContainer(separator.slice(newline + 1))) return cursor;
+    }
+    output.push(separator, unclosedMediaFallback(source.slice(start, child.end), child.src));
+    cursor = child.end;
+  }
+};
+
 /** Normalize source media and escaped block markers outside code. Scans are forward-only. */
 export const normalizeImportFidelity = (source: string, onUnmapped: (url: string) => void = () => undefined): string => {
   const protectedCode = protectImportCode(source);
@@ -126,11 +148,11 @@ export const normalizeImportFidelity = (source: string, onUnmapped: (url: string
     output.push(prose.slice(cursor, embed.start));
     if (!embed.closed) {
       onUnmapped(url);
-      if (embed.kind !== 'video') output.push(prose.slice(embed.start, embed.end));
-      else if (url.startsWith('https://') || url.startsWith('http://'))
-        output.push(`<a href="${attr(url)}">${attr(url).replaceAll('>', '&gt;')}</a>`);
-      else output.push(`<code>${attr(prose.slice(embed.start, embed.end)).replaceAll('>', '&gt;')}</code>`);
-    } else if (embed.kind === 'video' && !url) {
+      output.push(unclosedMediaFallback(prose.slice(embed.start, embed.end), url));
+      cursor = embed.kind === 'video' ? appendOrphanVideoChildren(prose, embed.end, prose.slice(lineStart, embed.start), output) : embed.end;
+      continue;
+    }
+    if (embed.kind === 'video' && !url) {
       // A source/track video is already canonical HTML; preserve its alternatives and captions.
       const children = prose.slice(embed.openEnd, embed.end);
       const sources = matchTags(children, /<source\b[^<>]*>/gi);
@@ -160,14 +182,19 @@ export const normalizeImportFidelity = (source: string, onUnmapped: (url: string
   const lines = output.join('').split('\n');
   let title = '';
   for (let index = 0; index < lines.length; index++) {
-    const raw = lines[index] ?? '';
+    const stored = lines[index] ?? '';
+    const raw = index < lines.length - 1 && stored.endsWith('\r') ? stored.slice(0, -1) : stored;
     const prefix = importContainerPrefix(raw);
     const line = raw.slice(prefix.length).trimEnd();
     if (line === '<p>---</p>' || line === '\\---' || line === '\\-\\-\\-') lines[index] = `${prefix}\n${prefix}---\n${prefix}`;
     // A standalone provider link is how Markdown sources declare a video block.
     const link = /^\[([^\]\n]+)\]\((https:\/\/[^\s)]+)\)$/.exec(line);
-    const bare = line.startsWith('https://') || (line.startsWith('<https://') && line.endsWith('>')) ? line.replace(/^<|>$/g, '') : '';
-    const url = link?.[2] ?? bare;
+    // Remove only Markdown syntax from the destination. Leading indentation and
+    // quote markers are container syntax, so they never count as padding. A
+    // bare URL retains its trailing whitespace, and a generated </code> cannot
+    // be part of it. Space after a closing `>` is outside the address.
+    const standalone = /^(?:<(https:\/\/[^<>]+)>[ \t]*|(https:\/\/[^<>]+))$/.exec(raw.slice(prefix.length));
+    const url = link?.[2] ?? standalone?.[1] ?? standalone?.[2];
     if (url && isImportMediaUrl(url) && (parseVideoUrl(url) || /\.(?:mp4|webm|ogg)(?:[?#]|$)/i.test(url))) {
       const label = link?.[1]?.includes('\uE000') ? '' : link?.[1];
       lines[index] = prefix + importEmbed(url, decodeImportEntities(label || title || 'Video'), onUnmapped);

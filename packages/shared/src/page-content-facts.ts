@@ -110,8 +110,17 @@ type HtmlNode = {
   tagName?: string;
   properties?: Record<string, unknown>;
   children?: HtmlNode[];
+  /** An HTML `<template>`'s inert contents. */
+  content?: unknown;
   position?: { start: { offset?: number } };
 };
+
+/* A `<template>` inside `<svg>` or `<math>` is an ordinary foreign element: it has no
+ * inert contents, and the reader renders its children (#908). Only an HTML template
+ * is a non-link context. In HAST, only an HTML template carries `content`. */
+const htmlNonLinkContext = (node: HtmlNode): boolean =>
+  node.tagName !== undefined && NON_LINK_CONTEXTS.has(node.tagName) && (node.tagName !== 'template' || node.content !== undefined);
+const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
 
 /** CommonMark may end a raw HTML node at a blank line inside e.g. <title>.
  * Keep the source HTML context even if rehype-raw reparents generated nodes.
@@ -130,7 +139,12 @@ const htmlNonLinkRanges = (tree: Root, content: string): { start: number; end: n
   keepHtml(tree);
   const ranges: { start: number; end: number }[] = [];
   const visit = (node: DefaultTreeAdapterTypes.ChildNode) => {
-    if ('tagName' in node && NON_LINK_CONTEXTS.has(node.tagName) && node.sourceCodeLocation) {
+    if (
+      'tagName' in node &&
+      NON_LINK_CONTEXTS.has(node.tagName) &&
+      (node.tagName !== 'template' || node.namespaceURI === HTML_NAMESPACE) &&
+      node.sourceCodeLocation
+    ) {
       // An unclosed context runs to the end of the page.
       ranges.push({ start: node.sourceCodeLocation.startOffset, end: node.sourceCodeLocation.endOffset ?? content.length });
       return;
@@ -142,18 +156,18 @@ const htmlNonLinkRanges = (tree: Root, content: string): { start: number; end: n
 };
 
 /**
- * Whether an offset lies inside any of the ranges, answered in O(log n) per
- * offset: the ranges are sorted once by start, with the largest end seen so
+ * Whether an offset or a complete half-open span lies inside one range,
+ * answered in O(log n): sort once by start, with the largest end seen so
  * far, so a page with many contexts and many links or embeds stays linear.
  * Same answer as checking every range (an unclosed context can overlap later ones).
  */
-export const offsetInRanges = (ranges: { start: number; end: number }[]): ((offset: number) => boolean) => {
+export const offsetInRanges = (ranges: { start: number; end: number }[]): ((offset: number, end?: number) => boolean) => {
   if (ranges.length === 0) return () => false;
   const sorted = [...ranges].sort((a, b) => a.start - b.start);
   const starts = sorted.map((range) => range.start);
   const maxEnds: number[] = [];
   for (const range of sorted) maxEnds.push(Math.max(range.end, maxEnds.at(-1) ?? range.end));
-  return (offset) => {
+  return (offset, end = offset + 1) => {
     // The last range starting at or before the offset.
     let low = 0;
     let high = starts.length - 1;
@@ -165,7 +179,7 @@ export const offsetInRanges = (ranges: { start: number; end: number }[]): ((offs
         low = middle + 1;
       } else high = middle - 1;
     }
-    return last >= 0 && (maxEnds[last] as number) > offset;
+    return last >= 0 && (maxEnds[last] as number) >= end;
   };
 };
 
@@ -253,7 +267,7 @@ const htmlLinks = (tree: Root, content: string, embeds: EmbedFacts): string[] =>
     // Every complete iframe became the reader's embed element (./reader-embeds), so one
     // still here has no closer in its block (or a tag the rewrite couldn't read).
     if (node.tagName === 'iframe') embeds.unclosedEmbeds.push(propertyText(node.properties?.src) || '<iframe>');
-    if (node.tagName && NON_LINK_CONTEXTS.has(node.tagName)) return;
+    if (htmlNonLinkContext(node)) return;
     if (node.tagName && (LINK_ELEMENTS.has(node.tagName) || EMBED_ELEMENTS.has(node.tagName))) {
       const offset = node.position?.start.offset;
       if (offset !== undefined && suppressed(offset)) return;
@@ -309,10 +323,11 @@ export const collectPageContentFacts = (content: string): PageContentFacts => {
     };
     collectCode(markdownParser.parse(content) as MarkdownNode);
   }
+  const containsCode = offsetInRanges(codeRanges);
   const inCode = (node: MarkdownNode): boolean => {
     const start = node.position?.start.offset;
     const end = node.position?.end.offset;
-    return start !== undefined && end !== undefined && codeRanges.some((range) => start >= range.start && end <= range.end);
+    return start !== undefined && end !== undefined && containsCode(start, end);
   };
 
   // CommonMark: the first definition of a label wins.

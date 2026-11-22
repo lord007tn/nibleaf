@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
 import type { ImportReference } from '../import-references';
 import type { rewriteMainInternalLinks } from './page-links.main-reference';
 import { markdownReferences as mainReferences } from './page-links.main-references';
@@ -155,4 +155,41 @@ export const traceLinkDiscovery = (
     trace.active = undefined;
     spy.mockRestore();
   }
+};
+
+/** Preserve every old visit and only permit added edits at authored definitions. */
+export const assertDefinitionDiscoveryDelta = (
+  source: string,
+  main: ReturnType<typeof traceLinkDiscovery>,
+  head: ReturnType<typeof traceLinkDiscovery>,
+) => {
+  const visitKey = ({ page, byteOffset, original }: DestinationVisit) => JSON.stringify([page, byteOffset, original]);
+  const mainKeys = new Set(main.visits.map(visitKey));
+  expect(head.visits.filter((visit) => mainKeys.has(visitKey(visit)))).toEqual(main.visits);
+  expect(head.rewrites.filter((edit) => mainKeys.has(visitKey(edit)))).toEqual(main.rewrites);
+
+  const encoded = Buffer.from(source);
+  for (const visit of head.visits)
+    expect(encoded.subarray(visit.byteOffset, visit.byteOffset + Buffer.byteLength(visit.original)).toString()).toBe(visit.original);
+  const newVisits = head.visits.filter((visit) => !mainKeys.has(visitKey(visit)));
+  const prefixes = new Map<string, string>();
+  for (const visit of newVisits) {
+    const before = encoded.subarray(0, visit.byteOffset).toString();
+    const prefix = before.slice(before.lastIndexOf('\n') + 1);
+    expect(prefix).toMatch(/^\s*(?:[>-]\s+)*\[[^\]\n]+\]:\s*<?$/);
+    prefixes.set(visitKey(visit), prefix);
+  }
+
+  let expected = main.output;
+  for (const edit of head.rewrites) {
+    const prefix = prefixes.get(visitKey(edit));
+    if (prefix === undefined) continue;
+    expect(expected).toContain(prefix + edit.original);
+    expected = expected.replace(prefix + edit.original, prefix + edit.target);
+  }
+  expect(head.output).toBe(expected);
+  let report = 0;
+  for (const value of head.reports) if (value === main.reports[report]) report++;
+  expect(report).toBe(main.reports.length);
+  return { expected, definitions: newVisits.length };
 };

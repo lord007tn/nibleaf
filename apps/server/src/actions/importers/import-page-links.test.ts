@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { componentLinkFixtures } from './fixtures/component-links';
 import { extendedImportWrappers } from './fixtures/link-discovery-extended';
 import { linkDiscoveryRepros } from './fixtures/link-discovery-repros';
-import { traceLinkDiscovery, withMainLinkScanner } from './fixtures/link-discovery-trace';
+import { assertDefinitionDiscoveryDelta, traceLinkDiscovery, withMainLinkScanner } from './fixtures/link-discovery-trace';
 import { rewriteMainInternalLinks } from './fixtures/page-links.main-reference';
 import corpus from './fixtures/page-links-corpus.json';
 import { convertGitBookMarkdown as convertHeadGitBookMarkdown } from './gitbook-markdown';
@@ -35,15 +35,9 @@ const assertDiscoveryParity = (
 ) => {
   const main = traceLinkDiscovery(rewriteMainInternalLinks, source, page, mapping, options);
   const head = traceLinkDiscovery(rewriteMintlifyInternalLinks, source, page, mapping, options);
-  expect(head.visits, `${page}: source byte offsets and original destinations`).toEqual(main.visits);
-  expect(head.rewrites, `${page}: exact rewritten destination set`).toEqual(main.rewrites);
-  expect(head.output, `${page}: only main's target spans may change`).toBe(main.output);
-  expect(rewriteMintlifyInternalLinks(source, page, mapping, options), `${page}: rewrite-only fast path`).toBe(main.output);
-  expect(head.reports, `${page}: exact fidelity reports`).toEqual(main.reports);
-  const encoded = Buffer.from(source);
-  for (const visit of head.visits)
-    expect(encoded.subarray(visit.byteOffset, visit.byteOffset + Buffer.byteLength(visit.original)).toString()).toBe(visit.original);
-  return { main, head };
+  const delta = assertDefinitionDiscoveryDelta(source, main, head);
+  expect(rewriteMintlifyInternalLinks(source, page, mapping, options), `${page}: rewrite-only fast path`).toBe(delta.expected);
+  return { main, head, ...delta };
 };
 
 describe('main discovery: named repros from every review round', () => {
@@ -57,7 +51,7 @@ describe('main discovery: named repros from every review round', () => {
     expect(head.output).toBe(prose.replaceAll('(/next', '(/topic-2/next') + code);
     expect(head.reports).toEqual(main.reports);
   });
-  it.each(linkDiscoveryRepros)('$name: identical source byte offsets, output and reports', ({ content }) => {
+  it.each(linkDiscoveryRepros)('$name: preserves main offsets and reports', ({ content }) => {
     assertDiscoveryParity(content, 'intro', routes, { sourceUrl: 'https://help.test', languageCode: 'en' });
   });
   it.each(componentLinkFixtures)('component compatibility: $name', ({ content }) => {
@@ -94,13 +88,15 @@ it.each(['mintlify', 'gitbook'] as const)('%s: 291-doc corpus, every earlier rep
   ];
   let destinations = 0;
   let rewrittenLinks = 0;
+  let definitions = 0;
   for (const input of inputs) {
     const body = kind === 'mintlify' ? input.content : convertGitBookMarkdown(input.content).content;
     const observed = assertDiscoveryParity(body, input.source, input.source === 'intro' ? routes : mappings);
     const finish = kind === 'mintlify' ? normalizeMintlifyMdx : (value: string) => value;
-    expect(finish(observed.head.output), input.name).toBe(finish(observed.main.output));
+    expect(finish(observed.head.output), input.name).toBe(finish(observed.expected));
     destinations += observed.head.visits.length;
     rewrittenLinks += observed.head.rewrites.length;
+    definitions += observed.definitions;
   }
   console.info('corpus source-offset differential', {
     kind,
@@ -110,7 +106,7 @@ it.each(['mintlify', 'gitbook'] as const)('%s: 291-doc corpus, every earlier rep
     destinations,
     rewrittenLinks,
     offsetMismatches: 0,
-    exceptions: [],
+    definitionVisits: definitions,
   });
 });
 
@@ -162,7 +158,7 @@ it('seed 0x663618: 512 documents retain every main rewrite and all code bytes', 
     const source = `${a + body + b}\n\n\`[Code](/next)\`\n\n~~~md\n[Code](/next)\n~~~\n\n[Sentinel](/next)`;
     const observed = assertDiscoveryParity(source, 'docs/intro', routes);
     rewrittenLinks += observed.head.rewrites.length;
-    const expected = observed.main.output;
+    const expected = observed.expected;
     const actual = observed.head.output;
     if (!actual.includes('`[Code](/next)`') || !actual.includes('~~~md\n[Code](/next)\n~~~')) codeChanges++;
     if (actual !== expected) failures.push({ i, source, main: expected, head: actual });

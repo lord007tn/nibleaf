@@ -46,15 +46,24 @@ export interface GrowthOptions<T> {
   samples?: number;
   /** The fewest calls of the large input in each sample (default 1). */
   largeRuns?: number;
+  /**
+   * How much larger `large` is than `small` (default 4). Pass 8, with an input
+   * 8x larger, for rows where n^1.5 work must fail: 4x n^1.5 costs exactly 8x,
+   * inside `linearGrowthLimit`, while 8x costs 22.6x against linear's 8x, which
+   * `superlinearGrowthLimit` separates (#730). The large input then runs an
+   * eighth as often per sample, scaled back up, as with 4.
+   */
+  factor?: 4 | 8;
 }
 
-/** Checks `samples` and `largeRuns`, returning the starting repeat count. */
-const sampling = (samples: number, largeRuns: number): number => {
+/** Checks `samples`, `largeRuns` and `factor`, returning the starting repeat count. */
+const sampling = (samples: number, largeRuns: number, factor: number): number => {
   if (!Number.isInteger(samples) || samples < 3 || samples % 2 === 0)
     throw new Error(`growth samples must be an odd integer of at least 3, not ${samples}`);
   if (!Number.isInteger(largeRuns) || largeRuns < 1) throw new Error(`growth largeRuns must be a positive integer, not ${largeRuns}`);
-  // At least 4, so the large input can run a quarter as often (see timeLarge).
-  return 4 * largeRuns;
+  if (factor !== 4 && factor !== 8) throw new Error(`growth factor must be 4 or 8, not ${factor}`);
+  // At least `factor`, so the large input can run 1/factor as often (see timeLarge).
+  return factor * largeRuns;
 };
 /** The middle of an odd number of samples. */
 const median = (values: number[]): number => [...values].sort((a, b) => a - b)[(values.length - 1) >> 1] ?? 0;
@@ -71,9 +80,9 @@ const sizeOf = (input: unknown): string => {
 /** Every measurement logs its sizes, medians, ratio and runs per sample through
  *  console.info, so CI history shows how close each row runs to its bound (the
  *  limit ratio for linearGrowthLimit is 8 + 20 / small). */
-const logGrowth = (small: unknown, large: unknown, [smallMs, largeMs]: [number, number], repeat: number, largeRuns: number) => {
+const logGrowth = (small: unknown, large: unknown, [smallMs, largeMs]: [number, number], repeat: number, largeRuns: number, factor = 4) => {
   console.info(
-    `growth n=${sizeOf(small)} / 4n=${sizeOf(large)}: ${smallMs.toFixed(2)} ms / ${largeMs.toFixed(2)} ms (${(largeMs / smallMs).toFixed(2)}x; ${repeat} / ${largeRuns} runs per sample)`,
+    `growth n=${sizeOf(small)} / ${factor}n=${sizeOf(large)}: ${smallMs.toFixed(2)} ms / ${largeMs.toFixed(2)} ms (${(largeMs / smallMs).toFixed(2)}x; ${repeat} / ${largeRuns} runs per sample)`,
   );
 };
 
@@ -95,9 +104,9 @@ export const growthMs = <T>(
   run: (input: T) => unknown,
   small: T,
   large: T,
-  { minMs = 4, budgetMs = 2000, vary, samples = 3, largeRuns = 1 }: GrowthOptions<T> = {},
+  { minMs = 4, budgetMs = 2000, vary, samples = 3, largeRuns = 1, factor = 4 }: GrowthOptions<T> = {},
 ): [number, number] => {
-  let repeat = sampling(samples, largeRuns);
+  let repeat = sampling(samples, largeRuns, factor);
   const deadline = performance.now() + budgetMs;
   let rep = 0;
   // Every result is kept and read below, so the engine can never drop a timed call as unused.
@@ -111,9 +120,9 @@ export const growthMs = <T>(
     return performance.now() - started;
   };
   const timeSmall = () => time(small, repeat);
-  // A quarter as many runs, scaled back up: see the note at the top.
+  // 1/factor as many runs, scaled back up: see the note at the top.
   const timeLarge = () => {
-    const count = Math.max(1, Math.round(repeat / 4));
+    const count = Math.max(1, Math.round(repeat / factor));
     return (time(large, count) * repeat) / count;
   };
   // Warm both inputs first, so the repeat count is sized on warm (JIT-compiled) runs.
@@ -137,7 +146,7 @@ export const growthMs = <T>(
     if (sink === UNREACHABLE) throw new Error('unreachable');
     const result: [number, number] = [median(times[0]), median(times[1])];
     if (result[0] >= minMs) {
-      logGrowth(small, large, result, repeat, Math.max(1, Math.round(repeat / 4)));
+      logGrowth(small, large, result, repeat, Math.max(1, Math.round(repeat / factor)), factor);
       return result;
     }
     if (performance.now() >= deadline || repeat >= MAX_REPEAT) {
@@ -155,9 +164,9 @@ export const growthMsAsync = async <T>(
   run: (input: T) => Promise<unknown>,
   small: T,
   large: T,
-  { minMs = 4, budgetMs = 2000, vary, samples = 3, largeRuns = 1 }: GrowthOptions<T> = {},
+  { minMs = 4, budgetMs = 2000, vary, samples = 3, largeRuns = 1, factor = 4 }: GrowthOptions<T> = {},
 ): Promise<[number, number]> => {
-  let repeat = sampling(samples, largeRuns);
+  let repeat = sampling(samples, largeRuns, factor);
   const deadline = performance.now() + budgetMs;
   let rep = 0;
   let sink: unknown;
@@ -170,9 +179,9 @@ export const growthMsAsync = async <T>(
     return performance.now() - started;
   };
   const timeSmall = () => time(small, repeat);
-  // A quarter as many runs, scaled back up: see the note at the top.
+  // 1/factor as many runs, scaled back up: see the note at the top.
   const timeLarge = async () => {
-    const count = Math.max(1, Math.round(repeat / 4));
+    const count = Math.max(1, Math.round(repeat / factor));
     return ((await time(large, count)) * repeat) / count;
   };
   await timeSmall();
@@ -195,7 +204,7 @@ export const growthMsAsync = async <T>(
     if (sink === UNREACHABLE) throw new Error('unreachable');
     const result: [number, number] = [median(times[0]), median(times[1])];
     if (result[0] >= minMs) {
-      logGrowth(small, large, result, repeat, Math.max(1, Math.round(repeat / 4)));
+      logGrowth(small, large, result, repeat, Math.max(1, Math.round(repeat / factor)), factor);
       return result;
     }
     if (performance.now() >= deadline || repeat >= MAX_REPEAT) {
@@ -216,3 +225,9 @@ export const linearGrowthLimit = (smallMs: number): number => 8 * smallMs + 20;
  *  Linear work (4x) fails it; measure with `minMs: 12` so the small side is long
  *  enough for that (4t > 2t + 20 once t > 10). */
 export const constantGrowthLimit = (smallMs: number): number => 2 * smallMs + 20;
+
+/** The most an 8x larger input (`factor: 8`) may cost when the work is linear or
+ *  n log n: 12x, plus 20 ms. Linear work grows 8x and n log n about 9-10x; n^1.5
+ *  grows 22.6x and fails it once the small median passes 2 ms (22.6t > 12t + 20),
+ *  which `linearGrowthLimit`'s 4x step cannot catch (#730). */
+export const superlinearGrowthLimit = (smallMs: number): number => 12 * smallMs + 20;
