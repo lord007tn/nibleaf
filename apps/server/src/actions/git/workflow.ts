@@ -37,6 +37,8 @@ export interface ConnectGitInput {
   importBranchId?: string;
   importLanguageId?: string;
   token?: string;
+  /** The `settingsRevision` the form was loaded with; null expects no connection. Left out, nothing is checked. */
+  expectedRevision?: number | null;
 }
 
 export interface QueueGitInput {
@@ -224,6 +226,12 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
   const [observed] = await prisma.$queryRaw<Array<GitConnection & { saveVersion: string }>>`
     SELECT *, xmin::text AS "saveVersion" FROM "git_connection" WHERE "projectId" = ${projectId}`;
   const existing = observed ?? null;
+  const changed = () => conflict('The repository connection changed. Refresh and save again.');
+  // A form loaded before another save committed carries that save's previous
+  // revision (#876). The row version below only covers requests that overlap
+  // this one; this covers a save that finished before it began. Checked
+  // before GitHub is contacted, so a stale form costs nothing and writes nothing.
+  if (input.expectedRevision !== undefined && (existing?.settingsRevision ?? null) !== input.expectedRevision) throw changed();
   if (!input.token && !existing?.credentialEncrypted) throw badRequest('A fine-grained GitHub token is required for the first connection.');
   const provider = input.token
     ? new GitHubProvider(input.token)
@@ -266,7 +274,6 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
         existing.importBranchId !== (input.importBranchId || null) ||
         existing.importLanguageId !== (input.importLanguageId || null)),
   );
-  const changed = () => conflict('The repository connection changed. Refresh and save again.');
   // Provider reads finish before opening this transaction. Hold the row lock
   // through ledger initialization and audit, so success is one atomic commit.
   const connection = await prisma.$transaction(
@@ -280,7 +287,7 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
         WHERE "id" = ${existing.id} AND "projectId" = ${projectId} AND xmin::text = ${existing.saveVersion}
         FOR UPDATE`;
         if (locked.length === 0) throw changed();
-        saved = await tx.gitConnection.update({ where: { id: existing.id, projectId }, data: update });
+        saved = await tx.gitConnection.update({ where: { id: existing.id, projectId }, data: { ...update, settingsRevision: { increment: 1 } } });
       } else {
         try {
           saved = await tx.gitConnection.create({

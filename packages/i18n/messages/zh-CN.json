@@ -1637,6 +1637,7 @@
   "settings_git_workflow_loaderrorhint": "重试或检查服务器连接。",
   "settings_git_workflow_connected": "GitHub 连接已保存。",
   "settings_git_workflow_connecterror": "无法连接 GitHub。",
+  "settings_git_workflow_savedelsewhere": "你打开这些设置后，其他人保存了更改。现已显示这些更改。请检查后再次保存。",
   "settings_git_workflow_disconnected": "GitHub 已断开连接并删除了加密凭据。",
   "settings_git_workflow_disconnecterror": "无法断开 GitHub 的连接。",
   "settings_git_workflow_operationerror": "无法对 Git 操作进行排队。",

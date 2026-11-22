@@ -119,6 +119,62 @@ it('keeps unreadable raw media byte for byte and reports it for repair', () => {
   expect(result.issues).toHaveLength(1);
 });
 
+it.each([
+  {
+    name: 'video with source and track',
+    opener: '<video>\n<source src="https://cdn.test/a.mp4">\n<track src="/captions.vtt">',
+    report: '',
+    addresses: ['https://cdn.test/a.mp4', '/captions.vtt'],
+  },
+  {
+    name: 'video with missing child addresses',
+    opener: '<video>\n<source>\n<track>',
+    report: '',
+    addresses: [],
+  },
+  {
+    name: 'HTTPS iframe',
+    opener: '<iframe src="https://youtu.be/abcdefghijk">',
+    report: 'https://youtu.be/abcdefghijk',
+    addresses: ['https://youtu.be/abcdefghijk'],
+  },
+  {
+    name: 'HTTP iframe',
+    opener: '<iframe src="http://frame.test/tour">',
+    report: 'http://frame.test/tour',
+    addresses: ['http://frame.test/tour'],
+  },
+  { name: 'iframe without an address', opener: '<iframe>', report: '', addresses: [] },
+])('imports an unclosed $name as repairable text and links in both converters', ({ opener, report, addresses }) => {
+  const source = `${opener}\n\nFollow with [Guide](/guide).`;
+  const gitbookResult = gitbook(source);
+  const reports: string[] = [];
+  const mintlify = normalizeMintlifyMdx(source, (reference) => reports.push(reference));
+  expect(gitbookResult.issues).toEqual([{ kind: 'embed', page: '', reference: report }]);
+  expect(reports).toEqual([report]);
+  for (const content of [gitbookResult.content, mintlify]) {
+    expect(content).not.toMatch(/<(?:video|source|track|iframe)\b/i);
+    expect(content.endsWith('Follow with [Guide](/guide).')).toBe(true);
+    expect([...content.matchAll(/<a href="([^"]+)">/g)].map((match) => match[1])).toEqual(addresses);
+    if (addresses.length === 0) expect(content).toContain('&lt;');
+  }
+});
+
+it.each(['<video>\n\n', '> <video>\n', '- <video>\n'])('leaves media after a blank or container exit untouched: %j', (prefix) => {
+  const outside = '<source src="https://cdn.test/unrelated.mp4">';
+  const source = `${prefix}${outside}\n\nFollow.`;
+  for (const content of [gitbook(source).content, normalizeMintlifyMdx(source)]) {
+    expect(content.endsWith(`${outside}\n\nFollow.`)).toBe(true);
+  }
+});
+
+it('keeps sources and tracks on a closed video', () => {
+  const children = '<source src="https://cdn.test/a.mp4">\n<track src="/captions.vtt">';
+  const source = `<video controls>\n${children}\n</video>\n\nFollow.`;
+  expect(gitbook(source).content).toBe(source);
+  expect(normalizeMintlifyMdx(source)).toBe(source);
+});
+
 it('keeps a Mintlify Frame caption and uses it as an absent video title', () => {
   const imported = normalizeMintlifyMdx('<Frame caption="A guided tour">\n  <iframe src="https://youtu.be/abcdefghijk"></iframe>\n</Frame>');
   expect(imported).toContain('<Frame caption="A guided tour">');

@@ -74,6 +74,9 @@ export function GitWorkflowConnectionForm({
   // The token as typed now, for a save that ends after newer typing.
   const latestToken = useRef(token);
   latestToken.current = token;
+  // The revision of the connection the draft has reconciled, which its values were edited from (#876).
+  const shownRevision = useRef(connection.settingsRevision);
+  shownRevision.current = connection.settingsRevision;
   const formRef = useRef<HTMLFormElement>(null);
 
   const { form, ...draft } = useServerDraftForm<GitWorkflowConnectionValues>({
@@ -88,7 +91,7 @@ export function GitWorkflowConnectionForm({
       }
       const sentToken = gitWorkflowTokenToSend(token);
       try {
-        const result = await save({ projectId, values }, sentToken);
+        const result = await save({ projectId, values, expectedRevision: shownRevision.current }, sentToken);
         const clean = outcome.succeeded(gitWorkflowConnectionValues(result.connection));
         // A save for a form that is gone, or for a site or connection it has since left, says nothing here.
         if (!outcome.isCurrent()) return 'saved';
@@ -103,7 +106,10 @@ export function GitWorkflowConnectionForm({
         return 'saved';
       } catch (error) {
         outcome.failed();
-        if (outcome.isCurrent()) toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.connectError'));
+        // A 409: someone saved these settings after this form loaded them. The save refreshed the status, so the
+        // form now shows that save (or a conflict where both changed a setting) before the person tries again.
+        if (outcome.isCurrent())
+          toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.connectError', { 409: 'settings.git.workflow.savedElsewhere' }));
         return 'failed';
       }
     },

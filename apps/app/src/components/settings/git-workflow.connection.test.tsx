@@ -64,6 +64,7 @@ type Stored = Settings & {
   importLanguageId: string | null;
   lastSyncStatus: string;
   operations: unknown[];
+  settingsRevision?: number;
 };
 const SETTINGS: Settings = { repository: 'acme-fixture/docs', baseBranch: 'main', headBranch: 'nibleaf/docs', contentPath: 'docs' };
 const TARGETS = { importBranchId: 'branch-fixture-1', importLanguageId: 'language-fixture-1' };
@@ -105,13 +106,19 @@ const seed = (projectId: string, over: Partial<Stored> = {}) => {
 const change = (projectId: string, over: Partial<Stored>) => {
   stored[projectId] = { ...(stored[projectId] as Stored), ...over };
 };
-type PutRequest = { param: { projectId: string }; json: Settings & { importBranchId?: string; importLanguageId?: string; token?: string } };
+type PutRequest = {
+  param: { projectId: string };
+  json: Settings & { importBranchId?: string; importLanguageId?: string; token?: string; expectedRevision?: number | null };
+};
 /**
  * The server's answer to a PUT, built from the request's own body as `connectGitHub` stores it: the settings
  * normalized (`sentGitWorkflowConnectionValues`, which workflow.connect.test.ts proves equal to the real action),
  * the import targets as sent or cleared, and the redacted connection.
  */
-const serve = ({ param: { projectId }, json: { token: _token, importBranchId, importLanguageId, ...settings } }: PutRequest) => {
+const serve = ({
+  param: { projectId },
+  json: { token: _token, importBranchId, importLanguageId, expectedRevision: _revision, ...settings },
+}: PutRequest) => {
   stored[projectId] = {
     ...(stored[projectId] as Stored),
     ...sentGitWorkflowConnectionValues(settings),
@@ -879,5 +886,88 @@ describe('sites, locale and polling', () => {
     await put.answer(refused());
     expect(errors()).toEqual([]);
     expect(reads('site-a')).toBe(1);
+  });
+});
+
+/**
+ * #876: browser A's form was loaded before browser B's save committed. The server refuses a save whose expected
+ * revision is no longer the connection's (workflow.connect.test.ts runs the real action); here the stand-in server
+ * does the same, and the form must send the revision it shows, say plainly what happened, and show B's save.
+ */
+describe('a form loaded before another save (#876)', () => {
+  /** As `connectGitHub` answers: a 409 for a revision that is no longer current, otherwise stored with the revision moved on. */
+  const serveRevision = (request: PutRequest) => {
+    const current = stored[request.param.projectId]?.settingsRevision;
+    if (request.json.expectedRevision !== undefined && request.json.expectedRevision !== current) {
+      return json(409, { error: { code: 'database:conflict', message: 'The repository connection changed. Refresh and save again.' } });
+    }
+    const response = serve(request);
+    change(request.param.projectId, { settingsRevision: (current ?? 1) + 1 });
+    return response;
+  };
+
+  it('sends the revision of the connection the form shows, and the newer one once a refetch shows another save', async () => {
+    seed('site-a', { settingsRevision: 3 });
+    await openConfiguration();
+    mocks.put.mockImplementation(async (request: PutRequest) => serveRevision(request));
+    await type('git2-update-path', 'guides');
+    await save();
+    expect(bodies()[0]?.json.expectedRevision).toBe(3);
+    expect(successes()).toEqual([t('settings.git.workflow.connected')]);
+
+    // Someone else saves; this form sees it on a refetch before its own next save.
+    change('site-a', { baseBranch: 'trunk', settingsRevision: 9 });
+    await refetch();
+    await type('git2-update-head', 'nibleaf/next');
+    await save();
+    expect(bodies()[1]?.json).toMatchObject({ baseBranch: 'trunk', headBranch: 'nibleaf/next', expectedRevision: 9 });
+    expect(errors()).toEqual([]);
+  });
+
+  it.each(['en', 'ar'] as const)(
+    'refuses the stale form with a plain %s message, shows the other save, keeps the edit and token, then saves on top of it',
+    async (locale) => {
+      mocks.locale = locale;
+      seed('site-a', { settingsRevision: 1 });
+      await openConfiguration();
+      mocks.put.mockImplementation(async (request: PutRequest) => serveRevision(request));
+      // B changes the path and saves. A's page has not refetched, so its form still shows revision 1 and the old path.
+      change('site-a', { contentPath: 'moved-by-b', settingsRevision: 2 });
+      // A changes only the authoring branch, with a new token.
+      await type('git2-update-head', 'nibleaf/from-a');
+      await type('git2-update-token', TOKEN);
+      const readsBefore = reads('site-a');
+      await save();
+
+      expect(bodies()[0]?.json).toMatchObject({ contentPath: 'docs', headBranch: 'nibleaf/from-a', expectedRevision: 1 });
+      expect(stored['site-a']).toMatchObject({ contentPath: 'moved-by-b', headBranch: 'nibleaf/docs', settingsRevision: 2 });
+      expect(errors()).toEqual([translateFn('settings.git.workflow.savedElsewhere', undefined, locale)]);
+      expect(successes()).toEqual([]);
+      // The refusal refreshed the status: B's path is shown, A's edit and token are kept to save again.
+      expect(reads('site-a')).toBeGreaterThan(readsBefore);
+      expect(shown()).toMatchObject({ contentPath: 'moved-by-b', headBranch: 'nibleaf/from-a' });
+      expect(field('git2-update-token').value).toBe(TOKEN);
+      expect(isBusy()).toBe(false);
+
+      await save();
+      expect(bodies()[1]?.json).toMatchObject({ contentPath: 'moved-by-b', headBranch: 'nibleaf/from-a', expectedRevision: 2, token: TOKEN });
+      expect(stored['site-a']).toMatchObject({ contentPath: 'moved-by-b', headBranch: 'nibleaf/from-a', settingsRevision: 3 });
+      expect(successes()).toEqual([translateFn('settings.git.workflow.connected', undefined, locale)]);
+      expect(field('git2-update-token').value).toBe('');
+      expectNoTokenKept();
+    },
+  );
+
+  it('shows both sides as a conflict when the other save changed the same setting', async () => {
+    seed('site-a', { settingsRevision: 1 });
+    await openConfiguration();
+    mocks.put.mockImplementation(async (request: PutRequest) => serveRevision(request));
+    change('site-a', { contentPath: 'moved-by-b', settingsRevision: 2 });
+    await type('git2-update-path', 'moved-by-a');
+    await save();
+    expect(errors()).toEqual([t('settings.git.workflow.savedElsewhere')]);
+    expect(conflictShown()).toBe(true);
+    expect(shown().contentPath).toBe('moved-by-a');
+    expect(stored['site-a']?.contentPath).toBe('moved-by-b');
   });
 });

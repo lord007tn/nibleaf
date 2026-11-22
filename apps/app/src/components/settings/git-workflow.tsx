@@ -350,7 +350,7 @@ export function GitWorkflow({
                 className="w-full sm:w-auto"
                 disabled={!authorizedAccount || !repository || !token}
                 loading={connect.busy}
-                onClick={() => connect.press({ repository, baseBranch, headBranch, contentPath, token: token || undefined })}
+                onClick={() => connect.press({ repository, baseBranch, headBranch, contentPath, token: token || undefined, expectedRevision: null })}
                 loadingText={t('settings.git.workflow.verifying')}
               >
                 {t('settings.git.workflow.connect')}
