@@ -7,6 +7,8 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Markdown } from '@/components/markdown';
+import { textChange } from './__fixtures__/list-item-leads';
+import { applyCorpusEdits, type DifferentialEditor, serializerCorpus } from './__fixtures__/serializer-corpus';
 import { markdownToEmit } from './editor-change-origin';
 import { buildEditorExtensions, getMarkdown, seedMarkdown } from './tiptap-editor';
 
@@ -439,6 +441,81 @@ describe('edits of lead-led items, from #887’s reviews (#604, #865)', () => {
     expect(editor.state.doc.child(2)).toBe(list);
     expect(getMarkdown(editor)).toBe('IntroMiddle\n\nOther\n\n- > a');
   });
+});
+
+// A paragraph opening with bold, after another block in a quoted list item: the bold's
+// whitespace trim started before the line's `>` prefix and wrote `****bold**`. A
+// heading-led item in a quote now keeps its blocks in the item, which reaches it.
+describe('a quoted list item’s paragraph that opens with bold (#604)', () => {
+  const published = (content: string) => {
+    const root = document.createElement('div');
+    root.innerHTML = renderToStaticMarkup(createElement(Markdown, { content }));
+    return root;
+  };
+  const words = (text: string) => text.replace(/\s+/g, '');
+
+  it('typing before a heading-led item in a quote saves it in its item, reading as main’s save does', () => {
+    const editor = open('Intro\n\n> - # See![x](/x.png) **bold**');
+    editor.commands.insertContentAt(find(editor, 'Intro') + 5, '!');
+    const saved = expectFixed(editor);
+    expect(saved).toBe('Intro!\n\n> - # See\n>\n>   ![x](/x.png)\n>\n>   **bold**');
+    expect(getMarkdown(open(getMarkdown(open(saved))))).toBe(saved);
+    const reader = published(saved);
+    expect(reader.querySelector('blockquote > ul > li > h1')?.textContent).toBe('See');
+    expect(reader.querySelector('blockquote > ul > li > p > strong')?.textContent).toBe('bold');
+    // Main moved the heading out of its item; its save read back as this text, with no `*`.
+    const main = 'Intro!\n\n> - \n>\n> # See\n>\n> ![x](/x.png)\n>\n> **bold**';
+    expect(words(reader.textContent ?? '')).toBe(words(published(main).textContent ?? ''));
+    expect(words(reader.textContent ?? '')).toBe('Intro!Seebold');
+  }, 30_000);
+
+  it('saves the bold paragraph after any block of a quoted item to a fixed point', () => {
+    for (const source of [
+      '> - # See\n>\n>   ![x](/x.png)\n>\n>   **bold**',
+      '> - a\n>\n>   ![x](/x.png)\n>\n>   **bold**',
+      '> - a\n>\n>   para\n>\n>   **bold** end',
+      '> 1. > q\n>\n>    *em* end',
+      '> > - # See\n> >\n> >   **bold**',
+    ])
+      stable(source);
+  });
+
+  // Corpus page 86: a list after a list of its type is written after two blank lines,
+  // which an unclosed fence ending the list before read as more code (main too, for
+  // `- a` then `  - ~~~md`). It gets its closing line there.
+  it('an unclosed fence ending a list before a list of its type gets its closing line', () => {
+    for (const [source, expected] of [
+      ['- a\n  - ~~~md\n    x\n  + b', '- a\n\n  - ~~~md\n    x\n    ~~~\n\n\n  * b'],
+      ['* - a\n  - ~~~md\n    x\n  + b', '- - a\n  - ~~~md\n    x\n    ~~~\n\n\n  * b'],
+    ] as const) {
+      const editor = open(source);
+      expect(expectFixed(editor)).toBe(expected);
+      expect(textChange(editor.state.doc.textContent, open(expected).state.doc.textContent)).toEqual({ lost: 0, added: 0 });
+    }
+  });
+
+  it('corpus page 859 reads back with no text added and no more lost than main', () => {
+    const page = serializerCorpus()[859];
+    if (!page) throw new Error('No page 859');
+    for (const edited of [false, true]) {
+      const editor = open(page.source);
+      if (edited) applyCorpusEdits(editor as unknown as DifferentialEditor, page.edits);
+      const saved = getMarkdown(editor);
+      const reloaded = open(saved);
+      // Main lost one character here, unedited and edited: the `+` of the `<Tabs>`-led item (#871).
+      expect(textChange(editor.state.doc.textContent, reloaded.state.doc.textContent)).toEqual({ lost: 1, added: 0 });
+      expect(saved).not.toContain('****');
+      expect(saved).toContain(`> - # See\n>\n>   ![an image](/x.png)\n>\n>   **bold at the end** 🚀 ${edited ? 'tare' : 'tab here'}\n`);
+      // The second save rewrites only the HTML-led items main rewrites too (#871); the
+      // heading-led item and its bold paragraph stay as written.
+      const again = getMarkdown(reloaded);
+      expect(again).toContain(`> - # See\n>\n>   ![an image](/x.png)\n>\n>   **bold at the end** 🚀 ${edited ? 'tare' : 'tab here'}\n`);
+      expect(getMarkdown(open(again))).toBe(again);
+      const reader = published(saved);
+      expect(reader.querySelector('li > h1')?.textContent).toBe('See');
+      expect(reader.textContent).not.toContain('**');
+    }
+  }, 60_000);
 });
 
 // Shapes the list item lead matrix found, each saved to a fixed point.

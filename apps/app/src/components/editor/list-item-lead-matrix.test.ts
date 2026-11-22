@@ -8,6 +8,7 @@ import { undoDepth } from '@tiptap/pm/history';
 import { Fragment, type Node as PMNode } from '@tiptap/pm/model';
 import { AllSelection } from '@tiptap/pm/state';
 import { expect, it } from 'vitest';
+import { textChange } from './__fixtures__/list-item-leads';
 import { markdownToEmit } from './editor-change-origin';
 
 /*
@@ -17,7 +18,9 @@ import { markdownToEmit } from './editor-change-origin';
  * four checks on its save:
  * - fixed: the save, reloaded and saved twice more, stays the same bytes;
  * - document: the save reloads as the document it was written from;
- * - text: no text is lost on that reload;
+ * - text: the reload has the document's text; how many characters it lost and added
+ *   (textChange) are kept too, and a save that fails this check as main's does must lose
+ *   and add no more than main's;
  * - source: unedited, the save has the block structure of the source;
  * and four on the edit itself, which must be main's (#887's review):
  * - target: the document's text after the edit;
@@ -375,6 +378,8 @@ interface MatrixResult {
   edit: string;
   saved: string;
   checks: number;
+  lost: number;
+  added: number;
   interaction: string;
 }
 
@@ -438,6 +443,7 @@ async function run(module: EditorModule): Promise<Array<MatrixResult | null>> {
       module.seedMarkdown(reader, saved);
       const read = JSON.stringify(shape(reader.state.doc));
       const sameText = reader.state.doc.textContent === text;
+      const { lost, added } = textChange(text, reader.state.doc.textContent);
       const again = module.getMarkdown(reader);
       module.seedMarkdown(reader, again);
       const fixed = again === saved && module.getMarkdown(reader) === saved;
@@ -447,6 +453,8 @@ async function run(module: EditorModule): Promise<Array<MatrixResult | null>> {
         edit: name,
         saved: digest(`${saved}\0${read}`),
         checks: (fixed ? FIXED : 0) | (written === read ? DOCUMENT : 0) | (sameText ? TEXT : 0) | (sameSource ? SOURCE : 0),
+        lost,
+        added,
         interaction,
       });
     }
@@ -456,7 +464,8 @@ async function run(module: EditorModule): Promise<Array<MatrixResult | null>> {
   return results;
 }
 
-const encode = (result: MatrixResult | null) => (result ? `${result.saved} ${result.checks} ${result.interaction}` : '-');
+const encode = (result: MatrixResult | null) =>
+  result ? `${result.saved} ${result.checks} ${result.interaction} ${result.lost} ${result.added}` : '-';
 
 const baselineDir = process.env.LIST_ITEM_LEADS_BASELINE_DIR;
 
@@ -576,13 +585,18 @@ it.skipIf(baselineDir)(
         else worse.push({ id: result.id, checks: result.checks, main: null });
         continue;
       }
-      const [savedMain, checksMain, interactionMain] = main.split(' ') as [string, string, string];
+      const [savedMain, checksMain, interactionMain, lostMain, addedMain] = main.split(' ') as string[] as [string, string, string, string?, string?];
       const mainChecks = Number(checksMain);
+      // A record without a count would compare as never worse.
+      if (!Number.isInteger(Number(lostMain)) || !Number.isInteger(Number(addedMain)))
+        throw new Error(`Main's record for ${result.id} has no text counts: re-record the fixture`);
+      const moreText = result.lost > Number(lostMain) || result.added > Number(addedMain);
       if (savedMain === result.saved) group.same++;
       else if (result.checks === ALL) group.correct++;
-      else if ((mainChecks & ~result.checks) === 0) group.sameFailure++;
-      else if (PASTED_HARD_BREAK.includes(result.id) && (mainChecks & ~result.checks) === DOCUMENT) group.hardBreak = (group.hardBreak ?? 0) + 1;
-      else worse.push({ id: result.id, checks: result.checks, mainChecks });
+      else if ((mainChecks & ~result.checks) === 0 && !moreText) group.sameFailure++;
+      else if (PASTED_HARD_BREAK.includes(result.id) && (mainChecks & ~result.checks) === DOCUMENT && !moreText)
+        group.hardBreak = (group.hardBreak ?? 0) + 1;
+      else worse.push({ id: result.id, checks: result.checks, mainChecks, lost: result.lost, added: result.added, lostMain, addedMain });
       if (interactionMain !== result.interaction) {
         interactions[result.edit] = (interactions[result.edit] ?? 0) + 1;
         const before = interactionMain.split(':');

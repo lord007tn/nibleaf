@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Editor } from '@tiptap/core';
 import { expect, it } from 'vitest';
-import { LIST_ITEM_LEAD_PAGES } from './__fixtures__/list-item-leads';
+import { LIST_ITEM_LEAD_DIFFERENTIAL_PAGES } from './__fixtures__/list-item-leads';
 import {
   applyCorpusEdits,
   CODE_TOGGLE_KEEPS_LINK_PAGES,
@@ -30,8 +30,9 @@ import {
  * with main's code toggle, must still save exactly as main did.
  *
  * #604: a list item led by a quote, heading or list keeps that block. The corpus pages
- * that hold one (LIST_ITEM_LEAD_PAGES, 256, three of them also #660's) are named and
- * checked against main's record in list-item-leads-main.test.ts, so they are left out here.
+ * that hold one (LIST_ITEM_LEAD_PAGES, 257, three of them also #660's), and the 8 pages
+ * whose quoted marks main doubled (QUOTED_MARK_PAGES), are named and checked against
+ * main's record in list-item-leads-main.test.ts, so they are left out here.
  */
 
 interface SerializerBaseline {
@@ -103,9 +104,11 @@ it.skipIf(baselineDir)(
     const module = await import('./tiptap-editor');
     const outputs = await saveAll(module);
     // #604: the named list item lead pages are checked against main in list-item-leads-main.test.ts.
-    const differing = outputs.flatMap((output, index) => (output === baseline.outputs[index] || LIST_ITEM_LEAD_PAGES.includes(index) ? [] : [index]));
+    const differing = outputs.flatMap((output, index) =>
+      output === baseline.outputs[index] || LIST_ITEM_LEAD_DIFFERENTIAL_PAGES.includes(index) ? [] : [index],
+    );
     // #660: only the pages whose code toggle now keeps a link differ, and with main's toggle each saves as main did.
-    const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.filter((index) => !LIST_ITEM_LEAD_PAGES.includes(index));
+    const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.filter((index) => !LIST_ITEM_LEAD_DIFFERENTIAL_PAGES.includes(index));
     expect(differing, `${differing.length} pages save differently from main`).toEqual(keptLink);
     const withMainToggle = await saveAll(module, differing, (editor) => withMainCodeToggle(editor as unknown as MarkEditor));
     expect(withMainToggle).toEqual(differing.map((index) => baseline.outputs[index]));

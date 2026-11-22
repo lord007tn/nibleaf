@@ -6,7 +6,7 @@ import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor, type JSONContent } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
-import { listItemLeadSources } from './__fixtures__/list-item-leads';
+import { listItemLeadSources, quotedMarkSources } from './__fixtures__/list-item-leads';
 import {
   applyCorpusEdits,
   CODE_TOGGLE_KEEPS_LINK_PAGES,
@@ -100,9 +100,14 @@ function seededPages(): string[] {
 }
 
 const corpus = serializerCorpus();
-/** #604: the corpus pages with a list item led by a quote, heading or list, checked against
- *  main in list-item-leads-main.test.ts. */
+/** #604: the corpus pages with a list item led by a quote, heading or list, and those whose
+ *  quoted marks main doubled (QUOTED_MARK_PAGES), checked against main in
+ *  list-item-leads-main.test.ts. */
 const leadSources = listItemLeadSources();
+const quotedSources = quotedMarkSources();
+const isNamed = (page: string) => leadSources.has(page) || quotedSources.has(page);
+/** The quoted mark pages whose saves here held a doubled mark on main: all 8. */
+const QUOTED_MARK_CHANGES = 8;
 /**
  * #604: the seeded pages with a list read as tight whose item holds a block the
  * serializer writes after a blank line (a lazy line read as a second paragraph, an HTML
@@ -204,9 +209,13 @@ describe('pages with LF only save as on main (#702)', () => {
     const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[] };
     expect(main.pages).toBe(pages.length);
     const changed = digests.flatMap((value, index) => (value === main.digests[index] ? [] : [index]));
-    // #604: the corpus pages with a list item lead, checked in list-item-leads-main.test.ts.
-    const leadPages = changed.filter((index) => leadSources.has(pages[index]?.page ?? ''));
-    expect(leadPages).toEqual(pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])));
+    // #604: the corpus pages with a list item lead or a quoted mark, checked in list-item-leads-main.test.ts.
+    const leadPages = changed.filter((index) => isNamed(pages[index]?.page ?? ''));
+    const quotedPages = leadPages.filter((index) => quotedSources.has(pages[index]?.page ?? ''));
+    expect(leadPages.filter((index) => !quotedPages.includes(index))).toEqual(
+      pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])),
+    );
+    expect(quotedPages.length).toBe(QUOTED_MARK_CHANGES);
     // #604: the seeded pages whose tight list is now written loose (LOOSENED_LIST_PAGES).
     const loosened = changed.filter((index) => index in LOOSENED_LIST_PAGES);
     expect(loosened).toEqual(Object.keys(LOOSENED_LIST_PAGES).map(Number));

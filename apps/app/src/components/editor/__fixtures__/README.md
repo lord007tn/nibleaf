@@ -70,7 +70,8 @@ same on main) and allows that outcome for them only. The fixture was made agains
 results for the list item lead tests (#604, #865). The first holds, for each serializer
 corpus page, a hash of its nodes and saves (unedited and after the corpus edits) and how
 those saves did on the fixed point, reload, text and source checks, with the characters a
-reload lost; `list-item-leads-main.test.ts` checks the named pages in `list-item-leads.ts`
-against it. The second holds, for each page and edit of `list-item-lead-matrix.test.ts`, the
-save's hash and checks and the edit's target, caret, undo depth and draft change. Both are
-recorded by `list-item-leads-main.generate.mjs`, which runs the two tests against main's editor.
+reload lost and added; `list-item-leads-main.test.ts` checks the named pages in
+`list-item-leads.ts` against it. The second holds, for each page and edit of
+`list-item-lead-matrix.test.ts`, the save's hash, checks and characters lost and added, and
+the edit's target, caret, undo depth and draft change. Both are recorded by
+`list-item-leads-main.generate.mjs`, which runs the two tests against main's editor.

@@ -7,7 +7,7 @@ import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import jsxOpeners from './__fixtures__/jsx-openers-main.json';
-import { listItemLeadSources } from './__fixtures__/list-item-leads';
+import { listItemLeadSources, quotedMarkSources } from './__fixtures__/list-item-leads';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { normalizeLineEndings, readLineEndings, restoreLineEndings } from './line-endings';
@@ -127,9 +127,14 @@ const corpora = [
   ...[HARD_WRAPPED_EN, HARD_WRAPPED_AR, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART].map((page) => ({ page, key: 'title' })),
 ];
 const pages = [...seeded, ...corpora];
-/** #604: the corpus pages with a list item led by a quote, heading or list, checked against
- *  main in list-item-leads-main.test.ts. */
+/** #604: the corpus pages with a list item led by a quote, heading or list, and those whose
+ *  quoted marks main doubled (QUOTED_MARK_PAGES), checked against main in
+ *  list-item-leads-main.test.ts. */
 const leadSources = listItemLeadSources();
+const quotedSources = quotedMarkSources();
+const isNamed = (page: string) => leadSources.has(page) || quotedSources.has(page);
+/** The quoted mark pages whose saves here held a doubled mark on main: all but page 898, whose doubled mark only the serializer corpus edits write. */
+const QUOTED_MARK_CHANGES = 7;
 
 describe('the differential pages', () => {
   it(`cover every registry component on at least ${MIN_PAGES} pages, and none holds a blank line inside a value`, () => {
@@ -210,7 +215,7 @@ describe('pages without a blank line inside an attribute value read as on main',
     const leadPages: number[] = [];
     const differences = digests.flatMap((value, index) => {
       const { page } = pages[index] as { page: string };
-      if (value !== main.digests[index] && leadSources.has(page)) {
+      if (value !== main.digests[index] && isNamed(page)) {
         leadPages.push(index);
         return [];
       }
@@ -229,6 +234,10 @@ describe('pages without a blank line inside an attribute value read as on main',
       `[blank-line-differential] ${pages.length} pages (${crPages.length} with a CR, read as LF on main), ${differences.length} differences`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
-    expect(leadPages).toEqual(pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])));
+    const quotedPages = leadPages.filter((index) => quotedSources.has(pages[index]?.page ?? ''));
+    expect(leadPages.filter((index) => !quotedPages.includes(index))).toEqual(
+      pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])),
+    );
+    expect(quotedPages.length).toBe(QUOTED_MARK_CHANGES);
   }, 600_000);
 });

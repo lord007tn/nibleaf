@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 import { DOCUMENTATION_COMPONENTS } from '@nibleaf/shared/documentation-components';
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
-import { listItemLeadSources } from './__fixtures__/list-item-leads';
+import { listItemLeadSources, quotedMarkSources } from './__fixtures__/list-item-leads';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { replaceOpeningAttribute, SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
@@ -266,9 +266,14 @@ function seededPages(): SeededPage[] {
 }
 
 const seeded = seededPages();
-/** #604: the corpus pages with a list item led by a quote, heading or list, checked against
- *  main in list-item-leads-main.test.ts. */
+/** #604: the corpus pages with a list item led by a quote, heading or list, and those whose
+ *  quoted marks main doubled (QUOTED_MARK_PAGES), checked against main in
+ *  list-item-leads-main.test.ts. */
 const leadSources = listItemLeadSources();
+const quotedSources = quotedMarkSources();
+const isNamed = (page: string) => leadSources.has(page) || quotedSources.has(page);
+/** The quoted mark pages whose saves here held a doubled mark on main: all but page 898, whose doubled mark only the serializer corpus edits write. */
+const QUOTED_MARK_CHANGES = 7;
 const pages: Array<{ page: string; key: string; seeded?: SeededPage }> = [
   ...seeded.map((seededPage) => ({ page: seededPage.page, key: seededPage.key, seeded: seededPage })),
   ...serializerCorpus()
@@ -427,7 +432,7 @@ describe('pages without a Frame read as on main', () => {
     const changed = results.flatMap((result, index) => {
       if (result.digest === main.digests[index]) return [];
       const page = pages[index]?.page ?? '';
-      if (leadSources.has(page)) {
+      if (isNamed(page)) {
         leadPages.push(index);
         return [];
       }
@@ -481,7 +486,11 @@ describe('pages without a Frame read as on main', () => {
     expect(plain.length).toBe(44);
     expect(bodyNormalized.length).toBe(8);
     expect(nodesOnly).toEqual([132, 943, 972, 1132]);
-    expect(leadPages).toEqual(pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])));
+    const quotedPages = leadPages.filter((index) => quotedSources.has(pages[index]?.page ?? ''));
+    expect(leadPages.filter((index) => !quotedPages.includes(index))).toEqual(
+      pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])),
+    );
+    expect(quotedPages.length).toBe(QUOTED_MARK_CHANGES);
   }, 600_000);
 });
 

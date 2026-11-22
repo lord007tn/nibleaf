@@ -491,8 +491,15 @@ class LinearMarkdownSerializerState extends SerializerState {
   override markString(mark: Mark, open: boolean, parent: PMNode, index: number): string {
     const info = this.marks[mark.type.name];
     if (info?.expelEnclosingWhitespace) {
-      if (open) this.inlines.push({ start: this.output.length, delimiter: String(info.open) });
-      else {
+      if (open) {
+        // The mark's string is written next, through `text`, which first writes what comes
+        // before it: the blank line closing the block before, and the containers' prefixes.
+        // Write them now, so the run starts after them. Inside a quote they hold `>`, which
+        // the whitespace trim in `render` does not skip: a paragraph opening with bold after
+        // another block in a quoted list item saved as `****bold**` (#604).
+        this.write();
+        this.inlines.push({ start: this.output.length, delimiter: String(info.open) });
+      } else {
         const top = this.inlines.pop();
         this.inlines.push({ ...(top as InlineState), end: this.output.length });
       }

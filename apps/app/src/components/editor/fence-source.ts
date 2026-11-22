@@ -396,6 +396,9 @@ function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNo
     if (!('type' in container)) return null;
     const name = container.type.name;
     const next = writtenAfter(container, at);
+    // A list after a list of its type is written after two blank lines (markdown-output.ts),
+    // which markdown-it reads as more of the fence's code.
+    if (next && LISTS.has(next.type.name) && path[level]?.node.type === next.type) return null;
     if (next) return quoted || endsBeforeNext(lines, state.delim) ? 'container' : null;
     if (name === 'doc') return 'page';
     if (name === 'blockquote') quoted = true;

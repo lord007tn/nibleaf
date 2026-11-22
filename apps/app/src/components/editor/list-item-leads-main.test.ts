@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { expect, it } from 'vitest';
-import { LIST_ITEM_LEAD_PAGES, LIST_ITEM_LEAD_TEXT_KEPT } from './__fixtures__/list-item-leads';
+import { LIST_ITEM_LEAD_DIFFERENTIAL_PAGES, LIST_ITEM_LEAD_TEXT_KEPT, SWALLOWED_BY_CODE, textChange } from './__fixtures__/list-item-leads';
 import { applyCorpusEdits, type DifferentialEditor, serializerCorpus } from './__fixtures__/serializer-corpus';
 
 /*
@@ -14,17 +14,23 @@ import { applyCorpusEdits, type DifferentialEditor, serializerCorpus } from './_
  * #865), against main. A list item led by a quote, heading or list kept that block on
  * main only by moving it out of the list, so every page holding one differs: its nodes
  * (the block stays in its item) and its saves. They are named (LIST_ITEM_LEAD_PAGES) and
- * counted, and the other differentials leave exactly these pages to this test.
+ * counted. So are the pages, with no lead, whose quoted marks main saved doubled
+ * (QUOTED_MARK_PAGES): the serializer fix that heading-led items in a quote needed
+ * writes them correctly too. The other differentials leave exactly these pages to this test.
  *
  * The fixture holds, for each page, main's nodes and saves (hashed), and how main's
  * saves, unedited and after the corpus edits, did on four checks:
  * - fixed: the save, reloaded and saved twice more, stays the same bytes;
  * - document: the save reloads as the document it was written from;
- * - text: no text is lost on that reload, and how many characters are;
+ * - text: the reload has the document's text, and how many characters it lost and added
+ *   (textChange): a save that reads back with a delimiter as text adds characters;
  * - source: unedited, the save has the block structure markdown-it reads from the source.
- * Each named page passes every check main passes, and loses no more text than main.
+ * Each named page passes every check main passes, and loses and adds no more text than main.
  * One page trades a check (LIST_ITEM_LEAD_TEXT_KEPT): main saves it to a fixed point only
  * after losing text; it now loses far less (none unedited), and is not yet a fixed point.
+ * Two pages read back with more of their Markdown as code text than on main
+ * (SWALLOWED_BY_CODE): main's own fence bug turns the rest of each page into code, on
+ * main and now; they lose no more, and their counts are pinned.
  *
  * Record with `node apps/app/src/components/editor/__fixtures__/list-item-leads-main.generate.mjs`.
  */
@@ -49,6 +55,7 @@ interface SaveRecord {
   hash: string;
   checks: number;
   lost: number;
+  added: number;
 }
 interface PageRecord {
   nodes: string;
@@ -99,16 +106,6 @@ function blocks(editor: Editor, source: string): string {
   return JSON.stringify(root);
 }
 
-/** Characters of `before` that `after` no longer has, counted as a multiset. */
-function lostCharacters(before: string, after: string): number {
-  const counts = new Map<string, number>();
-  for (const character of before) counts.set(character, (counts.get(character) ?? 0) + 1);
-  for (const character of after) counts.set(character, (counts.get(character) ?? 0) - 1);
-  let lost = 0;
-  for (const count of counts.values()) if (count > 0) lost += count;
-  return lost;
-}
-
 function record(module: EditorModule): PageRecord[] {
   const editor = new Editor({ element: document.createElement('div'), extensions: module.buildEditorExtensions() });
   const reader = new Editor({ element: document.createElement('div'), extensions: module.buildEditorExtensions() });
@@ -120,13 +117,13 @@ function record(module: EditorModule): PageRecord[] {
     load(reader, saved);
     const read = JSON.stringify(shape(reader.state.doc));
     const sameText = reader.state.doc.textContent === text;
-    const lost = lostCharacters(text, reader.state.doc.textContent);
+    const { lost, added } = textChange(text, reader.state.doc.textContent);
     const again = module.getMarkdown(reader);
     load(reader, again);
     const fixed = again === saved && module.getMarkdown(reader) === saved;
     const sameSource = edited || blocks(editor, source) === blocks(editor, saved);
     const checks = (fixed ? FIXED : 0) | (written === read ? DOCUMENT : 0) | (sameText ? TEXT : 0) | (sameSource ? SOURCE : 0);
-    return { hash: hash(saved), checks, lost };
+    return { hash: hash(saved), checks, lost, added };
   };
   try {
     return cases.map(({ source, edits }) => {
@@ -144,13 +141,23 @@ function record(module: EditorModule): PageRecord[] {
 }
 
 const encode = (page: PageRecord) =>
-  [page.nodes, page.plain.hash, page.edited.hash, page.plain.checks, page.edited.checks, page.plain.lost, page.edited.lost].join(' ');
+  [
+    page.nodes,
+    page.plain.hash,
+    page.edited.hash,
+    page.plain.checks,
+    page.edited.checks,
+    page.plain.lost,
+    page.edited.lost,
+    page.plain.added,
+    page.edited.added,
+  ].join(' ');
 const decode = (line: string): PageRecord => {
-  const [nodes = '', plain = '', edited = '', plainChecks, editedChecks, plainLost, editedLost] = line.split(' ');
+  const [nodes = '', plain = '', edited = '', plainChecks, editedChecks, plainLost, editedLost, plainAdded, editedAdded] = line.split(' ');
   return {
     nodes,
-    plain: { hash: plain, checks: Number(plainChecks), lost: Number(plainLost) },
-    edited: { hash: edited, checks: Number(editedChecks), lost: Number(editedLost) },
+    plain: { hash: plain, checks: Number(plainChecks), lost: Number(plainLost), added: Number(plainAdded) },
+    edited: { hash: edited, checks: Number(editedChecks), lost: Number(editedLost), added: Number(editedAdded) },
   };
 };
 
@@ -168,24 +175,30 @@ it.runIf(baselineDir)(
 
 /** What each named page's saves are against main's: `same` bytes, `better` (every check
  *  passes where main fails one), `kept` (every check passes, as on main: main's document
- *  had already lost its nesting on load), and `failing` (fails only checks main fails). */
+ *  had already lost its nesting on load), `failing` (fails only checks main fails), and
+ *  `swallowed` (SWALLOWED_BY_CODE). Every class but `swallowed`, whose counts are pinned,
+ *  loses and adds no more text than main. */
 const EXPECTED_CLASSES = {
-  plain: { same: 0, better: 1, kept: 0, failing: 255, textKept: 1 },
-  edited: { same: 0, better: 76, kept: 42, failing: 138, textKept: 1 },
+  plain: { same: 1, better: 1, kept: 0, failing: 260, textKept: 1, swallowed: 2 },
+  edited: { same: 0, better: 80, kept: 42, failing: 140, textKept: 1, swallowed: 2 },
 };
 
 it.skipIf(baselineDir)(
-  `the ${LIST_ITEM_LEAD_PAGES.length} named list item lead pages keep every check main passes, and lose no more text`,
+  `the ${LIST_ITEM_LEAD_DIFFERENTIAL_PAGES.length} named list item lead and quoted mark pages keep every check main passes, and lose and add no more text`,
   async () => {
     const fixture = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { sources: string; pages: string[] };
     expect({ sources: fixture.sources, count: fixture.pages.length }).toEqual({ sources, count: cases.length });
     const main = fixture.pages.map(decode);
+    // A record without a count would compare as never worse.
+    expect(main.filter((page) => ![page.plain, page.edited].every((save) => Number.isInteger(save.lost) && Number.isInteger(save.added)))).toEqual(
+      [],
+    );
     const head = record(await import('./tiptap-editor'));
     const changed = head.flatMap((page, index) => {
       const before = main[index] as PageRecord;
       return page.nodes === before.nodes && page.plain.hash === before.plain.hash && page.edited.hash === before.edited.hash ? [] : [index];
     });
-    expect(changed, `changed pages: ${JSON.stringify(changed)}`).toEqual(LIST_ITEM_LEAD_PAGES);
+    expect(changed, `changed pages: ${JSON.stringify(changed)}`).toEqual(LIST_ITEM_LEAD_DIFFERENTIAL_PAGES);
     const classes: Record<string, Record<string, number>> = { plain: {}, edited: {} };
     const worse: unknown[] = [];
     for (const index of changed) {
@@ -198,7 +211,10 @@ it.skipIf(baselineDir)(
         else if ((before.checks & ~now.checks) !== 0) verdict = 'worse';
         else if (now.checks !== ALL) verdict = 'failing';
         else verdict = before.checks === ALL ? 'kept' : 'better';
-        if (now.lost > before.lost) verdict = 'worse';
+        if (now.lost > before.lost || now.added > before.added) verdict = 'worse';
+        const swallowed = SWALLOWED_BY_CODE[index];
+        if (swallowed && verdict === 'worse' && now.lost <= before.lost && (before.checks & ~SOURCE) === 0 && (now.checks & ~SOURCE) === 0)
+          verdict = now.added === swallowed[kind] ? 'swallowed' : 'worse';
         const group = classes[kind] as Record<string, number>;
         group[verdict] = (group[verdict] ?? 0) + 1;
         if (verdict === 'worse') worse.push({ index, kind, now, before });

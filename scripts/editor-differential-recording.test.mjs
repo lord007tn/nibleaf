@@ -60,9 +60,13 @@ function harness(env = {}, differing = 14) {
       crPages: [],
       CORPUS_START: 0,
       CODE_TOGGLE_KEEPS_LINK_PAGES: Array.from({ length: 14 }, (_, index) => index),
-      // #604: no list item lead or loosened list pages in the synthetic fixture.
+      // #604: no list item lead, quoted mark or loosened list pages in the synthetic fixture.
       LIST_ITEM_LEAD_PAGES: [],
+      LIST_ITEM_LEAD_DIFFERENTIAL_PAGES: [],
       leadSources: new Set(),
+      quotedSources: new Set(),
+      isNamed: () => false,
+      QUOTED_MARK_CHANGES: 0,
       LOOSENED_LIST_PAGES: {},
       saveRecord: () => '',
       digest: (page) => `main-${page}`,
