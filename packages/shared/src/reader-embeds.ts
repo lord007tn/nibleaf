@@ -326,6 +326,13 @@ export const scanAuthoredEmbeds = (text: string): AuthoredEmbed[] => {
   return found;
 };
 
+/** Read a complete video child opener using the same attribute rules as media. */
+export const readAuthoredMediaChild = (text: string, start: number): { end: number; src: string } | null => {
+  const name = opens(text, start, '<source') ? '<source' : opens(text, start, '<track') ? '<track' : undefined;
+  const tag = name && readTag(text, start + name.length);
+  return tag ? { end: tag.end, src: tag.attributes.get('src') ?? '' } : null;
+};
+
 /**
  * An `<iframe>` or `<video>` opener with one attribute set to `value`, or removed
  * when `value` is empty, read with the reader's own rules: an HTML value ends at

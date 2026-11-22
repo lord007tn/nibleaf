@@ -1,7 +1,8 @@
 import { type JSONContent, mergeAttributes, Node } from '@tiptap/core';
-import { Fragment, type Node as PMNode, type Schema } from '@tiptap/pm/model';
-import { Plugin, PluginKey, TextSelection, type Transaction } from '@tiptap/pm/state';
-import { AttrStep, Mapping } from '@tiptap/pm/transform';
+import { closeHistory } from '@tiptap/pm/history';
+import { Fragment, type Node as PMNode, type Schema, type Slice } from '@tiptap/pm/model';
+import { type EditorState, NodeSelection, Plugin, PluginKey, Selection, TextSelection, type Transaction } from '@tiptap/pm/state';
+import { AttrStep, Mapping, ReplaceStep } from '@tiptap/pm/transform';
 import { ReactNodeViewRenderer } from '@tiptap/react';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { FileNameView } from '../file-name-view';
@@ -103,6 +104,116 @@ const changedRanges = (transactions: readonly Transaction[], size: number): Arra
 
 const fileNameKey = new PluginKey('mdxFileName');
 
+const isRow = (node: PMNode) => node.type.name === 'mdxFile' || node.type.name === 'mdxFolder';
+
+/** Whole File and Folder rows, as a cut or copied row reaches the clipboard. */
+const isRowSlice = (slice: Slice) => {
+  let rows = slice.openStart === 0 && slice.openEnd === 0 && slice.content.childCount > 0;
+  slice.content.forEach((node) => {
+    rows &&= isRow(node);
+  });
+  return rows;
+};
+
+/**
+ * Where the last cut row left a gap, while the selection is still the one the
+ * cut left: a caret, or the next block (a rule, an image) selected whole.
+ * `removed` is all the cut took out: more than the row when the row was its
+ * tree's only entry, since a tree cannot be empty and the cut removes it too.
+ */
+type CutRow = { gap: number; selection: Selection; row: PMNode; removed: Fragment };
+const cutRowKey = new PluginKey<CutRow | null>('mdxCutRow');
+/** Meta that drops the remembered cut, as when the editor is destroyed. */
+const FORGET_CUT = 'forget';
+
+/** Remember a whole File or Folder row cut with the node selected (#870), so pasting it straight back fills the gap it left. */
+const cutRowPlugin = () =>
+  new Plugin<CutRow | null>({
+    key: cutRowKey,
+    state: {
+      init: () => null,
+      apply(tr, value, previous, state) {
+        if (tr.getMeta(cutRowKey) === FORGET_CUT) return null;
+        const { selection } = previous;
+        if (tr.getMeta('uiEvent') === 'cut') {
+          if (!(selection instanceof NodeSelection) || !isRow(selection.node)) return null;
+          const [step] = tr.steps;
+          const removed = step instanceof ReplaceStep && tr.steps.length === 1 && !step.slice.size && previous.doc.slice(step.from, step.to);
+          return removed && !removed.openStart && !removed.openEnd
+            ? { gap: step.from, selection: state.selection, row: selection.node, removed: removed.content }
+            : { gap: tr.mapping.map(selection.from, -1), selection: state.selection, row: selection.node, removed: Fragment.from(selection.node) };
+        }
+        if (!value) return null;
+        // Other plugins' follow-up transactions to the cut belong to it; anything else that edits
+        // the document (replacing it included) or moves the selection ends it.
+        const root = tr.getMeta('appendedTransaction') as Transaction | undefined;
+        if (root?.getMeta('uiEvent') === 'cut') return { ...value, gap: tr.mapping.map(value.gap, -1), selection: state.selection };
+        return tr.docChanged || tr.selectionSet ? null : value;
+      },
+    },
+  });
+
+/** Drop the remembered cut, so a destroyed editor's last state keeps no part of the document that was cut (#870). */
+const forgetCutRow = (view: { state: EditorState; dispatch: (tr: Transaction) => void }) => {
+  if (cutRowKey.getState(view.state)) view.dispatch(view.state.tr.setMeta(cutRowKey, FORGET_CUT).setMeta('addToHistory', false));
+};
+
+/**
+ * `tr` with `rows` in place of `from`–`to` (inserted when they are equal) in one
+ * step, the caret after them as after any paste; null when they cannot go there.
+ * One step, so a tree whose only File they replace is never empty in between
+ * (an empty tree would be filled with a Folder).
+ */
+const placeRows = (tr: Transaction, from: number, to: number, rows: Fragment): Transaction | null => {
+  const $from = tr.doc.resolve(from);
+  const $to = tr.doc.resolve(to);
+  if (!$from.sameParent($to) || !$from.parent.canReplace($from.index(), $to.index(), rows)) return null;
+  tr.replaceWith(from, to, rows);
+  return tr.setSelection(Selection.near(tr.doc.resolve(from + rows.size), -1));
+};
+const insertRows = (tr: Transaction, at: number, rows: Fragment) => placeRows(tr, at, at, rows);
+
+/**
+ * Paste whole File or Folder rows (#870) as rows of the tree, never as text
+ * inside a File's name. Right after a row is cut, with the caret where the cut
+ * left it, they go back where the cut row was, so cut then paste restores the
+ * tree exactly. With the caret in a File's name, ProseMirror would split the
+ * name around them, leaving an empty File (or a second File carrying the
+ * first one's tag). Instead they go before that File at the start of its name,
+ * after it at the end, and in place of an empty File. In the middle the name
+ * splits as Enter splits it, the second half a new File with its own tag.
+ * The paste is always its own undo step, however soon it follows the cut.
+ * Returns null for any other paste.
+ */
+export const pasteFileRows = (state: EditorState, slice: Slice): Transaction | null => {
+  const tr = isRowSlice(slice) ? rowPaste(state, slice) : null;
+  return tr && closeHistory(tr);
+};
+
+const rowPaste = (state: EditorState, slice: Slice): Transaction | null => {
+  const { selection } = state;
+  const cut = cutRowKey.getState(state);
+  if (cut && selection.eq(cut.selection)) {
+    // The row just cut goes back as it was cut, with its tree if the cut took that too. The
+    // selection may be the next block, selected whole by the cut: it stays, and is not replaced.
+    const restored = insertRows(state.tr, cut.gap, slice.content.eq(Fragment.from(cut.row)) ? cut.removed : slice.content);
+    if (restored) return restored;
+  }
+  if (!(selection instanceof TextSelection)) return null;
+  const { $from, $to } = selection;
+  if ($from.parent.type.name !== 'mdxFile' || !$from.sameParent($to)) return null;
+  const index = $from.index(-1);
+  if (!$from.node(-1).canReplace(index, index, slice.content)) return null;
+  const tr = state.tr;
+  if (!selection.empty) tr.deleteSelection();
+  const $pos = tr.doc.resolve(tr.mapping.map($from.pos));
+  const file = $pos.parent;
+  if (!file.content.size) return placeRows(tr, $pos.before(), $pos.after(), slice.content);
+  if ($pos.parentOffset === 0) return insertRows(tr, $pos.before(), slice.content);
+  if ($pos.parentOffset === file.content.size) return insertRows(tr, $pos.after(), slice.content);
+  return insertRows(tr.split($pos.pos, 1, [{ type: file.type, attrs: {} }]), $pos.pos + 1, slice.content);
+};
+
 /**
  * A File in a file tree (#670). Its name is the node's text, so the caret can
  * be in it: typing right after inserting a File tree names its first file.
@@ -173,9 +284,14 @@ export const File = Node.create({
       },
     };
   },
+  onDestroy() {
+    // Still mounted here: tiptap keeps the view's last state after destroying it.
+    forgetCutRow(this.editor.view);
+  },
   addProseMirrorPlugins() {
     const type = this.type;
     return [
+      cutRowPlugin(),
       new Plugin({
         key: fileNameKey,
         // Only what the transactions wrote is looked at, so typing elsewhere costs nothing.
