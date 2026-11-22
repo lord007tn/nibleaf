@@ -61,7 +61,7 @@ const MAX_URL_LENGTH = 2048;
 export const hasUnsafeMediaUrlCharacters = (input: string): boolean => {
   for (let index = 0; index < input.length; index++) {
     const code = input.charCodeAt(index);
-    if (code < 0x20 || code === 0x7f || code === 0x5c || (code > 0x7f && /\s/u.test(input.charAt(index)))) return true;
+    if (code < 0x20 || (code >= 0x7f && code <= 0x9f) || code === 0x5c || (code > 0x7f && /\s/u.test(input.charAt(index)))) return true;
   }
   // Ordinary padding stays valid; whitespace inside the address does not.
   return input.trim().includes(' ');
@@ -209,7 +209,7 @@ const SITE_BASE = new URL('https://site.nibleaf.invalid');
  * https, or a path on this site (our own assets).
  *
  * A browser removes tab and newline anywhere in a URL and reads `\` as `/`, so
- * `/<tab>/host/x` or `/\host/x` is another host to it. Any ASCII control
+ * `/<tab>/host/x` or `/\host/x` is another host to it. Any C0 or C1 control
  * character or backslash is refused outright, as is whitespace inside an
  * address (surrounding ordinary spaces are tolerated). A path must still
  * resolve to this site's origin. Percent-encoded bytes (`/%09/x`) are not
