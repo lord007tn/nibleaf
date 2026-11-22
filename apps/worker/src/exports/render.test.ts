@@ -9,6 +9,15 @@ const log = vi.hoisted(() => ({ info: vi.fn() }));
 vi.mock('@nibleaf/logger', () => ({ logger: log }));
 afterEach(() => vi.clearAllMocks());
 
+it('keeps the remaining literal tab and code text in rendered quoted fences (#607)', () => {
+  const content = '> ```js\n>\t\tconst value = "<script>&#9;</script>";\n> ```';
+  const page = { ...required(snapshot.pages[0]), content };
+  const data = { ...snapshot, pages: [page] };
+  const code = '<pre><code class="language-js">  \tconst value = &quot;&lt;script&gt;&amp;#9;&lt;/script&gt;&quot;;\n</code></pre>';
+  expect(renderPageMarkdown(data, page, [])).toContain(code);
+  expect(renderPdfHtml(data, [])).toContain(code);
+});
+
 describe('content-free export fallback telemetry', () => {
   const fixture = (content: string): SiteSnapshot => ({
     ...snapshot,

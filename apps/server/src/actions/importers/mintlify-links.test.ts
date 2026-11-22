@@ -32,6 +32,50 @@ describe('buildMintlifyRouteMap', () => {
 });
 
 describe('rewriteMintlifyInternalLinks', () => {
+  it.each([
+    '[r]: </topic/next> "Quoted"',
+    "[r]: /topic/next 'Single quotes'",
+    '[r]: /topic/next (Parenthesized)',
+    '> [r]: </topic/next>\n>   "Multiline title"',
+    '- [r]: /topic/next "In a list"',
+    '<Note>\n[r]: /topic/next "In a component"\n</Note>',
+  ])('preserves definition spelling outside the final destination: %s', (definition) => {
+    const source = `[Go][R]\n\n${definition}`;
+    const routes = new Map([['topic/next', '/topic-2/next']]);
+    expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source.replace('/topic/next', '/topic-2/next'));
+  });
+
+  it.each([
+    '[r]: /topic/next "Title" extra text',
+    '~~~\n[r]: /topic/next\n~~~',
+    '    [r]: /topic/next',
+    '<Note>\n    ~~~\n    [r]: /topic/next\n    ~~~\n</Note>',
+    '`[r]: /topic/next`',
+  ])('preserves definition look-alikes outside rendered links: %s', (definition) => {
+    const source = `[Go][R]\n\n${definition}`;
+    const routes = new Map([['topic/next', '/topic-2/next']]);
+    expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source);
+  });
+
+  it('retains inline and HTML rewrites above the reference-definition parse limit', () => {
+    const links = '[Inline](/topic/next) <Card href="/topic/next" /> [Reference][r]';
+    const definition = '\n\n[r]: /topic/next "Title"\n\n';
+    const routes = new Map([['topic/next', '/topic-2/next']]);
+    const rewrittenLinks = links.replaceAll('/topic/next', '/topic-2/next');
+    const withinLimit = 'a'.repeat(4096 - links.length - definition.length);
+    expect(rewriteMintlifyInternalLinks(links + definition + withinLimit, 'intro', routes)).toBe(
+      rewrittenLinks + definition.replace('/topic/next', '/topic-2/next') + withinLimit,
+    );
+    const overLimit = `${withinLimit}a`;
+    expect(rewriteMintlifyInternalLinks(links + definition + overLimit, 'intro', routes)).toBe(rewrittenLinks + definition + overLimit);
+  });
+
+  it('keeps footnotes, empty destinations and definitions shared with images unchanged', () => {
+    const source = '[^note] [Empty][empty] [Page][shared] ![Image][shared]\n\n[^note]: /topic/next\n[empty]: <>\n[shared]: /topic/next';
+    const routes = new Map([['topic/next', '/topic-2/next']]);
+    expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source);
+  });
+
   it('does not discover or rewrite page links inside code examples', () => {
     const literal = ['~~~mdx', '[Hidden](./hidden)', '<Card href="./quickstart" />', '~~~', '`[Inline](./hidden)`'].join('\n');
     const input = `${literal}\n[Start](./quickstart)`;
