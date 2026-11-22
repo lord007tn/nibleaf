@@ -20,7 +20,7 @@ export const linkDiscoveryRepros: Array<{ name: string; content: string }> = [
     content: '[x]: /topic/next extra text\n\n[Real](/topic/next)',
   },
   {
-    name: 'round 3: valid reference definition remains deferred',
+    name: 'round 3: valid reference definition',
     content: '[Go][r]\n\n[r]: /topic/next "Title"',
   },
   {
