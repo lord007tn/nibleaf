@@ -476,7 +476,7 @@ it.runIf(baselineDir)(
     const results = (await run(module)).map(encode);
     writeFileSync(
       FIXTURE,
-      `${JSON.stringify({ revision: process.env.LIST_ITEM_LEADS_BASELINE_REVISION ?? '', pages: pages().length, results }, null, 1)}\n`,
+      `${JSON.stringify({ revision: process.env.LIST_ITEM_LEADS_BASELINE_REVISION ?? '', pages: pages().length, results }, null, 2)}\n`,
     );
   },
   900_000,
@@ -522,8 +522,8 @@ type Counts = { results: number; same: number; correct: number; sameFailure: num
 
 /** What each kind of edit's save gives now, against main (see the note at the top). */
 const EXPECTED_COUNTS: Record<string, Counts> = {
-  none: { results: 180, same: 34, correct: 145, sameFailure: 1 },
-  moveFirstBlockLast: { results: 180, same: 34, correct: 146, sameFailure: 0 },
+  none: { results: 180, same: 32, correct: 146, sameFailure: 2 },
+  moveFirstBlockLast: { results: 180, same: 32, correct: 148, sameFailure: 0 },
   copyAsTextToBlank: { results: 180, same: 34, correct: 141, sameFailure: 3, hardBreak: 2 },
   copyAsHtmlToBlank: { results: 180, same: 56, correct: 124, sameFailure: 0 },
   type: { results: 178, same: 24, correct: 154, sameFailure: 0 },
@@ -591,11 +591,14 @@ it.skipIf(baselineDir)(
       if (!Number.isInteger(Number(lostMain)) || !Number.isInteger(Number(addedMain)))
         throw new Error(`Main's record for ${result.id} has no text counts: re-record the fixture`);
       const moreText = result.lost > Number(lostMain) || result.added > Number(addedMain);
-      if (savedMain === result.saved) group.same++;
-      else if (result.checks === ALL) group.correct++;
-      else if ((mainChecks & ~result.checks) === 0 && !moreText) group.sameFailure++;
-      else if (PASTED_HARD_BREAK.includes(result.id) && (mainChecks & ~result.checks) === DOCUMENT && !moreText)
-        group.hardBreak = (group.hardBreak ?? 0) + 1;
+      const failedChecks = mainChecks & ~result.checks;
+      // The same save and reload as main's counts as the same only when no check main passes now fails: the
+      // document it was written from can differ (an edit leaving an empty paragraph no save holds).
+      if (!moreText && failedChecks === 0) {
+        if (savedMain === result.saved) group.same++;
+        else if (result.checks === ALL) group.correct++;
+        else group.sameFailure++;
+      } else if (!moreText && PASTED_HARD_BREAK.includes(result.id) && failedChecks === DOCUMENT) group.hardBreak = (group.hardBreak ?? 0) + 1;
       else worse.push({ id: result.id, checks: result.checks, mainChecks, lost: result.lost, added: result.added, lostMain, addedMain });
       if (interactionMain !== result.interaction) {
         interactions[result.edit] = (interactions[result.edit] ?? 0) + 1;
@@ -607,6 +610,8 @@ it.skipIf(baselineDir)(
           worse.push({ id: result.id, interaction: result.interaction, interactionMain, checks: result.checks });
       }
     }
+    const checked = Object.values(counts).reduce((total, group) => total + group.results, 0);
+    console.info(`[list-item-lead-matrix] ${results.length} page/edit rows, ${checked} applicable edits, ${worse.length} regressions`);
     expect(worse, JSON.stringify(worse.slice(0, 20))).toEqual([]);
     expect(interactions).toEqual(Object.fromEntries(Object.entries(EDIT_EXCEPTIONS).map(([edit, { count }]) => [edit, count])));
     expect(counts, JSON.stringify(counts)).toEqual(EXPECTED_COUNTS);

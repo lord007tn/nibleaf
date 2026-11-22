@@ -16,11 +16,13 @@ interface MarkdownToken {
   nesting: number;
   content: string;
   hidden: boolean;
+  map: [number, number] | null;
   meta: unknown;
   attrSet(name: string, value: string): void;
 }
 
 interface MarkdownCoreState<T extends MarkdownToken> {
+  src: string;
   tokens: T[];
 }
 
@@ -53,6 +55,7 @@ const isList = (block: ItemBlock | null) => block === 'bullet_list_open' || bloc
  */
 export function markTightLists<T extends MarkdownToken>(state: MarkdownCoreState<T>): void {
   const { tokens } = state;
+  let sourceLines: string[] | undefined;
   /** Open lists, innermost last: whether they hold a paragraph with text of their
    *  own items, whether markdown-it hid them all, whether every item's blocks are
    *  written tight, whether its items fit the schema (start with a paragraph), and
@@ -64,6 +67,22 @@ export function markTightLists<T extends MarkdownToken>(state: MarkdownCoreState
     if (list && token.level === list.token.level + 2 && token.nesting !== -1) {
       const block = itemBlock(token);
       if (list.previous === null) {
+        const inline = tokens[index + 1];
+        // Restore the trimmed separator of a standalone empty task. Neighboring
+        // items or child blocks can require the existing list schema fitting.
+        if (
+          list.token.type === 'bullet_list_open' &&
+          tokens[index - 2] === list.token &&
+          block === 'paragraph' &&
+          inline?.type === 'inline' &&
+          inline.map &&
+          /^\[[ xX]\]$/.test(inline.content) &&
+          tokens[index + 3]?.type === 'list_item_close' &&
+          tokens[index + 4]?.type === 'bullet_list_close'
+        ) {
+          sourceLines ??= state.src.split('\n');
+          if (/[ \t]$/.test(sourceLines[inline.map[0]] ?? '')) inline.content += ' ';
+        }
         list.safe &&= block === 'paragraph' || block === 'lead';
         list.tight &&= block === 'paragraph' || block === 'lead';
       }
@@ -180,7 +199,9 @@ const WITHOUT_PARAGRAPHS: ReadonlySet<string> = new Set([...ITEMS, ...LIST_NODES
  * Whether a list reads back as tight whichever way it is written: tiptap-markdown reads a
  * list as tight when it holds no `<p>` at any depth, so a list of empty items and fences
  * (a pasted list, or one an edit emptied) never reads back loose. Written loose, its next
- * save rewrote it tight. Such a list is written tight when its items can be.
+ * save rewrote it tight; and a tight one written loose because an item holds two fences
+ * read back tight and was rewritten loose (corpus page 45). Such a list is written tight,
+ * as main writes a list marked tight: a blank line inside an item reads back the same.
  */
 export function readsBackTight(list: PMNode): boolean {
   let text = false;
@@ -190,11 +211,5 @@ export function readsBackTight(list: PMNode): boolean {
     text = !empty && !WITHOUT_PARAGRAPHS.has(node.type.name);
     return !text && node.type.name !== 'codeBlock';
   });
-  if (text) return false;
-  let tight = true;
-  list.descendants((node) => {
-    if (ITEMS.has(node.type.name) && !itemWritesTight(node)) tight = false;
-    return tight;
-  });
-  return tight;
+  return !text;
 }

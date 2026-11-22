@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor, type JSONContent } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
-import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
+import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout, withoutUnusedStructuredHtml } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import { listItemLeadSources, quotedMarkSources, textChange } from './__fixtures__/list-item-leads';
 import {
@@ -170,13 +170,7 @@ const mainNodeShape = (node: JSONContent): JSONContent => {
     const { content: _name, ...atom } = node;
     return atom;
   }
-  let projected = node;
-  if (node.attrs && Object.hasOwn(node.attrs, 'sourceStructuredHtml') && node.attrs.sourceStructuredHtml === undefined) {
-    const { attrs, ...rest } = node;
-    const { sourceStructuredHtml: _empty, ...existing } = attrs;
-    projected = Object.keys(existing).length === 0 ? rest : { ...node, attrs: existing };
-  }
-  return node.content ? { ...projected, content: node.content.map(mainNodeShape) } : projected;
+  return withoutUnusedStructuredHtml(node, mainNodeShape);
 };
 
 describe('pages with LF only save as on main (#702)', () => {
@@ -234,18 +228,22 @@ describe('pages with LF only save as on main (#702)', () => {
     }
   };
 
-  it.runIf(process.env.LF_LOOSENED_BASELINE_DIR)('prints main’s records for the loosened list pages', async () => {
-    const dir = process.env.LF_LOOSENED_BASELINE_DIR as string;
-    const module = (await import(/* @vite-ignore */ pathToFileURL(join(dir, 'tiptap-editor.tsx')).href)) as EditorModule;
-    const records = Object.keys(LOOSENED_LIST_PAGES).map((index) => {
-      const { page, edits } = pages[Number(index)] as (typeof pages)[number];
-      return [index, saveRecord(page, edits, module)];
-    });
-    // Written out (LF_LOOSENED_OUT, or printed), for LOOSENED_LIST_PAGES.
-    const out = JSON.stringify(Object.fromEntries(records), null, 2);
-    if (process.env.LF_LOOSENED_OUT) writeFileSync(process.env.LF_LOOSENED_OUT, `${out}\n`);
-    else console.info(`[lf-main-differential] main's loosened list records: ${out}`);
-  }, 120_000);
+  it.runIf(process.env.LF_LOOSENED_BASELINE_DIR)(
+    'prints main’s records for the loosened list pages',
+    async () => {
+      const dir = process.env.LF_LOOSENED_BASELINE_DIR as string;
+      const module = (await import(/* @vite-ignore */ pathToFileURL(join(dir, 'tiptap-editor.tsx')).href)) as EditorModule;
+      const records = Object.keys(LOOSENED_LIST_PAGES).map((index) => {
+        const { page, edits } = pages[Number(index)] as (typeof pages)[number];
+        return [index, saveRecord(page, edits, module)];
+      });
+      // Written out (LF_LOOSENED_OUT, or printed), for LOOSENED_LIST_PAGES.
+      const out = JSON.stringify(Object.fromEntries(records), null, 2);
+      if (process.env.LF_LOOSENED_OUT) writeFileSync(process.env.LF_LOOSENED_OUT, `${out}\n`);
+      else console.info(`[lf-main-differential] main's loosened list records: ${out}`);
+    },
+    120_000,
+  );
 
   it('the pages are LF only', () => {
     expect(pages.filter(({ page }) => page.includes('\r'))).toEqual([]);
@@ -277,8 +275,8 @@ describe('pages with LF only save as on main (#702)', () => {
       const { page, edits } = pages[index] as (typeof pages)[number];
       const now = saveRecord(page, edits).split(' ');
       return (LOOSENED_LIST_PAGES[index] as string).split(' ').some((before, at) => {
-        const [, fixedBefore, lostBefore, addedBefore] = /^.:(.)-(d+)+(d+)$/.exec(before) ?? [];
-        const [, fixedNow, lostNow, addedNow] = /^.:(.)-(d+)+(d+)$/.exec(now[at] ?? '') ?? [];
+        const [, fixedBefore, lostBefore, addedBefore] = /^.:(.)-(\d+)\+(\d+)$/.exec(before) ?? [];
+        const [, fixedNow, lostNow, addedNow] = /^.:(.)-(\d+)\+(\d+)$/.exec(now[at] ?? '') ?? [];
         if (fixedBefore === undefined || fixedNow === undefined) throw new Error(`Unreadable record ${before} or ${now[at]}`);
         return (fixedBefore === 'F' && fixedNow !== 'F') || Number(lostNow) > Number(lostBefore) || Number(addedNow) > Number(addedBefore);
       })

@@ -70,8 +70,14 @@ same on main) and allows that outcome for them only. The fixture was made agains
 results for the list item lead tests (#604, #865). The first holds, for each serializer
 corpus page, a hash of its nodes and saves (unedited and after the corpus edits) and how
 those saves did on the fixed point, reload, text and source checks, with the characters a
-reload lost and added; `list-item-leads-main.test.ts` checks the named pages in
-`list-item-leads.ts` against it. The second holds, for each page and edit of
+reload lost and added. The text count includes the source displayed by opaque inline
+nodes. Its 53 updated text records were measured against the same pinned editor and
+all existing hashes and non-text checks were verified unchanged.
+`list-item-leads-main.test.ts` checks every page against it and pins the named changes in
+`list-item-leads.ts`. The second holds, for each page and edit of
 `list-item-lead-matrix.test.ts`, the save's hash, checks and characters lost and added, and
-the edit's target, caret, undo depth and draft change. Both are recorded by
-`list-item-leads-main.generate.mjs`, which runs the two tests against main's editor.
+the edit's target, caret, undo depth and draft change. `list-item-lead-emptied-main.json` holds,
+for each page of `list-item-lead-emptied.test.ts` (a chain of list markers whose item's only
+text is deleted), the save's fixed point and reload checks, the characters lost and added, and
+whether the reload held a rule or code block. All three are recorded by
+`list-item-leads-main.generate.mjs`, which runs the three tests against main's editor.

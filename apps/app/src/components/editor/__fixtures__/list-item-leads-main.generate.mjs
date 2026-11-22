@@ -4,7 +4,8 @@
 //
 // Main's editor directory is checked out next to the current one (inside apps/app/src,
 // so its `@/` imports and packages resolve as the app's do), and
-// list-item-leads-main.test.ts and list-item-lead-matrix.test.ts are run in record mode against it.
+// list-item-leads-main.test.ts, list-item-lead-matrix.test.ts and list-item-lead-emptied.test.ts are
+// run in record mode against it.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
@@ -36,6 +37,7 @@ try {
       '--maxWorkers=1',
       'src/components/editor/list-item-leads-main.test.ts',
       'src/components/editor/list-item-lead-matrix.test.ts',
+      'src/components/editor/list-item-lead-emptied.test.ts',
     ],
     {
       cwd: app,

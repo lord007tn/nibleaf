@@ -131,7 +131,8 @@ const pages = [...seeded, ...corpora];
 /** #604: the corpus pages with a list item led by a quote, heading or list, and those whose
  *  quoted marks main doubled (QUOTED_MARK_PAGES), checked against main in
  *  list-item-leads-main.test.ts. */
-const leadSources = listItemLeadSources();
+// Corpus pages 70 and 236 need a longer fence only after the corpus edit sequence.
+const leadSources = listItemLeadSources(true);
 const quotedSources = quotedMarkSources();
 const isNamed = (page: string) => leadSources.has(page) || quotedSources.has(page);
 /** The quoted mark pages whose saves here held a doubled mark on main: all but page 898, whose doubled mark only the serializer corpus edits write. */
@@ -236,7 +237,7 @@ describe('pages without a blank line inside an attribute value read as on main',
         leadPages.push(index);
         // Its attribute-edited save must still change only the attribute (attributeEditHolds).
         const { saved, edited } = results[index] as { saved: string; edited: string | null };
-        if (!attributeEditHolds(attributesOf, saved, edited, pages[index]?.key ?? '')) editBroken.push(index);
+        if (!attributeEditHolds(attributesOf, saved, edited, pages[index]?.key ?? '', page)) editBroken.push(index);
         return [];
       }
       const lfDigest = crAsLf.get(index);

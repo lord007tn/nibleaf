@@ -18,6 +18,7 @@ import {
   type SerializedPage,
   type SourceLineEndings,
 } from './line-endings';
+import { endsLineAtMarker } from './list-item-leads';
 import {
   escapeStructuredHtmlBraces,
   STRUCTURED_BLOCK_NODES,
@@ -281,9 +282,52 @@ const alternateMarker = (marker: string): string =>
     bullet ? `${indent}${bullet === '-' ? '*' : '-'}` : `${indent}${number}${delimiter === '.' ? ')' : '.'}`,
   );
 
+/**
+ * The bullet a bullet list's markers take so that `line`, the line its first marker is
+ * written on, does not end as a thematic break: three or more of one of `-` and `*`,
+ * with only spaces after the container prefixes before them (`- - - `, `1. * * * `,
+ * `> - - - `). An item emptied in a list led by lists ends its line at the marker, so
+ * `- - - x` with `x` deleted read back as a rule, and the item after it as indented
+ * code. The bullet given is kept when it is safe, then the other of `-` and `*`, then
+ * `+`, which never makes a rule; never `avoid`, the bullet of a list of its type just
+ * before it (renderList).
+ */
+function bulletOutsideRule(line: string, bullet: string, avoid: string | undefined): string {
+  const makesRule = (candidate: string) => {
+    if (candidate === '+') return false;
+    let count = 1;
+    for (let index = line.length - 1; index >= 0; index--) {
+      const character = line[index];
+      if (character === candidate) count++;
+      else if (character !== ' ' && character !== '\t') break;
+    }
+    return count >= 3;
+  };
+  return [bullet, bullet === '-' ? '*' : '-', '+'].find((candidate) => candidate !== avoid && !makesRule(candidate)) ?? bullet;
+}
+
 type NodeWriters = Record<string, (state: MarkdownSerializerState, node: PMNode, parent: PMNode, index: number) => void>;
-type MarkWriters = Record<string, { open: unknown; close: unknown; expelEnclosingWhitespace?: boolean }>;
+type MarkWriters = Record<string, { open: unknown; close: unknown; expelEnclosingWhitespace?: boolean; mixable?: boolean }>;
 type SerializerOptions = { tightLists?: boolean; hardBreakNodeName?: string; strict?: boolean };
+
+/** Closing strike after this space leaves a delimiter inside the next mark. */
+function hasStrikeAcrossMarkBoundary(parent: PMNode): boolean {
+  const strike = parent.type.schema.marks.strike;
+  if (!strike) return false;
+  for (let index = 1; index < parent.childCount; index++) {
+    const previous = parent.child(index - 1);
+    const next = parent.child(index);
+    if (
+      previous.isText &&
+      /\s$/.test(previous.text ?? '') &&
+      strike.isInSet(previous.marks) &&
+      strike.isInSet(next.marks) &&
+      next.marks.some((mark) => mark.type.name === 'bold' && !mark.isInSet(previous.marks))
+    )
+      return true;
+  }
+  return false;
+}
 
 /** prosemirror-markdown's state with the members its typings mark internal. */
 interface StateInternals {
@@ -323,7 +367,7 @@ class LinearMarkdownSerializerState extends SerializerState {
   private readonly scanDelims: ScanDelims;
 
   constructor(nodes: NodeWriters, marks: MarkWriters, options: SerializerOptions, scanDelims: ScanDelims) {
-    super(nodes, marks, options);
+    super(nodes, { ...marks }, options);
     this.scanDelims = scanDelims;
   }
 
@@ -368,10 +412,12 @@ class LinearMarkdownSerializerState extends SerializerState {
   }
 
   /**
-   * prosemirror-markdown's renderList, with two changes:
+   * prosemirror-markdown's renderList, with three changes:
    * - a list marked tight is written loose when one of its items cannot be written on
-   *   consecutive lines (`writesTight`), and a list marked loose is written tight when it
-   *   reads back tight anyway (`readsBackTight`);
+   *   consecutive lines (`writesTight`), and any list is written tight when it reads
+   *   back tight anyway (`readsBackTight`);
+   * - a bullet list whose first item ends its line at the marker takes a bullet that keeps
+   *   that line from reading as a thematic break (`bulletOutsideRule`);
    * - a list written after a list of its type, with nothing written between them (empty
    *   paragraphs write nothing), takes the other marker when it would have the same one:
    *   `*` for `-`, `)` for `.`. With the same marker, the blank lines between them did
@@ -383,15 +429,28 @@ class LinearMarkdownSerializerState extends SerializerState {
     // After a list of its type, past empty paragraphs too: they read back as next to each other.
     if (this.closed && (this.closed.type === node.type || before)) this.flushClose(3);
     else if (this.inTightList) this.flushClose(1);
-    const alternate = !!before && markerOf(firstDelim(0)) === this.listMarkers.get(before);
+    const avoid = before ? this.listMarkers.get(before) : undefined;
+    const alternate = !!before && markerOf(firstDelim(0)) === avoid;
+    let bullet: string | null = null;
+    const first = node.firstChild;
+    if (first && endsLineAtMarker(first)) {
+      const current = markerOf(alternate ? alternateMarker(firstDelim(0)) : firstDelim(0));
+      if (current === '-' || current === '*' || current === '+') {
+        // What the marker follows on its line: the close and the container prefixes, written first as wrapBlock would.
+        this.write();
+        const safe = bulletOutsideRule(this.output.lineFrom(this.output.lineStart()), current, avoid);
+        if (safe !== current) bullet = safe;
+      }
+    }
     const marked = Boolean(node.attrs.tight === undefined ? this.options.tightLists : node.attrs.tight);
-    const isTight = marked ? writesTight(node) : readsBackTight(node);
+    const isTight = (marked && writesTight(node)) || readsBackTight(node);
     const previousTight = this.inTightList;
     this.inTightList = isTight;
     node.forEach((child, _offset, index) => {
       if (index && isTight) this.flushClose(1);
       const written = firstDelim(index);
-      const marker = alternate ? alternateMarker(written) : written;
+      const alternated = alternate ? alternateMarker(written) : written;
+      const marker = bullet ? alternated.replace(/^( *)[-*+]/, (_match, indent: string) => `${indent}${bullet}`) : alternated;
       if (index === 0) this.listMarkers.set(node, markerOf(marker));
       this.wrapBlock(delim, marker, node, () => this.render(child, node, index));
     });
@@ -449,6 +508,22 @@ class LinearMarkdownSerializerState extends SerializerState {
   }
 
   // tiptap-markdown's MarkdownSerializerState (src/serialize/state.js) from here on.
+  override renderInline(parent: PMNode, fromBlockStart?: boolean): void {
+    const strike = this.marks.strike;
+    if (!strike || !hasStrikeAcrossMarkBoundary(parent)) {
+      super.renderInline(parent, fromBlockStart);
+      return;
+    }
+    // Continue the strike outside the new bold mark. Otherwise a
+    // closing delimiter adjacent to whitespace can produce literal stars.
+    this.marks.strike = { ...strike, mixable: true };
+    try {
+      super.renderInline(parent, fromBlockStart);
+    } finally {
+      this.marks.strike = strike;
+    }
+  }
+
   override render(node: PMNode, parent: PMNode, index: number): void {
     const previousOwner = this.output.owner;
     let position = -1;

@@ -107,3 +107,20 @@ export function itemLineBlock(item: PMNode): { block: PMNode; index: number } | 
 /** Whether `node` is one of a list item's empty first paragraphs before a block that then opens the item's line. */
 export const isItemLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: number | undefined): boolean =>
   index !== undefined && isEmptyParagraph(node) && !!parent && 'type' in parent && (itemLineBlock(parent)?.index ?? 0) > index;
+
+/**
+ * Whether a list item's marker may end its line with nothing after it: the item is empty,
+ * or it opens with empty paragraphs and nothing written on the marker's line after them (a
+ * nested list writes its own marker there and is checked itself). An emptied item in a
+ * lead-led list then ends its line with only markers (`- - - `), which renderList checks
+ * for a thematic break (markdown-output.ts).
+ */
+export function endsLineAtMarker(item: PMNode): boolean {
+  const first = item.firstChild;
+  if (!first) return true;
+  if (!isEmptyParagraph(first)) return false;
+  if (itemLineBlock(item)) return false;
+  const next = item.childCount > 1 ? item.child(1) : null;
+  // A paragraph or fence after an empty first paragraph opens the item's line (paragraph-source.ts, fence-source.ts).
+  return !next || !((next.type.name === 'paragraph' && next.content.size > 0) || next.type.name === 'codeBlock');
+}

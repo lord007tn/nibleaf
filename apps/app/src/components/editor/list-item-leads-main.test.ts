@@ -6,7 +6,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { expect, it } from 'vitest';
-import { LIST_ITEM_LEAD_DIFFERENTIAL_PAGES, LIST_ITEM_LEAD_TEXT_KEPT, SWALLOWED_BY_CODE, textChange } from './__fixtures__/list-item-leads';
+import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout, withoutUnusedStructuredHtml } from './__fixtures__/component-source-layout';
+import { LIST_ITEM_LEAD_DIFFERENTIAL_PAGES, LIST_ITEM_LEAD_TEXT_KEPT, textChange } from './__fixtures__/list-item-leads';
 import { applyCorpusEdits, type DifferentialEditor, serializerCorpus } from './__fixtures__/serializer-corpus';
 
 /*
@@ -16,7 +17,10 @@ import { applyCorpusEdits, type DifferentialEditor, serializerCorpus } from './_
  * (the block stays in its item) and its saves. They are named (LIST_ITEM_LEAD_PAGES) and
  * counted. So are the pages, with no lead, whose quoted marks main saved doubled
  * (QUOTED_MARK_PAGES): the serializer fix that heading-led items in a quote needed
- * writes them correctly too. The other differentials leave exactly these pages to this test.
+ * writes them correctly too. So are the pages whose code holds a line that closed the
+ * fence main wrote it in, so the rest of the page read back as code (FENCE_LENGTH_PAGES,
+ * #920). The nested strike pages also save overlapping bold/strike edits differently.
+ * The other differentials leave those named changes to this test.
  *
  * The fixture holds, for each page, main's nodes and saves (hashed), and how main's
  * saves, unedited and after the corpus edits, did on four checks:
@@ -28,9 +32,6 @@ import { applyCorpusEdits, type DifferentialEditor, serializerCorpus } from './_
  * Each named page passes every check main passes, and loses and adds no more text than main.
  * One page trades a check (LIST_ITEM_LEAD_TEXT_KEPT): main saves it to a fixed point only
  * after losing text; it now loses far less (none unedited), and is not yet a fixed point.
- * Two pages read back with more of their Markdown as code text than on main
- * (SWALLOWED_BY_CODE): main's own fence bug turns the rest of each page into code, on
- * main and now; they lose no more, and their counts are pinned.
  *
  * Record with `node apps/app/src/components/editor/__fixtures__/list-item-leads-main.generate.mjs`.
  */
@@ -50,6 +51,10 @@ const sources = createHash('sha256')
 const hash = (text: string) => createHash('sha256').update(text).digest('hex').slice(0, 12);
 
 type EditorModule = Pick<typeof import('./tiptap-editor'), 'buildEditorExtensions' | 'getMarkdown'>;
+
+/** Include the authored text shown inside opaque inline nodes without counting block markup as text. */
+const visibleText = (doc: PMNode): string =>
+  doc.textBetween(0, doc.content.size, '', (node) => (node.type.name === 'mdxOpaqueInline' ? String(node.attrs.source ?? '') : ''));
 
 interface SaveRecord {
   hash: string;
@@ -106,18 +111,26 @@ function blocks(editor: Editor, source: string): string {
   return JSON.stringify(root);
 }
 
-function record(module: EditorModule): PageRecord[] {
+/** Each corpus page's records (or the `indexes` given). With `mainLayout`, every load,
+ *  in the editor and the reader alike, drops the authored component layout (#625) that
+ *  main's editor at the fixture's revision did not keep, so a page compares with main's
+ *  record on #604's change alone. */
+function record(module: EditorModule, mainLayout = false, indexes: readonly number[] = cases.map((_, index) => index)): PageRecord[] {
   const editor = new Editor({ element: document.createElement('div'), extensions: module.buildEditorExtensions() });
   const reader = new Editor({ element: document.createElement('div'), extensions: module.buildEditorExtensions() });
-  const load = (target: Editor, markdown: string) => target.commands.setContent(markdown, { emitUpdate: false });
+  const load = (target: Editor, markdown: string) => {
+    target.commands.setContent(markdown, { emitUpdate: false });
+    if (mainLayout) replayMainComponentLayout(target);
+  };
   const check = (source: string, edited: boolean): SaveRecord => {
     const saved = module.getMarkdown(editor);
     const written = JSON.stringify(shape(editor.state.doc));
-    const text = editor.state.doc.textContent;
+    const text = visibleText(editor.state.doc);
     load(reader, saved);
     const read = JSON.stringify(shape(reader.state.doc));
-    const sameText = reader.state.doc.textContent === text;
-    const { lost, added } = textChange(text, reader.state.doc.textContent);
+    const readText = visibleText(reader.state.doc);
+    const sameText = readText === text;
+    const { lost, added } = textChange(text, readText);
     const again = module.getMarkdown(reader);
     load(reader, again);
     const fixed = again === saved && module.getMarkdown(reader) === saved;
@@ -126,9 +139,10 @@ function record(module: EditorModule): PageRecord[] {
     return { hash: hash(saved), checks, lost, added };
   };
   try {
-    return cases.map(({ source, edits }) => {
+    return indexes.map((index) => {
+      const { source, edits } = cases[index] as (typeof cases)[number];
       load(editor, source);
-      const nodes = hash(JSON.stringify(editor.state.doc.toJSON()));
+      const nodes = hash(JSON.stringify(withoutUnusedStructuredHtml(editor.state.doc.toJSON())));
       const plain = check(source, false);
       load(editor, source);
       applyCorpusEdits(editor as unknown as DifferentialEditor, edits);
@@ -168,7 +182,10 @@ it.runIf(baselineDir)(
   async () => {
     const module = (await import(/* @vite-ignore */ pathToFileURL(join(baselineDir as string, 'tiptap-editor.tsx')).href)) as EditorModule;
     const pages = record(module).map(encode);
-    writeFileSync(FIXTURE, `${JSON.stringify({ revision: process.env.LIST_ITEM_LEADS_BASELINE_REVISION ?? '', sources, pages }, null, 1)}\n`);
+    writeFileSync(
+      process.env.LIST_ITEM_LEADS_CORPUS_OUT ?? FIXTURE,
+      `${JSON.stringify({ revision: process.env.LIST_ITEM_LEADS_BASELINE_REVISION ?? '', sources, pages }, null, 2)}\n`,
+    );
   },
   900_000,
 );
@@ -176,11 +193,10 @@ it.runIf(baselineDir)(
 /** What each named page's saves are against main's: `same` bytes, `better` (every check
  *  passes where main fails one), `kept` (every check passes, as on main: main's document
  *  had already lost its nesting on load), `failing` (fails only checks main fails), and
- *  `swallowed` (SWALLOWED_BY_CODE). Every class but `swallowed`, whose counts are pinned,
- *  loses and adds no more text than main. */
+ *  `textKept` (LIST_ITEM_LEAD_TEXT_KEPT). Every class loses and adds no more text than main. */
 const EXPECTED_CLASSES = {
-  plain: { same: 1, better: 1, kept: 0, failing: 260, textKept: 1, swallowed: 2 },
-  edited: { same: 0, better: 80, kept: 42, failing: 140, textKept: 1, swallowed: 2 },
+  plain: { same: 7, better: 1, failing: 287, textKept: 1 },
+  edited: { same: 1, better: 107, kept: 43, failing: 144, textKept: 1 },
 };
 
 it.skipIf(baselineDir)(
@@ -193,40 +209,52 @@ it.skipIf(baselineDir)(
     expect(main.filter((page) => ![page.plain, page.edited].every((save) => Number.isInteger(save.lost) && Number.isInteger(save.added)))).toEqual(
       [],
     );
-    const head = record(await import('./tiptap-editor'));
+    const module = await import('./tiptap-editor');
+    const head = record(module, true);
     const changed = head.flatMap((page, index) => {
       const before = main[index] as PageRecord;
       return page.nodes === before.nodes && page.plain.hash === before.plain.hash && page.edited.hash === before.edited.hash ? [] : [index];
     });
-    expect(changed, `changed pages: ${JSON.stringify(changed)}`).toEqual(LIST_ITEM_LEAD_DIFFERENTIAL_PAGES);
     const classes: Record<string, Record<string, number>> = { plain: {}, edited: {} };
     const worse: unknown[] = [];
-    for (const index of changed) {
+    const changedPages = new Set(changed);
+    for (const [index, page] of head.entries()) {
       for (const kind of ['plain', 'edited'] as const) {
-        const now = (head[index] as PageRecord)[kind];
+        const now = page[kind];
         const before = (main[index] as PageRecord)[kind];
+        const failedChecks = before.checks & ~now.checks;
         let verdict: string;
-        if (now.hash === before.hash) verdict = 'same';
-        else if (LIST_ITEM_LEAD_TEXT_KEPT.includes(index) && (before.checks & ~now.checks) === FIXED && now.lost < before.lost) verdict = 'textKept';
-        else if ((before.checks & ~now.checks) !== 0) verdict = 'worse';
+        // Equal bytes count as the same only when no check main passes now fails: loading can change the document.
+        if (now.lost > before.lost || now.added > before.added) verdict = 'worse';
+        else if (LIST_ITEM_LEAD_TEXT_KEPT.includes(index) && failedChecks === FIXED && now.lost < before.lost) verdict = 'textKept';
+        else if (failedChecks !== 0) verdict = 'worse';
+        else if (now.hash === before.hash) verdict = 'same';
         else if (now.checks !== ALL) verdict = 'failing';
         else verdict = before.checks === ALL ? 'kept' : 'better';
-        if (now.lost > before.lost || now.added > before.added) verdict = 'worse';
-        const swallowed = SWALLOWED_BY_CODE[index];
-        if (swallowed && verdict === 'worse' && now.lost <= before.lost && (before.checks & ~SOURCE) === 0 && (now.checks & ~SOURCE) === 0)
-          verdict = now.added === swallowed[kind] ? 'swallowed' : 'worse';
-        const group = classes[kind] as Record<string, number>;
-        group[verdict] = (group[verdict] ?? 0) + 1;
+        if (changedPages.has(index)) {
+          const group = classes[kind] as Record<string, number>;
+          group[verdict] = (group[verdict] ?? 0) + 1;
+        }
         if (verdict === 'worse') worse.push({ index, kind, now, before });
       }
     }
-    console.info(`[list-item-leads-main] ${changed.length} named pages, ${JSON.stringify(classes)}`);
+    // The named pages that also hold an authored component layout (#625, kept since #894):
+    // with that layout kept, as the editor now saves them, each passes every check it
+    // passes without it, and loses and adds no more text.
+    const layoutPages = changed.filter((index) => COMPONENT_LAYOUT_CORPUS_PAGES.includes(index));
+    const kept = record(module, false, layoutPages);
+    layoutPages.forEach((index, at) => {
+      for (const kind of ['plain', 'edited'] as const) {
+        const now = (kept[at] as PageRecord)[kind];
+        const before = (head[index] as PageRecord)[kind];
+        if ((before.checks & ~now.checks) !== 0 || now.lost > before.lost || now.added > before.added)
+          worse.push({ index, kind, layout: 'kept', now, before });
+      }
+    });
+    console.info(`[list-item-leads-main] ${changed.length} named pages, ${layoutPages.length} also with a #625 layout, ${JSON.stringify(classes)}`);
     expect(worse, JSON.stringify(worse)).toEqual([]);
-    expect(classes).toEqual(
-      Object.fromEntries(
-        Object.entries(EXPECTED_CLASSES).map(([kind, counts]) => [kind, Object.fromEntries(Object.entries(counts).filter(([, n]) => n))]),
-      ),
-    );
+    expect(changed, 'corpus pages with changed nodes or saves').toEqual(LIST_ITEM_LEAD_DIFFERENTIAL_PAGES);
+    expect(classes).toEqual(EXPECTED_CLASSES);
   },
   900_000,
 );

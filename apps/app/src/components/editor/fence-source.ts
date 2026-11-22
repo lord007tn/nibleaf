@@ -355,6 +355,40 @@ function sourceLinesFor(node: PMNode, open: string, delim: string, first: string
 
 const FENCE_MARKER = /^[ \t]*(`{3,}|~{3,})/;
 
+/** A code line that can close a fence of its marker as long as its run or shorter: up to
+ *  three columns of indent, the run, then only spaces or tabs (CommonMark's closing code
+ *  fence). A tab is at least one column, and inside a list item or a quote it can be just
+ *  that (`  \t` after `- ` reaches column 4, two in), so it counts as one. */
+const CLOSING_LINE = /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/;
+
+/**
+ * `open` with its marker run long enough that no line of `code` closes it (#920): longer
+ * than the longest run of its marker on a line that is only that run. A code block whose
+ * text holds a backtick line as long as its fence (an indented code block read from
+ * source, or one edited) was written inside that fence, which the line closed, so the
+ * rest of the page read back as code. An opener already long enough, as every authored
+ * one read from source is, is kept as written.
+ */
+function fenceOpenFor(open: string, code: string): string {
+  const run = FENCE_MARKER.exec(open)?.[1];
+  if (!run) return open;
+  const marker = run[0] as string;
+  let length = run.length;
+  for (const line of code.split('\n')) {
+    const closer = CLOSING_LINE.exec(line)?.[1];
+    if (closer?.[0] === marker && closer.length >= length) length = closer.length + 1;
+  }
+  return length === run.length ? open : open.replace(run, marker.repeat(length));
+}
+
+/** The closing line for a fence opened with `open`: the source's when it still closes it
+ *  (a run of the opener's marker at least as long), otherwise the opener's own run. */
+function fenceCloseFor(open: string, sourceClose: string): string {
+  const run = FENCE_MARKER.exec(open)?.[1] ?? '```';
+  const closing = FENCE_MARKER.exec(sourceClose)?.[1];
+  return closing && closing[0] === run[0] && closing.length >= run.length ? sourceClose : run;
+}
+
 /** The nodes CommonMark ends a fence with: the page, a quote, a list item. */
 const FENCE_ENDING_CONTAINERS: ReadonlySet<string> = new Set(['doc', 'blockquote', 'listItem', 'taskItem']);
 
@@ -461,12 +495,16 @@ export function writeFence(state: FenceSerializeState, node: PMNode, parent: PMN
     state.closeBlock(node);
     return;
   }
-  state.write(open);
+  // Written anew, the opener is longer than any line of the code that would close it (#920;
+  // a quoted indented code block, #607). Source lines, above, are kept while they hold.
+  const opener = fenceOpenFor(open, node.textContent);
+  state.write(opener);
   state.write('\n');
   state.text(node.textContent, false);
   state.ensureNewLine();
-  // A fence read without a closing line gets one that closes it: the opener's own
-  // marker run, since a shorter one (``` after ````) is code, not a closer.
-  state.write(String(node.attrs.sourceFenceClose ?? '') || (FENCE_MARKER.exec(open)?.[1] ?? '```'));
+  // A fence read without a closing line, or whose opener was made longer than its code's
+  // runs (`fenceOpenFor`), gets one that closes it: the opener's own marker run, since a
+  // shorter one (``` after ````) is code, not a closer.
+  state.write(fenceCloseFor(opener, String(node.attrs.sourceFenceClose ?? '')));
   state.closeBlock(node);
 }
