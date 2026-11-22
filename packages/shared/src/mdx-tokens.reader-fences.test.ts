@@ -1,13 +1,14 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { fencedMarkdownLines } from './markdown-code';
+import { fencedMarkdownLines, markdownFenceLines } from './markdown-code';
 import { buildMdxTree, mdxLineRoles, tokenizeMdx } from './mdx-tokens';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
+import { normalizeMdxBlocks, readerLineView } from './reader-markdown';
 import { exportCodeSamples, renderedActiveHtml } from './testing/export-guard';
 import { FENCE_CONTAINER_REPROS } from './testing/fence-cases';
 import { readerFenceDifferentialFamilies } from './testing/reader-fence-differential';
-import { protectedLines, readerFenceExportCases } from './testing/reader-fence-export-cases';
+import { protectedLines, type ReaderFenceExportCase, readerFenceCommentCases, readerFenceExportCases } from './testing/reader-fence-export-cases';
 
 /** The projections' component names that matter here. */
 const COMPONENTS: ReadonlySet<string> = new Set(['note', 'warning', 'tip', 'info', 'check', 'danger', 'callout', 'steps', 'badge']);
@@ -18,6 +19,8 @@ interface MainFixture {
   revision: string;
   cases: Array<{ outputs: [string, string]; protection: string }>;
   families: Record<string, { count: number; protection: string; lines?: string[] }>;
+  /** `readerFenceCommentCases`, recorded the same way (#917 review). */
+  comments: Array<{ outputs: [string, string]; protection: string }>;
 }
 const main = JSON.parse(readFileSync(new URL('./__fixtures__/mdx-tokens.reader-fences.main.json', import.meta.url), 'utf8')) as MainFixture;
 
@@ -84,9 +87,53 @@ describe('the reader scanner and the export tokenizer agree on structure (#591 d
   });
 });
 
+const quoted = (line: string) => `> ${/^<\w+>(.*)<\/\w+>$/.exec(line)?.[1]?.trim() ?? ''}`;
+
+/** Each case against main's recorded export: controls byte-identical, and only the named callout
+ *  lines changed, with author text once each and in order, code unchanged and nothing newly active. */
+const compareWithMain = (cases: readonly ReaderFenceExportCase[], recordings: MainFixture['cases']) => {
+  const failures: Array<{ index: number; target: number; reason: string }> = [];
+  let reshapedCases = 0;
+  let reshapedLines = 0;
+  for (const { index, source, reshaped, markers } of cases) {
+    const recorded = recordings[index];
+    if (!recorded) throw new Error(`missing main case ${index}`);
+    // Protection: main's, except the reshaped lines.
+    const lines = source.split('\n');
+    const expectedProtection = [...recorded.protection].map((bit, line) => (reshaped.includes(lines[line] as string) ? '0' : bit)).join('');
+    if (flags(mdxLineRoles(source, COMPONENTS).protected) !== expectedProtection) failures.push({ index, target: -1, reason: 'protection' });
+    if (reshaped.length > 0) {
+      reshapedCases++;
+      reshapedLines += lines.filter((line) => reshaped.includes(line)).length;
+    }
+    for (const [target, project] of projectors.entries()) {
+      const before = recorded.outputs[target] as string;
+      const output = project(source);
+      const expected = before
+        .split('\n')
+        .map((line) => (reshaped.includes(line) ? quoted(line) : line))
+        .join('\n');
+      if (output !== expected) failures.push({ index, target, reason: reshaped.length ? 'reshaped output' : 'control changed' });
+      if (reshaped.length === 0) continue;
+      // The whole page: author text once each and in order, code unchanged, nothing newly active.
+      let cursor = -1;
+      for (const marker of markers) {
+        const at = output.indexOf(marker);
+        if (at < 0) failures.push({ index, target, reason: `lost ${marker}` });
+        else if (output.indexOf(marker, at + 1) >= 0) failures.push({ index, target, reason: `duplicated ${marker}` });
+        else if (at <= cursor) failures.push({ index, target, reason: `reordered ${marker}` });
+        cursor = Math.max(cursor, at);
+      }
+      if (JSON.stringify(exportCodeSamples(output)) !== JSON.stringify(exportCodeSamples(before)))
+        failures.push({ index, target, reason: 'code changed' });
+      if (renderedActiveHtml(output) > renderedActiveHtml(before)) failures.push({ index, target, reason: 'newly active HTML' });
+    }
+  }
+  return { failures, reshapedCases, reshapedLines };
+};
+
 describe('export form changes only for the reader-shown callout (#591)', () => {
   const cases = readerFenceExportCases();
-  const quoted = (line: string) => `> ${/^<\w+>(.*)<\/\w+>$/.exec(line)?.[1]?.trim() ?? ''}`;
 
   it('was recorded on main for exactly these shapes', () => {
     expect(main.revision).toBe('1de838f64172b5a9f49c285d8cf9c3ade3888c9d');
@@ -95,45 +142,106 @@ describe('export form changes only for the reader-shown callout (#591)', () => {
   });
 
   it('keeps every control byte-identical to main and changes only the named callout lines, losing nothing', () => {
-    const failures: Array<{ index: number; target: number; reason: string }> = [];
-    let reshapedCases = 0;
-    let reshapedLines = 0;
-    for (const { index, source, reshaped, markers } of cases) {
-      const recorded = main.cases[index];
-      if (!recorded) throw new Error(`missing main case ${index}`);
-      // Protection: main's, except the reshaped lines.
-      const lines = source.split('\n');
-      const expectedProtection = [...recorded.protection].map((bit, line) => (reshaped.includes(lines[line] as string) ? '0' : bit)).join('');
-      if (flags(mdxLineRoles(source, COMPONENTS).protected) !== expectedProtection) failures.push({ index, target: -1, reason: 'protection' });
-      if (reshaped.length > 0) {
-        reshapedCases++;
-        reshapedLines += lines.filter((line) => reshaped.includes(line)).length;
-      }
-      for (const [target, project] of projectors.entries()) {
-        const before = recorded.outputs[target] as string;
-        const output = project(source);
-        const expected = before
-          .split('\n')
-          .map((line) => (reshaped.includes(line) ? quoted(line) : line))
-          .join('\n');
-        if (output !== expected) failures.push({ index, target, reason: reshaped.length ? 'reshaped output' : 'control changed' });
-        if (reshaped.length === 0) continue;
-        // The whole page: author text once each and in order, code unchanged, nothing newly active.
-        let cursor = -1;
-        for (const marker of markers) {
-          const at = output.indexOf(marker);
-          if (at < 0) failures.push({ index, target, reason: `lost ${marker}` });
-          else if (output.indexOf(marker, at + 1) >= 0) failures.push({ index, target, reason: `duplicated ${marker}` });
-          else if (at <= cursor) failures.push({ index, target, reason: `reordered ${marker}` });
-          cursor = Math.max(cursor, at);
-        }
-        if (JSON.stringify(exportCodeSamples(output)) !== JSON.stringify(exportCodeSamples(before)))
-          failures.push({ index, target, reason: 'code changed' });
-        if (renderedActiveHtml(output) > renderedActiveHtml(before)) failures.push({ index, target, reason: 'newly active HTML' });
-      }
-    }
+    const { failures, reshapedCases, reshapedLines } = compareWithMain(cases, main.cases);
     expect(failures.slice(0, 12), `${failures.length} failures`).toEqual([]);
     // 8 overrun fences x 8 eligible tails x 3 openings; one tail has two callouts.
     expect({ reshapedCases, reshapedLines }).toEqual({ reshapedCases: 192, reshapedLines: 216 });
   }, 60_000);
+});
+
+/** Whether the published reader shows `line`, a one-line callout, as a component: the reader's
+ *  normalized source holds its expanded form outside code. */
+const readerShows = (source: string, line: string): boolean => {
+  const [, name, body] = /^<(\w+)>(.*)<\/\w+>$/.exec(line) ?? [];
+  const normalized = normalizeMdxBlocks(source).split('\n');
+  const fenced = fencedMarkdownLines(normalized);
+  return normalized.some((text, index) => text === `<${name}>` && normalized[index + 2] === body && !fenced[index] && !fenced[index + 2]);
+};
+
+describe('callouts the reader strips or does not render as prose keep main bytes (#917 review)', () => {
+  const REVIEW_REPRO = ['1. >~~~md', '   > CODEMARK', '   > ~~~', '', '{/*', '', '<Note>ReviewText</Note>', '', '*/}'].join('\n');
+
+  it('exports the review repro, a callout inside a multiline MDX comment, as main wrote it', () => {
+    // The reader strips the comment, so it shows no callout.
+    expect(readerShows(REVIEW_REPRO, '<Note>ReviewText</Note>')).toBe(false);
+    expect(portablePublicMdxMarkdown(REVIEW_REPRO)).toBe(REVIEW_REPRO);
+    expect(normalizePublicMarkdownContent(REVIEW_REPRO)).toBe(REVIEW_REPRO.replace('1. >~~~md', '1. &gt;~~~md'));
+    expect(mdxLineRoles(REVIEW_REPRO, COMPONENTS).protected.slice(2)).toEqual(Array.from({ length: 7 }, () => true));
+  });
+
+  it.each([
+    ['a single-line comment around the callout', '{/* <Note>ReviewText</Note> */}'],
+    ['a comment opened in a list item', '- {/*\n\n<Note>ReviewText</Note>\n\n*/}'],
+    ['a comment opened in a quote', '> {/*\n\n<Note>ReviewText</Note>\n\n*/}'],
+    ['a comment closed in a list item', '{/*\n\n<Note>ReviewText</Note>\n\n- */}'],
+    ['a single-line comment before a fence opener', '{/* aside */}~~~\n\n<Note>ReviewText</Note>'],
+    ['a one-line block holding a fence opener', '<Tip>~~~</Tip>\n\n<Note>ReviewText</Note>'],
+    ['a callout on the line after `*/}`', '{/*\naside\n*/}\n<Note>ReviewText</Note>'],
+  ])('keeps main bytes in both exports after %s', (_name, tail) => {
+    const source = `1. >~~~md\n   > CODEMARK\n   > ~~~\n\n${tail}`;
+    expect(portablePublicMdxMarkdown(source)).toBe(source);
+    expect(normalizePublicMarkdownContent(source)).toBe(source.replace('1. >~~~md', '1. &gt;~~~md'));
+  });
+
+  it.each([
+    ['an unclosed comment before it', '{/*\n\n<Note>ReviewText</Note>'],
+    ['a closed comment and a blank line before it', '{/*\naside\n*/}\n\n<Note>ReviewText</Note>'],
+    ['a single-line comment before it', '{/* aside */}\n\n<Note>ReviewText</Note>'],
+  ])('quotes the callout the reader shows, after %s, in both exports', (_name, tail) => {
+    const source = `1. >~~~md\n   > CODEMARK\n   > ~~~\n\n${tail}`;
+    expect(readerShows(source, '<Note>ReviewText</Note>')).toBe(true);
+    const quotedSource = source.replace('<Note>ReviewText</Note>', '> ReviewText');
+    expect(portablePublicMdxMarkdown(source)).toBe(quotedSource);
+    expect(normalizePublicMarkdownContent(source)).toBe(quotedSource.replace('1. >~~~md', '1. &gt;~~~md'));
+  });
+
+  const cases = readerFenceCommentCases();
+
+  it('was recorded on main for exactly these shapes', () => {
+    expect(main.comments).toHaveLength(cases.length);
+    expect(cases).toHaveLength(528);
+  });
+
+  it('keeps every control byte-identical to main and quotes only callouts the reader shows, losing nothing', () => {
+    const { failures, reshapedCases, reshapedLines } = compareWithMain(cases, main.comments);
+    expect(failures.slice(0, 12), `${failures.length} failures`).toEqual([]);
+    // 8 overrun fences x 6 eligible tails x 3 openings.
+    expect({ reshapedCases, reshapedLines }).toEqual({ reshapedCases: 144, reshapedLines: 144 });
+    // Every quoted callout is one the published reader shows as a component.
+    const unshown = cases.flatMap(({ index, source, reshaped }) =>
+      reshaped.filter((line) => !readerShows(source, line)).map((line) => `${index} ${line}`),
+    );
+    expect(unshown).toEqual([]);
+  }, 60_000);
+});
+
+describe("the reader's line view (#917 review)", () => {
+  it('matches the shared scanner on every differential source without braces', () => {
+    const drift: string[] = [];
+    for (const { name, sources } of readerFenceDifferentialFamilies())
+      for (const [index, source] of sources.entries()) {
+        if (source.includes('{')) continue;
+        const lines = source.split('\n');
+        const view = readerLineView(lines);
+        const scan = markdownFenceLines(lines);
+        if (
+          JSON.stringify(view.kinds) !== JSON.stringify(scan.kinds) ||
+          JSON.stringify([...view.closers]) !== JSON.stringify([...scan.closers]) ||
+          view.commented.some(Boolean)
+        )
+          drift.push(`${name} ${index}`);
+      }
+    expect(drift).toEqual([]);
+  });
+
+  it('marks the lines a stripped comment covers and reads the lines after it as the reader does', () => {
+    const lines = ['Text {/* a', '', 'b */} more', '{/* c */}~~~', '<Note>X</Note>', '~~~', '`{/*`', '<Tip>~~~</Tip>', 'code'];
+    const view = readerLineView(lines);
+    expect(view.commented).toEqual([true, true, true, true, false, false, false, false, false]);
+    // `{/* c */}~~~` opens a fence once the comment is stripped; `~~~` closes it.
+    expect(view.kinds).toEqual(['prose', 'prose', 'prose', 'code', 'code', 'code', 'prose', 'prose', 'prose']);
+    expect([...view.closers]).toEqual([5]);
+    // The reader expands `<Tip>~~~</Tip>`, which opens a fence over the rest.
+    expect(view.code).toEqual([false, false, false, true, true, true, false, true, true]);
+  });
 });

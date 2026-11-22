@@ -10,7 +10,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readerFenceDifferentialFamilies } from '../testing/reader-fence-differential.ts';
-import { protectedLines, readerFenceExportCases } from '../testing/reader-fence-export-cases.ts';
+import { protectedLines, readerFenceCommentCases, readerFenceExportCases } from '../testing/reader-fence-export-cases.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const shared = resolve(here, '../..');
@@ -32,10 +32,13 @@ try {
     protectedLines(tokenizeMdx(source, components), source.split('\n').length)
       .map((line) => (line ? '1' : '0'))
       .join('');
-  const cases = readerFenceExportCases().map(({ source }) => ({
+  const record = ({ source }) => ({
     outputs: [normalizePublicMarkdownContent(source), portablePublicMdxMarkdown(source)],
     protection: protection(source),
-  }));
+  });
+  const cases = readerFenceExportCases().map(record);
+  // MDX comments and other lines the reader strips or doesn't render as prose (#917 review).
+  const comments = readerFenceCommentCases().map(record);
   const families = Object.fromEntries(
     readerFenceDifferentialFamilies().map(({ name, sources }) => {
       const lines = sources.map(protection);
@@ -45,9 +48,11 @@ try {
     }),
   );
   const target = join(here, 'mdx-tokens.reader-fences.main.json');
-  writeFileSync(target, `${JSON.stringify({ revision, cases, families })}\n`);
+  writeFileSync(target, `${JSON.stringify({ revision, cases, families, comments })}\n`);
   execFileSync(process.execPath, [join(root, 'node_modules/@biomejs/biome/bin/biome'), 'format', '--write', target], { cwd: root });
-  console.info(`Recorded ${cases.length} export shapes and ${Object.keys(families).length} protection families from main ${revision}.`);
+  console.info(
+    `Recorded ${cases.length} export shapes, ${comments.length} comment shapes and ${Object.keys(families).length} protection families from main ${revision}.`,
+  );
 } finally {
   rmSync(copy, { recursive: true, force: true });
 }

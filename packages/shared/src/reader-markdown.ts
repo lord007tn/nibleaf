@@ -5,8 +5,14 @@
  * re-exports it for the reader). Pure string work; no parsers.
  */
 import { type DocumentationComponentContract, documentationComponentContractEntries } from './documentation-component-contract';
-import { fencedMarkdownLines } from './markdown-code';
-import { inlineCodeSpans, matchOneLineElement, removeMdxCommentsOutsideCode, replaceSelfClosingTags } from './markup-scan';
+import { fencedMarkdownLines, type MarkdownLineKind, markdownFenceLines } from './markdown-code';
+import {
+  inlineCodeSpans,
+  matchOneLineElement,
+  mdxCommentRangesOutsideCode,
+  removeMdxCommentsOutsideCode,
+  replaceSelfClosingTags,
+} from './markup-scan';
 import { rewriteReaderEmbeds } from './reader-embeds';
 
 const CONTRACT = documentationComponentContractEntries();
@@ -64,9 +70,11 @@ const MAX_OPENER_LINES = 32;
  *  onto one line, so the steps below see it as a tag. Line by line, its lone
  *  `>` would otherwise start a blockquote and the tag would render as text. Only
  *  a run of non-blank prose lines that forms a whole opener is joined. */
-const joinMultilineOpeners = (lines: readonly string[], fenced: readonly boolean[]): { lines: string[]; fenced: boolean[] } => {
+const joinMultilineOpeners = (lines: readonly string[], fenced: readonly boolean[]): { lines: string[]; fenced: boolean[]; from: number[] } => {
   const out: string[] = [];
   const outFenced: boolean[] = [];
+  // The input line each output line starts at.
+  const from: number[] = [];
   const openerEnd = (i: number): number => {
     const line = lines[i] ?? '';
     if (fenced[i] || !OPENER_START.test(line) || OPEN_TAG.test(line) || oneLineBlock(line)) return -1;
@@ -79,6 +87,7 @@ const joinMultilineOpeners = (lines: readonly string[], fenced: readonly boolean
   };
   for (let i = 0; i < lines.length; i++) {
     const end = openerEnd(i);
+    from.push(i);
     if (end < 0) {
       out.push(lines[i] ?? '');
       outFenced.push(Boolean(fenced[i]));
@@ -88,8 +97,17 @@ const joinMultilineOpeners = (lines: readonly string[], fenced: readonly boolean
     outFenced.push(false);
     i = end;
   }
-  return { lines: out, fenced: outFenced };
+  return { lines: out, fenced: outFenced, from };
 };
+
+/** The reader's source with its MDX comments stripped (see stripMdxComments). */
+interface StrippedLines {
+  lines: string[];
+  /** For each authored line, the output line its start lands on. */
+  at: number[];
+  /** For each authored line, whether a removed comment covers any of it. */
+  commented: boolean[];
+}
 
 /** MDX comments are authoring notes: MDX drops them, so the reader must not show
  *  them (or any link inside them). Fenced code and inline code keep them as written;
@@ -98,17 +116,107 @@ const joinMultilineOpeners = (lines: readonly string[], fenced: readonly boolean
  *  comment, whichever starts first, is read as a whole, so a comment containing
  *  backticks is still one comment and a comment shown inside inline code stays
  *  an example (removeMdxCommentsOutsideCode). */
-const stripMdxComments = (lines: readonly string[], fenced: readonly boolean[]): string[] => {
+const stripMdxComments = (lines: readonly string[], fenced: readonly boolean[]): StrippedLines => {
   const out: string[] = [];
+  const at: number[] = [];
+  const commented: boolean[] = [];
   let start = 0;
   for (let index = 1; index <= lines.length; index += 1) {
     if (index < lines.length && Boolean(fenced[index]) === Boolean(fenced[start])) continue;
     const run = lines.slice(start, index);
-    if (fenced[start]) out.push(...run);
-    else out.push(...removeMdxCommentsOutsideCode(run.join('\n')).split('\n'));
+    if (fenced[start]) {
+      for (const line of run) {
+        at.push(out.length);
+        commented.push(false);
+        out.push(line);
+      }
+    } else {
+      const text = run.join('\n');
+      const comments = mdxCommentRangesOutsideCode(text);
+      // A comment starts at `{` and ends after `}`, never on a line break. Each line lands on
+      // its own output line, less the line breaks that comments removed before it.
+      const base = out.length;
+      let removedBreaks = 0;
+      let comment = 0;
+      let offset = 0;
+      // The first comment that ends after `position`, if it covers that position.
+      const covers = (position: number): boolean => {
+        while (comment < comments.length && (comments[comment] as [number, number])[1] <= position) comment += 1;
+        return comment < comments.length && (comments[comment] as [number, number])[0] <= position;
+      };
+      for (const [line, content] of run.entries()) {
+        const end = offset + content.length;
+        at.push(base + line - removedBreaks);
+        // A comment that covers the line's first character, or starts later on the line.
+        const covered = covers(offset) || (comment < comments.length && (comments[comment] as [number, number])[0] < end);
+        commented.push(covered);
+        if (line < run.length - 1 && covers(end)) removedBreaks += 1;
+        offset = end + 1;
+      }
+      out.push(...removeMdxCommentsOutsideCode(text, comments).split('\n'));
+    }
     start = index;
   }
-  return out;
+  return { lines: out, at, commented };
+};
+
+// A one-line block component would otherwise sit inside a Markdown paragraph,
+// rendering a <div> inside a <p> (invalid HTML that breaks hydration). Give it
+// block form so its text is parsed as Markdown inside the component.
+// Nested one-liners (`<CardGroup><Card>x</Card></CardGroup>`) expand level by level.
+const expandOneLineBlock = (line: string): string[] => {
+  const match = oneLineBlock(line);
+  if (!match) return [line];
+  const { indent, name: tag, attributes, body } = match;
+  // Siblings of the same tag on one line (`<Card>a</Card><Card>b</Card>`) would be
+  // mis-split by the greedy match; leave those lines as authored.
+  if (body.toLowerCase().includes(`</${tag.toLowerCase()}>`)) return [line];
+  return [`${indent}<${tag}${attributes}>`, '', ...expandOneLineBlock(body.trim()), '', `${indent}</${tag}>`];
+};
+
+/** The reader's source lines before tag spacing: MDX comments stripped, multiline
+ *  openers joined and one-line blocks expanded. `origins` gives the stripped line
+ *  each one comes from. Code samples are never rewritten: every step skips fenced lines. */
+const readerSourceLines = (authoredSource: readonly string[]): { stripped: StrippedLines; lines: string[]; origins: number[] } => {
+  const stripped = stripMdxComments(authoredSource, fencedMarkdownLines(authoredSource));
+  const { lines: authored, fenced: authoredFences, from } = joinMultilineOpeners(stripped.lines, fencedMarkdownLines(stripped.lines));
+  const lines: string[] = [];
+  const origins: number[] = [];
+  for (const [index, line] of authored.entries())
+    for (const piece of authoredFences[index] ? [line] : expandOneLineBlock(line)) {
+      lines.push(piece);
+      origins.push(from[index] as number);
+    }
+  return { stripped, lines, origins };
+};
+
+/** How the published reader reads each authored line, for a projection that must agree
+ *  with it (#591's Markdown export). After the reader strips MDX comments: each line's
+ *  kind, and the lines that close a fence with a matching delimiter (`markdownFenceLines`).
+ *  `commented` marks lines a stripped comment covers, which the reader never shows.
+ *  `code` marks lines the reader finally renders as code, after it also joins multiline
+ *  openers and expands one-line blocks. */
+export interface ReaderLineView {
+  kinds: MarkdownLineKind[];
+  closers: ReadonlySet<number>;
+  commented: boolean[];
+  code: boolean[];
+}
+
+export const readerLineView = (authoredSource: readonly string[]): ReaderLineView => {
+  const { stripped, lines, origins } = readerSourceLines(authoredSource);
+  const scan = markdownFenceLines(stripped.lines);
+  const strippedCode = stripped.lines.map(() => false);
+  for (const [index, code] of fencedMarkdownLines(lines).entries()) if (code) strippedCode[origins[index] as number] = true;
+  // A line no comment touches is a whole stripped line of its own.
+  const closers = new Set<number>();
+  for (const [line, at] of stripped.at.entries()) if (!stripped.commented[line] && scan.closers.has(at)) closers.add(line);
+  return {
+    kinds: stripped.at.map((at) => scan.kinds[at] as MarkdownLineKind),
+    closers,
+    commented: stripped.commented,
+    code: stripped.at.map((at) => Boolean(strippedCode[at])),
+  };
 };
 
 /** Ensure block component tags are separated from their inner content by a blank
@@ -116,24 +224,7 @@ const stripMdxComments = (lines: readonly string[], fenced: readonly boolean[]):
  *  directly after `<Note>` is captured as a raw HTML block and inline Markdown
  *  (**bold**, [links]) renders literally. Idempotent. */
 export function normalizeMdxBlocks(src: string): string {
-  // A one-line block component would otherwise sit inside a Markdown paragraph,
-  // rendering a <div> inside a <p> (invalid HTML that breaks hydration). Give it
-  // block form so its text is parsed as Markdown inside the component.
-  // Nested one-liners (`<CardGroup><Card>x</Card></CardGroup>`) expand level by level.
-  const expand = (line: string): string[] => {
-    const match = oneLineBlock(line);
-    if (!match) return [line];
-    const { indent, name: tag, attributes, body } = match;
-    // Siblings of the same tag on one line (`<Card>a</Card><Card>b</Card>`) would be
-    // mis-split by the greedy match; leave those lines as authored.
-    if (body.toLowerCase().includes(`</${tag.toLowerCase()}>`)) return [line];
-    return [`${indent}<${tag}${attributes}>`, '', ...expand(body.trim()), '', `${indent}</${tag}>`];
-  };
-  // Code samples are never rewritten: every step below skips fenced lines.
-  const authoredSource = src.split('\n');
-  const source = stripMdxComments(authoredSource, fencedMarkdownLines(authoredSource));
-  const { lines: authored, fenced: authoredFences } = joinMultilineOpeners(source, fencedMarkdownLines(source));
-  const lines = authored.flatMap((line, index) => (authoredFences[index] ? [line] : expand(line)));
+  const { lines } = readerSourceLines(src.split('\n'));
   const fenced = fencedMarkdownLines(lines);
   const out: string[] = [];
   const outFenced: boolean[] = [];

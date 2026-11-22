@@ -121,10 +121,81 @@ const TAILS: readonly Tail[] = [
 
 const BEFORE: ReadonlyArray<readonly string[]> = [[], ['Intro text.', ''], ['<Steps>', '']];
 
-export const readerFenceExportCases = (): ReaderFenceExportCase[] => {
+/**
+ * MDX comments and other lines the reader strips or doesn't render as prose (#917 review).
+ * A callout inside a comment never shows in the reader, so it keeps main's bytes, as does one
+ * the reader finally reads as code. An unclosed `{/*` is text to the reader, and comment
+ * markers inside inline code are not a comment, so a callout next to them changes form.
+ */
+const COMMENT_TAILS: readonly Tail[] = [
+  {
+    name: 'callout in a multiline comment (review repro)',
+    lines: ['', '{/*', '', '<Note>After</Note>', '', '*/}'],
+    reshaped: [],
+    markers: ['After'],
+  },
+  {
+    name: 'callout in a multiline comment, then prose',
+    lines: ['', '{/*', '', '<Note>After</Note>', '', '*/}', '', 'Closing words.'],
+    reshaped: [],
+    markers: ['After', 'Closing words.'],
+  },
+  { name: 'comment opened in a list item', lines: ['', '- {/*', '', '<Note>After</Note>', '', '*/}'], reshaped: [], markers: ['After'] },
+  { name: 'comment opened in a quote', lines: ['', '> {/*', '', '<Note>After</Note>', '', '*/}'], reshaped: [], markers: ['After'] },
+  { name: 'comment closed in a list item', lines: ['', '{/*', '', '<Note>After</Note>', '', '- */}'], reshaped: [], markers: ['After'] },
+  {
+    name: 'comment inside list text',
+    lines: ['', '- Item {/*', '', '<Note>After</Note>', '', '  */} more'],
+    reshaped: [],
+    markers: ['Item', 'After', 'more'],
+  },
+  { name: 'single-line comment around the callout', lines: ['', '{/* <Note>After</Note> */}'], reshaped: [], markers: ['After'] },
+  {
+    name: 'single-line comment before a fence opener',
+    lines: ['', '{/* aside */}~~~', '', '<Note>After</Note>'],
+    reshaped: [],
+    markers: ['aside', 'After'],
+  },
+  {
+    name: 'one-line block holding a fence opener',
+    lines: ['', '<Tip>~~~</Tip>', '', '<Note>After</Note>'],
+    reshaped: [],
+    markers: ['After'],
+  },
+  { name: 'callout on the line after `*/}`', lines: ['', '{/*', 'aside', '*/}', '<Note>After</Note>'], reshaped: [], markers: ['aside', 'After'] },
+  // Changed: the reader shows these callouts.
+  {
+    name: 'callout after `*/}` and a blank line',
+    lines: ['', '{/*', 'aside', '*/}', '', '<Note>After</Note>'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['aside', 'After'],
+  },
+  {
+    name: 'single-line comment, then the callout',
+    lines: ['', '{/* aside */}', '', '<Note>After</Note>'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['aside', 'After'],
+  },
+  {
+    name: 'callout in a comment, then one after it',
+    lines: ['', '{/*', '', '<Note>Hidden</Note>', '', '*/}', '', '<Tip>Shown.</Tip>'],
+    reshaped: ['<Tip>Shown.</Tip>'],
+    markers: ['Hidden', 'Shown.'],
+  },
+  { name: 'unclosed comment before the callout', lines: ['', '{/*', '', '<Note>After</Note>'], reshaped: ['<Note>After</Note>'], markers: ['After'] },
+  { name: 'unclosed comment after the callout', lines: ['', '<Note>After</Note>', '', '{/*'], reshaped: ['<Note>After</Note>'], markers: ['After'] },
+  {
+    name: 'comment markers in inline code',
+    lines: ['', '`{/*`', '', '<Note>After</Note>', '', '`*/}`'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['After'],
+  },
+];
+
+const exportCases = (tails: readonly Tail[]): ReaderFenceExportCase[] => {
   const cases: ReaderFenceExportCase[] = [];
   for (const fence of FENCES)
-    for (const tail of TAILS)
+    for (const tail of tails)
       for (const before of BEFORE)
         cases.push({
           index: cases.length,
@@ -134,6 +205,11 @@ export const readerFenceExportCases = (): ReaderFenceExportCase[] => {
         });
   return cases;
 };
+
+export const readerFenceExportCases = (): ReaderFenceExportCase[] => exportCases(TAILS);
+
+/** The same fences and openings, each followed by a tail from `COMMENT_TAILS`. */
+export const readerFenceCommentCases = (): ReaderFenceExportCase[] => exportCases(COMMENT_TAILS);
 
 /** The lines a token stream keeps byte for byte as fenced code: the export's
  *  protection, read back from `tokenizeMdx`. Tokens concatenate to the source. */
