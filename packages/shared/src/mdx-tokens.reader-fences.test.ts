@@ -1,14 +1,20 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { fencedMarkdownLines, markdownFenceLines } from './markdown-code';
+import { fencedMarkdownLines, markdownFenceLines, openingMarkdownFence } from './markdown-code';
 import { buildMdxTree, mdxLineRoles, tokenizeMdx } from './mdx-tokens';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
 import { normalizeMdxBlocks, readerLineView } from './reader-markdown';
 import { exportCodeSamples, renderedActiveHtml } from './testing/export-guard';
 import { FENCE_CONTAINER_REPROS } from './testing/fence-cases';
 import { readerFenceDifferentialFamilies } from './testing/reader-fence-differential';
-import { protectedLines, type ReaderFenceExportCase, readerFenceCommentCases, readerFenceExportCases } from './testing/reader-fence-export-cases';
+import {
+  protectedLines,
+  type ReaderFenceExportCase,
+  readerFenceCommentCases,
+  readerFenceExportCases,
+  readerFenceLiteralCases,
+} from './testing/reader-fence-export-cases';
 
 /** The projections' component names that matter here. */
 const COMPONENTS: ReadonlySet<string> = new Set(['note', 'warning', 'tip', 'info', 'check', 'danger', 'callout', 'steps', 'badge']);
@@ -21,6 +27,8 @@ interface MainFixture {
   families: Record<string, { count: number; protection: string; lines?: string[] }>;
   /** `readerFenceCommentCases`, recorded the same way (#917 review). */
   comments: Array<{ outputs: [string, string]; protection: string }>;
+  /** `readerFenceLiteralCases`, recorded the same way (#917 re-check). */
+  literals: Array<{ outputs: [string, string]; protection: string }>;
 }
 const main = JSON.parse(readFileSync(new URL('./__fixtures__/mdx-tokens.reader-fences.main.json', import.meta.url), 'utf8')) as MainFixture;
 
@@ -243,5 +251,87 @@ describe("the reader's line view (#917 review)", () => {
     expect([...view.closers]).toEqual([5]);
     // The reader expands `<Tip>~~~</Tip>`, which opens a fence over the rest.
     expect(view.code).toEqual([false, false, false, true, true, true, false, true, true]);
+  });
+});
+
+describe('callouts the reader renders literally keep main bytes (#917 re-check)', () => {
+  const PREFIX = '1. >~~~md\n   > CODEMARK\n   > ~~~\n\n';
+  const NOTE = '<Note>ReviewText</Note>';
+
+  it.each([
+    ['a math block', `${PREFIX}$$\n\n${NOTE}\n\n$$`],
+    ['an upper-case textarea', `${PREFIX}<TEXTAREA>\n\n${NOTE}\n\n</TEXTAREA>`],
+  ])('exports the re-check repro, a callout inside %s, as main wrote it', (_name, source) => {
+    expect(portablePublicMdxMarkdown(source)).toBe(source);
+    expect(normalizePublicMarkdownContent(source)).toBe(source.replace('1. >~~~md', '1. &gt;~~~md'));
+    expect(mdxLineRoles(source, COMPONENTS).protected.slice(2)).toEqual(
+      source
+        .split('\n')
+        .slice(2)
+        .map(() => true),
+    );
+  });
+
+  const cases = readerFenceLiteralCases();
+
+  it('was recorded on main for exactly these shapes', () => {
+    expect(main.literals).toHaveLength(cases.length);
+    expect(cases).toHaveLength(462);
+  });
+
+  it('keeps every control byte-identical to main and quotes only callouts the reader shows as prose, losing nothing', () => {
+    const { failures, reshapedCases, reshapedLines } = compareWithMain(cases, main.literals);
+    expect(failures.slice(0, 12), `${failures.length} failures`).toEqual([]);
+    // 8 overrun fences x 1 eligible tail x 3 openings.
+    expect({ reshapedCases, reshapedLines }).toEqual({ reshapedCases: 24, reshapedLines: 24 });
+  }, 60_000);
+});
+
+describe('large pages through both exports and the reader (#917 re-check)', () => {
+  const PAGE = '1. >~~~md\n   > CODEMARK\n   > ~~~\n\n<Note>ReviewText</Note>\n\n';
+
+  it('exports a 260 KB page without exhausting the stack, quoting the callout the reader shows', () => {
+    const source = `${PAGE}${'a\n'.repeat(130_000)}`;
+    expect(source.length).toBeGreaterThan(260_000);
+    const quotedSource = source.replace('<Note>ReviewText</Note>', '> ReviewText');
+    expect(portablePublicMdxMarkdown(source)).toBe(quotedSource);
+    expect(normalizePublicMarkdownContent(source)).toBe(quotedSource.replace('1. >~~~md', '1. &gt;~~~md').replace(/\n+$/, ''));
+    expect(() => normalizeMdxBlocks(source)).not.toThrow();
+  }, 30_000);
+
+  it("exports a 2 MB page without exhausting the stack, in main's form past the reader's parse bound", () => {
+    const source = `${PAGE}${'a\n'.repeat(1_000_000)}`;
+    expect(source.length).toBeGreaterThan(2_000_000);
+    expect(portablePublicMdxMarkdown(source)).toBe(source);
+    expect(normalizePublicMarkdownContent(source)).toBe(source.replace('1. >~~~md', '1. &gt;~~~md').replace(/\n+$/, ''));
+    expect(() => normalizeMdxBlocks(source)).not.toThrow();
+  }, 30_000);
+
+  it('renders every line of a 130,000-line fence instead of throwing, as main did (intended reader change)', () => {
+    const source = `\`\`\`\n${'a\n'.repeat(130_000)}\`\`\``;
+    expect(normalizeMdxBlocks(source)).toBe(source);
+  }, 30_000);
+});
+
+describe('the fence opener reads lines as its regex did, in linear time (#917 re-check)', () => {
+  const regex = (line: string, maxIndent: number) => {
+    const match = /^( *)(`{3,}|~{3,})(.*)$/.exec(line);
+    const delimiter = match?.[2];
+    if (!delimiter || (match?.[1]?.length ?? 0) > maxIndent || (delimiter[0] === '`' && match?.[3]?.includes('`'))) return;
+    return { marker: delimiter.charAt(0), length: delimiter.length };
+  };
+
+  it('agrees on every line of up to 6 characters over spaces, markers, text and line terminators', () => {
+    const alphabet = [' ', '`', '~', 'a', '\t', '\r', String.fromCharCode(0x20_28), String.fromCharCode(0x20_29)];
+    let lines = [''];
+    const drift: string[] = [];
+    for (let length = 0; length <= 6; length += 1) {
+      for (const line of lines)
+        for (const maxIndent of [0, 3, Number.POSITIVE_INFINITY])
+          if (JSON.stringify(openingMarkdownFence(line, maxIndent)) !== JSON.stringify(regex(line, maxIndent)))
+            drift.push(JSON.stringify([line, maxIndent]));
+      lines = lines.flatMap((line) => alphabet.map((character) => line + character));
+    }
+    expect(drift).toEqual([]);
   });
 });

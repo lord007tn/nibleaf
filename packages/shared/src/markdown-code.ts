@@ -4,8 +4,11 @@ export interface MarkdownFence {
   length: number;
 }
 
+// The lookaheads keep each run whole: without them, a rest holding a line terminator `.` can't
+// match (U+2028, say) made the regex retry the run at every shorter length (#917 re-check).
+// A shorter run was never an opener anyway, so lines read as before.
 export const openingMarkdownFence = (line: string, maxIndent = 3): MarkdownFence | undefined => {
-  const match = /^( *)(`{3,}|~{3,})(.*)$/.exec(line);
+  const match = /^( *)(`{3,}(?!`)|~{3,}(?!~))(.*)$/.exec(line);
   const delimiter = match?.[2];
   if (!delimiter || (match?.[1]?.length ?? 0) > maxIndent || (delimiter[0] === '`' && match?.[3]?.includes('`'))) return undefined;
   return { marker: delimiter.charAt(0), length: delimiter.length };

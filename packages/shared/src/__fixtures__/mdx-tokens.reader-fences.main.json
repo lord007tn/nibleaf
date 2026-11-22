@@ -10015,5 +10015,3241 @@
       ],
       "protection": "0011111111"
     }
+  ],
+  "literals": [
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "000011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "000011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "Intro text.\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > [Literal](/literal)\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "<Steps>\n\n1. >~~~md\n   > [Literal](/literal)\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "000011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "000011111111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<PRE>\n\n<Note>After</Note>",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<PRE>\n\n<Note>After</Note>",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<PRE>\n\n<Note>After</Note>",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<plaintext>\n\n<Note>After</Note>",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<plaintext>\n\n<Note>After</Note>",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<plaintext>\n\n<Note>After</Note>",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "1) > ```md\n   > [Literal](/literal)\n   > ```\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "Intro text.\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1) &gt; ```md\n   > [Literal](/literal)\n   > ```\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "<Steps>\n\n1) > ```md\n   > [Literal](/literal)\n   > ```\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "000011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "000011111111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<PRE>\n\n<Note>After</Note>",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<PRE>\n\n<Note>After</Note>",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<PRE>\n\n<Note>After</Note>",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<plaintext>\n\n<Note>After</Note>",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<plaintext>\n\n<Note>After</Note>",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<plaintext>\n\n<Note>After</Note>",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "- > ````md\n  > [Literal](/literal)\n  > `````\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "Intro text.\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- &gt; ````md\n  > [Literal](/literal)\n  > `````\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "<Steps>\n\n- > ````md\n  > [Literal](/literal)\n  > `````\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "111011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00111011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00111011111111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<PRE>\n\n<Note>After</Note>",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<PRE>\n\n<Note>After</Note>",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<PRE>\n\n<Note>After</Note>",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<plaintext>\n\n<Note>After</Note>",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<plaintext>\n\n<Note>After</Note>",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<plaintext>\n\n<Note>After</Note>",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "> ```md\n> example\n> > ```\n> still code\n> ```\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "Intro text.\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "<Steps>\n\n> ```md\n> example\n> > ```\n> still code\n> ```\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "111011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00111011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00111011111111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<PRE>\n\n<Note>After</Note>",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<PRE>\n\n<Note>After</Note>",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<PRE>\n\n<Note>After</Note>",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<plaintext>\n\n<Note>After</Note>",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<plaintext>\n\n<Note>After</Note>",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<plaintext>\n\n<Note>After</Note>",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "- ```md\n  example\n  - ```\n  still code\n  ```\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "Intro text.\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "<Steps>\n\n- ```md\n  example\n  - ```\n  still code\n  ```\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "111011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00111011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00111011111111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "11101111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "0011101111111"
+    },
+    {
+      "outputs": [
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "111011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "Intro text.\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "<Steps>\n\n~~~~md\nexample\n> ~~~~\nstill code\n~~~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "00111011111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n$$\n\n<Note>After</Note>",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n$$\n\n<Note>After</Note>",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n$$\n\n<Note>After</Note>",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "000011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "000011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "001111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "00001111111"
+    },
+    {
+      "outputs": [
+        "1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "0011111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "Intro text.\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt; &gt; ~~~md\n   > > \n   > > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "<Steps>\n\n1. > > ~~~md\n   > > {Literal}\n   > > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "000011111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "0111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "000111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "000111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0111111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "000111111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "000111111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "0111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "000111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "000111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "0111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "000111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "000111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "011111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "00011111111"
+    },
+    {
+      "outputs": [
+        "1. &gt;~~~md\n   > ```js\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "1. >~~~md\n   > ```js\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "0111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "Intro text.\n\n1. >~~~md\n   > ```js\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "000111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n1. &gt;~~~md\n   > ```js\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "<Steps>\n\n1. >~~~md\n   > ```js\n   > ~~~\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "000111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>",
+        "> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "> ~~~md\n> [Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "111111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00111111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00111111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "> ~~~md\n> [Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "> ~~~md\n> [Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "> ~~~md\n> [Literal](/literal)\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "> ~~~md\n> [Literal](/literal)\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "> ~~~md\n> [Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "> ~~~md\n> [Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>",
+        "> ~~~md\n> [Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "> ~~~md\n> [Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>",
+        "> ~~~md\n> [Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "> ~~~md\n> [Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "> ~~~md\n> [Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "> ~~~md\n> [Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "Intro text.\n\n> ~~~md\n> [Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n> ~~~md\n> [Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "<Steps>\n\n> ~~~md\n> [Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After\n\n$$",
+        "~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After\n\n$$"
+      ],
+      "protection": "111000000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After\n\n$$",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After\n\n$$"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After\n\n$$",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After\n\n$$"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After",
+        "~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After"
+      ],
+      "protection": "1110000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After"
+      ],
+      "protection": "001110000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\n\n> After"
+      ],
+      "protection": "001110000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n$$\nx^2\n\n> After\n\n$$",
+        "~~~md\n[Literal](/literal)\n~~~\n\n$$\nx^2\n\n> After\n\n$$"
+      ],
+      "protection": "1110000000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\nx^2\n\n> After\n\n$$",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\nx^2\n\n> After\n\n$$"
+      ],
+      "protection": "001110000000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\nx^2\n\n> After\n\n$$",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n$$\nx^2\n\n> After\n\n$$"
+      ],
+      "protection": "001110000000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n&lt;TEXTAREA&gt;\n\n> After\n\n&lt;/TEXTAREA&gt;",
+        "~~~md\n[Literal](/literal)\n~~~\n\n<TEXTAREA>\n\n> After\n\n</TEXTAREA>"
+      ],
+      "protection": "111000000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;TEXTAREA&gt;\n\n> After\n\n&lt;/TEXTAREA&gt;",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n<TEXTAREA>\n\n> After\n\n</TEXTAREA>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;TEXTAREA&gt;\n\n> After\n\n&lt;/TEXTAREA&gt;",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n<TEXTAREA>\n\n> After\n\n</TEXTAREA>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n&lt;textarea rows=\"3\"&gt;\n\n> After\n\n&lt;/textarea&gt;",
+        "~~~md\n[Literal](/literal)\n~~~\n\n<textarea rows=\"3\">\n\n> After\n\n</textarea>"
+      ],
+      "protection": "111000000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;textarea rows=\"3\"&gt;\n\n> After\n\n&lt;/textarea&gt;",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n<textarea rows=\"3\">\n\n> After\n\n</textarea>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;textarea rows=\"3\"&gt;\n\n> After\n\n&lt;/textarea&gt;",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n<textarea rows=\"3\">\n\n> After\n\n</textarea>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~",
+        "~~~md\n[Literal](/literal)\n~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "111000000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n\n&#60;script&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;script&#62;\n\n"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~",
+        "~~~md\n[Literal](/literal)\n~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "111000000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n\n&#60;Style&#62;&#10;&#10;&#60;Note&#62;After&#60;&#47;Note&#62;&#10;&#10;&#60;&#47;Style&#62;\n\n"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n&lt;title&gt;\n\n> After\n\n&lt;/title&gt;",
+        "~~~md\n[Literal](/literal)\n~~~\n\n<title>\n\n> After\n\n</title>"
+      ],
+      "protection": "111000000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;title&gt;\n\n> After\n\n&lt;/title&gt;",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n<title>\n\n> After\n\n</title>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;title&gt;\n\n> After\n\n&lt;/title&gt;",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n<title>\n\n> After\n\n</title>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n&lt;pre&gt;\n\n> After\n\n&lt;/pre&gt;",
+        "~~~md\n[Literal](/literal)\n~~~\n\n<pre>\n\n> After\n\n</pre>"
+      ],
+      "protection": "111000000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;pre&gt;\n\n> After\n\n&lt;/pre&gt;",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n<pre>\n\n> After\n\n</pre>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;pre&gt;\n\n> After\n\n&lt;/pre&gt;",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n<pre>\n\n> After\n\n</pre>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n&lt;PRE&gt;\n\n> After",
+        "~~~md\n[Literal](/literal)\n~~~\n\n<PRE>\n\n> After"
+      ],
+      "protection": "1110000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;PRE&gt;\n\n> After",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n<PRE>\n\n> After"
+      ],
+      "protection": "001110000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;PRE&gt;\n\n> After",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n<PRE>\n\n> After"
+      ],
+      "protection": "001110000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n&lt;Xmp&gt;\n\n> After\n\n&lt;/Xmp&gt;",
+        "~~~md\n[Literal](/literal)\n~~~\n\n<Xmp>\n\n> After\n\n</Xmp>"
+      ],
+      "protection": "111000000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;Xmp&gt;\n\n> After\n\n&lt;/Xmp&gt;",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n<Xmp>\n\n> After\n\n</Xmp>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;Xmp&gt;\n\n> After\n\n&lt;/Xmp&gt;",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n<Xmp>\n\n> After\n\n</Xmp>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n&lt;plaintext&gt;\n\n> After",
+        "~~~md\n[Literal](/literal)\n~~~\n\n<plaintext>\n\n> After"
+      ],
+      "protection": "1110000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;plaintext&gt;\n\n> After",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n<plaintext>\n\n> After"
+      ],
+      "protection": "001110000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;plaintext&gt;\n\n> After",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n<plaintext>\n\n> After"
+      ],
+      "protection": "001110000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\n&lt;div&gt;\n\n> After\n\n&lt;/div&gt;",
+        "~~~md\n[Literal](/literal)\n~~~\n\n<div>\n\n> After\n\n</div>"
+      ],
+      "protection": "111000000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;div&gt;\n\n> After\n\n&lt;/div&gt;",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\n<div>\n\n> After\n\n</div>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\n&lt;div&gt;\n\n> After\n\n&lt;/div&gt;",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\n<div>\n\n> After\n\n</div>"
+      ],
+      "protection": "00111000000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n~~~\n\nInline $x^2$ math.\n\n> After",
+        "~~~md\n[Literal](/literal)\n~~~\n\nInline $x^2$ math.\n\n> After"
+      ],
+      "protection": "1110000"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\nInline $x^2$ math.\n\n> After",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n~~~\n\nInline $x^2$ math.\n\n> After"
+      ],
+      "protection": "001110000"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n~~~\n\nInline $x^2$ math.\n\n> After",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n~~~\n\nInline $x^2$ math.\n\n> After"
+      ],
+      "protection": "001110000"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>",
+        "~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n$$\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "~~~md\n[Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "111111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00111111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n$$\nx^2\n\n<Note>After</Note>\n\n$$"
+      ],
+      "protection": "00111111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "~~~md\n[Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n<TEXTAREA>\n\n<Note>After</Note>\n\n</TEXTAREA>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "~~~md\n[Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n<textarea rows=\"3\">\n\n<Note>After</Note>\n\n</textarea>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n<script>\n\n<Note>After</Note>\n\n</script>",
+        "~~~md\n[Literal](/literal)\n\n<script>\n\n<Note>After</Note>\n\n</script>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<script>\n\n<Note>After</Note>\n\n</script>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<script>\n\n<Note>After</Note>\n\n</script>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n<script>\n\n<Note>After</Note>\n\n</script>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n<script>\n\n<Note>After</Note>\n\n</script>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n<Style>\n\n<Note>After</Note>\n\n</Style>",
+        "~~~md\n[Literal](/literal)\n\n<Style>\n\n<Note>After</Note>\n\n</Style>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<Style>\n\n<Note>After</Note>\n\n</Style>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<Style>\n\n<Note>After</Note>\n\n</Style>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n<Style>\n\n<Note>After</Note>\n\n</Style>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n<Style>\n\n<Note>After</Note>\n\n</Style>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "~~~md\n[Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n<title>\n\n<Note>After</Note>\n\n</title>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "~~~md\n[Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n<pre>\n\n<Note>After</Note>\n\n</pre>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>",
+        "~~~md\n[Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n<PRE>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "~~~md\n[Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n<Xmp>\n\n<Note>After</Note>\n\n</Xmp>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>",
+        "~~~md\n[Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n<plaintext>\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "~~~md\n[Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "11111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\n<div>\n\n<Note>After</Note>\n\n</div>"
+      ],
+      "protection": "0011111111"
+    },
+    {
+      "outputs": [
+        "~~~md\n[Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "~~~md\n[Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "111111"
+    },
+    {
+      "outputs": [
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "Intro text.\n\n~~~md\n[Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    },
+    {
+      "outputs": [
+        "&lt;Steps&gt;\n\n~~~md\n[Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>",
+        "<Steps>\n\n~~~md\n[Literal](/literal)\n\nInline $x^2$ math.\n\n<Note>After</Note>"
+      ],
+      "protection": "00111111"
+    }
   ]
 }

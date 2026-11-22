@@ -192,6 +192,51 @@ const COMMENT_TAILS: readonly Tail[] = [
   },
 ];
 
+/**
+ * Regions the reader renders literally, not as prose (#917 re-check): a `$$` math block, and the
+ * HTML elements whose content the reader shows as text or keeps preformatted (raw-text and RCDATA
+ * elements, `<pre>`, `<plaintext>`), in any letter case. A callout inside one shows as text, so it
+ * keeps main's bytes, as does one inside a plain HTML wrapper. Inline math in a paragraph before
+ * the callout is prose, so that callout changes form.
+ */
+const LITERAL_TAILS: readonly Tail[] = [
+  { name: 'math block around the callout (re-check repro)', lines: ['', '$$', '', '<Note>After</Note>', '', '$$'], reshaped: [], markers: ['After'] },
+  { name: 'unclosed math block before the callout', lines: ['', '$$', '', '<Note>After</Note>'], reshaped: [], markers: ['After'] },
+  {
+    name: 'math block with a formula, then the callout inside it',
+    lines: ['', '$$', 'x^2', '', '<Note>After</Note>', '', '$$'],
+    reshaped: [],
+    markers: ['x^2', 'After'],
+  },
+  {
+    name: 'upper-case textarea around the callout (re-check repro)',
+    lines: ['', '<TEXTAREA>', '', '<Note>After</Note>', '', '</TEXTAREA>'],
+    reshaped: [],
+    markers: ['After'],
+  },
+  {
+    name: 'textarea with attributes around the callout',
+    lines: ['', '<textarea rows="3">', '', '<Note>After</Note>', '', '</textarea>'],
+    reshaped: [],
+    markers: ['After'],
+  },
+  { name: 'script around the callout', lines: ['', '<script>', '', '<Note>After</Note>', '', '</script>'], reshaped: [], markers: ['After'] },
+  { name: 'style around the callout', lines: ['', '<Style>', '', '<Note>After</Note>', '', '</Style>'], reshaped: [], markers: ['After'] },
+  { name: 'title around the callout', lines: ['', '<title>', '', '<Note>After</Note>', '', '</title>'], reshaped: [], markers: ['After'] },
+  { name: 'pre around the callout', lines: ['', '<pre>', '', '<Note>After</Note>', '', '</pre>'], reshaped: [], markers: ['After'] },
+  { name: 'unclosed upper-case pre before the callout', lines: ['', '<PRE>', '', '<Note>After</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'xmp around the callout', lines: ['', '<Xmp>', '', '<Note>After</Note>', '', '</Xmp>'], reshaped: [], markers: ['After'] },
+  { name: 'plaintext before the callout', lines: ['', '<plaintext>', '', '<Note>After</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'plain HTML wrapper around the callout', lines: ['', '<div>', '', '<Note>After</Note>', '', '</div>'], reshaped: [], markers: ['After'] },
+  // Changed: the reader shows this callout.
+  {
+    name: 'inline math in a paragraph before the callout',
+    lines: ['', 'Inline $x^2$ math.', '', '<Note>After</Note>'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['Inline', 'After'],
+  },
+];
+
 const exportCases = (tails: readonly Tail[]): ReaderFenceExportCase[] => {
   const cases: ReaderFenceExportCase[] = [];
   for (const fence of FENCES)
@@ -210,6 +255,9 @@ export const readerFenceExportCases = (): ReaderFenceExportCase[] => exportCases
 
 /** The same fences and openings, each followed by a tail from `COMMENT_TAILS`. */
 export const readerFenceCommentCases = (): ReaderFenceExportCase[] => exportCases(COMMENT_TAILS);
+
+/** The same fences and openings, each followed by a tail from `LITERAL_TAILS`. */
+export const readerFenceLiteralCases = (): ReaderFenceExportCase[] => exportCases(LITERAL_TAILS);
 
 /** The lines a token stream keeps byte for byte as fenced code: the export's
  *  protection, read back from `tokenizeMdx`. Tokens concatenate to the source. */

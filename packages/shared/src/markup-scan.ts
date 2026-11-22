@@ -386,17 +386,19 @@ const skipWhitespace = (text: string, from: number): number => {
 };
 
 /**
- * For `text.replace(/(`+)[\s\S]*?\1|\{\s*\/\*[\s\S]*?\*\/\s*\}/g, (match, code) => (code ? match : ''))`:
- * the `[start, end)` ranges of the MDX comments it removes. Inline code spans are kept as written,
- * whichever starts first, in linear time. When one comment finds no close, no later one can.
+ * `text.replace(/(`+)[\s\S]*?\1|\{\s*\/\*[\s\S]*?\*\/\s*\}/g, (match, code) => (code ? match : ''))`:
+ * MDX comments removed and inline code spans kept as written, whichever starts
+ * first, in linear time. When one comment finds no close, no later one can.
+ * Each removed comment's `[start, end)` range goes into `removed`, when given.
  */
-export const mdxCommentRangesOutsideCode = (text: string): Array<[start: number, end: number]> => {
+export const removeMdxCommentsOutsideCode = (text: string, removed?: Array<[start: number, end: number]>): string => {
   const spanEnd = codeSpanEnds(text);
   const nextTick = forwardIndexOf(text, '`');
   const nextBrace = forwardIndexOf(text, '{');
   const nextClose = forwardIndexOf(text, '*/');
   let closes = true;
-  const ranges: Array<[number, number]> = [];
+  let out = '';
+  let copied = 0;
   for (let from = 0; ; ) {
     const tick = nextTick(from);
     const brace = nextBrace(from);
@@ -423,19 +425,10 @@ export const mdxCommentRangesOutsideCode = (text: string): Array<[start: number,
       from = start + 1;
       continue;
     }
-    ranges.push([start, end]);
-    from = end;
-  }
-  return ranges;
-};
-
-/** `text` without the MDX comments `mdxCommentRangesOutsideCode` finds (or has found). */
-export const removeMdxCommentsOutsideCode = (text: string, comments = mdxCommentRangesOutsideCode(text)): string => {
-  let out = '';
-  let copied = 0;
-  for (const [start, end] of comments) {
     out += text.slice(copied, start);
+    removed?.push([start, end]);
     copied = end;
+    from = end;
   }
   return out + text.slice(copied);
 };

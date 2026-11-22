@@ -1,4 +1,6 @@
 import { closesMarkdownFence, type MarkdownFence, type MarkdownLineKind, markdownLineKinds, openingMarkdownFence } from './markdown-code';
+import { MARKDOWN_PARSE_MAX_LENGTH } from './markdown-code-usage';
+import { type CalloutLine, readerRenderedCallouts } from './reader-callouts';
 import { type ReaderLineView, readerLineView } from './reader-markdown';
 
 /**
@@ -332,25 +334,29 @@ const BLANK = /^[ \t]*$/;
  * after it strips MDX comments, so a callout inside a comment, which the reader never shows,
  * keeps main's bytes; and main's whole fence must stay as that view reads it once the reader
  * joins openers and expands one-line blocks, so no callout the reader finally shows as code
- * changes form. Every other protected line keeps main's bytes. `readerLines` is only read when
- * a candidate callout exists.
+ * changes form. Last, the tree the reader renders must hold each callout as a callout of its own,
+ * directly in the page (`readerRenderedCallouts`): one it shows literally, inside math or a
+ * raw-text element such as `<textarea>`, keeps main's bytes too. Every other protected line keeps
+ * main's bytes. The reader's views are only read when a candidate callout exists, and never on a
+ * page past the reader's parse bound (`MARKDOWN_PARSE_MAX_LENGTH`), which keeps main's bytes.
  */
 const readerForms = (
+  source: string,
   lines: readonly string[],
   fences: ReadonlyArray<readonly [number, number]>,
   components: ReadonlySet<string>,
-  readerLines: () => ReaderLineView,
 ): Set<number> => {
-  const forms = new Set<number>();
+  const eligible: CalloutLine[] = [];
   let reader: ReaderLineView | undefined;
   for (const [start, end] of fences) {
-    const candidates: number[] = [];
+    const candidates: CalloutLine[] = [];
     for (let index = start + 1; index <= end; index += 1) {
       const name = PLAIN_CALLOUT.exec(lines[index] as string)?.[1];
-      if (name && components.has(name.toLowerCase())) candidates.push(index);
+      if (name && components.has(name.toLowerCase())) candidates.push({ line: index, name });
     }
     if (candidates.length === 0) continue;
-    reader ??= readerLines();
+    if (source.length > MARKDOWN_PARSE_MAX_LENGTH) return new Set();
+    reader ??= readerLineView(lines);
     const { kinds, closers, commented, code } = reader;
     // The reader's last non-prose line in main's fence must be its matched closer, with only
     // reader code from main's opener down to it.
@@ -361,16 +367,18 @@ const readerForms = (
     let rendered = true;
     for (let index = start; index <= end && rendered; index += 1) rendered = code[index] === (kinds[index] === 'code');
     if (!rendered) continue;
-    for (const index of candidates)
+    for (const candidate of candidates) {
+      const index = candidate.line;
       if (
         !commented[index] &&
         index > closer + 1 &&
         BLANK.test(lines[index - 1] as string) &&
         (index === lines.length - 1 || BLANK.test(lines[index + 1] as string))
       )
-        forms.add(index);
+        eligible.push(candidate);
+    }
   }
-  return forms;
+  return readerRenderedCallouts(lines, eligible);
 };
 
 /** How each line reads (#591). `reader` is the shared scanner's kind for each authored line
@@ -384,7 +392,7 @@ export interface MdxLineRoles {
 export const mdxLineRoles = (source: string, components: ReadonlySet<string>): MdxLineRoles => {
   const lines = source.split('\n');
   const fences = protectedFences(lines);
-  const forms = readerForms(lines, fences, components, () => readerLineView(lines));
+  const forms = readerForms(source, lines, fences, components);
   const protectedLines = lines.map(() => false);
   for (const [start, end] of fences) for (let index = start; index <= end; index += 1) protectedLines[index] = !forms.has(index);
   return { reader: markdownLineKinds(lines), protected: protectedLines };
@@ -397,7 +405,7 @@ export const tokenizeMdx = (source: string, components: ReadonlySet<string>): Md
   const tokens: MdxToken[] = [];
   const lines = source.split('\n');
   const fences = protectedFences(lines);
-  const forms = readerForms(lines, fences, components, () => readerLineView(lines));
+  const forms = readerForms(source, lines, fences, components);
   let prose: string[] = [];
   const flushProse = (beforeFence: boolean) => {
     if (prose.length > 0) tokenizeProse(`${prose.join('\n')}${beforeFence ? '\n' : ''}`, components, tokens);

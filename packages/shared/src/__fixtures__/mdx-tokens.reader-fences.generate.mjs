@@ -10,7 +10,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { readerFenceDifferentialFamilies } from '../testing/reader-fence-differential.ts';
-import { protectedLines, readerFenceCommentCases, readerFenceExportCases } from '../testing/reader-fence-export-cases.ts';
+import { protectedLines, readerFenceCommentCases, readerFenceExportCases, readerFenceLiteralCases } from '../testing/reader-fence-export-cases.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const shared = resolve(here, '../..');
@@ -39,6 +39,8 @@ try {
   const cases = readerFenceExportCases().map(record);
   // MDX comments and other lines the reader strips or doesn't render as prose (#917 review).
   const comments = readerFenceCommentCases().map(record);
+  // Regions the reader renders literally: math blocks and raw-text HTML (#917 re-check).
+  const literals = readerFenceLiteralCases().map(record);
   const families = Object.fromEntries(
     readerFenceDifferentialFamilies().map(({ name, sources }) => {
       const lines = sources.map(protection);
@@ -48,10 +50,10 @@ try {
     }),
   );
   const target = join(here, 'mdx-tokens.reader-fences.main.json');
-  writeFileSync(target, `${JSON.stringify({ revision, cases, families, comments })}\n`);
+  writeFileSync(target, `${JSON.stringify({ revision, cases, families, comments, literals })}\n`);
   execFileSync(process.execPath, [join(root, 'node_modules/@biomejs/biome/bin/biome'), 'format', '--write', target], { cwd: root });
   console.info(
-    `Recorded ${cases.length} export shapes, ${comments.length} comment shapes and ${Object.keys(families).length} protection families from main ${revision}.`,
+    `Recorded ${cases.length} export shapes, ${comments.length} comment shapes, ${literals.length} literal shapes and ${Object.keys(families).length} protection families from main ${revision}.`,
   );
 } finally {
   rmSync(copy, { recursive: true, force: true });
