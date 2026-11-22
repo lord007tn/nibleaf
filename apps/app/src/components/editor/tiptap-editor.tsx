@@ -152,6 +152,20 @@ function getCounts(editor: Editor): { words: number; characters: number } {
   return { words: storage.characterCount?.words() ?? 0, characters: storage.characterCount?.characters() ?? 0 };
 }
 
+/**
+ * Whether the code block at `index` in `parent` is written back as its authored indented
+ * source (#625). Two indented chunks separated only by a blank line read back as one
+ * block, so a block right after another indented one is written fenced instead.
+ */
+function writesIndentedSource(parent: PMNode, index: number): boolean {
+  const node = parent.maybeChild(index);
+  const indented = node?.attrs.sourceIndentedCode;
+  if (!node || typeof indented !== 'string' || node.attrs.language || !parent.attrs?.sourceOpen) return false;
+  if (indentedComponentCodeText(indented) !== node.textContent) return false;
+  const previous = parent.maybeChild(index - 1);
+  return !(previous?.type === node.type && writesIndentedSource(parent, index - 1));
+}
+
 /** CodeBlockLowlight that mirrors the chosen language onto the <pre> as `data-language`,
  * so the dark chrome's label bar (CSS ::before) can display it. */
 const CodeBlock = CodeBlockLowlight.extend({
@@ -217,13 +231,7 @@ const CodeBlock = CodeBlockLowlight.extend({
           const language = String(node.attrs.language ?? '');
           const indented = node.attrs.sourceIndentedCode;
           const fenceState = state as unknown as FenceSerializeState;
-          if (
-            typeof indented === 'string' &&
-            !language &&
-            !fenceState.delim &&
-            parent.attrs?.sourceOpen &&
-            indentedComponentCodeText(indented) === node.textContent
-          ) {
+          if (!fenceState.delim && writesIndentedSource(parent, index)) {
             state.write(indented);
             state.closeBlock(node);
             return;

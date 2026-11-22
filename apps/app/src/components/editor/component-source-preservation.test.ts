@@ -56,6 +56,39 @@ describe.each(languages)('first-save component source preservation (#625), %s', 
     }
   });
 
+  it('keeps two indented code blocks separate after the paragraph between them is deleted', () => {
+    const source = `<Note>\n\n    ${body}\n\n${caption}\n\n    ${next}\n\n</Note>`;
+    const codeTexts = (editor: Editor) => {
+      const texts: string[] = [];
+      editor.state.doc.descendants((node) => {
+        if (node.type.name === 'codeBlock') texts.push(node.textContent);
+      });
+      return texts;
+    };
+    const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
+    try {
+      editor.commands.setContent(source, { emitUpdate: false });
+      expect(getMarkdown(editor)).toBe(source);
+      let separator: { from: number; to: number } | undefined;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'paragraph' && node.textContent === caption) separator = { from: pos, to: pos + node.nodeSize };
+      });
+      expect(separator).toBeDefined();
+      editor.view.dispatch(editor.state.tr.delete(separator!.from, separator!.to));
+      expect(codeTexts(editor)).toEqual([body, next]);
+      let saved = getMarkdown(editor);
+      for (let cycle = 1; cycle <= 3; cycle++) {
+        editor.commands.setContent(saved, { emitUpdate: false });
+        expect(codeTexts(editor), `reload ${cycle}`).toEqual([body, next]);
+        const again = getMarkdown(editor);
+        expect(again, `save ${cycle + 1}`).toBe(saved);
+        saved = again;
+      }
+    } finally {
+      editor.destroy();
+    }
+  });
+
   it.each([
     ['Tabs', '<Tabs>\n<Tab title="A">\n\n\t````md\nconst a = 1;\n\t````\n\n</Tab>\n</Tabs>'],
     ['CodeGroup', '<CodeGroup>\n\n\t~~~md\n<Card title="x" />\n\n\t~~~\n\n</CodeGroup>'],
