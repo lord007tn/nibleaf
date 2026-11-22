@@ -293,7 +293,7 @@ const interruptsParagraph = (content: string): boolean => {
  * or HTML block's container). Shared by the reader's MDX normalizer, heading
  * extraction and search sections, so all three agree on what is code.
  */
-const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
+const scanMarkdownLines = (lines: readonly string[], closers?: Set<number>): MarkdownLineKind[] => {
   let fence: MarkdownFence | undefined;
   let html: HtmlBlockEnd | undefined;
   const stack: ContainerStack = { items: [], quotes: [] };
@@ -359,13 +359,15 @@ const scanMarkdownLines = (lines: readonly string[]): MarkdownLineKind[] => {
     }
     return 'prose';
   };
-  return lines.map((line) => {
+  return lines.map((line, index) => {
     const continued = continuation(line, stack);
     const inside = continued.matched === stack.items.length;
     if (fence) {
       if (inside) {
-        if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, components > 0 ? Number.POSITIVE_INFINITY : 3))
+        if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, components > 0 ? Number.POSITIVE_INFINITY : 3)) {
           fence = undefined;
+          closers?.add(index);
+        }
         return 'code';
       }
       // The line leaves a container, which ends the fence; it starts afresh.
@@ -392,6 +394,14 @@ export type MarkdownLineKind = 'prose' | 'code' | 'html';
 /** Each line's kind, from the same single pass as `fencedMarkdownLines`: heading
  * extraction skips both code and HTML-block lines, as the reader renders them. */
 export const markdownLineKinds = (lines: readonly string[]): MarkdownLineKind[] => scanMarkdownLines(lines);
+
+/** `markdownLineKinds`, plus the lines that close a fence with a matching
+ * delimiter. A fence that ends by leaving its container, or at the end of the
+ * page, has no such line. */
+export const markdownFenceLines = (lines: readonly string[]): { kinds: MarkdownLineKind[]; closers: ReadonlySet<number> } => {
+  const closers = new Set<number>();
+  return { kinds: scanMarkdownLines(lines, closers), closers };
+};
 
 /** Whether each line belongs to fenced code (see `scanMarkdownLines`). */
 export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => scanMarkdownLines(lines).map((kind) => kind === 'code');

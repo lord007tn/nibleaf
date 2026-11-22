@@ -1,4 +1,4 @@
-import { closesMarkdownFence, type MarkdownFence, openingMarkdownFence } from './markdown-code';
+import { closesMarkdownFence, type MarkdownFence, type MarkdownLineKind, markdownFenceLines, openingMarkdownFence } from './markdown-code';
 
 /**
  * One tokenizer for authored MDX, shared by every public projection (#341).
@@ -300,33 +300,120 @@ const tokenizeProse = (source: string, components: ReadonlySet<string>, tokens: 
   flush(source.length);
 };
 
-/** Read authored MDX into tokens. Fences (backtick or tilde, any length, inside containers too)
- *  are found first, line by line; an unclosed fence runs to the end, as in CommonMark. */
+/** The export's fence protection, as main has always found it: each fence's first and last line.
+ *  Fences (backtick or tilde, any length) are read after any blockquote or list prefix, at any
+ *  indentation; an unclosed fence runs to the end, as in CommonMark. */
+const protectedFences = (lines: readonly string[]): Array<[start: number, end: number]> => {
+  const fences: Array<[number, number]> = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const fence = fenceOpening(lines[index] as string);
+    if (!fence) continue;
+    let end = index + 1;
+    while (end < lines.length && !fenceCloses(lines[end] as string, fence)) end += 1;
+    const last = Math.min(end, lines.length - 1);
+    fences.push([index, last]);
+    index = last;
+  }
+  return fences;
+};
+
+/** A complete callout alone on its line, with plain text the quoted form shows as it is: it starts
+ *  with a letter (no list marker or heading) and holds no markup, link, entity, brace or code. */
+const PLAIN_CALLOUT = /^<(Note|Info|Tip|Check|Warning|Danger)>(\p{L}[\p{L}\p{N} .,;:!?'"()-]*)<\/\1>$/u;
+const BLANK = /^[ \t]*$/;
+
+/**
+ * The lines inside the protection that export reads in the reader's form (#591): a plain-text
+ * callout the reader shows as a component, where main's fence ran on past a fence the reader
+ * closed with a matching delimiter. Main's fence must end in prose the reader reads as plain
+ * paragraphs (no code or HTML), and the callout needs a blank line before it and a blank line
+ * or the end after it, so the blocks around it stay as they were. Every other protected line
+ * keeps main's bytes. `readerLines` is only read when a candidate callout exists.
+ */
+const readerForms = (
+  lines: readonly string[],
+  fences: ReadonlyArray<readonly [number, number]>,
+  components: ReadonlySet<string>,
+  readerLines: () => ReturnType<typeof markdownFenceLines>,
+): Set<number> => {
+  const forms = new Set<number>();
+  let reader: ReturnType<typeof markdownFenceLines> | undefined;
+  for (const [start, end] of fences) {
+    const candidates: number[] = [];
+    for (let index = start + 1; index <= end; index += 1) {
+      const name = PLAIN_CALLOUT.exec(lines[index] as string)?.[1];
+      if (name && components.has(name.toLowerCase())) candidates.push(index);
+    }
+    if (candidates.length === 0) continue;
+    reader ??= readerLines();
+    const { kinds, closers } = reader;
+    // The reader's last non-prose line in main's fence must be its matched closer, with only
+    // reader code from main's opener down to it.
+    let closer = end;
+    while (closer >= start && kinds[closer] === 'prose') closer -= 1;
+    if (closer < start || !closers.has(closer)) continue;
+    if (kinds.slice(start, closer + 1).some((kind) => kind !== 'code')) continue;
+    for (const index of candidates)
+      if (index > closer + 1 && BLANK.test(lines[index - 1] as string) && (index === lines.length - 1 || BLANK.test(lines[index + 1] as string)))
+        forms.add(index);
+  }
+  return forms;
+};
+
+/** How each line reads (#591). `reader` is the published reader's kind for each line
+ *  (`markdownLineKinds`), which decides structure. `protected` marks the lines export keeps byte
+ *  for byte as fenced code: main's fence protection, less the callouts read in the reader's form. */
+export interface MdxLineRoles {
+  reader: MarkdownLineKind[];
+  protected: boolean[];
+}
+
+export const mdxLineRoles = (source: string, components: ReadonlySet<string>): MdxLineRoles => {
+  const lines = source.split('\n');
+  const reader = markdownFenceLines(lines);
+  const fences = protectedFences(lines);
+  const forms = readerForms(lines, fences, components, () => reader);
+  const protectedLines = lines.map(() => false);
+  for (const [start, end] of fences) for (let index = start; index <= end; index += 1) protectedLines[index] = !forms.has(index);
+  return { reader: reader.kinds, protected: protectedLines };
+};
+
+/** Read authored MDX into tokens. Protected fences become code first, line by line; the prose
+ *  between them, and any callout read in the reader's form, is tokenized after. */
 export const tokenizeMdx = (source: string, components: ReadonlySet<string>): MdxToken[] => {
   scanBudget = 64 * source.length + 65_536;
   const tokens: MdxToken[] = [];
   const lines = source.split('\n');
+  const fences = protectedFences(lines);
+  const forms = readerForms(lines, fences, components, () => markdownFenceLines(lines));
   let prose: string[] = [];
   const flushProse = (beforeFence: boolean) => {
     if (prose.length > 0) tokenizeProse(`${prose.join('\n')}${beforeFence ? '\n' : ''}`, components, tokens);
     prose = [];
   };
-  for (let index = 0; index < lines.length; index += 1) {
-    const line = lines[index] as string;
-    const fence = fenceOpening(line);
-    if (!fence) {
-      prose.push(line);
-      continue;
-    }
+  const pushCode = (from: number, to: number) => {
     flushProse(true);
-    let end = index + 1;
-    while (end < lines.length && !fenceCloses(lines[end] as string, fence)) end += 1;
-    const last = Math.min(end, lines.length - 1);
-    tokens.push({ kind: 'code', value: lines.slice(index, last + 1).join('\n'), block: true });
-    index = last;
-    // The line break after the fence belongs to the prose that follows.
-    if (index < lines.length - 1) prose.push('');
+    if (to >= from) tokens.push({ kind: 'code', value: lines.slice(from, to + 1).join('\n'), block: true });
+  };
+  let cursor = 0;
+  for (const [start, end] of fences) {
+    for (let index = cursor; index < start; index += 1) prose.push(lines[index] as string);
+    let from = start;
+    for (let index = start + 1; index <= end; index += 1) {
+      if (!forms.has(index)) continue;
+      // Code up to the line before the callout; the line break before it starts its prose.
+      pushCode(from, index - 1);
+      prose.push('', lines[index] as string);
+      from = index + 1;
+    }
+    if (from <= end) {
+      pushCode(from, end);
+      // The line break after the fence belongs to the prose that follows.
+      if (end < lines.length - 1) prose.push('');
+    }
+    cursor = end + 1;
   }
+  for (let index = cursor; index < lines.length; index += 1) prose.push(lines[index] as string);
   if (prose.length > 0) tokenizeProse(prose.join('\n'), components, tokens);
   return tokens;
 };
