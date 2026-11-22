@@ -133,6 +133,18 @@ describe.runIf(growthTestsEnabled)('publish facts on pages beyond the Markdown b
     ['complete and unfinished tags', (size: number) => `${'<a b="1" c=\'2\' d=e> <a b="'.repeat(20)}\n`.repeat(size / 20)],
     ['deep tags', (size: number) => `${'<div>\n'.repeat(size)}${'</div>\n'.repeat(size)}`],
     ['quotes and lists', (size: number) => `${'> - '.repeat(80)}x\n`.repeat(size / 40)],
+    // Round two of the review: emphasis over the lines of one paragraph (no blank line between them).
+    ['emphasis over many lines of one paragraph', (size: number) => `${'*a'.repeat(1000)}\n`.repeat(size / 100)],
+    // Too deep, then closing tags that match nothing open, so each one used to walk the whole stack.
+    [
+      'deep tags, then closing tags that match none',
+      (size: number) => `${'<span>'.repeat(65)}\n${`${'<span></i>'.repeat(100)}\n`.repeat(size / 50)}`,
+    ],
+    [
+      'open tags, then as many closing tags that match none',
+      (size: number) => `${`${'<span>'.repeat(100)}\n`.repeat(size / 100)}${`${'</i>'.repeat(100)}\n`.repeat(size / 100)}`,
+    ],
+    ['a one-line HTML table', (size: number) => `<table>${'<tr><td>a</td><td>b</td></tr>'.repeat(size / 2)}</table>\n`],
   ])('reads %s against the budget in linear time', (_name, shape) => {
     expect(shape(16_000).length).toBeLessThan(512 * 1024);
     // A new string each run: the budget remembers the last pages it read.

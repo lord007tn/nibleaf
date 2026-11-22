@@ -24,14 +24,17 @@ The reader shows a block of the page as plain text when it goes over one of
 these limits, and the rest of the page as usual.
 
 - 131,072 UTF-16 code units on one line.
-- 1,024 Markdown syntax markers on one line, such as `*`, `_`, `[`, `]` and
-  backticks. A table's delimiter row has no limit.
+- 1,024 Markdown syntax markers in one paragraph, however many lines it runs
+  over, such as `*`, `_`, `[`, `]` and backticks. A run such as `**` counts as
+  one. Each list item, heading and table row is a paragraph of its own, and a
+  table's delimiter row has no limit.
 - 64 levels of nesting: quotes, list markers and brackets on one line, or HTML
   elements and components inside each other. Void elements such as `<br>`, and
   elements whose end tag is optional, such as `<li>` and `<p>`, don't nest.
 
 Code blocks and inline code don't count toward any of them, so a generic type
-such as `Promise<User>` is fine. The block runs from the blank line before the
+such as `Promise<User>` is fine. Neither do HTML blocks, such as a table saved
+as one line of HTML, or the tags of inline HTML. The block runs from the blank line before the
 part over the limit to the blank line after it. A page over 512 KiB of UTF-8
 source shows entirely as plain text.
 

@@ -5006,7 +5006,7 @@
   "publish_checks_markdownlimithint": "Страницу всё равно можно опубликовать. Часть сверх ограничения читатели увидят как обычный текст, а остальную страницу — как обычно. Упростите эту часть или разделите страницу, чтобы вернуть её форматирование.",
   "publish_checks_markdownlimitpagebytes": "Размер исходного текста страницы: {size} КиБ (ограничение {limit} КиБ), поэтому вся страница показывается как обычный текст.",
   "publish_checks_markdownlimitlinecharacters": "Строка {line}: символов — {count} (ограничение {limit}).",
-  "publish_checks_markdownlimitsyntaxmarkers": "Строка {line}: знаков разметки Markdown — {count} (ограничение {limit}).",
+  "publish_checks_markdownlimitsyntaxmarkers": "Абзац, который начинается в строке {line}: знаков разметки Markdown — {count} (ограничение {limit}).",
   "publish_checks_markdownlimitnesting": "Строка {line}: уровней вложенности цитат, списков или скобок — {count} (ограничение {limit}).",
   "publish_checks_markdownlimitnestingtags": "Строка {line}: уровней вложенности тегов — {count} (ограничение {limit}).",
   "publish_checks_videoposterhidden": "Обложки видео с других сайтов",

@@ -49,7 +49,7 @@ describe('site structure checks in the publish dialog', () => {
     expect(text).toContain('Readers see the part over the limit as plain text and the rest of the page as usual.');
     expect(text).toContain('The page has 586 KiB of source text (limit 512 KiB), so all of it shows as plain text.');
     expect(text).toContain('Line 3 has 140,000 characters (limit 131,072).');
-    expect(text).toContain('Line 9 has 2,048 Markdown markers (limit 1,024).');
+    expect(text).toContain('The paragraph starting on line 9 has 2,048 Markdown markers (limit 1,024).');
     expect(text).toContain('Line 12 nests 70 levels of quotes, lists or brackets (limit 64).');
     expect(text).toContain('Line 412 nests 70 tags (limit 64).');
     expect(container.querySelector('a[href*="fix=markdown-parse-limit"]')).not.toBeNull();

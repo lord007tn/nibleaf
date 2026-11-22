@@ -4975,7 +4975,7 @@
   "publish_checks_markdownlimithint": "La page peut quand même être publiée. Les lecteurs voient la partie qui dépasse la limite en texte brut, et le reste de la page comme d’habitude. Simplifiez cette partie ou scindez la page pour rétablir sa mise en forme.",
   "publish_checks_markdownlimitpagebytes": "La page contient {size} Kio de texte source (limite {limit} Kio) : elle s’affiche donc entièrement en texte brut.",
   "publish_checks_markdownlimitlinecharacters": "La ligne {line} contient {count} caractères (limite {limit}).",
-  "publish_checks_markdownlimitsyntaxmarkers": "La ligne {line} contient {count} marqueurs Markdown (limite {limit}).",
+  "publish_checks_markdownlimitsyntaxmarkers": "Le paragraphe qui commence à la ligne {line} contient {count} marqueurs Markdown (limite {limit}).",
   "publish_checks_markdownlimitnesting": "La ligne {line} imbrique {count} niveaux de citations, de listes ou de crochets (limite {limit}).",
   "publish_checks_markdownlimitnestingtags": "La ligne {line} imbrique {count} balises (limite {limit}).",
   "publish_checks_videoposterhidden": "Images d’aperçu de vidéo provenant d’autres sites",

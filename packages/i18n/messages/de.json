@@ -4975,7 +4975,7 @@
   "publish_checks_markdownlimithint": "Die Seite kann trotzdem veröffentlicht werden. Leser sehen den Teil über dem Limit als Klartext und den Rest der Seite wie gewohnt. Vereinfachen Sie diesen Teil oder teilen Sie die Seite, um seine Formatierung wiederherzustellen.",
   "publish_checks_markdownlimitpagebytes": "Die Seite hat {size} KiB Quelltext (Limit {limit} KiB) und erscheint deshalb vollständig als Klartext.",
   "publish_checks_markdownlimitlinecharacters": "Zeile {line} hat {count} Zeichen (Limit {limit}).",
-  "publish_checks_markdownlimitsyntaxmarkers": "Zeile {line} hat {count} Markdown-Zeichen (Limit {limit}).",
+  "publish_checks_markdownlimitsyntaxmarkers": "Der Absatz ab Zeile {line} hat {count} Markdown-Zeichen (Limit {limit}).",
   "publish_checks_markdownlimitnesting": "Zeile {line} verschachtelt Zitate, Listen oder Klammern {count} Ebenen tief (Limit {limit}).",
   "publish_checks_markdownlimitnestingtags": "Zeile {line} verschachtelt {count} Tags (Limit {limit}).",
   "publish_checks_videoposterhidden": "Video-Vorschaubilder von anderen Websites",

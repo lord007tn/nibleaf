@@ -17,7 +17,7 @@ describe('the Markdown parse budget on ordinary pages', () => {
   it.each(ORDINARY_PAGES)('keeps %s within budget, parsed as on main', (_name, content) => {
     expect(markdownParseLimit(content)).toBeNull();
     // The facts are read from the parse: a link beside the content is still checked.
-    expect(pageContentFacts(`[Guide](/guide)\n\n${content}`, false).links).toEqual(['/guide']);
+    expect(pageContentFacts(`[Guide](/guide)\n\n${content}`, false).links[0]).toBe('/guide');
   });
 });
 

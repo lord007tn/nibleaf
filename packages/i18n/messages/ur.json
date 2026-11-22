@@ -4966,7 +4966,7 @@
   "publish_checks_markdownlimithint": "صفحہ پھر بھی شائع ہو سکتا ہے۔ حد سے زیادہ والا حصہ قارئین کو سادہ متن میں دکھائی دیتا ہے، اور صفحے کا باقی حصہ معمول کے مطابق۔ اس کی فارمیٹنگ بحال کرنے کے لیے اس حصے کو آسان کریں، یا صفحہ تقسیم کریں۔",
   "publish_checks_markdownlimitpagebytes": "صفحے کے اصل متن کا سائز: {size} KiB (حد {limit} KiB)، اس لیے پورا صفحہ سادہ متن میں دکھائی دیتا ہے۔",
   "publish_checks_markdownlimitlinecharacters": "سطر {line}: حروف کی تعداد {count} (حد {limit})۔",
-  "publish_checks_markdownlimitsyntaxmarkers": "سطر {line}: Markdown علامات کی تعداد {count} (حد {limit})۔",
+  "publish_checks_markdownlimitsyntaxmarkers": "سطر {line} سے شروع ہونے والا پیراگراف: Markdown علامات کی تعداد {count} (حد {limit})۔",
   "publish_checks_markdownlimitnesting": "سطر {line}: اقتباس، فہرست یا قوسین کی نیسٹنگ کے درجے {count} (حد {limit})۔",
   "publish_checks_markdownlimitnestingtags": "سطر {line}: ٹیگز کی نیسٹنگ کے درجے {count} (حد {limit})۔",
   "publish_checks_videoposterhidden": "دوسری سائٹوں کے ویڈیو پوسٹر",

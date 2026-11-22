@@ -293,14 +293,20 @@ const interruptsParagraph = (content: string): boolean => {
  * or HTML block's container). Shared by the reader's MDX normalizer, heading
  * extraction and search sections, so all three agree on what is code.
  */
-const scanMarkdownLines = (lines: readonly string[], indentedCode = false): MarkdownBlockLineKind[] => {
+const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts?: MarkdownLineFacts[]): MarkdownBlockLineKind[] => {
   let fence: MarkdownFence | undefined;
+  // What `read` learns of the current line, for `facts`.
+  let continues = false;
+  let lazy = false;
+  let content: LineCursor = { index: 0, column: 0, spare: 0 };
   let html: HtmlBlockEnd | undefined;
   const stack: ContainerStack = { items: [], quotes: [] };
   let paragraph = false;
   let components = 0;
   let pendingOpener = false;
   const read = (line: string, continued: Continuation): MarkdownBlockLineKind => {
+    const wasParagraph = paragraph;
+    content = continued.cursor;
     if (continued.blank) {
       closeContainers(stack, continued.matched);
       paragraph = false;
@@ -308,25 +314,36 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false): Mark
     }
     if (continued.matched < stack.items.length) {
       // A paragraph line may continue lazily without its containers' prefixes.
-      if (paragraph && !interruptsParagraph(contentAt(line, continued.cursor))) return 'prose';
+      if (paragraph && !interruptsParagraph(contentAt(line, continued.cursor))) {
+        continues = true;
+        lazy = true;
+        return 'prose';
+      }
       // Otherwise the paragraph closes with its container: what follows (a
       // sibling item, say) does not interrupt it.
       closeContainers(stack, continued.matched);
       paragraph = false;
     }
+    const open = stack.items.length;
     const cursor = openContainers(line, continued.cursor, stack, components > 0, paragraph);
-    const content = contentAt(line, cursor);
-    const text = content.trim();
+    content = cursor;
+    // Nothing opened and the paragraph still open: the line continues it.
+    const continuing = wasParagraph && stack.items.length === open;
+    const body = contentAt(line, cursor);
+    const text = body.trim();
     if (!text) {
       paragraph = false;
       return 'prose';
     }
-    const indent = content.length - content.trimStart().length;
+    const indent = body.length - body.trimStart().length;
     // Indented 4 or more columns past its containers: indented code, or a lazy
     // paragraph line, but never a fence (except inside a component).
     // Outside a paragraph that is indented code (CommonMark: it can't interrupt one).
-    if (components === 0 && indent >= 4) return indentedCode && !paragraph ? 'indented' : 'prose';
-    const opening = openingMarkdownFence(content, components > 0 ? Number.POSITIVE_INFINITY : 3);
+    if (components === 0 && indent >= 4) {
+      continues = continuing && paragraph;
+      return indentedCode && !paragraph ? 'indented' : 'prose';
+    }
+    const opening = openingMarkdownFence(body, components > 0 ? Number.POSITIVE_INFINITY : 3);
     if (opening) {
       fence = opening;
       paragraph = false;
@@ -346,6 +363,7 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false): Mark
     // following lazy line still continues the paragraph. MDX component tags are not.
     if (text.startsWith('<') && !COMPONENT_OPENER.test(text) && !COMPONENT_CLOSER.test(text)) paragraph = true;
     else paragraph = paragraph && SETEXT_UNDERLINE.test(text) ? false : !NOT_PARAGRAPH.test(text);
+    continues = continuing && paragraph;
     // MDX component depth: the indentation exception applies inside one.
     if (pendingOpener && text.includes('>')) {
       pendingOpener = false;
@@ -360,8 +378,16 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false): Mark
     }
     return 'prose';
   };
-  return lines.map((line) => {
+  return lines.map((line, index) => {
+    continues = false;
+    lazy = false;
+    const kind = readLine(line);
+    if (facts) facts[index] = { continues, lazy, depth: stack.items.length, content: content.index, indent: content.spare };
+    return kind;
+  });
+  function readLine(line: string): MarkdownBlockLineKind {
     const continued = continuation(line, stack);
+    content = continued.cursor;
     const inside = continued.matched === stack.items.length;
     if (fence) {
       if (inside) {
@@ -383,7 +409,7 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false): Mark
       html = undefined;
     }
     return read(line, continued);
-  });
+  }
 };
 
 /** What a line is to CommonMark: `code` (a fence or its body), `html` (a line of an
@@ -396,8 +422,26 @@ export type MarkdownBlockLineKind = MarkdownLineKind | 'indented';
  * extraction skips both code and HTML-block lines, as the reader renders them. */
 export const markdownLineKinds = (lines: readonly string[]): MarkdownLineKind[] => scanMarkdownLines(lines) as MarkdownLineKind[];
 
-/** Each line's kind with indented code told apart: what the parse budget skips as code. */
-export const markdownBlockLineKinds = (lines: readonly string[]): MarkdownBlockLineKind[] => scanMarkdownLines(lines, true);
+/** What the parse budget reads of each line besides its kind (`markdownBudgetLines`). */
+export interface MarkdownLineFacts {
+  /** A paragraph line that continues the paragraph of the line before: CommonMark reads their inline content together. */
+  continues: boolean;
+  /** It continues that paragraph lazily, without all of its containers' prefixes. */
+  lazy: boolean;
+  /** How many quotes and list items the line is in. */
+  depth: number;
+  /** Where its text starts past its containers' prefixes, as an index into the line… */
+  content: number;
+  /** …after this many columns of a tab left over from them. */
+  indent: number;
+}
+
+/** Each line's kind, with indented code told apart (the parse budget skips it as
+ * code), and the facts the budget groups lines into paragraphs and tables by. */
+export const markdownBudgetLines = (lines: readonly string[]): { kinds: MarkdownBlockLineKind[]; facts: MarkdownLineFacts[] } => {
+  const facts: MarkdownLineFacts[] = [];
+  return { kinds: scanMarkdownLines(lines, true, facts), facts };
+};
 
 /** Whether each line belongs to fenced code (see `scanMarkdownLines`). */
 export const fencedMarkdownLines = (lines: readonly string[]): boolean[] => scanMarkdownLines(lines).map((kind) => kind === 'code');

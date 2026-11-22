@@ -92,7 +92,8 @@ describe('markdownParseBudget', () => {
   it('fences only the block over budget, from blank line to blank line, and names its first line', () => {
     const source = ['# Guide', '', 'Intro.', '', 'Lead-in line', dense, 'tail line', '', '## After', '', 'Done.'].join('\n');
     const budget = markdownParseBudget(source);
-    expect(budget.overflow).toEqual({ limit: 'syntaxMarkers', line: 6, amount: 1200 });
+    // Markers count per paragraph, named by its first line.
+    expect(budget.overflow).toEqual({ limit: 'syntaxMarkers', line: 5, amount: 1200 });
     expect(budget.whole).toBe(false);
     expect(budget.regions).toEqual([[4, 6]]);
     expect(budget.content).toBe(
@@ -141,15 +142,24 @@ describe('markdownParseBudget', () => {
     expect(markdownParseBudget(`Before\n\n    ${dense}`).overflow).toBeNull();
     expect(markdownParseBudget(`\`${dense}\``).overflow).toBeNull();
     // Four spaces continuing a paragraph are prose, not indented code.
-    expect(markdownParseBudget(`Before\n    ${dense}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 2 });
-    // A backtick left open on an earlier line pairs across lines: the span here may not be code.
-    expect(markdownParseBudget(`Open \`\n\` ${dense} \`x\``).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 2 });
-    // A table splits cells before code spans, and an escaped backtick opens nothing.
-    expect(markdownParseBudget(`| \`a | ${dense} | b\` |`).overflow).toMatchObject({ limit: 'syntaxMarkers' });
+    expect(markdownParseBudget(`Before\n    ${dense}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
+    // A code span pairs across the lines of its paragraph: here it closes on the next line, before the markers.
+    expect(markdownParseBudget(`Open \`\n\` ${dense} \`x\``).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
+    expect(markdownParseBudget(`Open \`code\n${dense} code\``).overflow).toBeNull();
+    // A table splits cells before code spans (an escaped pipe doesn't), and an escaped backtick opens nothing.
+    const head = '| h | h | h |\n| - | - | - |\n';
+    expect(markdownParseBudget(`${head}| \`a | ${dense} | b\` |`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 3 });
+    expect(markdownParseBudget(`${head}| \`a \\| ${dense} \\| b\` | c |`).overflow).toBeNull();
+    // Outside a table a pipe is text, and a span holding one is code.
+    expect(markdownParseBudget(`| \`a | ${dense} | b\` |`).overflow).toBeNull();
+    // A paragraph that might hold a table this scan doesn't recognise (here the cell counts differ) reads such a span as text.
+    expect(markdownParseBudget(`| a | b |\n| - |\n| \`a | ${dense} | b\` |`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
     expect(markdownParseBudget(`\\\`${dense}\``).overflow).toMatchObject({ limit: 'syntaxMarkers' });
     // Raw HTML binds before code: a backtick in an attribute is not a span.
     expect(markdownParseBudget(`<a title="\`">${dense}\``).overflow).toMatchObject({ limit: 'syntaxMarkers' });
-    expect(markdownParseBudget(`<!-- \` -->${dense}\``).overflow).toMatchObject({ limit: 'syntaxMarkers' });
+    expect(markdownParseBudget(`Text <!-- \` -->${dense}\``).overflow).toMatchObject({ limit: 'syntaxMarkers' });
+    // A line that starts an HTML block is raw HTML, not Markdown: none of it counts.
+    expect(markdownParseBudget(`<!-- \` -->${dense}\``).overflow).toBeNull();
   });
 
   it('counts only real elements: HTML, registry components and tags closed on the page', () => {
@@ -160,6 +170,59 @@ describe('markdownParseBudget', () => {
     expect(markdownParseBudget(open('<Note>')).overflow).toMatchObject({ limit: 'nesting', nesting: 'tags' });
     expect(markdownParseBudget(`${open('<Custom>')}${'</Custom>\n'.repeat(65)}`).overflow).toMatchObject({ limit: 'nesting', nesting: 'tags' });
     expect(markdownParseBudget(open('<span/>')).overflow).toBeNull();
+  });
+
+  it('counts markers per paragraph, however many lines it runs over', () => {
+    const half = '*a'.repeat(600);
+    // The review's shape: lines of markers with no blank line between them are one paragraph.
+    const lines = Array.from({ length: 4 }, () => half).join('\n');
+    expect(markdownParseBudget(`Intro.\n\n${lines}\n\nAfter.`)).toMatchObject({
+      overflow: { limit: 'syntaxMarkers', line: 3, amount: 2400 },
+      regions: [[2, 5]],
+    });
+    // An ordered item other than 1 can't interrupt a paragraph, and a lazy line continues one.
+    expect(markdownParseBudget(`${half}\n2. ${half}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
+    expect(markdownParseBudget(`> ${half}\n${half}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
+    // A setext underline the item can't take is text of the paragraph: the next line continues it.
+    expect(markdownParseBudget(`- ${half}\n===\n${half}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
+    // Each list item, heading and table row is its own paragraph.
+    expect(markdownParseBudget(`- ${half}\n- ${half}\n  - ${half}\n2. ${half}`).overflow).toBeNull();
+    expect(markdownParseBudget(`# ${half}\n${half}\n## ${half}`).overflow).toBeNull();
+    expect(markdownParseBudget(`${half}\n| a | b |\n| - | - |\n| ${half} | x |\n| ${half} | y |`).overflow).toBeNull();
+  });
+
+  it('ends a table where GFM ends it, and reads what follows as a paragraph', () => {
+    const half = '*a'.repeat(600);
+    // A lazy line can't continue a table in a quote: it starts a paragraph.
+    expect(markdownParseBudget(`> | a | b |\n> | - | - |\n> | c | d |\n${half}\n${half}`).overflow).toMatchObject({
+      limit: 'syntaxMarkers',
+      line: 4,
+    });
+    // A header and delimiter row with different cell counts make no table.
+    expect(markdownParseBudget(`| a | b |\n| - |\n| ${half} |\n| ${half} |`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
+    // GFM ends a table at indented code, an ordered item or a footnote, though each reads like a paragraph line.
+    for (const ender of ['    | c |', '2. x', '[^1]: note'])
+      expect(markdownParseBudget(`| a |\n|-|\n| b |\n${ender}\n| ${half} |\n| ${half} |`).overflow, ender).toMatchObject({
+        limit: 'syntaxMarkers',
+        line: 4,
+      });
+    // `- | -` starts a list item, not a delimiter row.
+    expect(markdownParseBudget(`a | b\n- | -\n${half} | x\n${half} | y`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 2 });
+  });
+
+  it('counts an emphasis run as the elements it can make, and raw HTML as no markers', () => {
+    expect(markdownParseBudget('**bold** '.repeat(512)).overflow).toBeNull();
+    expect(markdownParseBudget('**bold** '.repeat(513)).overflow).toMatchObject({ limit: 'syntaxMarkers', amount: 1026 });
+    expect(markdownParseBudget(`Text ${'<span>a</span>'.repeat(2000)}`).overflow).toBeNull();
+  });
+
+  it('never takes an authored fence for a plain-text region', () => {
+    const over = '*a* '.repeat(600);
+    const authored = '```nibleaf-plain\ncode\n```\n\n```nibleaf-plain-7\nmore\n```';
+    const budget = markdownParseBudget(`${authored}\n\n${over}`);
+    expect(budget.plainLanguage).toBe('nibleaf-plain-8');
+    expect(budget.content).toBe(`${authored}\n\n\`\`\`nibleaf-plain-8\n${over}\n\`\`\``);
+    expect(markdownParseBudget(over).plainLanguage).toBe(MARKDOWN_PLAIN_LANGUAGE);
   });
 
   it('lets long prose lines and table delimiter rows through', () => {

@@ -4976,7 +4976,7 @@
   "publish_checks_markdownlimithint": "A página ainda pode ser publicada. Os leitores veem a parte acima do limite como texto simples e o restante da página normalmente. Simplifique essa parte, ou divida a página, para restaurar a formatação dela.",
   "publish_checks_markdownlimitpagebytes": "A página tem {size} KiB de texto-fonte (limite de {limit} KiB), por isso é exibida inteira como texto simples.",
   "publish_checks_markdownlimitlinecharacters": "A linha {line} tem {count} caracteres (limite de {limit}).",
-  "publish_checks_markdownlimitsyntaxmarkers": "A linha {line} tem {count} marcadores de Markdown (limite de {limit}).",
+  "publish_checks_markdownlimitsyntaxmarkers": "O parágrafo que começa na linha {line} tem {count} marcadores de Markdown (limite de {limit}).",
   "publish_checks_markdownlimitnesting": "A linha {line} aninha {count} níveis de citações, listas ou colchetes (limite de {limit}).",
   "publish_checks_markdownlimitnestingtags": "A linha {line} aninha {count} tags (limite de {limit}).",
   "publish_checks_videoposterhidden": "Capas de vídeo de outros sites",

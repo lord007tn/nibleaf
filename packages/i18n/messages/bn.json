@@ -4909,7 +4909,7 @@
   "publish_checks_markdownlimithint": "পৃষ্ঠাটি তবুও প্রকাশ করা যাবে। সীমা ছাড়ানো অংশটি পাঠকেরা সাধারণ টেক্সট হিসেবে দেখবেন, আর পৃষ্ঠার বাকি অংশ স্বাভাবিকভাবে। ফরম্যাটিং ফিরিয়ে আনতে ওই অংশটি সরল করুন, বা পৃষ্ঠাটি ভাগ করুন।",
   "publish_checks_markdownlimitpagebytes": "পৃষ্ঠার মূল টেক্সটের আকার: {size} KiB (সীমা {limit} KiB), তাই পুরো পৃষ্ঠা সাধারণ টেক্সট হিসেবে দেখাবে।",
   "publish_checks_markdownlimitlinecharacters": "লাইন {line}: অক্ষরের সংখ্যা {count} (সীমা {limit})।",
-  "publish_checks_markdownlimitsyntaxmarkers": "লাইন {line}: Markdown চিহ্নের সংখ্যা {count} (সীমা {limit})।",
+  "publish_checks_markdownlimitsyntaxmarkers": "লাইন {line} থেকে শুরু হওয়া অনুচ্ছেদ: Markdown চিহ্নের সংখ্যা {count} (সীমা {limit})।",
   "publish_checks_markdownlimitnesting": "লাইন {line}: উদ্ধৃতি, তালিকা বা বন্ধনীর নেস্টিং স্তর {count} (সীমা {limit})।",
   "publish_checks_markdownlimitnestingtags": "লাইন {line}: ট্যাগের নেস্টিং স্তর {count} (সীমা {limit})।",
   "publish_checks_videoposterhidden": "অন্য সাইটের ভিডিও পোস্টার",

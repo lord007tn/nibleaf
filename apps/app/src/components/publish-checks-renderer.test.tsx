@@ -34,7 +34,7 @@ it('shows only the block over budget as plain text, renders the rest, and warns 
   const site = snapshot([page({ path: 'start', content })]);
   expect(pageContentFacts(content).links).toEqual(['/missing', '/after']);
   expect(collectPublishChecks(site)).toEqual(
-    expect.arrayContaining([expect.objectContaining({ code: 'markdown-parse-limit', severity: 'warning', detail: 'syntaxMarkers:6:1200' })]),
+    expect.arrayContaining([expect.objectContaining({ code: 'markdown-parse-limit', severity: 'warning', detail: 'syntaxMarkers:5:1202' })]),
   );
   expect(
     collectPublishIssues(site)
@@ -45,6 +45,17 @@ it('shows only the block over budget as plain text, renders the rest, and warns 
     'Link to "/missing" does not match any page.',
     'Link to "/after" does not match any page.',
   ]);
+});
+
+it('draws an authored `nibleaf-plain` fence as code, beside a region over budget', () => {
+  const over = '*a* '.repeat(600);
+  const content = `\`\`\`nibleaf-plain\nconst authored = true;\n\`\`\`\n\n${over}`;
+  for (const Renderer of [Markdown, RichMarkdown]) {
+    const { document } = parseHTML(renderToStaticMarkup(<Renderer content={content} />));
+    expect(document.querySelectorAll('[data-markdown-plain]')).toHaveLength(1);
+    expect(document.querySelector('[data-markdown-plain]')?.textContent).toBe(over);
+    expect(document.querySelector('pre code')?.textContent).toContain('const authored = true;');
+  }
 });
 
 it.each(ORDINARY_PAGES)('renders %s richly, from the same source main renders', (_name, content) => {
