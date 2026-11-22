@@ -1,0 +1,128 @@
+{
+  "baseline": "f485d6217aae0f2ab7d8c300e1edb37b2459dbcb",
+  "head": "43946ef17632a15cff576818d775e37a66c22008",
+  "fixture": "production editor canvas; mocked router and page lookup hooks",
+  "outsideNetworkAttempts": 0,
+  "results": [
+    {
+      "phase": "before",
+      "scenario": "rows",
+      "locale": "en",
+      "width": 1440,
+      "step": "selected",
+      "shot": "selected-before-en-1440.png",
+      "names": ["index.ts", "util.ts"],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "before",
+      "scenario": "rows",
+      "locale": "en",
+      "width": 1440,
+      "step": "cut",
+      "shot": "cut-before-en-1440.png",
+      "names": ["util.ts"],
+      "markdown": "<FileTree>\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "before",
+      "scenario": "rows",
+      "locale": "en",
+      "width": 1440,
+      "step": "pasted",
+      "shot": "pasted-before-en-1440.png",
+      "names": ["", "index.ts", "util.ts"],
+      "markdown": "<FileTree>\n\n<File />\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "before",
+      "scenario": "rows",
+      "locale": "ar",
+      "width": 390,
+      "step": "selected",
+      "shot": "selected-before-ar-390.png",
+      "names": ["index.ts", "util.ts"],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "before",
+      "scenario": "rows",
+      "locale": "ar",
+      "width": 390,
+      "step": "cut",
+      "shot": "cut-before-ar-390.png",
+      "names": ["util.ts"],
+      "markdown": "<FileTree>\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "before",
+      "scenario": "rows",
+      "locale": "ar",
+      "width": 390,
+      "step": "pasted",
+      "shot": "pasted-before-ar-390.png",
+      "names": ["", "index.ts", "util.ts"],
+      "markdown": "<FileTree>\n\n<File />\n\n<File name=\"index.ts\" />\n\n<File name=\"util.ts\" />\n\n</FileTree>"
+    },
+    {
+      "phase": "before",
+      "scenario": "rule",
+      "locale": "en",
+      "width": 1440,
+      "step": "selected",
+      "shot": "rule-selected-before-en-1440.png",
+      "names": ["index.ts"],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n</FileTree>\n\n---\n\ntail"
+    },
+    {
+      "phase": "before",
+      "scenario": "rule",
+      "locale": "en",
+      "width": 1440,
+      "step": "cut",
+      "shot": "rule-cut-before-en-1440.png",
+      "names": [],
+      "markdown": "---\n\ntail"
+    },
+    {
+      "phase": "before",
+      "scenario": "rule",
+      "locale": "en",
+      "width": 1440,
+      "step": "pasted",
+      "shot": "rule-pasted-before-en-1440.png",
+      "names": ["index.ts"],
+      "markdown": "<File name=\"index.ts\" />\n\ntail"
+    },
+    {
+      "phase": "before",
+      "scenario": "rule",
+      "locale": "ar",
+      "width": 390,
+      "step": "selected",
+      "shot": "rule-selected-before-ar-390.png",
+      "names": ["index.ts"],
+      "markdown": "<FileTree>\n\n<File name=\"index.ts\" />\n\n</FileTree>\n\n---\n\ntail"
+    },
+    {
+      "phase": "before",
+      "scenario": "rule",
+      "locale": "ar",
+      "width": 390,
+      "step": "cut",
+      "shot": "rule-cut-before-ar-390.png",
+      "names": [],
+      "markdown": "---\n\ntail"
+    },
+    {
+      "phase": "before",
+      "scenario": "rule",
+      "locale": "ar",
+      "width": 390,
+      "step": "pasted",
+      "shot": "rule-pasted-before-ar-390.png",
+      "names": ["index.ts"],
+      "markdown": "<File name=\"index.ts\" />\n\ntail"
+    }
+  ]
+}

@@ -1713,6 +1713,7 @@
   "settings_git_workflow_loaderrorhint": "Try again or check the server connection.",
   "settings_git_workflow_connected": "GitHub connection saved.",
   "settings_git_workflow_connecterror": "Could not connect GitHub.",
+  "settings_git_workflow_savedelsewhere": "Someone else saved these settings after you opened them. Their changes are shown now. Check them, then save again.",
   "settings_git_workflow_disconnected": "GitHub disconnected and encrypted credentials removed.",
   "settings_git_workflow_disconnecterror": "Could not disconnect GitHub.",
   "settings_git_workflow_operationerror": "Could not queue Git operation.",

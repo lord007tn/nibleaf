@@ -1637,6 +1637,7 @@
   "settings_git_workflow_loaderrorhint": "আবার চেষ্টা করুন বা সার্ভার সংযোগ পরীক্ষা করুন.",
   "settings_git_workflow_connected": "GitHub সংযোগ সংরক্ষিত হয়েছে৷",
   "settings_git_workflow_connecterror": "GitHub সংযোগ করা যায়নি।",
+  "settings_git_workflow_savedelsewhere": "আপনি খোলার পরে অন্য কেউ এই সেটিংস সংরক্ষণ করেছেন। তাদের পরিবর্তনগুলো এখন দেখানো হচ্ছে। সেগুলো দেখে আবার সংরক্ষণ করুন।",
   "settings_git_workflow_disconnected": "GitHub সংযোগ বিচ্ছিন্ন এবং এনক্রিপ্ট করা শংসাপত্র সরানো হয়েছে৷",
   "settings_git_workflow_disconnecterror": "GitHub সংযোগ বিচ্ছিন্ন করা যায়নি।",
   "settings_git_workflow_operationerror": "গিট অপারেশন সারি করা যায়নি।",

@@ -349,4 +349,56 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git connection sav
     expect((await request(other.project.id, 'fictional/forbidden')).status).toBe(404);
     expect(await read(other.project.id)).toEqual(before);
   });
+
+  it("refuses session A's form loaded before session B's committed save (#876), keeping all of B's state, then saves once A has B's revision", async () => {
+    const setup = await fixture();
+    const name = `fictional-lane876-user-${randomUUID()}`;
+    const user = await db.prisma.user.create({ data: { name, email: `${name}@example.invalid` } });
+    users.push(user.id);
+    await db.prisma.member.create({ data: { userId: user.id, organizationId: setup.project.organizationId, role: 'admin' } });
+    const app = routeFor(user);
+    const put = (body: Record<string, unknown>) =>
+      app.request(`/projects/${setup.project.id}/git/connection`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    // Both sessions loaded the connection at revision 1.
+    expect((await read(setup.project.id)).settingsRevision).toBe(1);
+    // B rotates the token and moves the content path; its save commits before A's request starts.
+    const fromB = await put({ ...input('fictional/original'), contentPath: 'moved-by-b', token: replacement, expectedRevision: 1 });
+    expect(fromB.status).toBe(200);
+    const afterB = await read(setup.project.id);
+    expect(afterB).toMatchObject({ contentPath: 'moved-by-b', settingsRevision: 2 });
+    // A changes only the authoring branch; its form still holds the old path and revision 1.
+    const fromA = await put({ ...input('fictional/original'), headBranch: 'nibleaf/from-a', contentPath: 'docs', expectedRevision: 1 });
+    expect(fromA.status).toBe(409);
+    expect(await fromA.json()).toEqual({
+      error: { code: 'database:conflict', message: 'The repository connection changed. Refresh and save again.' },
+    });
+    // B's settings, credential, secret, ledger and audit are exactly as B left them.
+    expect(await read(setup.project.id)).toEqual(afterB);
+    expect(crypto.decryptGitSecret(afterB.credentialEncrypted ?? '') === replacement).toBe(true);
+    expect(afterB.webhookSecretEncrypted === setup.connection?.webhookSecretEncrypted).toBe(true);
+    expect(afterB.auditEvents.map((event) => event.action)).toEqual(['connection.updated']);
+    // Once A's form shows B's save, its save goes through on top of it.
+    const retried = await put({ ...input('fictional/original'), headBranch: 'nibleaf/from-a', contentPath: 'moved-by-b', expectedRevision: 2 });
+    expect(retried.status).toBe(200);
+    const body = (await retried.json()) as { data: { connection: Record<string, unknown>; webhookSecret: string | null } };
+    expect(body.data.connection).toMatchObject({
+      headBranch: 'nibleaf/from-a',
+      contentPath: 'moved-by-b',
+      settingsRevision: 3,
+      credentialConfigured: true,
+    });
+    expect(body.data.connection).not.toHaveProperty('credentialEncrypted');
+    expect(body.data.connection).not.toHaveProperty('webhookSecretEncrypted');
+    expect(body.data.webhookSecret).toBeNull();
+    const final = await read(setup.project.id);
+    expect(crypto.decryptGitSecret(final.credentialEncrypted ?? '') === replacement).toBe(true);
+    expect(final.webhookSecretEncrypted === setup.connection?.webhookSecretEncrypted).toBe(true);
+    // A sync-status write is not a settings save: it leaves the revision alone.
+    await db.prisma.gitConnection.update({ where: { projectId: setup.project.id }, data: { lastSyncStatus: 'RUNNING' } });
+    expect((await read(setup.project.id)).settingsRevision).toBe(3);
+  });
 });

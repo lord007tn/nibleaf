@@ -174,6 +174,9 @@ export function annotateFences<T extends MarkdownToken>(state: MarkdownCoreState
         if (list) list.lead = true;
       }
     }
+    if (token.type === 'code_block' && token.map && containers.length === 1 && containers[0]?.quote && lines[token.map[0]]?.startsWith('>\t\t')) {
+      token.attrSet('data-mdx-fence-quote-tab', 'indented');
+    }
     tokens.push(token);
   }
   state.tokens = tokens;
@@ -195,6 +198,25 @@ function annotateFence(token: MarkdownToken, lines: readonly string[], container
   const last = closed ? end - 1 : end;
   const open = (withoutContainers(lines[first] ?? '', first, containers) as LineRest).text;
   const close = closed ? (withoutContainers(lines[last] ?? '', last, containers) as LineRest).text : '';
+  if (containers.at(-1)?.quote && !/^[ \t]/.test(open) && token.content.includes('\t')) {
+    const body = token.content.split('\n');
+    let changed = false;
+    for (let line = first + 1; line < last; line++) {
+      const raw = lines[line] ?? '';
+      const index = line - first - 1;
+      const code = body[index];
+      if (!code?.startsWith('\t') || !raw.includes('>\t') || code !== codeLine(raw, containers, 0, true)) continue;
+      const canonical = codeLine(raw, containers, 0);
+      if (canonical !== null && canonical !== code) {
+        body[index] = canonical;
+        changed = true;
+      }
+    }
+    if (changed) {
+      token.content = body.join('\n');
+      token.attrSet('data-mdx-fence-quote-tab', 'expanded');
+    }
+  }
   const language = token.info.trim().split(/\s+/, 1)[0] ?? '';
   // What follows an unclosed fence at the end of the page, when it is only
   // whitespace: the page's last line break, and whitespace lines markdown-it reads
@@ -282,15 +304,14 @@ function serializedContainers(delim: string, first: string): FenceContainer[] | 
 const nonSpace = (text: string): string => text.replaceAll(' ', '').replaceAll('\t', '');
 
 /**
- * The code markdown-it reads from a fence's body line: what is left after the
- * containers and the fence's own indent. When the fence sits right at a quote's
- * content, with no indent to take off, markdown-it keeps a tab after `>` as
- * written unless that tab is one column wide (its blockquote rule); CommonMark
- * reads the tab's other columns as spaces. Null when the line lacks a prefix.
+ * The reader's code text after the containers and the fence's own indent.
+ * The legacy mode detects markdown-it's literal tab after a quote marker,
+ * before the editor projects it to the partly consumed tab's remaining spaces.
+ * Null when the line lacks a prefix.
  */
-function codeLine(line: string, containers: readonly FenceContainer[], indent: number): string | null {
+function codeLine(line: string, containers: readonly FenceContainer[], indent: number, legacyQuoteTab = false): string | null {
   const innermost = containers[containers.length - 1];
-  if (indent > 0 || !innermost?.quote) {
+  if (!legacyQuoteTab || indent > 0 || !innermost?.quote) {
     const rest = withoutContainers(line, 1, containers, true);
     return rest && advanceTo(rest, rest.column + indent, false).text;
   }
@@ -327,7 +348,8 @@ function sourceLinesFor(node: PMNode, open: string, delim: string, first: string
   const opening = read(lines[0] ?? '', first ? 0 : 1);
   if (opening?.text !== open || nonSpace(lines[0] ?? '') !== nonSpace(first || delim) + nonSpace(open)) return null;
   if (closing && read(lines[lines.length - 1] ?? '', 1)?.text !== close) return null;
-  for (const [index, text] of code.entries()) if (codeLine(lines[index + 1] ?? '', containers, indent) !== text) return null;
+  const legacyQuoteTab = node.attrs.sourceFenceQuoteTab !== 'expanded';
+  for (const [index, text] of code.entries()) if (codeLine(lines[index + 1] ?? '', containers, indent, legacyQuoteTab) !== text) return null;
   return lines;
 }
 

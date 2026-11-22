@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { logger } from '@nibleaf/logger';
 import { type CalloutType, normalizeType } from '@nibleaf/shared/callouts';
@@ -107,6 +108,31 @@ const marked = new Marked({
   },
 });
 
+function renderPortablePage(page: SnapshotPage): string {
+  const codeByToken = new Map<string, string>();
+  let prefix = '';
+  const markdown = portablePublicMdxMarkdown(page.content, { pageId: page.id, onLiteralFallback }, (code) => {
+    prefix ||= `nibleaf-quoted-code-${randomUUID()}`;
+    const token = `${prefix}-${codeByToken.size}`;
+    codeByToken.set(token, code);
+    return token;
+  });
+  if (codeByToken.size === 0) return String(marked.parse(markdown));
+  return String(
+    marked.parse(markdown, {
+      walkTokens(token) {
+        marked.defaults.walkTokens?.(token);
+        if (token.type !== 'code') return;
+        const code = codeByToken.get(token.text);
+        if (code !== undefined) {
+          token.text = code;
+          token.escaped = false;
+        }
+      },
+    }),
+  );
+}
+
 const versionFor = (snapshot: SiteSnapshot, page: SnapshotPage) => snapshot.project.versions.find((version) => version.id === page.versionId);
 const outputPath = (snapshot: SiteSnapshot, page: SnapshotPage): string =>
   `${safeSegment(versionFor(snapshot, page)?.slug ?? 'main')}/${safeSegment(page.languageCode)}/${safePath(page.path)}/index.html`;
@@ -159,7 +185,7 @@ const rewriteUrl = (
 
 export const renderPageMarkdown = (snapshot: SiteSnapshot, page: SnapshotPage, assets: ExportAsset[]): string => {
   const current = outputPath(snapshot, page);
-  const html = String(marked.parse(portablePublicMdxMarkdown(page.content, { pageId: page.id, onLiteralFallback })));
+  const html = renderPortablePage(page);
   return html
     .replace(
       /(<a\b[^>]*\bhref=")([^"]*)(")/gi,
@@ -680,7 +706,7 @@ export const renderPdfHtml = (
   const content = pages
     .map((page) => {
       const direction = snapshot.project.languages.find((language) => language.code === page.languageCode)?.direction ?? 'LTR';
-      let html = String(marked.parse(portablePublicMdxMarkdown(page.content, { pageId: page.id, onLiteralFallback })));
+      let html = renderPortablePage(page);
       html = html
         .replace(/(<img\b[^>]*\bsrc=")([^"]*)(")/gi, (_all, before, url, after) => {
           const asset = assetsByUrl.get(url);

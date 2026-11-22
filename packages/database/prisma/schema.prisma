@@ -956,6 +956,10 @@ model GitConnection {
   lastSyncStatus         String    @default("IDLE")
   lastSyncError          String?
   lastSyncedAt           DateTime?
+  /// The revision of the settings a connection save writes (#876): it moves
+  /// only on a save, so a form that loaded an older one is refused as stale.
+  /// Sync status and worker updates leave it alone.
+  settingsRevision       Int       @default(1)
   createdById            String
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
