@@ -2092,6 +2092,10 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
       if (!attributes.some(({ name }) => token.name !== 'a' || name.toLowerCase() !== 'href')) continue;
       if (attributes.some(({ name, value }) => !safeStructuredAttribute(name, value))) continue;
       const metadata: StructuredHtmlSource = { open: opener, close: close.raw };
+      if (STRUCTURED_BLOCK_NODES[token.name] === 'heading') {
+        const id = attributes.find(({ name }) => name.toLowerCase() === 'id');
+        if (id) metadata.headingIdRange = [id.start, id.end];
+      }
       if (token.name === 'ol') {
         const start = attributes.find(({ name }) => name.toLowerCase() === 'start');
         if (start) metadata.listStartRange = [start.start, start.end];

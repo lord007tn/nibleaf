@@ -1,8 +1,78 @@
 // @vitest-environment jsdom
+import { readerHeadings } from '@nibleaf/shared/reader-headings';
 import { Editor } from '@tiptap/core';
+import { closeHistory } from '@tiptap/pm/history';
 import { describe, expect, it } from 'vitest';
 import { encodeMdxSource } from './extensions/mdx-roundtrip';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
+
+const makeEditor = () => new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
+
+function expectReloads(firstSave: string, text: string): void {
+  let saved = firstSave;
+  for (let cycle = 2; cycle <= 3; cycle++) {
+    const reopened = makeEditor();
+    try {
+      reopened.commands.setContent(saved, { emitUpdate: false });
+      saved = getMarkdown(reopened);
+      expect(saved, `save ${cycle}`).toBe(firstSave);
+      expect(reopened.state.doc.textContent, `text on save ${cycle}`).toBe(text);
+    } finally {
+      reopened.destroy();
+    }
+  }
+}
+
+describe.each([
+  ['EN', 'GET /users/', 'details', 'id'],
+  ['AR', 'المستخدمون', 'التفاصيل', 'س'],
+])('typing literal braces in structured HTML (%s)', (_locale, lead, tail, parameter) => {
+  it.each([
+    ['heading', '<h2 id="get-user">', '</h2>'],
+    ['paragraph', '<p align="center">', '</p>'],
+    ['link', '<a href="/x" class="btn">', '</a>'],
+    ['quote', '<blockquote dir="rtl"><p>', '</p></blockquote>'],
+    ['list', '<ul class="steps"><li><p>', '</p></li></ul>'],
+  ])('keeps %s source through typing, three saves, Enter and undo', (shape, open, close) => {
+    const editor = makeEditor();
+    const reference = shape === 'heading' ? '\n\nSee [the endpoint](#get-user).' : '';
+    const referenceText = reference ? 'See the endpoint.' : '';
+    const source = `${open}${lead}${tail}${close}${reference}`;
+    const literal = `{${parameter}}`;
+    const expected = `${open}${lead}&#123;${parameter}&#125;${tail}${close}${reference}`;
+    try {
+      editor.commands.setContent(source, { emitUpdate: false });
+      let caret = 0;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.isText && node.text === lead + tail) caret = pos + lead.length;
+      });
+      expect(caret).toBeGreaterThan(0);
+      editor.commands.setTextSelection(caret);
+      editor.view.dispatch(closeHistory(editor.state.tr));
+      for (const character of literal) editor.view.dispatch(editor.state.tr.insertText(character));
+
+      const typed = getMarkdown(editor);
+      expectReloads(typed, lead + literal + tail + referenceText);
+      expect(typed, 'save 1').toBe(expected);
+      if (shape === 'heading') expect(readerHeadings(typed)).toEqual([{ id: 'user-content-get-user', depth: 2, text: lead + literal + tail }]);
+
+      editor.view.dispatch(closeHistory(editor.state.tr));
+      expect(editor.commands.keyboardShortcut('Enter')).toBe(true);
+      expect(editor.state.selection.$from.parent.textContent).toBe(tail);
+      const split = getMarkdown(editor);
+      expect(split).not.toBe(expected);
+      if (shape === 'heading') expect(split.match(/id="get-user"/g)).toHaveLength(1);
+      expectReloads(split, lead + literal + tail + referenceText);
+
+      expect(editor.commands.undo()).toBe(true);
+      expect(getMarkdown(editor)).toBe(expected);
+      expect(editor.commands.undo()).toBe(true);
+      expect(getMarkdown(editor)).toBe(source);
+    } finally {
+      editor.destroy();
+    }
+  });
+});
 
 describe.each(['Keep', 'النص'])('structured HTML source (#575), %s', (text) => {
   it.each([
@@ -59,6 +129,17 @@ describe.each(['Keep', 'النص'])('structured HTML source (#575), %s', (text) 
       expect(editor.commands.insertContent('!')).toBe(true);
       expect(getMarkdown(editor)).toContain(`<p align='right'>${text[0]}!${text.slice(1)} <a `);
       expect(getMarkdown(editor)).toContain('class="btn"');
+    } finally {
+      editor.destroy();
+    }
+  });
+
+  it('keeps an href-only link free of editor defaults when its paragraph is edited', () => {
+    const editor = makeEditor();
+    try {
+      editor.commands.setContent(`<p align="right">${text} <a href="/x">Link</a></p>`, { emitUpdate: false });
+      editor.view.dispatch(editor.state.tr.insertText('!', 2));
+      expect(getMarkdown(editor)).toBe(`<p align="right">${text[0]}!${text.slice(1)} <a href="/x">Link</a></p>`);
     } finally {
       editor.destroy();
     }

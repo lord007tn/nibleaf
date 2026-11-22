@@ -27,6 +27,7 @@ export interface StructuredHtmlSource {
   inner?: string;
   href?: string;
   hrefRange?: [number, number];
+  headingIdRange?: [number, number];
   listStart?: number;
   listStartRange?: [number, number];
 }
@@ -34,6 +35,9 @@ export interface StructuredHtmlSource {
 const htmlDocument = () => document.implementation.createHTMLDocument('');
 
 const cachedBodies = new WeakMap<object, string | null>();
+
+// The MDX scanner runs before the editor decodes HTML entities.
+export const escapeStructuredHtmlBraces = (text: string): string => text.replace(/[{}]/g, (brace) => (brace === '{' ? '&#123;' : '&#125;'));
 
 export function safeStructuredAttribute(name: string, value: string | boolean): boolean {
   if (name.toLowerCase() === STRUCTURED_SOURCE_ATTRIBUTE) return false;
@@ -75,13 +79,25 @@ function replaceAttribute(open: string, name: string, range: [number, number] | 
   return `${open.slice(0, start)}${rendered}${gap}${open.slice(end)}`;
 }
 
+function structuredOpen(source: StructuredHtmlSource, writtenHeadings: WeakSet<StructuredHtmlSource>): string {
+  if (!source.headingIdRange) return source.open;
+  // TipTap copies node attributes on a mid-heading split. Only the first
+  // heading with this source retains the authored anchor.
+  if (writtenHeadings.has(source)) {
+    const [start, end] = source.headingIdRange;
+    return source.open.slice(0, start) + source.open.slice(end);
+  }
+  writtenHeadings.add(source);
+  return source.open;
+}
+
 // The rich editor's DOM omits source metadata. Within an HTML block we still need
 // the authored attributes of any structured child when the parent body was edited.
-function withStructuredChildren(serializer: DOMSerializer, doc: Document): DOMSerializer {
+function withStructuredChildren(serializer: DOMSerializer, doc: Document, writtenHeadings: WeakSet<StructuredHtmlSource>): DOMSerializer {
   const restore = (spec: DOMOutputSpec, source?: StructuredHtmlSource, mergeRenderedAttributes = true): DOMOutputSpec => {
     if (!source || !Array.isArray(spec)) return spec;
     const parsed = doc.createElement('div');
-    parsed.innerHTML = source.open + source.close;
+    parsed.innerHTML = structuredOpen(source, writtenHeadings) + source.close;
     const element = parsed.firstElementChild;
     if (!element) return spec;
     const [tag, first, ...rest] = spec;
@@ -99,34 +115,54 @@ function withStructuredChildren(serializer: DOMSerializer, doc: Document): DOMSe
   }
   const marks = { ...serializer.marks };
   const link = marks.link;
-  if (link) marks.link = (mark, inline) => restore(link(mark, inline), structuredLinkSource(mark), false);
+  if (link) {
+    marks.link = (mark, inline) => {
+      const spec = link(mark, inline);
+      const source = structuredLinkSource(mark);
+      if (source) return restore(spec, source, false);
+      if (!Array.isArray(spec)) return spec;
+      const [tag, attrs, ...children] = spec;
+      if (tag !== 'a' || !attrs || typeof attrs !== 'object' || Array.isArray(attrs)) return spec;
+      // The link renderer adds editor defaults even for authored href-only links.
+      const defaults = mark.type.spec.attrs;
+      const target = mark.attrs.target === defaults?.target?.default ? null : mark.attrs.target;
+      const rel = mark.attrs.rel === defaults?.rel?.default ? null : mark.attrs.rel;
+      return [tag, { ...attrs, target, rel }, ...children];
+    };
+  }
   return new DOMSerializer(nodes, marks);
 }
 
-export function writeStructuredHtmlBlock(state: MarkdownSerializerState, node: PMNode): boolean {
+export function writeStructuredHtmlBlock(state: MarkdownSerializerState, node: PMNode, writtenHeadings: WeakSet<StructuredHtmlSource>): boolean {
   const source = node.attrs.sourceStructuredHtml as StructuredHtmlSource | undefined;
   // A Markdown list already emits its own item marker. The HTML list writer
   // restores attributed items through withStructuredChildren instead.
-  if (!source || node.type.name === 'listItem' || STRUCTURED_BLOCK_NODES[sourceTag(source)] !== node.type.name) return false;
+  if (!source || node.type.name === 'listItem') return false;
+  const tag = sourceTag(source);
+  if (STRUCTURED_BLOCK_NODES[tag] !== node.type.name) return false;
   let nativeChildren = true;
   node.descendants((child) => {
     if (!child.isText && child.type.name !== 'hardBreak' && !structuredNodeNames.has(child.type.name)) nativeChildren = false;
     return nativeChildren;
   });
   if (!nativeChildren) return false;
+  let open = structuredOpen(source, writtenHeadings);
+  // An attribute-free heading has the normal Markdown representation on reload.
+  if (open !== source.open && /^<h[1-6]\s*>$/.test(open)) return false;
+  const outputTag = node.type.name === 'heading' ? `h${node.attrs.level}` : tag;
+  if (outputTag !== tag) open = open.replace(`<${tag}`, `<${outputTag}`);
   const doc = htmlDocument();
   const serializer = DOMSerializer.fromSchema(node.type.schema);
   const canonical = canonicalBody(node, doc, serializer);
   const original = originalBody(node, source, doc, serializer);
   const unchanged = original !== null && canonical === original;
-  const tag = sourceTag(source);
-  const outputTag = node.type.name === 'heading' ? `h${node.attrs.level}` : tag;
-  let open = outputTag === tag ? source.open : source.open.replace(`<${tag}`, `<${outputTag}`);
   if (tag === 'ol' && Number.isInteger(node.attrs.start) && node.attrs.start !== source.listStart) {
     open = replaceAttribute(open, 'start', source.listStartRange, String(node.attrs.start));
   }
   const close = outputTag === tag ? source.close : source.close.replace(`</${tag}`, `</${outputTag}`);
-  const content = unchanged ? (source.inner ?? '') : canonicalBody(node, doc, withStructuredChildren(serializer, doc));
+  const content = unchanged
+    ? (source.inner ?? '')
+    : escapeStructuredHtmlBraces(canonicalBody(node, doc, withStructuredChildren(serializer, doc, writtenHeadings)));
   state.text(open + content + close, false);
   state.closeBlock(node);
   return true;

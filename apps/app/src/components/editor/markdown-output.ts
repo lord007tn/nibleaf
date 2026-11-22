@@ -18,7 +18,13 @@ import {
   type SerializedPage,
   type SourceLineEndings,
 } from './line-endings';
-import { STRUCTURED_BLOCK_NODES, structuredLinkSource, writeStructuredHtmlBlock } from './structured-html-source';
+import {
+  escapeStructuredHtmlBraces,
+  STRUCTURED_BLOCK_NODES,
+  type StructuredHtmlSource,
+  structuredLinkSource,
+  writeStructuredHtmlBlock,
+} from './structured-html-source';
 
 /*
  * Saving a page writes its Markdown into one output buffer (#612). The serializer
@@ -297,6 +303,7 @@ class LinearMarkdownSerializerState extends SerializerState {
   readonly path: Array<{ node: PMNode; parent: PMNode | Fragment; index: number; position: number; lastChildEnd?: number; lastChildIndex?: number }> =
     [];
   private readonly offsets = new WeakMap<object, number[]>();
+  private readonly writtenHeadings = new WeakSet<StructuredHtmlSource>();
   private closedOwner: SerializedLineOwner | null = null;
   private readonly inlines: InlineState[] = [];
   private readonly scanDelims: ScanDelims;
@@ -361,7 +368,13 @@ class LinearMarkdownSerializerState extends SerializerState {
   }
 
   override text(text: string, shouldEscape = true): void {
-    const lines = text.split('\n');
+    let content = text;
+    if (shouldEscape && /[{}]/.test(text)) {
+      const node = this.path.at(-1)?.node;
+      const link = node?.isText && node.type.schema.marks.link?.isInSet(node.marks);
+      if (link && structuredLinkSource(link)) content = escapeStructuredHtmlBraces(text);
+    }
+    const lines = content.split('\n');
     for (let i = 0; i < lines.length; i++) {
       this.write();
       const line = lines[i] ?? '';
@@ -399,7 +412,7 @@ class LinearMarkdownSerializerState extends SerializerState {
     }
     this.path.push({ node, parent, index, position });
     try {
-      if (!writeStructuredHtmlBlock(this, node)) super.render(node, parent, index);
+      if (!writeStructuredHtmlBlock(this, node, this.writtenHeadings)) super.render(node, parent, index);
     } finally {
       this.path.pop();
       this.output.owner =
