@@ -1,0 +1,179 @@
+{
+  "production-before": {
+    "overview-1024": {
+      "innerWidth": 1024,
+      "scrollWidth": 2071,
+      "horizontalOverflowPx": 1062,
+      "sidebarWidth": 288,
+      "brandTop": 16,
+      "headerTop": 8,
+      "navRowPitch": 52
+    },
+    "overview-1280": {
+      "innerWidth": 1280,
+      "scrollWidth": 2087,
+      "horizontalOverflowPx": 822,
+      "sidebarWidth": 288,
+      "brandTop": 16,
+      "headerTop": 8,
+      "navRowPitch": 52
+    },
+    "overview-768": {
+      "innerWidth": 768,
+      "scrollWidth": 1038,
+      "horizontalOverflowPx": 285,
+      "sidebarWidth": 288,
+      "brandTop": 16,
+      "headerTop": 8,
+      "navRowPitch": 52
+    },
+    "settings-1024": {
+      "innerWidth": 1024,
+      "scrollWidth": 1114,
+      "horizontalOverflowPx": 105,
+      "sidebarWidth": 288,
+      "brandTop": 16,
+      "headerTop": 8,
+      "navRowPitch": 52
+    },
+    "websites-390": {
+      "innerWidth": 460,
+      "scrollWidth": 460,
+      "horizontalOverflowPx": 70,
+      "sidebarWidth": null,
+      "brandTop": null,
+      "headerTop": 0,
+      "navRowPitch": null
+    },
+    "websites-768": {
+      "innerWidth": 768,
+      "scrollWidth": 870,
+      "horizontalOverflowPx": 117,
+      "sidebarWidth": 288,
+      "brandTop": 16,
+      "headerTop": 8,
+      "navRowPitch": 52
+    }
+  },
+  "local-before": {
+    "overview-1024": {
+      "innerWidth": 1024,
+      "scrollWidth": 1806,
+      "horizontalOverflowPx": 797,
+      "sidebarWidth": 288,
+      "brandTop": 16,
+      "headerTop": 8,
+      "navRowPitch": 52
+    },
+    "overview-1280": {
+      "innerWidth": 1280,
+      "scrollWidth": 1822,
+      "horizontalOverflowPx": 557,
+      "sidebarWidth": 288,
+      "brandTop": 16,
+      "headerTop": 8,
+      "navRowPitch": 52
+    },
+    "overview-768": {
+      "innerWidth": 768,
+      "scrollWidth": 1034,
+      "horizontalOverflowPx": 281,
+      "sidebarWidth": 288,
+      "brandTop": 16,
+      "headerTop": 8,
+      "navRowPitch": 52
+    },
+    "settings-1024": {
+      "innerWidth": 1024,
+      "scrollWidth": 1111,
+      "horizontalOverflowPx": 102,
+      "sidebarWidth": 288,
+      "brandTop": 16,
+      "headerTop": 8,
+      "navRowPitch": 52
+    },
+    "websites-390": {
+      "innerWidth": 496,
+      "scrollWidth": 496,
+      "horizontalOverflowPx": 106,
+      "sidebarWidth": null,
+      "brandTop": null,
+      "headerTop": 0,
+      "navRowPitch": null
+    },
+    "websites-768": {
+      "innerWidth": 768,
+      "scrollWidth": 831,
+      "horizontalOverflowPx": 78,
+      "sidebarWidth": 288,
+      "brandTop": 16,
+      "headerTop": 8,
+      "navRowPitch": 52
+    }
+  },
+  "local-after": {
+    "overview-1024-ar-light": {
+      "innerWidth": 1024,
+      "scrollWidth": 1009,
+      "horizontalOverflowPx": 0,
+      "sidebarWidth": 256,
+      "brandTop": 8,
+      "headerTop": 9,
+      "navRowPitch": 40
+    },
+    "overview-1024": {
+      "innerWidth": 1024,
+      "scrollWidth": 1009,
+      "horizontalOverflowPx": 0,
+      "sidebarWidth": 256,
+      "brandTop": 8,
+      "headerTop": 9,
+      "navRowPitch": 40
+    },
+    "overview-1280": {
+      "innerWidth": 1280,
+      "scrollWidth": 1265,
+      "horizontalOverflowPx": 0,
+      "sidebarWidth": 256,
+      "brandTop": 8,
+      "headerTop": 9,
+      "navRowPitch": 40
+    },
+    "overview-768": {
+      "innerWidth": 768,
+      "scrollWidth": 753,
+      "horizontalOverflowPx": 0,
+      "sidebarWidth": 256,
+      "brandTop": 8,
+      "headerTop": 9,
+      "navRowPitch": 40
+    },
+    "settings-1024": {
+      "innerWidth": 1024,
+      "scrollWidth": 1009,
+      "horizontalOverflowPx": 0,
+      "sidebarWidth": 256,
+      "brandTop": 8,
+      "headerTop": 9,
+      "navRowPitch": 40
+    },
+    "websites-390": {
+      "innerWidth": 390,
+      "scrollWidth": 390,
+      "horizontalOverflowPx": 0,
+      "sidebarWidth": null,
+      "brandTop": null,
+      "headerTop": 0,
+      "navRowPitch": null
+    },
+    "websites-768": {
+      "innerWidth": 768,
+      "scrollWidth": 753,
+      "horizontalOverflowPx": 0,
+      "sidebarWidth": 256,
+      "brandTop": 8,
+      "headerTop": 9,
+      "navRowPitch": 40
+    }
+  }
+}
