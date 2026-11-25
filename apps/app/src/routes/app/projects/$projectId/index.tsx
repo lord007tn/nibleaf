@@ -209,7 +209,7 @@ function SiteOverviewPage() {
       ) : null}
 
       <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-        <div className="rounded-xl border border-border bg-card p-5">
+        <div className="min-w-0 rounded-xl border border-border bg-card p-5">
           <div className="flex items-center gap-3">
             <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary">
               <Globe2 className="size-4" />
@@ -222,7 +222,7 @@ function SiteOverviewPage() {
                     <bdi dir="ltr">{liveDomain ?? liveHref}</bdi>
                   </a>
                   {connectingDomain ? (
-                    <p className="mt-1 text-muted-foreground text-xs">
+                    <p className="mt-1 break-words text-muted-foreground text-xs">
                       {t('overview.live.domainConnecting', { domain: isolate(connectingDomain) })}
                       {settingsAccess === 'admin' ? (
                         <>
@@ -401,7 +401,7 @@ function SiteOverviewPage() {
 
       <div className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* Recent pages */}
-        <div className="rounded-xl border border-border bg-card">
+        <div className="min-w-0 rounded-xl border border-border bg-card">
           <div className="flex items-center justify-between border-border border-b px-5 py-3.5">
             <h2 className="font-semibold text-sm">{t('overview.recentPages')}</h2>
             <Link
