@@ -48,7 +48,7 @@ export function ProjectSidebar({ projectId, orgSlug, previewDraft = false }: { p
       side={direction === 'rtl' ? 'right' : 'left'}
       variant="inset"
     >
-      <SidebarHeader>
+      <SidebarHeader className="pt-0">
         <SidebarBrand orgSlug={orgSlug} />
       </SidebarHeader>
 
@@ -63,18 +63,18 @@ export function ProjectSidebar({ projectId, orgSlug, previewDraft = false }: { p
                     onClick={() => setOpenMobile(false)}
                     isActive={item.isActive}
                     render={<Link params={{ projectId }} to={item.to} />}
-                    size="lg"
+                    className="h-9 gap-2.5 pointer-coarse:h-11"
                     tooltip={t(item.labelKey)}
                   >
-                    <item.icon className="size-5" />
+                    <item.icon aria-hidden />
                     <span>{t(item.labelKey)}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
               {isMobile ? (
                 <SidebarMenuItem className="sm:hidden">
-                  <SidebarMenuButton onClick={() => setOpenMobile(false)} render={previewLink} size="lg">
-                    <Eye className="size-5" />
+                  <SidebarMenuButton onClick={() => setOpenMobile(false)} className="h-9 gap-2.5 pointer-coarse:h-11" render={previewLink}>
+                    <Eye aria-hidden />
                     <span>{t('project.preview')}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

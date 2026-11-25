@@ -41,7 +41,7 @@ export function OrgSidebar({ orgSlug, isAdmin }: { orgSlug: string; isAdmin: boo
       side={direction === 'rtl' ? 'right' : 'left'}
       variant="inset"
     >
-      <SidebarHeader>
+      <SidebarHeader className="pt-0">
         <SidebarBrand orgSlug={orgSlug} />
       </SidebarHeader>
       <SidebarContent>
@@ -57,10 +57,10 @@ export function OrgSidebar({ orgSlug, isAdmin }: { orgSlug: string; isAdmin: boo
                       isActive={pathname.startsWith(`${base}/${item.section}`)}
                       onClick={() => setOpenMobile(false)}
                       render={<Link params={{ orgSlug }} to={`/app/o/$orgSlug/${item.section}`} />}
-                      size="lg"
+                      className="h-9 gap-2.5 pointer-coarse:h-11"
                       tooltip={label}
                     >
-                      <item.icon className="size-5" />
+                      <item.icon aria-hidden />
                       <span>{label}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

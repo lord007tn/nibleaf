@@ -22,7 +22,8 @@ export function OrganizationSwitcher({
   collapseName = false,
   className,
 }: {
-  /** Below 640 px show only the avatar (website level, where space is short). */
+  /** Show only the avatar while the content column (`@container/inset`) is
+   *  under 576 px: phones, and tablets with the sidebar open. */
   collapseName?: boolean;
   organization: { id: string; name: string; logo: string | null } | undefined;
   currentProjectId?: string;
@@ -50,7 +51,7 @@ export function OrganizationSwitcher({
           <OrgAvatar logo={organization.logo} name={organization.name} className="size-5" />
           {/* `dir="auto"` isolates the name and sets the side it truncates on: its end
               ("Layla's…"), not its start, when its direction differs from the page's. */}
-          <span className={cn('min-w-0 truncate', collapseName && 'hidden sm:inline')} dir="auto">
+          <span className={cn('min-w-0 truncate', collapseName && 'hidden @xl/inset:inline')} dir="auto">
             {organization.name}
           </span>
         </>
@@ -61,8 +62,8 @@ export function OrganizationSwitcher({
           <Skeleton aria-hidden className="h-4 w-20" />
         </>
       )}
-      {/* Phones keep the avatar alone: it is still the switcher, by its name. */}
-      <ChevronsUpDown aria-hidden className={cn('size-3.5 shrink-0 text-muted-foreground', collapseName && 'hidden sm:block')} />
+      {/* A narrow header keeps the avatar alone: it is still the switcher, by its name. */}
+      <ChevronsUpDown aria-hidden className={cn('size-3.5 shrink-0 text-muted-foreground', collapseName && 'hidden @xl/inset:block')} />
     </Button>
   );
   const panel = (
