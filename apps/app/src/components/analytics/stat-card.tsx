@@ -58,5 +58,7 @@ export function StatCard({
   );
 }
 
-/** KPI tile grid: one per row on the narrowest phones, two from 360px, four on wide screens. */
-export const STAT_GRID = 'grid grid-cols-1 gap-4 min-[360px]:grid-cols-2 lg:grid-cols-4';
+/** KPI tile grid: one per row on the narrowest phones, two from 360px, four
+ *  once the dashboard's content column (`@container/inset`) is 768px wide, so
+ *  an open sidebar never squeezes four tiles into a tablet-width column. */
+export const STAT_GRID = 'grid grid-cols-1 gap-4 min-[360px]:grid-cols-2 @3xl/inset:grid-cols-4';
