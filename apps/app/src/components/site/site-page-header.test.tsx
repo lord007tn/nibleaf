@@ -70,22 +70,26 @@ const titleSelectors = () => {
 afterEach(() => document.body.replaceChildren());
 
 describe('the published page header', () => {
-  it('keeps the title where the theme rules for it (Manuscript face, RTL leading, balanced wrap) can reach it', async () => {
-    const html = await renderCompleteHtml(<SitePageView data={page()} lang="ar" projectId="project-1" />);
-    // The chrome the reader route renders around the article, in a theme with its own title rule.
-    document.body.innerHTML = `<div class="nibleaf-site-chrome" data-theme-id="manuscript" dir="rtl">${html}</div>`;
-    const title = document.querySelector('article h1');
-    const selectors = titleSelectors();
-    expect(selectors.length).toBeGreaterThanOrEqual(3);
-    for (const selector of selectors) expect([selector, title?.matches(selector)]).toEqual([selector, true]);
-  }, 30_000);
+  it('keeps the title where the theme rules for it (Manuscript's face, balanced wrapping)
+  can;
+  reach;
+  it;
+  ', async () => {
+  const html = await renderCompleteHtml(<SitePageView data={page()} lang="ar" projectId="project-1" />);
+  // The chrome the reader route renders around the article, in a theme with its own title rule.
+  document.body.innerHTML = `<div class="nibleaf-site-chrome" data-theme-id="manuscript" dir="rtl">${html}</div>`;
+  const title = document.querySelector('article h1');
+  const selectors = titleSelectors();
+  expect(selectors.length).toBeGreaterThanOrEqual(2);
+  for (const selector of selectors) expect([selector, title?.matches(selector)]).toEqual([selector, true]);
+}, 30_000);
 
-  it('holds the section trail, the title and the page actions together, the title last but one', async () => {
-    const html = await renderCompleteHtml(<SitePageView data={page()} lang="ar" projectId="project-1" />);
-    document.body.innerHTML = html;
-    const header = document.querySelector('[data-reader-page-header]');
-    expect(
-      [...(header?.children ?? [])].map((child) => child.tagName.toLowerCase() + (child.hasAttribute('data-page-actions') ? '[actions]' : '')),
-    ).toEqual(['nav', 'h1', 'div[actions]']);
-  });
+it('holds the section trail, the title and the page actions together, the title last but one', async () => {
+  const html = await renderCompleteHtml(<SitePageView data={page()} lang="ar" projectId="project-1" />);
+  document.body.innerHTML = html;
+  const header = document.querySelector('[data-reader-page-header]');
+  expect(
+    [...(header?.children ?? [])].map((child) => child.tagName.toLowerCase() + (child.hasAttribute('data-page-actions') ? '[actions]' : '')),
+  ).toEqual(['nav', 'h1', 'div[actions]']);
 });
+})

@@ -299,7 +299,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         ) : null}
         <h1
           tabIndex={-1}
-          className="col-span-2 row-start-2 min-w-0 outline-none font-semibold text-3xl tracking-tight sm:col-span-1 md:text-4xl"
+          className="col-span-2 row-start-2 min-w-0 outline-none font-semibold text-3xl leading-[1.15] tracking-tight sm:col-span-1 md:text-4xl rtl:leading-[1.3] rtl:tracking-normal"
           dir={blockDirection(page.title)}
         >
           {page.title}

@@ -75,12 +75,12 @@
   }
 
   /* The article title lives outside .typeset, in the page header
-   * (site-page-view); give it the same optical tuning as the prose headings.
-   * Scoped to that header: since the page actions joined the title (#634) it is
-   * no longer a direct child of the article. */
+   * (site-page-view): it wraps in balanced lines, and Manuscript sets it in
+   * its display face. Scoped to that header: since the page actions joined the
+   * title (#634) it is no longer a direct child of the article. Its leading and
+   * tracking (tighter in Latin, taller and untracked in Arabic) are utilities
+   * on the title itself, which a components-layer rule here couldn't override. */
   .nibleaf-site-chrome [data-reader-page-header] > h1 {
-    line-height: 1.15;
-    letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
@@ -89,12 +89,6 @@
     > h1 {
     font-family: var(--font-heading);
     font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-
-  .nibleaf-site-chrome[dir="rtl"] [data-reader-page-header] > h1 {
-    letter-spacing: 0;
-    line-height: 1.3;
   }
 }
 
