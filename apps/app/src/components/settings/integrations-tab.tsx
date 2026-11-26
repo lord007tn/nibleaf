@@ -13,7 +13,7 @@ import type { IntegrationCatalogEntry, IntegrationProviderId } from '@nibleaf/sh
 import { randomUUID } from '@nibleaf/shared/uuid';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { Activity, ArrowLeft, Bot, ChartNoAxesCombined, GitBranch, MessageSquare, RefreshCw, ShieldCheck, Trash2, Zap } from 'lucide-react';
-import { type ComponentType, type FormEvent, useState } from 'react';
+import { type ComponentType, type FormEvent, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon, SlackIcon } from '@/components/icons/brand';
 import { NO_AUTOFILL_PROPS, SecretInput } from '@/components/secret-input';
@@ -594,7 +594,26 @@ function WebhookDetail({ projectId, entry }: { projectId: string; entry: Integra
  * own page. The open integration is in the URL (`integration`), so Back
  * closes it and a link can point at it.
  */
-export function IntegrationsTab({ projectId, project, integration }: { projectId: string; project: Project; integration?: IntegrationDetailId }) {
+type IntegrationsTabProps = { projectId: string; project: Project; integration?: IntegrationDetailId };
+
+export function IntegrationsTab(props: IntegrationsTabProps) {
+  const ref = useRef<HTMLDivElement>(null);
+  const shown = useRef(props.integration);
+  useEffect(() => {
+    if (shown.current === props.integration) return;
+    shown.current = props.integration;
+    // Opening an integration, or going back to the hub, starts keyboard and screen reader users at the new
+    // page's heading, as changing settings page does; the link they followed is gone.
+    ref.current?.querySelector<HTMLElement>('h1')?.focus();
+  }, [props.integration]);
+  return (
+    <div ref={ref}>
+      <IntegrationsView {...props} />
+    </div>
+  );
+}
+
+function IntegrationsView({ projectId, project, integration }: IntegrationsTabProps) {
   const t = useT();
   const integrations = useProjectIntegrations(projectId);
 

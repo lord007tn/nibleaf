@@ -172,6 +172,24 @@ describe('the hub shows only what a site owner connects', () => {
   });
 });
 
+describe('moving between the hub and an integration', () => {
+  it('starts at the new page’s heading, as changing settings page does', async () => {
+    catalogOf(entry('google-analytics'));
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const show = (integration?: 'analytics') =>
+      act(async () => root.render(<IntegrationsTab integration={integration} project={project} projectId="project-1" />));
+    await show();
+    expect(document.activeElement).toBe(document.body);
+    await show('analytics');
+    expect(document.activeElement?.textContent).toBe('settings.analytics.title');
+    await show();
+    expect(document.activeElement?.textContent).toBe('settings.integrations.title');
+  });
+});
+
 describe('the Analytics page', () => {
   it('is its own page with a way back to the hub', async () => {
     catalogOf(entry('google-analytics'));
