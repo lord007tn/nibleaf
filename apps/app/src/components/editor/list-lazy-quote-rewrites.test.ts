@@ -29,3 +29,12 @@ it.each([
     }
   }
 });
+
+it.each(['+', '*'])('keeps lazy quote wrapping when the %s list bullet is normalized', (bullet) => {
+  const quote = ' > Alpha\n  Bravo\n  > Char';
+  seedMarkdown(editor, bullet + quote);
+  const saved = getMarkdown(editor);
+  expect(saved).toBe(`-${quote}`);
+  seedMarkdown(editor, saved);
+  expect(getMarkdown(editor)).toBe(saved);
+});

@@ -74,6 +74,7 @@ const TASK_ITEM = /^\[[ xX]\][ \t]/;
 const QUOTE_PREFIX = /^(?:>[ \t]?)*/;
 const quoteCount = (prefix: string): number => prefix.split('>').length - 1;
 const listQuotePrefix = (prefix: string, first: boolean): boolean => /^[ >]*$/.test(first ? prefix.replace(/(?:[-+*]|\d{1,9}[.)]) +/g, '') : prefix);
+const canonicalBullets = (prefix: string): string => prefix.replace(/[-+*]/g, '-');
 
 /** Where the quotes after the last list marker or its continuation indent start. */
 function trailingQuoteStart(prefix: string): number {
@@ -283,7 +284,10 @@ function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: P
   const listsEnd = listPrefix === undefined ? 0 : trailingQuoteStart(listPrefix);
   const canonicalPrefix =
     listPrefix === undefined ? state.delim : listPrefix.slice(0, listsEnd) + '> '.repeat(quoteCount(listPrefix.slice(listsEnd)));
-  const canRestoreQuote = lazyQuote && output.sliceFrom(lineStart) === canonicalPrefix;
+  const writtenPrefix = lazyQuote ? output.sliceFrom(lineStart) : '';
+  const canRestoreQuote =
+    lazyQuote &&
+    (writtenPrefix === canonicalPrefix || (listPrefix !== undefined && canonicalBullets(writtenPrefix) === canonicalBullets(canonicalPrefix)));
   state.renderInline(node);
   if (output.length - start === joined.length && output.sliceFrom(start) === joined) {
     // Unescaped: these lines are the source, already valid Markdown here.
@@ -291,7 +295,8 @@ function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: P
       // Leave the serializer's list marker and its line ownership in place.
       output.truncate(lineStart + listsEnd);
       output.append(lazyQuote.authored.slice(listsEnd));
-    } else if (!lazyQuote) {
+    } else if (!lazyQuote || (listPrefix !== undefined && joinedSourceLines(source) !== null)) {
+      // A changed list context still gets the ordinary soft paragraph wrapping.
       output.truncate(start);
       state.text(source, false);
     }
