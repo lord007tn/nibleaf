@@ -394,16 +394,49 @@ describe('first-publish checklist and reserved address', () => {
     expect(html).toContain('Your docs are not live yet');
   });
 
-  it('closes the checklist for the session even when storage writes fail', async () => {
+  // Storage-blocked dismissals are kept in memory for the whole visit (module scope), so
+  // these tests use their own site ids and never touch project-1's checklist.
+  it('closes the checklist for the visit even when storage writes fail', async () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('blocked');
     });
-    await act(async () => root.render(<SiteOverviewPage />));
-    const dismiss = container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
-    expect(dismiss).not.toBeNull();
-    await act(async () => dismiss?.click());
-    expect(container.textContent).not.toContain('Your docs are not live yet');
-    setItem.mockRestore();
+    routeParams.projectId = 'blocked-only';
+    try {
+      await act(async () => root.render(<SiteOverviewPage />));
+      const dismiss = container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
+      expect(dismiss).not.toBeNull();
+      await act(async () => dismiss?.click());
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+    } finally {
+      routeParams.projectId = 'project-1';
+      setItem.mockRestore();
+    }
+  });
+
+  it('keeps a storage-blocked dismissal when the checklist unmounts while another site loads', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    routeParams.projectId = 'blocked-loading-a';
+    try {
+      await act(async () => root.render(<SiteOverviewPage />));
+      await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]')?.click());
+      // Site B opens and its site and publishes are still loading: no checklist is mounted at all.
+      routeParams.projectId = 'blocked-loading-b';
+      queries.project = { data: undefined, isPending: true };
+      queries.deployments = { data: undefined, isPending: true };
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.querySelector('ol')).toBeNull();
+      // Back to A once loaded: still dismissed.
+      routeParams.projectId = 'blocked-loading-a';
+      queries.project = neverPublishedSite;
+      queries.deployments = loaded([]);
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+    } finally {
+      routeParams.projectId = 'project-1';
+      setItem.mockRestore();
+    }
   });
 
   it('keeps a dismissed checklist hidden', async () => {
@@ -417,20 +450,21 @@ describe('first-publish checklist and reserved address', () => {
     const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new Error('blocked');
     });
+    routeParams.projectId = 'blocked-a';
     try {
       await act(async () => root.render(<SiteOverviewPage />));
       await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]')?.click());
       expect(container.textContent).not.toContain('Your docs are not live yet');
-      routeParams.projectId = 'project-2';
+      routeParams.projectId = 'blocked-b';
       await act(async () => root.render(<SiteOverviewPage />));
       expect(container.textContent).toContain('Your docs are not live yet');
       // Dismiss B too, then go back to A: both stay dismissed for the visit.
       await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]')?.click());
       expect(container.textContent).not.toContain('Your docs are not live yet');
-      routeParams.projectId = 'project-1';
+      routeParams.projectId = 'blocked-a';
       await act(async () => root.render(<SiteOverviewPage />));
       expect(container.textContent).not.toContain('Your docs are not live yet');
-      routeParams.projectId = 'project-2';
+      routeParams.projectId = 'blocked-b';
       await act(async () => root.render(<SiteOverviewPage />));
       expect(container.textContent).not.toContain('Your docs are not live yet');
     } finally {

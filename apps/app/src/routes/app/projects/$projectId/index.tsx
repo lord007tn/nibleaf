@@ -59,6 +59,7 @@ import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment
 import { useFormatters } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import type { SiteAdminState } from '@/lib/project-settings-access';
+import { dismissNudge, isNudgeDismissed, subscribeNudgeDismissal } from '@/lib/publish-nudge-dismissal';
 import { canonicalSiteBase } from '@/lib/site-seo';
 
 const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
@@ -728,24 +729,6 @@ function PublishFailureCard({
   );
 }
 
-const nudgeDismissKey = (projectId: string) => `nibleaf.publishNudge.${projectId}`;
-const nudgeListeners = new Set<() => void>();
-const subscribeNudge = (listener: () => void) => {
-  nudgeListeners.add(listener);
-  window.addEventListener('storage', listener);
-  return () => {
-    nudgeListeners.delete(listener);
-    window.removeEventListener('storage', listener);
-  };
-};
-const readNudgeDismissed = (projectId: string) => {
-  try {
-    return window.localStorage.getItem(nudgeDismissKey(projectId)) === '1';
-  } catch {
-    return false;
-  }
-};
-
 /**
  * Whether this site's checklist was dismissed, read during render. It used to
  * start hidden and appear after an effect, which pushed the whole page down on
@@ -754,8 +737,8 @@ const readNudgeDismissed = (projectId: string) => {
  */
 function useNudgeDismissed(projectId: string) {
   return useSyncExternalStore(
-    subscribeNudge,
-    () => readNudgeDismissed(projectId),
+    subscribeNudgeDismissal,
+    () => isNudgeDismissed(projectId),
     () => false,
   );
 }
@@ -771,11 +754,7 @@ function PublishNudge({
   permissionError?: React.ReactNode;
 }) {
   const t = useT();
-  // A dismissal also holds in memory, for when storage can't be written (private mode, quota, blocked storage).
-  // Every site dismissed during this visit, by id: dismissing one site's checklist leaves the
-  // next site's alone, and going back to an earlier site keeps its dismissal.
-  const [dismissedHere, setDismissedHere] = useState<ReadonlySet<string>>(() => new Set());
-  const dismissed = useNudgeDismissed(projectId) || dismissedHere.has(projectId);
+  const dismissed = useNudgeDismissed(projectId);
   const { count } = useFormatters();
   const content = usePendingChanges(projectId, { enabled: !dismissed });
   const domains = useDomains(projectId);
@@ -787,15 +766,7 @@ function PublishNudge({
   if (dismissed) {
     return null;
   }
-  const dismiss = () => {
-    setDismissedHere((previous) => new Set(previous).add(projectId));
-    try {
-      window.localStorage.setItem(nudgeDismissKey(projectId), '1');
-    } catch {
-      // ignore storage failures (private mode etc.)
-    }
-    for (const listener of nudgeListeners) listener();
-  };
+  const dismiss = () => dismissNudge(projectId);
 
   return (
     <div className="relative mt-6 rounded-xl border border-primary/30 bg-primary/5 p-5">
