@@ -3,8 +3,8 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vite
 
 // Keep the real OpenAPI and docs implementations. Vitest caches the factory
 // results even when a storage scenario resets the startup module.
-vi.mock('@scalar/hono-api-reference', (importOriginal) => importOriginal());
-vi.mock('hono-openapi', (importOriginal) => importOriginal());
+vi.mock(import('@scalar/hono-api-reference'), (importOriginal) => importOriginal());
+vi.mock(import('hono-openapi'), (importOriginal) => importOriginal());
 
 const mocks = vi.hoisted(() => ({
   ensureBucket: vi.fn(),
