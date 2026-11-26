@@ -189,6 +189,21 @@ describe('AUTH-16 editor save lifecycle', () => {
     const title = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="editor.pageTitlePlaceholder"]');
     expect(document.activeElement).toBe(title);
   });
+  it('names the open page in the address, in place, so a reload or a copied address reopens it', async () => {
+    // Opened without ?page=: the address is rewritten to the page on screen.
+    const rewrites = mocks.navigate.mock.calls
+      .map(([options]) => options as { replace?: boolean; search?: (previous: Record<string, unknown>) => Record<string, unknown> })
+      .filter((options) => typeof options?.search === 'function');
+    const named = rewrites.find((options) => options.search?.({ publish: true, fix: 'missing-alt', fixTarget: 'x' }).page === 'page-1');
+    expect(named?.replace).toBe(true);
+    // Other parameters stay; a Fix that arrived for another page does not follow.
+    expect(named?.search?.({ publish: true, fix: 'missing-alt', fixTarget: 'x' })).toEqual({
+      publish: true,
+      page: 'page-1',
+      fix: undefined,
+      fixTarget: undefined,
+    });
+  });
   it('AUTH-07: failed creation clears the pending canvas and restores the action focus', async () => {
     mocks.page = undefined;
     mocks.pages = [];

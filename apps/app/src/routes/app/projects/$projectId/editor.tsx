@@ -1354,6 +1354,16 @@ function EditorPage() {
       }),
     [navigate, projectId],
   );
+  // The address names the page on screen (`?page=<id>`), as in Notion and GitBook:
+  // a reload, a copied address or a new tab opens that page, not the site's first
+  // one. Rewritten in place, so Back still leaves the editor. A Fix that arrived
+  // for another page doesn't follow the writer to this one.
+  const openPageId = page && !switching && activeId === page.id ? page.id : null;
+  useEffect(() => {
+    if (!openPageId || openPageId === pageParam) return;
+    handledPageParam.current = openPageId;
+    rewriteSearch((previous) => ({ ...previous, page: openPageId, fix: undefined, fixTarget: undefined }));
+  }, [openPageId, pageParam, rewriteSearch]);
   const dropFixParams = useCallback(() => rewriteSearch((previous) => ({ ...previous, fix: undefined, fixTarget: undefined })), [rewriteSearch]);
   // The bar shows once the page (or group) it is about is on screen, and goes when the writer moves on.
   // It waits for the writer's access: the editor remounts once that is known, which would drop the landing.
