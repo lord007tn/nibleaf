@@ -195,8 +195,8 @@ it.runIf(baselineDir)(
  *  had already lost its nesting on load), `failing` (fails only checks main fails), and
  *  `textKept` (LIST_ITEM_LEAD_TEXT_KEPT). Every class loses and adds no more text than main. */
 const EXPECTED_CLASSES = {
-  plain: { same: 7, better: 1, failing: 287, textKept: 1 },
-  edited: { same: 1, better: 107, kept: 43, failing: 144, textKept: 1 },
+  plain: { same: 5, better: 1, failing: 287, textKept: 1 },
+  edited: { same: 1, better: 107, kept: 42, failing: 143, textKept: 1 },
 };
 
 it.skipIf(baselineDir)(

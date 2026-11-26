@@ -327,10 +327,10 @@ function canMixStrikeAcrossMarkBoundary(parent: PMNode, scanDelims: ScanDelims):
     ) {
       // A third mark can reorder the surrounding delimiters when strike becomes mixable.
       return parent.children.every(({ marks, text }, at) => {
-        if (!strike.isInSet(marks) && !bold.isInSet(marks)) return true;
+        if (!strike.isInSet(marks)) return true;
         if (marks.some((mark) => mark.type !== strike && mark.type !== bold)) return false;
         const before = parent.children[at - 1];
-        if (!strike.isInSet(marks) || (before && strike.isInSet(before.marks))) return true;
+        if (before && strike.isInSet(before.marks)) return true;
         // A mixed strike can put punctuation directly after its opener. A
         // delimiter after a word cannot open there (`a~~-b`).
         const left = text && /^\s/.test(text) ? ' ' : (before?.text?.slice(-2) ?? '');

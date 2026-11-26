@@ -49,7 +49,7 @@ const QUOTED_MARK_PAGES: readonly number[] = [2, 65, 158, 426, 536, 773, 898, 97
  * back as code. Each now has a fence longer than that line (fence-source.ts `fenceOpenFor`).
  */
 const FENCE_LENGTH_PAGES: readonly number[] = [
-  67, 70, 83, 93, 106, 146, 206, 228, 236, 248, 252, 280, 423, 430, 479, 517, 556, 575, 656, 710, 717, 764, 784, 802, 825, 863, 879, 930,
+  67, 83, 93, 106, 146, 206, 228, 248, 252, 280, 423, 430, 479, 517, 556, 575, 656, 710, 717, 764, 784, 802, 825, 863, 879, 930,
 ];
 
 /** Corpus edits that cross a bold boundary while a strike run is active. */
@@ -71,11 +71,7 @@ const sourcesOf = (indices: readonly number[]): ReadonlySet<string> => {
 /** The sources of the lead pages and the fence length pages (#920), for the differentials
  *  that hold the corpus among other pages: each one differs from main there too. */
 export const listItemLeadSources = (attributeEdits = false): ReadonlySet<string> =>
-  sourcesOf([
-    ...LIST_ITEM_LEAD_PAGES,
-    ...FENCE_LENGTH_PAGES.filter((index) => !attributeEdits || (index !== 70 && index !== 236)),
-    ...(attributeEdits ? [] : NESTED_STRIKE_PAGES),
-  ]);
+  sourcesOf([...LIST_ITEM_LEAD_PAGES, ...FENCE_LENGTH_PAGES, ...(attributeEdits ? [] : NESTED_STRIKE_PAGES)]);
 
 /** The sources of the quoted mark pages, for the same differentials: one differs there only
  *  where that differential's saves hold the doubled mark, so each counts how many do. */

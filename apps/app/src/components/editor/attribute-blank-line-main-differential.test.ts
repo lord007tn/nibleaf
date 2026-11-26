@@ -131,7 +131,6 @@ const pages = [...seeded, ...corpora];
 /** #604: the corpus pages with a list item led by a quote, heading or list, and those whose
  *  quoted marks main doubled (QUOTED_MARK_PAGES), checked against main in
  *  list-item-leads-main.test.ts. */
-// Corpus pages 70 and 236 need a longer fence only after the corpus edit sequence.
 const leadSources = listItemLeadSources(true);
 const quotedSources = quotedMarkSources();
 const isNamed = (page: string) => leadSources.has(page) || quotedSources.has(page);

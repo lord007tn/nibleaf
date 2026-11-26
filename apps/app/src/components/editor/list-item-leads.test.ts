@@ -72,17 +72,18 @@ it.each(['a b c d e', 'أ ب ت ث ج'])('preserves %s when italic starts an ove
   }
 });
 
-it('preserves the strike and bold overlap when an independent word is italic', () => {
+it('preserves the strike and bold overlap when an independent word is bold and italic', () => {
   const editor = open('a b c d e f');
   const at = find(editor, 'a b c d e f');
   editor.view.dispatch(
     editor.state.tr
       .addMark(at, at + 5, editor.schema.mark('strike'))
       .addMark(at + 2, at + 7, editor.schema.mark('bold'))
+      .addMark(at + 10, at + 11, editor.schema.mark('bold'))
       .addMark(at + 10, at + 11, editor.schema.mark('italic')),
   );
   const saved = getMarkdown(editor);
-  expect(saved).toBe('~~a **b c**~~ **d** e *f*');
+  expect(saved).toBe('~~a **b c**~~ **d** e ***f***');
   expect(open(saved).state.doc.textContent).toBe('a b c d e f');
   stable(saved);
 });

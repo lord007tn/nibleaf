@@ -30,7 +30,7 @@ import {
  * (CODE_TOGGLE_KEEPS_LINK_PAGES, exactly 14) are counted, and each one, replayed
  * with main's code toggle, must still save exactly as main did.
  *
- * The 296 named pages checked against main in list-item-leads-main.test.ts include
+ * The 294 named pages checked against main in list-item-leads-main.test.ts include
  * list-item leads, doubled quoted marks, short code fences and strike boundaries.
  * Four also keep links under #660.
  */
