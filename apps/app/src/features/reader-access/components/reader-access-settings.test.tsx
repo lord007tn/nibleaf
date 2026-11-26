@@ -346,15 +346,6 @@ describe('who can read the site', () => {
     expect(button(container, 'settings.visibility.save')).toBeUndefined();
   });
 
-  it('locks the choices for a non-admin', async () => {
-    mocks.status = 'notAdmin';
-    mocks.data = readerData({ accessMode: 'PUBLIC' });
-    await render();
-    expect(radios().every((radio) => radio.hasAttribute('data-disabled'))).toBe(true);
-    await act(async () => radios()[2]?.click());
-    expect(isChecked(radios()[0])).toBe(true);
-  });
-
   it('points a Team only site at Members', async () => {
     mocks.data = readerData({ accessMode: 'WORKSPACE' });
     await render();
@@ -952,8 +943,12 @@ describe('access', () => {
     mocks.status = 'pending';
     await render();
     expect(container.querySelector('[data-slot="callout"]')).toBeNull();
-    expect(container.querySelector('fieldset')?.disabled).toBe(true);
-    expect(container.querySelector('fieldset')?.getAttribute('aria-describedby')).toBeNull();
+    expect(radios()).toHaveLength(3);
+    expect(radios().every((radio) => radio.hasAttribute('data-disabled'))).toBe(true);
+    expect(container.querySelector('[role="radiogroup"]')?.getAttribute('aria-describedby')).toBeNull();
+    // A locked choice can't be picked.
+    await act(async () => radios()[0]?.click());
+    expect(radios().map(isChecked)).toEqual([false, false, true]);
     expect(field('settings.visibility.invite.label').disabled).toBe(true);
   });
 });
