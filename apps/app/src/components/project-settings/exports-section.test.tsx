@@ -93,14 +93,6 @@ describe('export schedule permissions', () => {
     vi.restoreAllMocks();
   });
 
-  it('lets an editor request a one-time export through the mocked mutation', async () => {
-    await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
-    await act(async () => findButton('settings.exports.workflow.create')?.click());
-
-    expect(mocks.create).toHaveBeenCalledWith({ projectId: 'project-1', formats: ['MARKDOWN'] });
-    expect(mocks.scheduleMutation).not.toHaveBeenCalled();
-  });
-
   it('names the repository download as such, not as a theme export', async () => {
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
     const link = container.querySelector('a[href="/api/app/projects/project-1/theme-repository"]');

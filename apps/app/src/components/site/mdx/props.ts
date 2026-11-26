@@ -1,4 +1,4 @@
-import type { DocumentationReaderTag } from '@nibleaf/shared/documentation-component-contract';
+import type { ChildlessDocumentationReaderTag, DocumentationReaderTag } from '@nibleaf/shared/documentation-component-contract';
 import type { ComponentProps, FunctionComponent, ReactNode } from 'react';
 
 // MDX component tags. react-markdown's Components type only knows HTML tags, so
@@ -37,9 +37,13 @@ export type ButtonMdxProps = ComponentProps<'button'> & { href?: unknown; varian
 
 /** One renderer per element the reader can meet after parsing: every registry
  *  component plus the `mermaid` element synthesized from ```mermaid fences. */
-export type DocumentationComponents = Omit<Record<DocumentationReaderTag | 'mermaid', FunctionComponent<MdxProps>>, 'button'> & {
-  button: FunctionComponent<ButtonMdxProps>;
-};
+export type DocumentationComponents = Record<
+  Exclude<DocumentationReaderTag | 'mermaid', 'button' | ChildlessDocumentationReaderTag>,
+  FunctionComponent<MdxProps>
+> &
+  Record<ChildlessDocumentationReaderTag, FunctionComponent<Omit<MdxProps, 'children'>>> & {
+    button: FunctionComponent<ButtonMdxProps>;
+  };
 
 /** A string prop, or undefined. Plain code: the article renderer loads before
  *  every article hydrates, so it carries no schema library. */

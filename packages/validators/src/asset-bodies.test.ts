@@ -7,6 +7,8 @@ describe('asset upload bodies', () => {
       expect(presignAssetBody.safeParse({ filename: 'a.png', contentType: 'image/png', size }).success).toBe(false);
       expect(confirmAssetBody.safeParse({ key: 'projects/a/assets/file.png', contentType: 'image/png', size }).success).toBe(false);
     }
-    expect(confirmAssetBody.safeParse({ key: 'projects/a/assets/file.png', contentType: 'image/png', size: 50 * 1024 * 1024 }).success).toBe(true);
+    const size = 50 * 1024 * 1024;
+    expect(presignAssetBody.parse({ filename: 'a.png', contentType: 'image/png', size }).size).toBe(size);
+    expect(confirmAssetBody.parse({ key: 'projects/a/assets/file.png', contentType: 'image/png', size }).size).toBe(size);
   });
 });

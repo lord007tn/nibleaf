@@ -306,7 +306,10 @@ function SidebarRail({ className, label = "Toggle Sidebar", ...props }: React.Co
 }
 
 /** `as="div"` when the layout renders its own `<main>` for the content below a
- *  header, so the page has one main landmark that excludes the banner. */
+ *  header, so the page has one main landmark that excludes the banner.
+ *  `min-w-0` lets it shrink beside the sidebar instead of growing to its widest
+ *  child, and `@container/inset` lets the header size to it. The inset variant
+ *  draws a border because the sidebar and page share one background token. */
 function SidebarInset({
   className,
   as: Comp = "main",
@@ -316,7 +319,7 @@ function SidebarInset({
     <Comp
       data-slot="sidebar-inset"
       className={cn(
-        "relative flex w-full flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ms-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ms-2",
+        "@container/inset relative flex w-full min-w-0 flex-1 flex-col bg-background md:peer-data-[variant=inset]:m-2 md:peer-data-[variant=inset]:ms-0 md:peer-data-[variant=inset]:rounded-xl md:peer-data-[variant=inset]:border md:peer-data-[variant=inset]:border-border md:peer-data-[variant=inset]:shadow-sm md:peer-data-[variant=inset]:peer-data-[state=collapsed]:ms-2",
         className
       )}
       {...props}

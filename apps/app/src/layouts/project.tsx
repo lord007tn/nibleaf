@@ -50,7 +50,8 @@ export function PublishControl({
   beforePublish?: () => Promise<void> | Promise<boolean>;
   /** Each increment asks to open the publish sheet (see `usePublishLauncher`). */
   openRequest?: number;
-  /** Phones: the button keeps its icon and count; its name stays "Publish". */
+  /** In the site header: below a 576px-wide content column the button keeps
+   *  its icon and count, and its accessible name stays "Publish". */
   compact?: boolean;
 }) {
   const [publishOpen, setPublishOpen] = useState(initialPublishOpen);
@@ -118,7 +119,7 @@ export function PublishControl({
         size="sm"
       >
         <Rocket className="size-3.5" />
-        <span className={compact ? 'hidden sm:inline' : undefined}>{building ? t('project.publishing') : t('project.publish')}</span>
+        <span className={compact ? 'hidden @xl/inset:inline' : undefined}>{building ? t('project.publishing') : t('project.publish')}</span>
         {changeCount > 0 ? (
           <span aria-hidden className="rounded-full bg-primary-foreground/20 px-1.5 text-xs tabular-nums">
             {changeCount}
@@ -219,16 +220,16 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
   }
 
   return (
-    <SidebarProvider style={{ '--sidebar-width': '18rem', '--header-height': '3rem' } as CSSProperties}>
+    <SidebarProvider style={{ '--sidebar-width': '16rem', '--header-height': '3rem' } as CSSProperties}>
       <ProjectSidebar orgSlug={organization?.slug} previewDraft={previewDraft} projectId={projectId} />
       <SidebarInset as="div">
-        <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center min-w-0 gap-2 border-border border-b bg-background/80 px-3 sm:px-4 backdrop-blur">
+        <header className="sticky top-0 z-20 flex h-12 shrink-0 items-center min-w-0 gap-2 border-border border-b bg-background/80 px-3 sm:px-4 backdrop-blur md:rounded-t-xl">
           <SidebarTrigger className="-ms-1" label={t('nav.toggleSidebar')} />
           {/* Where am I: [Org ▾] / [Website ▾] / Section (§5.2). Org and website are switchers. */}
           <Breadcrumb aria-label={t('nav.breadcrumb')} className="min-w-0 flex-1">
             <BreadcrumbList className="flex-nowrap gap-1 sm:gap-1">
               <BreadcrumbItem className="min-w-0 shrink">
-                {/* Phones keep the org as its avatar only, so the website name has room. */}
+                {/* A narrow header keeps the org as its avatar only, so the website name has room. */}
                 <OrganizationSwitcher collapseName currentProjectId={projectId} organization={organization} />
               </BreadcrumbItem>
               <BreadcrumbSeparator className="shrink-0" />
@@ -260,15 +261,26 @@ export function ProjectLayout({ projectId, children }: { projectId: string; chil
             <ShellSearchButton />
             <NotificationsPopover />
             {/* Phones give the site name the room: Preview moves into the sidebar there. */}
-            <Button className="hidden sm:inline-flex" nativeButton={false} render={previewLink} size="sm" variant="outline">
-              <Eye aria-hidden className="size-3.5" /> <span>{t('project.preview')}</span>
+            <Button
+              aria-label={t('project.preview')}
+              className="hidden sm:inline-flex"
+              nativeButton={false}
+              render={previewLink}
+              size="sm"
+              variant="outline"
+            >
+              <Eye aria-hidden className="size-3.5" /> <span className="hidden @3xl/inset:inline">{t('project.preview')}</span>
             </Button>
             {headerPublish ? <PublishControl compact openRequest={publishRequest} project={project} /> : null}
           </div>
         </header>
         {/* The page's one main landmark, after the header. The draft preview puts
             the skip target on its own article area instead. */}
-        <main className="flex-1 outline-none" id={pageOwnsSkipTarget ? undefined : 'main-content'} tabIndex={pageOwnsSkipTarget ? undefined : -1}>
+        <main
+          className="min-w-0 flex-1 outline-none"
+          id={pageOwnsSkipTarget ? undefined : 'main-content'}
+          tabIndex={pageOwnsSkipTarget ? undefined : -1}
+        >
           <PublishLauncherContext value={launcher}>{children}</PublishLauncherContext>
         </main>
       </SidebarInset>

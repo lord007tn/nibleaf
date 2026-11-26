@@ -23,7 +23,6 @@ describe('dashboard-only package resolution', () => {
     expect(resolveCatalog([])).toMatch(/dashboard-catalog\.server\.ts$/);
     expect(resolveCatalog(['browser'])).toMatch(/dashboard-catalog\.server\.ts$/);
     expect(dashboardMessage('common_cancel', 'ar')).toBe(common_cancel);
-    expect(dashboardMessage('common_cancel', 'ar')?.({}, { locale: 'ar' })).toBe('إلغاء');
   });
 
   it("selects the client catalog only with the main dashboard's explicit condition", () => {

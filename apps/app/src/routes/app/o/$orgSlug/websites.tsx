@@ -170,7 +170,7 @@ function WebsitesPage() {
       ) : null}
       {hydrated && projects.isError ? <QueryErrorState onRetry={() => void projects.refetch()} retrying={projects.isFetching} /> : null}
       {loading ? (
-        <div aria-busy="true" className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div aria-busy="true" className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           <p className="sr-only" role="status">
             {t('common.loading')}
           </p>
@@ -189,7 +189,7 @@ function WebsitesPage() {
           ))}
         </div>
       ) : projects.isError && !projects.data ? null : visible.length ? (
-        <ul className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {visible.map((project) => (
             <li className="relative" key={project.id}>
               <Link
