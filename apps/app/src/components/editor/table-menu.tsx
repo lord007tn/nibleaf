@@ -7,8 +7,9 @@ import { CellSelection } from '@tiptap/pm/tables';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, Columns3, PanelTop, Rows3, Trash2, X } from 'lucide-react';
-import type { ComponentType, ReactNode } from 'react';
+import { type ComponentType, type ReactNode, useMemo } from 'react';
 import { alignTableColumns, type ColumnAlignment } from './extensions/aligned-table';
+import { blockAnchor, MENU_EDGE_PADDING } from './menu-anchor';
 
 function AlignmentGlyph({ align }: { align: ColumnAlignment }) {
   const start = align === 'left' ? 3 : align === 'right' ? 9 : 6;
@@ -63,6 +64,7 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
     }),
   });
 
+  const anchor = useMemo(() => blockAnchor(editor, 'table'), [editor]);
   const actions: TableAction[] = [
     {
       labelKey: 'editor.table.alignDefault',
@@ -160,7 +162,10 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
       data-editor-bubble-menu=""
       editor={editor}
       pluginKey="nibleaf-table-menu"
-      options={{ placement: 'bottom' }}
+      // Above the table (below when there is no room), never on the row being
+      // typed in, and inside the screen.
+      getReferencedVirtualElement={anchor}
+      options={{ placement: 'top', offset: 8, flip: { padding: MENU_EDGE_PADDING }, shift: { padding: MENU_EDGE_PADDING } }}
       // Only while inside a table, and only when the text bubble is NOT showing:
       // caret (empty selection) or a cell selection. A non-empty text selection
       // inside a cell keeps the formatting bubble usable on its own.
@@ -182,7 +187,10 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
             <Button
               aria-label={label}
               aria-pressed={action.pressed}
-              className={cn('size-11 text-foreground/80', action.destructive && 'hover:bg-destructive/10 hover:text-destructive')}
+              className={cn(
+                'size-8 text-foreground/80 pointer-coarse:size-11',
+                action.destructive && 'hover:bg-destructive/10 hover:text-destructive',
+              )}
               disabled={!action.enabled}
               onClick={action.run}
               onMouseDown={(event) => event.preventDefault()}
