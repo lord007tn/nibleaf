@@ -171,7 +171,7 @@ const allNodes = (source: string): string[] => {
   return types;
 };
 
-describe('where the JavaScript reading of a `/` can not tell, main’s reading (#714 review)', () => {
+describe('where the JavaScript reading of a `/` can not tell, main’s reading (#714)', () => {
   // A function body's `}` then `/`: both readings close the expression, at different places.
   it.each([
     ['LF', 'Before {[function()\n{} / 2]} plus {a / 2} after.'],
@@ -196,7 +196,7 @@ describe('where the JavaScript reading of a `/` can not tell, main’s reading (
   });
 });
 
-describe('an opener that can not be read keeps to its own block (#714 review)', () => {
+describe('an opener that can not be read keeps to its own block (#714)', () => {
   it('stops at its own closing tag, leaving the Step after it editable', () => {
     const page = '<Card title={oops>text</Card><Step />';
     // The Card is kept byte for byte (main wrote its title as `"{oops"`); the Step moves to
@@ -227,7 +227,7 @@ describe('an opener that can not be read keeps to its own block (#714 review)', 
   });
 });
 
-describe('an opener that can not be read, whose `>` is on a line of its own after a blank line (#714 review)', () => {
+describe('an opener that can not be read, whose `>` is on a line of its own after a blank line (#714)', () => {
   // frame-main-differential pages 745 and 969: the `>` is the opener's own; it is kept with
   // it, not read as an empty quote (`> `).
   it.each([
@@ -251,7 +251,7 @@ describe('an opener that can not be read, whose `>` is on a line of its own afte
   });
 });
 
-describe('template literals and line terminators in an attribute expression (#714 review)', () => {
+describe('template literals and line terminators in an attribute expression (#714)', () => {
   // A `${…}` is JavaScript: a backtick, brace or `//` inside it ends nothing.
   // biome-ignore lint/suspicious/noTemplateCurlyInString: a template literal written into the page.
   const template = '<Card title={`${`//{\n}`}`} icon="x">\n\nB\n\n</Card>';
@@ -278,7 +278,7 @@ describe('template literals and line terminators in an attribute expression (#71
   });
 });
 
-describe('an identifier outside the Basic Multilingual Plane in an attribute expression (#714 review)', () => {
+describe('an identifier outside the Basic Multilingual Plane in an attribute expression (#714)', () => {
   // Two UTF-16 units each: read as one identifier, so the `/` after it divides.
   const identifiers = [
     ['U+1D49C', '\u{1D49C}'],
@@ -306,7 +306,7 @@ describe('an identifier outside the Basic Multilingual Plane in an attribute exp
   });
 });
 
-describe('an opener that can not be read inside a container that is not a component tag (#714 review)', () => {
+describe('an opener that can not be read inside a container that is not a component tag (#714)', () => {
   // The broken opener's range stops at the closing tag of whatever is open around it (the
   // editor's own `<div data-callout>` and `data-mdx` markup, lowercase component names, a
   // component), and the closing tag of its own after that is kept on its own. Main keeps
@@ -337,7 +337,7 @@ describe('an opener that can not be read inside a container that is not a compon
   });
 });
 
-describe('a broken component right after a callout marker (#714 cap review)', () => {
+describe('a broken component right after a callout marker (#714)', () => {
   // The callout reader dropped a marker paragraph with no text, and the broken
   // component kept as source in it, its body with it.
   const cases = (['NOTE', 'TIP'] as const).flatMap((type) =>
@@ -357,7 +357,7 @@ describe('a broken component right after a callout marker (#714 cap review)', ()
   });
 });
 
-describe('a symbol JavaScript does not read in an attribute expression (#714 cap review)', () => {
+describe('a symbol JavaScript does not read in an attribute expression (#714)', () => {
   // Not an identifier: the scan can't read it, so the expression is read as main read it,
   // and the next attribute keeps its own span.
   const symbols = [

@@ -4,7 +4,7 @@ import { Slider } from '@nibleaf/design-system/components/ui/slider';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { Field, SaveBar, SectionHeader, SectionNamedByTabs } from './shared';
+import { Field, SaveBar, SectionHeader, SectionScopeProvider } from './shared';
 
 describe('Field', () => {
   it('associates its visible label with a direct input control', () => {
@@ -70,15 +70,16 @@ it('keeps shared field errors quiet unless the caller requests a live region', (
 });
 
 describe('SectionHeader', () => {
-  it('shows its title on its own, but only names itself to screen readers when tabs already name it', () => {
+  it('is a page section (h2) on its own, and an h3 under a group heading', () => {
     const alone = renderToStaticMarkup(<SectionHeader description="Logo and colours." icon={null} title="Branding" />);
     expect(alone).toContain('<h2 class="font-semibold text-lg tracking-tight">Branding</h2>');
-    const inTabs = renderToStaticMarkup(
-      <SectionNamedByTabs value>
+    const nested = renderToStaticMarkup(
+      <SectionScopeProvider value={{ headingLevel: 3, chrome: 'plain' }}>
         <SectionHeader description="Logo and colours." icon={null} title="Branding" />
-      </SectionNamedByTabs>,
+      </SectionScopeProvider>,
     );
-    expect(inTabs).toContain('<h2 class="sr-only">Branding</h2>');
-    expect(inTabs).toContain('Logo and colours.');
+    expect(nested).toContain('<h3 class="font-semibold text-sm">Branding</h3>');
+    expect(nested).not.toContain('<h2');
+    expect(nested).toContain('Logo and colours.');
   });
 });

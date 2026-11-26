@@ -413,7 +413,7 @@ describe('Back and Forward around a section link (#553)', () => {
   });
 });
 
-describe('the writer always wins over a pending landing (#553 council)', () => {
+describe('the writer always wins over a pending landing (#553)', () => {
   it('an unknown #detailsx, then a click on Details and typing xY, gives DetailsxY with the caret kept', async () => {
     const { canvas, editor } = await renderEditor();
     const before = lookups.count;

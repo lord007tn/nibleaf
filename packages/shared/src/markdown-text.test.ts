@@ -76,7 +76,7 @@ describe('markdownToPlainText on adversarial input (ReDoS, CodeQL js/polynomial-
   });
 });
 
-describe('markdownToPlainText is syntax-aware (council #453)', () => {
+describe('Markdown and MDX plain-text extraction', () => {
   it('drops MDX/JSX comments instead of leaking them', () => {
     expect(markdownToPlainText('{/* Internal launch plan */}\n\nPublic intro.')).toBe('Public intro.');
     expect(markdownToPlainText('Intro {/* inline note */} continues.')).toBe('Intro continues.');
@@ -110,7 +110,7 @@ describe('markdownToPlainText is syntax-aware (council #453)', () => {
   });
 });
 
-describe('cleaning happens once (council #453)', () => {
+describe('metadata uses the already cleaned description', () => {
   it('the API description is final: truncating it again keeps literal text', () => {
     const decoded = pageDescription({ description: null, content: 'Use &lt;Token&gt; with care.' });
     expect(decoded).toBe('Use <Token> with care.');

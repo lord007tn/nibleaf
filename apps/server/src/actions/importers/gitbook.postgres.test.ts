@@ -204,7 +204,7 @@ describe.skipIf(process.env.GITBOOK_REHEARSAL !== '1')('GitBook with real Postgr
     console.info('Authenticated app -> recorded GitHub commit snapshot -> 1 page -> PostgreSQL promotion; no network');
   }, 180_000);
 
-  it('CodeRabbit: shared route helper accepts page text without recorded-only media', async () => {
+  it('shared route helper accepts page text without recorded-only media', async () => {
     const realFetch = globalThis.fetch;
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url);

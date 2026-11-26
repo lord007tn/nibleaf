@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { DOCUMENTATION_COMPONENTS } from '@nibleaf/shared/documentation-components';
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { priorFenceLayoutDigest } from './__fixtures__/authored-fence-layout-main';
 import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
 import { attributeEditHolds, listItemLeadSources, quotedMarkSources } from './__fixtures__/list-item-leads';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
@@ -451,7 +452,7 @@ describe('pages without a Frame read as on main', () => {
     const leadPages: number[] = [];
     const editBroken: number[] = [];
     const changed = results.flatMap((result, index) => {
-      if (result.digest === main.digests[index]) return [];
+      if (priorFenceLayoutDigest('frame', index, result.digest) === main.digests[index]) return [];
       const page = pages[index]?.page ?? '';
       if (isNamed(page)) {
         leadPages.push(index);

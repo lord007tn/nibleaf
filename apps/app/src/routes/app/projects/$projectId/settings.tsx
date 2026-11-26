@@ -1,6 +1,5 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { PageContainer } from '@nibleaf/design-system/components/ui/page-container';
-import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
 import { canAdminister, canEdit } from '@nibleaf/shared/rbac';
@@ -31,12 +30,11 @@ import {
   Variable,
 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef } from 'react';
-import { ConfigSection, EDITOR_CONFIG_SECTIONS } from '@/components/editor/site-config-panel';
+import { ConfigSection } from '@/components/editor/site-config-panel';
 import { ExportsSection } from '@/components/project-settings/exports-section';
 import {
   ConfigDirtyProvider,
   DirtyStateReporter,
-  SectionNamedByTabs,
   SettingsFormSkeleton,
   useDirtySources,
   useSettingsDirtyGuard,
@@ -45,27 +43,20 @@ import { QueryErrorState } from '@/components/query-error-state';
 import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
-import { SectionTabs, sectionTabClassName } from '@/components/ui/section-tabs';
 import { AddonsSettings as AddonsSection } from '@/features/addons/components/addons-settings';
 import { AiAssistantsPage } from '@/features/ai-assistants/components/ai-assistants-page';
 import { SiteTeamPage } from '@/features/people/components/site-team-page';
 import { ReaderAccessSettings as AuthenticationSection } from '@/features/reader-access/components/reader-access-settings';
 import { siteAiQueryOptions } from '@/features/site-ai/api/query-options';
 import { AiAnswersPage } from '@/features/site-ai/components/ai-answers-page';
+import { AppearancePage } from '@/features/site-appearance/components/appearance-page';
 import { DangerZone as DangerSection } from '@/features/site-danger/components/danger-zone';
 import { DomainSettings as DomainSection } from '@/features/site-domains/components/domain-settings';
 import { GeneralSettings as GeneralSection } from '@/features/site-general/components/general-settings';
 import { LanguagesSettings as LanguagesSection } from '@/features/site-languages/components/languages-settings';
 import { OpenApiSettings as OpenApiSection } from '@/features/site-openapi/components/openapi-settings';
 import { SearchSettings as SearchSection } from '@/features/site-search/components/search-settings';
-import {
-  APPEARANCE_SECTION_IDS,
-  type AppearanceSectionId,
-  isMovedSectionId,
-  type MovedSectionId,
-  parseSettingsSearch,
-  type SectionId,
-} from '@/features/site-settings/model/ids';
+import { type AppearanceLink, isMovedSectionId, type MovedSectionId, parseSettingsSearch, type SectionId } from '@/features/site-settings/model/ids';
 import { type SettingsAccess, sectionAllowed, sectionLabelKey, settingsNav, WIDE_SECTIONS } from '@/features/site-settings/model/sections';
 import { UsageTab } from '@/features/usage/components/usage-overview';
 import type { Project } from '@/hooks/api';
@@ -121,7 +112,7 @@ const SECTION_ICONS: Record<SectionId, LucideIcon> = {
 };
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
-  // Old links keep working: Analytics opens Integrations, and Appearance's former
+  // Old links keep working: Analytics opens Integrations → Analytics, and Appearance's former
   // SEO, Redirects, Variables and Search subsections open their own pages.
   validateSearch: parseSettingsSearch,
   loaderDeps: ({ search }) => ({ section: search.section }),
@@ -197,7 +188,7 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
 function ProjectSettingsPage() {
   const reportDirty = useSettingsDirtyGuard();
   const { projectId } = Route.useParams();
-  const { section: requestedOrMoved, appearanceSection } = Route.useSearch();
+  const { section: requestedOrMoved, appearanceSection, integration } = Route.useSearch();
   // Plan and Notifications moved to the organization: an old link shows a pointer under Usage.
   const movedSection = isMovedSectionId(requestedOrMoved) ? requestedOrMoved : undefined;
   const requestedSection = isMovedSectionId(requestedOrMoved) ? 'usage' : requestedOrMoved;
@@ -336,7 +327,8 @@ function ProjectSettingsPage() {
         </div>
 
         <div className={cn('min-w-0 flex-1 outline-none', listPage && 'hidden md:block')} ref={contentRef} tabIndex={-1}>
-          <PageContainer width={WIDE_SECTIONS.has(section) ? 'wide' : 'default'}>
+          {/* Appearance sets its own columns: the forms at the form width, and its live preview beside them. */}
+          <PageContainer width={section === 'appearance' ? 'full' : WIDE_SECTIONS.has(section) ? 'wide' : 'default'}>
             <Link
               className="-ms-1 -mb-4 inline-flex items-center gap-1 self-start rounded-md px-1 py-1 text-muted-foreground text-sm outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 md:hidden"
               params={{ projectId }}
@@ -384,6 +376,7 @@ function ProjectSettingsPage() {
                 key={place}
                 canCreateExports={access.canEditContent}
                 canManageSchedules={access.canManage}
+                integration={integration}
                 movedSection={movedSection}
                 organization={organization}
                 project={project}
@@ -407,6 +400,7 @@ function ActiveSection({
   canCreateExports,
   role,
   appearanceSection,
+  integration,
   movedSection,
   organization,
 }: {
@@ -418,11 +412,12 @@ function ActiveSection({
   canManageSchedules: boolean;
   canCreateExports: boolean;
   role: string;
-  appearanceSection?: AppearanceSectionId;
+  appearanceSection?: AppearanceLink;
+  integration?: string;
 }) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {
-    appearance: <SiteAppearance key={project.id} project={project} section={appearanceSection ?? 'branding'} />,
+    appearance: <SiteAppearance initialGroup={appearanceSection} key={project.id} project={project} />,
     general: <GeneralSection key={`general-${project.id}`} project={project} />,
     languages: <LanguagesSection key={`languages-${project.id}`} project={project} />,
     domain: <DomainSection key={`domain-${projectId}`} project={project} />,
@@ -447,7 +442,7 @@ function ActiveSection({
         />
       </>
     ),
-    integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
+    integrations: <IntegrationsTab integration={integration} key={`integrations-${projectId}`} project={project} projectId={projectId} />,
     ai: <AiAnswersPage key={`ai-${projectId}`} project={project} />,
     exports: (
       <ExportsSection canCreate={canCreateExports} canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />
@@ -496,44 +491,15 @@ function ConfigPage({ project, section }: { project: Project; section: 'seo' | '
   );
 }
 
-const APPEARANCE_TABS = EDITOR_CONFIG_SECTIONS.filter((entry): entry is (typeof EDITOR_CONFIG_SECTIONS)[number] & { id: AppearanceSectionId } =>
-  (APPEARANCE_SECTION_IDS as readonly string[]).includes(entry.id),
-);
-
-/**
- * Settings → Appearance: one page with a header and its seven sub-pages as
- * line tabs (P1-DASH-006), not a third stacked navigation above the form.
- * Each tab is a link to its own URL; leaving a tab with unsaved changes goes
- * through the route's unsaved-change guard.
- */
-function SiteAppearance({ project, section }: { project: Project; section: AppearanceSectionId }) {
-  const t = useT();
+/** Settings → Appearance: the one page (§5.7), its unsaved changes reported to the route's leave guard. */
+function SiteAppearance({ project, initialGroup }: { project: Project; initialGroup?: AppearanceLink }) {
   const { sources, report } = useDirtySources();
   return (
     <>
       <DirtyStateReporter dirty={sources.size > 0} />
-      <PageHeader description={t('settings.appearance.summary')} title={t('settings.tab.appearance')} />
-      <SectionTabs className="mb-6" label={t('settings.appearance.sections')}>
-        {APPEARANCE_TABS.map(({ id, labelKey, icon: Icon }) => (
-          <li key={id}>
-            <Link
-              aria-current={id === section ? 'page' : undefined}
-              className={sectionTabClassName}
-              params={{ projectId: project.id }}
-              search={{ section: 'appearance', appearanceSection: id }}
-              to="/app/projects/$projectId/settings"
-            >
-              <Icon aria-hidden className="size-4" />
-              {t(labelKey)}
-            </Link>
-          </li>
-        ))}
-      </SectionTabs>
-      <SectionNamedByTabs value>
-        <ConfigDirtyProvider report={report}>
-          <ConfigSection project={project} section={section} />
-        </ConfigDirtyProvider>
-      </SectionNamedByTabs>
+      <ConfigDirtyProvider report={report}>
+        <AppearancePage host="settings" initialGroup={initialGroup} project={project} />
+      </ConfigDirtyProvider>
     </>
   );
 }

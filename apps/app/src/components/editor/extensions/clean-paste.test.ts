@@ -44,8 +44,10 @@ describe('clipboard HTML cleanup', () => {
     expect(markdown).toContain('**<u>End</u>**');
     expect(markdown).not.toMatch(/mso|Office metadata|•/);
   });
-  it('keeps a Word list item’s leading letter when its hidden marker is absent', () => {
-    expect(cleanPastedHTML('<p style="mso-list:l0 level1 lfo1">Open settings</p>')).toBe('<ul><li>Open settings</li></ul>');
+  it('keeps leading prose when Word omits a list marker', () => {
+    for (const text of ['Open settings', 'o is the variable', '1. is literal prose']) {
+      expect(cleanPastedHTML(`<p style="mso-list:l0 level1 lfo1">${text}</p>`)).toBe(`<ul><li>${text}</li></ul>`);
+    }
   });
   it('removes the exact Word supportLists marker spans and padding from nested bullets', () => {
     const html = `<p class=MsoListParagraphCxSpFirst style='text-indent:-.25in;mso-list:l0 level1 lfo1'><![if !supportLists]><span style='font-family:Symbol'>·<span style='font:7.0pt "Times New Roman"'>&nbsp;&nbsp;</span></span><![endif]>Check the billing email<o:p></o:p></p><p class=MsoListParagraphCxSpMiddle style='margin-left:1.0in;text-indent:-.25in;mso-list:l0 level2 lfo1'><![if !supportLists]><span style='font-family:"Courier New"'>o<span style='font:7.0pt "Times New Roman"'>&nbsp;</span></span><![endif]>It must match the account owner<o:p></o:p></p>`;
@@ -147,5 +149,55 @@ describe('clipboard HTML cleanup', () => {
     editor.commands.setTextSelection({ from: 1, to: 8 });
     pasteText('https://example.com');
     expect(getMarkdown(editor)).toBe('```text\nhttps://example.com\n```');
+  });
+});
+
+describe('Word numbering after save and reload', () => {
+  it('keeps restarted Word numbering, list instances and non-one starts', () => {
+    const item = (ordinal: number, lfo: number) =>
+      `<p style="mso-list:l0 level1 lfo${lfo}"><![if !supportLists]><span>${ordinal}.&nbsp;</span><![endif]>Item ${ordinal}</p>`;
+    expect(cleanPastedHTML(item(1, 1) + item(2, 1) + item(1, 1) + item(4, 2))).toBe(
+      '<ol><li>Item 1</li><li>Item 2</li></ol><ol><li>Item 1</li></ol><ol start="4"><li>Item 4</li></ol>',
+    );
+    expect(getMarkdown(paste(item(4, 2)))).toBe('4. Item 4');
+    const editor = paste(item(1, 1) + item(2, 1) + item(1, 1) + item(4, 2));
+    const listStarts = () =>
+      editor.state.doc.content.content.filter((node) => node.type.name === 'orderedList').map((node) => [node.attrs.start, node.childCount]);
+    const before = listStarts();
+    expect(before).toEqual([
+      [1, 2],
+      [1, 1],
+      [4, 1],
+    ]);
+    editor.commands.setContent(getMarkdown(editor), { emitUpdate: false });
+    expect(listStarts()).toEqual(before);
+  });
+
+  it('keeps Word numbering gaps across save and reload', () => {
+    const item = (n: number) => `<p style="mso-list:l0 level1 lfo1"><![if !supportLists]><span>${n}.&nbsp;</span><![endif]>Item ${n}</p>`;
+    const editor = paste(item(4) + item(6));
+    editor.commands.setContent(getMarkdown(editor), { emitUpdate: false });
+    expect(editor.state.doc.content.content.filter((node) => node.type.name === 'orderedList').map((node) => node.attrs.start)).toEqual([4, 6]);
+    expect(getMarkdown(editor)).toContain('6) Item 6');
+  });
+});
+
+describe('Pasted document structure', () => {
+  it('unwraps form wrappers and unknown markup, dropping only controls and active/chrome content', () => {
+    const html = cleanPastedHTML(
+      '<form><main><h2>Article</h2><custom-box>Keep <b>this</b></custom-box><p>Before<input value="secret"><select><option>Control</option></select><textarea>Control</textarea><button>Control</button>After</p></main></form>',
+    );
+    expect(html).toBe('<h2>Article</h2>Keep <b>this</b><p>BeforeAfter</p>');
+  });
+
+  it('never wraps table or list structure in inline marks from container styles', () => {
+    const root = document.createElement('div');
+    root.innerHTML = cleanPastedHTML(
+      '<table style="font-weight:bold"><tbody><tr><td>Cell</td></tr></tbody></table><ul style="font-style:italic"><li>Item</li></ul><p style="font-weight:bold">Bold</p>',
+    );
+    expect(root.querySelector('table > strong, ul > em')).toBeNull();
+    expect(root.querySelector('p > strong')?.textContent).toBe('Bold');
+    const editor = paste(root.innerHTML);
+    expect(getMarkdown(editor)).toContain('Cell');
   });
 });

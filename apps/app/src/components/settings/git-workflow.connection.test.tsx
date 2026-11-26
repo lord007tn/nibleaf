@@ -627,7 +627,7 @@ describe('the import targets come from a read the cache adopted', () => {
   });
 });
 
-describe('round 2: the session, the adopted read and the cleaned error', () => {
+describe('saving across session changes, status reads and server errors', () => {
   /** The save hook alone, keeping the callback a render gave it. */
   let probe: ReturnType<typeof useSaveGitWorkflowConnection> | undefined;
   function Probe({ projectId }: { projectId: string }) {

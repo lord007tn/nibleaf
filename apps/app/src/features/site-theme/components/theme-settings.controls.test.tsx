@@ -6,8 +6,27 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AppearanceDraftsProvider, useAppearanceDrafts } from '@/features/site-appearance/components/preview-drafts';
+import { previewWithDrafts } from '@/features/site-appearance/model/preview-config';
 import type { Project } from '@/hooks/api';
-import { ThemeSettings as ThemeSection } from './theme-settings';
+import { LivePreview } from './live-preview';
+import { ThemeSettings } from './theme-settings';
+
+/** The Appearance page's live preview (with its mode and language controls), reading the form's draft. */
+function DraftPreview({ config }: { config: Project['config'] }) {
+  const drafts = useAppearanceDrafts();
+  return <LivePreview config={previewWithDrafts(config, drafts)} dashboardArabic={false} dashboardMode="light" />;
+}
+
+/** Theme as the Appearance page renders it, with the page's preview. */
+function ThemeSection({ project }: { project: Project }) {
+  return (
+    <AppearanceDraftsProvider>
+      <ThemeSettings project={project} />
+      <DraftPreview config={project.config} />
+    </AppearanceDraftsProvider>
+  );
+}
 
 /** Option labels are deliberately distinct from the raw option ids so a trigger
  *  that shows the id instead of the label is caught. */
@@ -149,9 +168,10 @@ describe('ThemeSection controls', () => {
     expect(container.querySelector('select')).toBeNull();
     const resolved = resolveTheme(null);
     const labels = triggers().map(triggerLabel);
-    expect(labels).toHaveLength(12);
+    // Six layout options (corners are Styling's) and five component options.
+    expect(labels).toHaveLength(11);
     expect(labels[0]).toBe(translations[`settings.theme.option.${resolved.layout.shell}`]);
-    expect(labels[7]).toBe(translations[`settings.theme.option.${resolved.components.codeBlocks}`]);
+    expect(labels[6]).toBe(translations[`settings.theme.option.${resolved.components.codeBlocks}`]);
     for (const label of labels) {
       expect(label).toMatch(/^تسمية /);
     }

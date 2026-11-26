@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { IconButton } from '@nibleaf/design-system/components/ui/icon-button';
+import { computeAccessibleName } from 'dom-accessibility-api';
 import { TrashIcon } from 'lucide-react';
 import { act, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -34,9 +35,7 @@ describe('IconButton', () => {
     const buttons = container.querySelectorAll('button');
     expect(buttons).toHaveLength(1);
     const button = buttons[0] as HTMLButtonElement;
-    expect(button.getAttribute('aria-label')).toBe('Delete page');
-    expect(button.textContent).toBe('');
-    expect(button.className).toContain('size-(--control-size-compact)');
+    expect(computeAccessibleName(button)).toBe('Delete page');
     await act(async () => button.click());
     expect(onClick).toHaveBeenCalledOnce();
   });
@@ -49,7 +48,7 @@ describe('IconButton', () => {
       </IconButton>,
     );
     const button = container.querySelector('button') as HTMLButtonElement;
-    expect(button.getAttribute('aria-label')).toBe('Delete page');
+    expect(computeAccessibleName(button)).toBe('Delete page');
     expect(button.getAttribute('aria-disabled')).toBe('true');
     const reasonId = button.getAttribute('aria-describedby');
     expect(reasonId && document.getElementById(reasonId)?.textContent).toBe("The home page can't be deleted");

@@ -10,6 +10,7 @@ import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { accentTextAdjustments } from '@/components/project-settings/accent-text-adjustments';
 import { Field, SectionHeader, Segmented } from '@/components/project-settings/shared';
+import { usePublishAppearanceDraft } from '@/features/site-appearance/components/preview-drafts';
 import type { Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
@@ -36,9 +37,8 @@ import {
   withColor,
   withPart,
 } from '../model/theme';
-import { themePreviewText } from '../theme-preview-messages';
 import { ThemeExchange } from './theme-exchange';
-import { ThemeOptionSelect, ThemePresetThumbnail, ThemePreview } from './theme-preview';
+import { ThemeOptionSelect, ThemePresetThumbnail } from './theme-preview';
 import { acquireWrite, type Operation, releaseWrite, useWriteFor, writeFor } from './theme-writes';
 
 const NOTHING_LEFT: ReadonlySet<string> = new Set();
@@ -46,8 +46,9 @@ const NOTHING_LEFT: ReadonlySet<string> = new Set();
 /**
  * Site configuration → Themes, in the editor's Configuration tab. One
  * explicit-save draft holds the authored theme and the default appearance;
- * the page's save bar saves or discards it. The preview language, preview mode
- * and which mode's colours are being edited are view state, never saved.
+ * the page's save bar saves or discards it. Which mode's colours are being
+ * edited is view state, never saved. The Appearance page's live preview shows
+ * the draft; the corner radius is the Styling section's one control.
  */
 export function ThemeSettings({ project }: { project: Project }) {
   return (
@@ -148,20 +149,16 @@ function ThemeForm({ project }: { project: Project }) {
   const busy = useCallback(() => writeFor(identityNow.current) !== undefined, []);
   const acquire = useCallback((kind: Operation['kind']) => acquireWrite(identityNow.current, kind), []);
 
-  const [previewMode, setPreviewMode] = useState<ColorMode>(() => (source.appearance === 'dark' ? 'dark' : 'light'));
-  const [previewArabic, setPreviewArabic] = useState(false);
   const [colorMode, setColorMode] = useState<ColorMode>('light');
 
   const values = useStore(form.store, (state) => state.values) as ThemeValues;
+  // The Appearance page's live preview shows this draft with the page's other drafts.
+  usePublishAppearanceDraft('theme', values);
   const shownConfig = previewConfig(config, values);
   // What ships (accent shaded to read as text) drives the preview; the colour
   // inputs and the save check keep the owner's authored colours (PUB-006).
   const resolved = resolveTheme(shownConfig);
   const authored = resolveTheme(shownConfig, { authoredAccent: true });
-  // The radius control edits the theme; Styling's radius still drives the reader preview.
-  const themeRadius = resolveTheme({ theme: values.theme }).layout.radius;
-  const stylingRadius = config?.styling?.radius;
-  const radiusSourceId = useId();
   const problems = themeProblems(shownConfig);
   const accentAdjustments = accentTextAdjustments(authored, resolved);
   const shownProblems = problems.filter((issue) => submitted || problemTokens(issue).some((key) => left.has(tokenKey(issue.mode, key))));
@@ -311,7 +308,8 @@ function ThemeForm({ project }: { project: Project }) {
   const leave = (key: string) => setLeft((previous) => (previous.has(key) ? previous : new Set(previous).add(key)));
 
   return (
-    <form noValidate {...formProps}>
+    // Its grids follow the form's own width: beside the live preview it is narrower than the viewport suggests.
+    <form className="@container/theme" noValidate {...formProps}>
       <SaveRegionSubmit />
       <SectionHeader icon={<LayoutTemplate className="size-4" />} title={t('settings.theme.title')} />
       <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm">
@@ -356,7 +354,7 @@ function ThemeForm({ project }: { project: Project }) {
       ) : null}
 
       <Field hint={t('settings.theme.galleryHint')} label={t('settings.theme.gallery')}>
-        <div className="grid gap-3 lg:grid-cols-3">
+        <div className="grid gap-3 @2xl/theme:grid-cols-3">
           {THEME_PRESET_IDS.map((presetId) => {
             const active = resolved.id === presetId;
             return (
@@ -394,7 +392,7 @@ function ThemeForm({ project }: { project: Project }) {
       </Field>
 
       <Field hint={t('settings.theme.layoutHint')} label={t('settings.theme.layout')}>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 @md/theme:grid-cols-2 @2xl/theme:grid-cols-3">
           {(
             [
               ['shell', 'settings.theme.shell', ['reference', 'editorial', 'console']],
@@ -413,27 +411,11 @@ function ThemeForm({ project }: { project: Project }) {
               value={resolved.layout[key]}
             />
           ))}
-          <fieldset aria-describedby={stylingRadius ? radiusSourceId : undefined} aria-label={t('settings.styling.radius.label')} className="min-w-0">
-            <ThemeOptionSelect
-              label={t('settings.styling.radius.label')}
-              onChange={(next) => change((current) => ({ ...current, theme: withPart(current.theme, config, 'layout', 'radius', next) }))}
-              options={['sharp', 'rounded', 'pill']}
-              value={themeRadius}
-            />
-            {stylingRadius ? (
-              <p className="mt-2 text-muted-foreground text-xs leading-snug" data-radius-override id={radiusSourceId}>
-                <span className="block font-medium">
-                  {t('settings.styling.title')}: {t(`settings.styling.radius.${stylingRadius}`)}
-                </span>
-                {t('settings.styling.radius.override')}
-              </p>
-            ) : null}
-          </fieldset>
         </div>
       </Field>
 
       <Field hint={t('settings.theme.componentsHint')} label={t('settings.theme.components')}>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 @md/theme:grid-cols-2 @2xl/theme:grid-cols-3">
           {(
             [
               ['codeBlocks', 'settings.theme.code', ['system', 'dim', 'vivid']],
@@ -464,7 +446,7 @@ function ThemeForm({ project }: { project: Project }) {
           ]}
           value={colorMode}
         />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 @md/theme:grid-cols-2 @2xl/theme:grid-cols-3">
           {THEME_COLOR_KEYS.map((key) => {
             const invalid = invalidToken(key);
             return (
@@ -531,32 +513,6 @@ function ThemeForm({ project }: { project: Project }) {
             </ul>
           </div>
         ) : null}
-      </Field>
-
-      <Field hint={t('settings.theme.previewHint')} label={t('settings.theme.preview')}>
-        <div className="mb-3 flex flex-wrap gap-2">
-          <Segmented
-            className="max-w-[220px]"
-            onChange={setPreviewMode}
-            options={[
-              { value: 'light', label: t('settings.styling.theme.light') },
-              { value: 'dark', label: t('settings.styling.theme.dark') },
-            ]}
-            value={previewMode}
-          />
-          <Button
-            dir={previewArabic ? 'ltr' : 'rtl'}
-            lang={previewArabic ? 'en' : 'ar'}
-            onClick={() => setPreviewArabic((value) => !value)}
-            type="button"
-            variant="outline"
-          >
-            {previewArabic
-              ? themePreviewText('settings.theme.preview.switchEnglish', 'en')
-              : themePreviewText('settings.theme.preview.switchArabic', 'ar')}
-          </Button>
-        </div>
-        <ThemePreview arabic={previewArabic} config={shownConfig} mode={previewMode} />
       </Field>
 
       <div className="mb-8 flex flex-wrap items-center gap-2 border-border border-y py-4">

@@ -191,14 +191,15 @@ describe('create site dialog', () => {
     await type(nameField(), 'Another');
     expect(isDisabled(button('newSite.continue'))).toBe(true);
   });
-  // P2-DASH-013: with an empty name Continue was aria-disabled but looked enabled.
-  it('looks disabled and says why while the site has no name', async () => {
+  it('blocks Continue and explains the missing name', async () => {
     await render();
     const continueButton = button('newSite.continue');
     expect(isDisabled(continueButton)).toBe(true);
-    expect(continueButton.className).toContain('aria-disabled:opacity-50');
     const reasonId = continueButton.getAttribute('aria-describedby')?.split(' ').at(-1);
     expect(reasonId && document.getElementById(reasonId)?.textContent).toBe('newSite.reason.name');
+    const input = nameField();
+    await click(continueButton);
+    expect(nameField()).toBe(input);
     await nameSite();
     expect(isDisabled(button('newSite.continue'))).toBe(false);
   });

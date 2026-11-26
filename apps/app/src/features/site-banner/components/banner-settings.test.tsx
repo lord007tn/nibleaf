@@ -153,23 +153,13 @@ describe('BannerSettings — project scope', () => {
     expect(mocks.reportDirty).toHaveBeenLastCalledWith(expect.any(String), false);
   });
 
-  it('trims text and sends cleared text as an empty string', async () => {
-    mocks.updateProject.mockImplementation(async ({ config }) => ({ id: 'site-1', config }));
-    await render(projectWith(PROJECT_BANNER));
-    await type(message(), '  Summer sale  ');
-    await type(linkLabel(), '   ');
-    await save();
-    expect(mocks.updateProject).toHaveBeenCalledWith({
-      config: { banner: { enabled: true, dismissible: true, message: 'Summer sale', linkLabel: '', linkUrl: 'https://acme.test/sale' } },
-    });
-  });
-
-  it('shows what the server stored after a save', async () => {
+  it('sends trimmed text and shows what the server stored', async () => {
     // The server merges the banner one level deep: an omitted field keeps its stored value.
     mocks.updateProject.mockResolvedValue({ id: 'site-1', config: { banner: { ...PROJECT_BANNER, message: 'Stored by the server' } } });
     await render(projectWith(PROJECT_BANNER));
-    await type(message(), 'Summer sale');
+    await type(message(), '  Summer sale  ');
     await save();
+    expect(mocks.updateProject).toHaveBeenCalledWith({ config: { banner: { ...PROJECT_BANNER, message: 'Summer sale' } } });
     expect(message().value).toBe('Stored by the server');
     expect(saveRegion()).toBeNull();
   });

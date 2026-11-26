@@ -161,8 +161,17 @@ function useKeyboardOpen() {
  * One SaveRegion for every explicit form inside it. Renders the content, then
  * the bar as the column's last child so it sticks to the bottom of the forms
  * it serves.
+ *
+ * Inside another SaveRegionProvider it adds nothing: its forms register with
+ * the outer one, so a page that composes several sections (Appearance) has one
+ * bar, one Save and one leave guard for all of them (§5.3).
  */
 export function SaveRegionProvider({ children }: { children: ReactNode }) {
+  const outer = useContext(SaveRegionContext);
+  return outer ? children : <OwnSaveRegion>{children}</OwnSaveRegion>;
+}
+
+function OwnSaveRegion({ children }: { children: ReactNode }) {
   const t = useT();
   // `forms` is what renders (the bar, the leave guard); `live` holds the
   // registrations as they are now, which a save reads when it ends.

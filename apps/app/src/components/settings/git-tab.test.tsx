@@ -11,6 +11,7 @@ const state = vi.hoisted(() => ({
   workflowProps: [] as Array<{ prefill?: unknown; onConnected?: () => void }>,
   deployments: [] as Array<Record<string, unknown>>,
   live: [] as Array<Record<string, unknown>>,
+  settings: { isPending: false, isError: false } as { isPending: boolean; isError: boolean },
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => state.confirm }));
 vi.mock('@nibleaf/i18n/react', () => ({
@@ -41,7 +42,11 @@ vi.mock('@/hooks/api', () => ({
   useLiveDeployments: () => ({ data: state.live }),
   useGitWorkflow: () => ({ data: state.workflow, isPending: false }),
   useLanguages: () => ({ data: [] }),
-  useWorkspaceSettings: () => ({ isPending: false, isError: false, data: { git: state.legacy } }),
+  useWorkspaceSettings: () => ({
+    ...state.settings,
+    data: state.settings.isPending || state.settings.isError ? undefined : { git: state.legacy },
+    refetch: vi.fn(),
+  }),
 }));
 
 import { GitTab } from './git-tab';
@@ -59,6 +64,7 @@ describe('one Git surface per site', () => {
     state.workflow = null;
     state.deployments = [];
     state.live = [];
+    state.settings = { isPending: false, isError: false };
     host = document.createElement('div');
     document.body.append(host);
     root = createRoot(host);
@@ -71,6 +77,16 @@ describe('one Git surface per site', () => {
   const render = () => act(async () => root.render(<GitTab projectId="site-1" />));
   const button = (label: string) => [...host.querySelectorAll('button')].find((item) => item.textContent?.startsWith(label));
   const legacy = () => host.querySelector('[data-testid="git-legacy"]');
+
+  it('names the page while its settings load, and when they fail to load', async () => {
+    state.settings = { isPending: true, isError: false };
+    await render();
+    expect(host.querySelector('h1')?.textContent).toBe('settings.git');
+    state.settings = { isPending: false, isError: true };
+    await render();
+    expect(host.querySelector('h1')?.textContent).toBe('settings.git');
+    expect(host.querySelector('[data-testid="git-workflow"]')).toBeNull();
+  });
 
   it('shows only the per-site connection to a site without legacy settings', async () => {
     state.legacy = null;

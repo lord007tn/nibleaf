@@ -128,6 +128,11 @@ const click = (element: Element | undefined) =>
     (element as HTMLElement).click();
   });
 const text = () => document.body.textContent ?? '';
+/** A row's action, from its overflow menu ("Actions for Laptop"). */
+const rowAction = async (row: string, label: string) => {
+  await click(button(`settings.aiAssistants.actionsFor(${row})`));
+  return [...document.body.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent?.trim().startsWith(label));
+};
 
 describe('AI assistants page states', () => {
   it('shows skeletons with one status while loading', async () => {
@@ -145,17 +150,29 @@ describe('AI assistants page states', () => {
     expect(text()).toContain('settings.aiAssistants.connectionsLoadError');
   });
 
-  it('when MCP is off, explains it without an operator, with no address or connect steps, and a reason on Create', async () => {
+  it('when MCP is off, says so in one place with no form, address, connect steps or self-hosting instructions', async () => {
     hooks.useApiKeys.mockReturnValue(keys([], { mcpEnabled: false }));
     const { container } = await renderPage('admin');
-    expect(text()).toContain('settings.aiAssistants.off.title');
+    expect(container.querySelector('h1')?.textContent).toBe('settings.aiAssistants.title');
+    expect(container.querySelector('[data-reason="notConfigured"]')?.textContent).toContain('settings.aiAssistants.off.title');
     expect(text()).not.toContain(ENDPOINT);
     expect(text()).not.toContain('settings.aiAssistants.connectTitle');
     expect(text()).not.toMatch(/operator/i);
-    expect(container.querySelector('a[href="https://docs.nibleaf.com/self-hosting/mcp"]')).not.toBeNull();
-    const create = button('settings.aiAssistants.useKey');
-    expect(create?.getAttribute('aria-disabled')).toBe('true');
-    expect(text()).toContain('settings.aiAssistants.off.reason');
+    expect(container.querySelector('a[href*="self-hosting"]')).toBeNull();
+    // Nothing can be created, and nothing is stored to remove: no key button, no empty list.
+    expect(button('settings.aiAssistants.useKey')).toBeUndefined();
+    expect(text()).not.toContain('settings.aiAssistants.connectionsTitle');
+  });
+
+  it('when MCP is off, keeps what is stored so it can be removed, and says why a key can’t be rotated', async () => {
+    hooks.useApiKeys.mockReturnValue(keys([apiKey()], { mcpEnabled: false }));
+    await renderPage('admin');
+    expect(text()).toContain('Laptop');
+    expect(button('settings.aiAssistants.useKey')).toBeUndefined();
+    const rotate = await rowAction('Laptop', 'settings.apiKeys.rotate');
+    expect(rotate?.getAttribute('aria-disabled')).toBe('true');
+    expect(rotate?.textContent).toContain('settings.aiAssistants.off.reason');
+    expect(document.body.querySelector('[role="menuitem"][data-variant="destructive"]')?.textContent).toContain('settings.apiKeys.revoke');
   });
 
   it('tells a role without MCP access what to ask for', async () => {
@@ -335,10 +352,10 @@ describe('Connections', () => {
   it('rotates only after approval, then shows the new secret once', async () => {
     hooks.useApiKeys.mockReturnValue(keys([apiKey()]));
     await renderPage();
-    await click(button('settings.apiKeys.rotate'));
+    await click(await rowAction('Laptop', 'settings.apiKeys.rotate'));
     expect(hooks.rotate.mutate).not.toHaveBeenCalled();
     hooks.confirm.mockResolvedValue(true);
-    await click(button('settings.apiKeys.rotate'));
+    await click(await rowAction('Laptop', 'settings.apiKeys.rotate'));
     expect(hooks.rotate.mutate).toHaveBeenCalledWith(
       { id: 'key-1', body: { scopes: ['mcp:connect', 'pages:write'], expiresInDays: 90 }, deliver: expect.any(Function) },
       expect.any(Object),
@@ -352,7 +369,7 @@ describe('Connections', () => {
     hooks.useApiKeys.mockReturnValue(keys([apiKey()]));
     hooks.useApps.mockReturnValue(query([app()]));
     const page = await renderPage();
-    await click(button('settings.connectedApps.disconnect'));
+    await click(await rowAction('ChatGPT', 'settings.connectedApps.disconnect'));
     expect(text()).toContain('settings.connectedApps.confirmTitle(ChatGPT)');
     const confirmButton = () => Array.from(document.body.querySelectorAll('[role="alertdialog"] button')).at(-1);
     await click(confirmButton());
@@ -368,7 +385,7 @@ describe('Connections', () => {
     hooks.useApps.mockReturnValue(query(undefined, { isPending: false, isError: true, refetch }));
     await renderPage('admin');
     expect(text()).toContain('Laptop');
-    expect(button('settings.apiKeys.revoke')).toBeDefined();
+    expect(await rowAction('Laptop', 'settings.apiKeys.revoke')).toBeDefined();
     expect(text()).toContain('settings.aiAssistants.appsLoadError');
     expect(text()).not.toContain('settings.aiAssistants.connectionsLoadError');
     await click(button('error.tryAgain'));

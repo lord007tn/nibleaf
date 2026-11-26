@@ -928,7 +928,7 @@ describe('update_page', () => {
     await client.close();
   });
 
-  it('council: REST page conflicts retain the MCP revision-conflict contract', async () => {
+  it('REST page conflicts retain the MCP revision-conflict contract', async () => {
     const client = await connect(makePrincipal());
     mocks.updatePage.mockImplementationOnce(async () => {
       const row = state.pages[0] as PageRow;

@@ -50,14 +50,23 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
-vi.mock('@/components/editor/site-config-panel', async (importOriginal) => {
+vi.mock('@/components/editor/site-config-panel', async () => {
   const { DirtyStateReporter } = await import('@/components/project-settings/shared');
-  const actual = await importOriginal<typeof import('@/components/editor/site-config-panel')>();
   return {
-    EDITOR_CONFIG_SECTIONS: actual.EDITOR_CONFIG_SECTIONS,
     ConfigSection: ({ section }: { section: string }) => (
       <div data-testid="appearance-subsection">
         {section}
+        <DirtyStateReporter dirty={mocks.dirty} />
+      </div>
+    ),
+  };
+});
+vi.mock('@/features/site-appearance/components/appearance-page', async () => {
+  const { DirtyStateReporter } = await import('@/components/project-settings/shared');
+  return {
+    AppearancePage: ({ host, initialGroup }: { host: string; initialGroup?: string }) => (
+      <div data-testid="appearance-page">
+        {`${host}:${initialGroup ?? ''}`}
         <DirtyStateReporter dirty={mocks.dirty} />
       </div>
     ),
@@ -191,14 +200,14 @@ describe('site settings permissions', () => {
     expect(validate({ section: 'general', appearanceSection: 'redirects' })).toEqual({ section: 'general' });
   });
 
-  it('opens an Appearance subsection for an Admin, including a deep link after Appearance is mounted', async () => {
+  it('opens Appearance as one page for an Admin, and an old tab link at the part that holds it now', async () => {
     mocks.section = 'appearance';
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
-    expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe('branding');
-    mocks.appearanceSection = 'navbar';
+    expect(container.querySelector('[data-testid="appearance-page"]')?.textContent).toBe('settings:');
+    mocks.appearanceSection = 'chrome';
     await act(async () => root.render(<SettingsPage />));
-    expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe('navbar');
+    expect(container.querySelector('[data-testid="appearance-page"]')?.textContent).toBe('settings:chrome');
   });
 
   it.each(['seo', 'redirects', 'variables'])('gives %s a page of its own for an Admin', async (section) => {
@@ -211,55 +220,33 @@ describe('site settings permissions', () => {
     expect(container.querySelector(`nav a[href$="?section=${section}"]`)?.getAttribute('aria-current')).toBe('page');
   });
 
-  it('keeps the subsection URL current and preserves the unsaved-change guard', async () => {
+  it('guards leaving Appearance with unsaved changes', async () => {
     mocks.section = 'appearance';
-    mocks.appearanceSection = 'navbar';
     mocks.dirty = true;
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
-    // Each sub-page is a link to its own URL; the route's guard covers leaving it.
-    const tabs = container.querySelector('[data-slot="section-tabs"]');
-    expect(tabs?.querySelector('a[aria-current="page"]')?.getAttribute('href')).toContain('appearanceSection=navbar');
-    expect(tabs?.querySelector('a[href$="appearanceSection=branding"]')).not.toBeNull();
     const blocker = mocks.blocker.mock.lastCall?.[0];
     expect(blocker.enableBeforeUnload()).toBe(true);
     mocks.confirm.mockResolvedValueOnce(false);
     await expect(blocker.shouldBlockFn()).resolves.toBe(true);
-    expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe('navbar');
     mocks.confirm.mockResolvedValueOnce(true);
     await expect(blocker.shouldBlockFn()).resolves.toBe(false);
-    mocks.appearanceSection = 'branding';
-    await act(async () => root.render(<SettingsPage />));
-    expect(container.querySelector('[data-testid="appearance-subsection"]')?.textContent).toBe('branding');
   });
 
-  // P1-DASH-006: Appearance stacked a third navigation above the form.
-  it('gives Appearance a page heading and its seven sub-pages as named link tabs', async () => {
+  // B5 (§5.7): Appearance is one page; its sections are headings, never another nav.
+  it('renders Appearance with no tabs, in a column wide enough for its preview', async () => {
     mocks.section = 'appearance';
-    mocks.appearanceSection = 'typography';
     mocks.members.mockReturnValue({ data: { members: [{ user: { id: 'user-1' }, role: 'admin' }] }, isPending: false });
     await act(async () => root.render(<SettingsPage />));
-    expect(container.querySelector('h1')?.textContent).toBe('settings.tab.appearance');
-    const tabs = container.querySelector('nav[data-slot="section-tabs"]');
-    expect(tabs?.getAttribute('aria-label')).toBe('settings.appearance.sections');
-    expect([...(tabs?.querySelectorAll('a') ?? [])].map((link) => link.textContent)).toEqual([
-      'settings.branding',
-      'settings.themes',
-      'settings.styling',
-      'settings.typography',
-      'settings.navbar',
-      'settings.footer',
-      'settings.banner',
-    ]);
-    expect(tabs?.querySelectorAll('a[aria-current="page"]')).toHaveLength(1);
-    expect(tabs?.querySelector('a[aria-current="page"]')?.textContent).toBe('settings.typography');
+    expect(container.querySelector('[data-slot="section-tabs"]')).toBeNull();
+    expect(container.querySelector('[data-slot="page-container"]')?.getAttribute('data-width')).toBe('full');
   });
 
   it('keeps Appearance restricted to Admins when an Editor follows a subsection deep link', async () => {
     mocks.section = 'appearance';
     mocks.appearanceSection = 'navbar';
     await act(async () => root.render(<SettingsPage />));
-    expect(container.querySelector('[data-testid="appearance-subsection"]')).toBeNull();
+    expect(container.querySelector('[data-testid="appearance-page"]')).toBeNull();
     expect(container.querySelector('[role="status"]')?.textContent).toContain('settings.permissions.title');
   });
 
@@ -463,7 +450,7 @@ describe('site settings permissions', () => {
     const validate = Route.options.validateSearch as (search: Record<string, unknown>) => { section?: string };
     expect(validate({})).toEqual({ section: undefined });
     expect(validate({ section: 'general' })).toEqual({ section: 'general' });
-    expect(validate({ section: 'analytics' })).toEqual({ section: 'integrations' });
+    expect(validate({ section: 'analytics' })).toEqual({ section: 'integrations', integration: 'analytics' });
   });
 
   it('does not redirect while membership is unknown or its request failed', async () => {

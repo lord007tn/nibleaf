@@ -13,7 +13,7 @@ const deferred = () => {
 };
 
 describe('editor save queue', () => {
-  it('council: rename conflict blocks queued stale saves without dropping unsaved drafts', async () => {
+  it('rename conflict blocks queued stale saves without dropping unsaved drafts', async () => {
     const conflict = Object.assign(new Error('Revision conflict'), { code: 'page:revision_conflict', status: 409 });
     const save = vi.fn().mockRejectedValueOnce(conflict).mockResolvedValue('saved');
     const queue = createEditorSaveQueue(save);
@@ -33,7 +33,7 @@ describe('editor save queue', () => {
     );
   });
 
-  it('council: successful queued saves advance only their own base revision', async () => {
+  it('successful queued saves advance only their own base revision', async () => {
     const save = vi.fn().mockResolvedValueOnce({ updatedAt: 'revision-2' }).mockResolvedValue({ updatedAt: 'revision-3' });
     const queue = createEditorSaveQueue<{ updatedAt: string }>(save, (value) => value.updatedAt);
     const base = { ...draft('one'), expectedUpdatedAt: 'revision-1' };

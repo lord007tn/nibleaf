@@ -84,6 +84,9 @@ export const importContainerContinuation = (prefix: string): ((continuation: str
   return (continuation) => importFenceBody(expandedColumns(`${continuation}<`), containers)?.trimStart() === '<';
 };
 
+/** Start of the content after explicit quote and list markers on this line. */
+export const importBlockContentStart = (line: string): number => line.length - importFenceLine(line).content.length;
+
 /** Read each component opener once, including multiline attributes. The cap
  * also bounds malformed quotes/braces; continuation lines are not rescanned. */
 export const readImportComponentTag = (source: string, start: number): { end: number; complete: boolean; selfClosing: boolean } => {

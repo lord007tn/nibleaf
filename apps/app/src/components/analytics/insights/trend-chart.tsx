@@ -23,6 +23,14 @@ export type ChartRow = Record<string, string | number | null>;
 /** What the values measure: counts, durations (ms) or AI spend (USD). */
 export type TrendValueKind = 'count' | 'ms' | 'usd';
 
+/**
+ * The value axis keeps one width per kind of value, whatever the range or the
+ * data: \`width="auto"\` re-measured the ticks on every change, so the plot slid
+ * sideways when a new range had longer numbers (WORKSPACE-14). Ticks are
+ * shortened ("4.5K") to fit it; the tooltip keeps the exact value.
+ */
+const VALUE_AXIS_WIDTH: Record<TrendValueKind, number> = { count: 44, usd: 52, ms: 64 };
+
 const hasValues = (rows: readonly ChartRow[], series: readonly TrendSeries[], zerosCount: boolean) =>
   rows.some((row) => series.some((item) => typeof row[item.key] === 'number' && (zerosCount || (row[item.key] as number) > 0)));
 
@@ -107,6 +115,12 @@ export function TrendChart({
     if (valueKind === 'usd') return format.usd(value);
     return format.count(value);
   };
+  const axisTick = (value: number) => {
+    if (valueKind === 'ms') return format.ms(value);
+    // Small spend keeps its precision ($0.001, $0.002); compact notation would round it all to $0.
+    if (valueKind === 'usd') return Math.abs(value) < 1 ? format.usd(value) : format.compact(value, 'USD');
+    return format.compact(value);
+  };
   const showDots = rows.length <= 2;
 
   return (
@@ -125,13 +139,7 @@ export function TrendChart({
           </defs>
           <CartesianGrid vertical={false} />
           <XAxis axisLine={false} dataKey={xKey} minTickGap={28} tickFormatter={tick} tickLine={false} tickMargin={8} />
-          <YAxis
-            allowDecimals={valueKind === 'usd'}
-            axisLine={false}
-            tickFormatter={(value: number) => formatValue(value)}
-            tickLine={false}
-            width="auto"
-          />
+          <YAxis allowDecimals={valueKind === 'usd'} axisLine={false} tickFormatter={axisTick} tickLine={false} width={VALUE_AXIS_WIDTH[valueKind]} />
           <ChartTooltip
             content={
               <ChartTooltipContent
@@ -162,6 +170,8 @@ export function TrendChart({
                 dataKey={item.key}
                 dot={showDots}
                 fill={`url(#${gradientPrefix}-${item.key})`}
+                // No grow-in: a remount (new range, tab switch, refetch) restarted it and the plot sat blank meanwhile.
+                isAnimationActive={false}
                 key={item.key}
                 name={item.key}
                 stackId={stacked ? 'stack' : undefined}

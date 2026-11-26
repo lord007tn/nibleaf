@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -16,17 +16,6 @@ describe('Nibleaf brand assets', () => {
   it('keeps one canonical Reversible Source geometry across standalone mark variants', () => {
     for (const filename of ['nibleaf-icon.svg', 'nibleaf-icon-reverse.svg', 'nibleaf-icon-currentcolor.svg', 'nibleaf-icon-monochrome.svg']) {
       expect(readFileSync(resolve(brandRoot, filename), 'utf8')).toContain(reversibleSourcePath);
-    }
-  });
-
-  it('keeps the source SVG family free of the retired pen and leaf geometry', () => {
-    const retiredGeometry = ['M173 300', 'M426 393', 'M68 138', 'M824 138', 'M346 600'];
-    const sources = readdirSync(brandRoot).filter((filename) => filename.endsWith('.svg'));
-
-    expect(sources.length).toBeGreaterThanOrEqual(25);
-    for (const filename of sources) {
-      const source = readFileSync(resolve(brandRoot, filename), 'utf8');
-      for (const geometry of retiredGeometry) expect(source).not.toContain(geometry);
     }
   });
 

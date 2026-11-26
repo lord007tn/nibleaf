@@ -299,7 +299,7 @@ describe('internal links keep their address (PUBLIC-18)', () => {
   });
 });
 
-describe('council fixes: clicks that edit, and links that keep their default (PUBLIC-18)', () => {
+describe('clicks that edit, and links that keep their default (PUBLIC-18)', () => {
   it('a /files/guide.pdf click keeps the browser’s behaviour', () => {
     const links = makeLinks();
     for (const href of ['/files/guide.pdf']) {
@@ -350,7 +350,7 @@ describe('council fixes: clicks that edit, and links that keep their default (PU
   });
 });
 
-describe('council fixes: links into another docs version (PUBLIC-18)', () => {
+describe('links into another docs version (PUBLIC-18)', () => {
   it('a link to /v2/<page> is not marked missing: Open stays available, loads the version, and opens the page', async () => {
     const links = makeLinks();
     const { open, onDone } = await renderPanel('/v2/setup', links);

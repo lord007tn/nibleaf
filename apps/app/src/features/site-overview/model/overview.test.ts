@@ -184,6 +184,12 @@ describe('siteOverview: counts and analytics', () => {
     expect(siteOverview(loaded())).toMatchObject({ analyticsUnknown: false, totalViews: 120, viewsComparison: { value: 120, previous: 100 } });
   });
 
+  it('shows no change at all when there were no views in either window, rather than a "0%" that says nothing', () => {
+    const overview = siteOverview(loaded({ analytics: { availability: 'complete', totalViews: 0, comparableTotalViews: 0, previousTotalViews: 0 } }));
+    expect(overview.viewsComparison).toBeNull();
+    expect(overview.totalViews).toBe(0);
+  });
+
   it('leaves out a side of the comparison the answer does not have', () => {
     const overview = siteOverview(loaded({ analytics: { availability: 'available', totalViews: 5 } }));
     expect(overview.viewsComparison).toEqual({ value: null, previous: null });

@@ -60,4 +60,60 @@ describe('analytics overview queries', () => {
     expect(query?.meta?.errorMessage).toBeUndefined();
     await unmount();
   });
+
+  it('keeps the shown range on screen while a new range loads, so the chart never blanks or jumps (WORKSPACE-14)', async () => {
+    let range: '30d' | '7d' = '30d';
+    let seen: { data: unknown; isPending: boolean } | undefined;
+    const ProjectHome = () => {
+      const query = useProjectAnalytics('p1', range);
+      seen = { data: query.data, isPending: query.isPending };
+      return null;
+    };
+    const queryClient = new QueryClient();
+    const shown = { timeseries: [{ date: '2026-11-01', views: 4 }] };
+    queryClient.setQueryData(projectAnalyticsQueryOptions('p1', '30d', analyticsTimezone()).queryKey, shown as never);
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    const draw = () =>
+      act(async () =>
+        root.render(
+          <QueryClientProvider client={queryClient}>
+            <ProjectHome />
+          </QueryClientProvider>,
+        ),
+      );
+    await draw();
+    expect(seen?.data).toBe(shown);
+    range = '7d';
+    await draw();
+    expect(seen).toEqual({ data: shown, isPending: false });
+    await act(async () => root.unmount());
+  });
+
+  it('never shows the figures of another site while it loads', async () => {
+    let projectId = 'p1';
+    let seen: { data: unknown; isPending: boolean } | undefined;
+    const ProjectHome = () => {
+      const query = useProjectAnalytics(projectId, '30d');
+      seen = { data: query.data, isPending: query.isPending };
+      return null;
+    };
+    const queryClient = new QueryClient();
+    queryClient.setQueryData(projectAnalyticsQueryOptions('p1', '30d', analyticsTimezone()).queryKey, { timeseries: [] } as never);
+    const container = document.createElement('div');
+    const root = createRoot(container);
+    const draw = () =>
+      act(async () =>
+        root.render(
+          <QueryClientProvider client={queryClient}>
+            <ProjectHome />
+          </QueryClientProvider>,
+        ),
+      );
+    await draw();
+    projectId = 'p2';
+    await draw();
+    expect(seen).toEqual({ data: undefined, isPending: true });
+    await act(async () => root.unmount());
+  });
 });
