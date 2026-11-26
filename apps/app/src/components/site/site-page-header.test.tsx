@@ -70,7 +70,7 @@ const titleSelectors = () => {
 afterEach(() => document.body.replaceChildren());
 
 describe('the published page header', () => {
-  it('keeps the title where the theme rules for it (Manuscript's face, balanced wrapping)
+  it('keeps the title where the theme rules for it (the Manuscript face, balanced wrapping)
   can;
   reach;
   it;
