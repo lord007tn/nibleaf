@@ -1,12 +1,12 @@
 import type { MessageKey } from '@nibleaf/i18n';
 
-/**
- * How Nibleaf reaches a site's GitHub repository (AUTH-25). Today that is a
- * fine-grained personal access token the owner creates on GitHub. A GitHub
- * App would be a second method: the connect page's access section offers the
- * methods the server supports and the repository section stays as it is.
+/*
+ * How Nibleaf reaches a site's GitHub repository (AUTH-25). Today that is one
+ * method: a fine-grained personal access token the owner creates on GitHub,
+ * described by the constants below. A GitHub App would be a second method:
+ * the connect page's access section would offer the methods the server
+ * supports, and the repository section would stay as it is.
  */
-export type GitAccessMethod = 'token';
 
 /** GitHub's page for a new fine-grained token. */
 export const GITHUB_NEW_TOKEN_URL = 'https://github.com/settings/personal-access-tokens/new';
