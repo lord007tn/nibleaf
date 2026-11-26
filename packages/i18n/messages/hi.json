@@ -5078,5 +5078,14 @@
   "settings_git_connect_repositoryfirst": "पहले रिपॉज़िटरी दर्ज करें।",
   "settings_git_connect_branchesfirst": "पहले दोनों ब्रांच दर्ज करें।",
   "settings_openapi_neednameandpath": "पहले एक नेविगेशन लेबल और प्रकाशित पाथ जोड़ें।",
-  "settings_openapi_needsource": "पहले OpenAPI दस्तावेज़ जोड़ें।"
+  "settings_openapi_needsource": "पहले OpenAPI दस्तावेज़ जोड़ें।",
+  "shortcuts_editor_description": "कीबोर्ड छोड़े बिना लिखें और फ़ॉर्मैट करें। Mac पर Ctrl की जगह ⌘ इस्तेमाल करें।",
+  "shortcuts_editor_text": "टेक्स्ट",
+  "shortcuts_editor_blocks": "ब्लॉक",
+  "shortcuts_editor_page": "पेज",
+  "shortcuts_editor_savedraft": "ड्राफ़्ट अभी सेव करें",
+  "shortcuts_editor_moveup": "ब्लॉक ऊपर ले जाएँ",
+  "shortcuts_editor_movedown": "ब्लॉक नीचे ले जाएँ",
+  "shortcuts_editor_formattingmenu": "चुने गए टेक्स्ट के फ़ॉर्मैटिंग मेन्यू पर जाएँ",
+  "shortcuts_editor_show": "कीबोर्ड शॉर्टकट दिखाएँ"
 }

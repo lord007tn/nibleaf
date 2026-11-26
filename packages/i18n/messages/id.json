@@ -5072,5 +5072,14 @@
   "settings_git_connect_repositoryfirst": "Masukkan repositori terlebih dahulu.",
   "settings_git_connect_branchesfirst": "Masukkan kedua branch terlebih dahulu.",
   "settings_openapi_neednameandpath": "Tambahkan label navigasi dan jalur terbit terlebih dahulu.",
-  "settings_openapi_needsource": "Tambahkan dokumen OpenAPI terlebih dahulu."
+  "settings_openapi_needsource": "Tambahkan dokumen OpenAPI terlebih dahulu.",
+  "shortcuts_editor_description": "Menulis dan memformat tanpa melepas keyboard. Di Mac, gunakan ⌘ sebagai ganti Ctrl.",
+  "shortcuts_editor_text": "Teks",
+  "shortcuts_editor_blocks": "Blok",
+  "shortcuts_editor_page": "Halaman",
+  "shortcuts_editor_savedraft": "Simpan draf sekarang",
+  "shortcuts_editor_moveup": "Pindahkan blok ke atas",
+  "shortcuts_editor_movedown": "Pindahkan blok ke bawah",
+  "shortcuts_editor_formattingmenu": "Buka menu format untuk teks yang dipilih",
+  "shortcuts_editor_show": "Tampilkan pintasan keyboard"
 }

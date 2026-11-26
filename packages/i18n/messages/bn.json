@@ -5077,5 +5077,14 @@
   "settings_git_connect_repositoryfirst": "প্রথমে রিপোজিটরি লিখুন।",
   "settings_git_connect_branchesfirst": "প্রথমে দুটি ব্রাঞ্চই লিখুন।",
   "settings_openapi_neednameandpath": "প্রথমে একটি নেভিগেশন লেবেল ও প্রকাশিত পাথ যোগ করুন।",
-  "settings_openapi_needsource": "প্রথমে OpenAPI ডকুমেন্টটি যোগ করুন।"
+  "settings_openapi_needsource": "প্রথমে OpenAPI ডকুমেন্টটি যোগ করুন।",
+  "shortcuts_editor_description": "কীবোর্ড না ছেড়েই লিখুন ও ফরম্যাট করুন। Mac-এ Ctrl-এর বদলে ⌘ ব্যবহার করুন।",
+  "shortcuts_editor_text": "টেক্সট",
+  "shortcuts_editor_blocks": "ব্লক",
+  "shortcuts_editor_page": "পৃষ্ঠা",
+  "shortcuts_editor_savedraft": "এখনই খসড়া সংরক্ষণ করুন",
+  "shortcuts_editor_moveup": "ব্লক উপরে সরান",
+  "shortcuts_editor_movedown": "ব্লক নিচে সরান",
+  "shortcuts_editor_formattingmenu": "নির্বাচিত টেক্সটের ফরম্যাটিং মেনুতে যান",
+  "shortcuts_editor_show": "কীবোর্ড শর্টকাট দেখান"
 }

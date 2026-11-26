@@ -5144,5 +5144,14 @@
   "settings_git_connect_repositoryfirst": "Digite o repositório primeiro.",
   "settings_git_connect_branchesfirst": "Digite as duas branches primeiro.",
   "settings_openapi_neednameandpath": "Adicione primeiro um rótulo de navegação e um caminho publicado.",
-  "settings_openapi_needsource": "Adicione primeiro o documento OpenAPI."
+  "settings_openapi_needsource": "Adicione primeiro o documento OpenAPI.",
+  "shortcuts_editor_description": "Escreva e formate sem tirar as mãos do teclado. No Mac, use ⌘ em vez de Ctrl.",
+  "shortcuts_editor_text": "Texto",
+  "shortcuts_editor_blocks": "Blocos",
+  "shortcuts_editor_page": "Página",
+  "shortcuts_editor_savedraft": "Salvar o rascunho agora",
+  "shortcuts_editor_moveup": "Mover bloco para cima",
+  "shortcuts_editor_movedown": "Mover bloco para baixo",
+  "shortcuts_editor_formattingmenu": "Ir para o menu de formatação do texto selecionado",
+  "shortcuts_editor_show": "Mostrar atalhos de teclado"
 }

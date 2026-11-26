@@ -140,7 +140,8 @@
     "pagestatus_live",
     "settings_git_productionbranch",
     "settings_import_mintlify_branch",
-    "settings_import_summary_branch"
+    "settings_import_summary_branch",
+    "shortcuts_editor_text"
   ],
   "pending": []
 }

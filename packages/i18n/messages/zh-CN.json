@@ -5056,5 +5056,14 @@
   "settings_git_connect_repositoryfirst": "请先输入仓库。",
   "settings_git_connect_branchesfirst": "请先输入两个分支。",
   "settings_openapi_neednameandpath": "请先添加导航标签和发布路径。",
-  "settings_openapi_needsource": "请先添加 OpenAPI 文档。"
+  "settings_openapi_needsource": "请先添加 OpenAPI 文档。",
+  "shortcuts_editor_description": "无需离开键盘即可书写和设置格式。在 Mac 上，请用 ⌘ 代替 Ctrl。",
+  "shortcuts_editor_text": "文本",
+  "shortcuts_editor_blocks": "块",
+  "shortcuts_editor_page": "页面",
+  "shortcuts_editor_savedraft": "立即保存草稿",
+  "shortcuts_editor_moveup": "上移块",
+  "shortcuts_editor_movedown": "下移块",
+  "shortcuts_editor_formattingmenu": "转到所选文本的格式菜单",
+  "shortcuts_editor_show": "显示键盘快捷键"
 }
