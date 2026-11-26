@@ -1,0 +1,233 @@
+// @vitest-environment jsdom
+
+import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
+import { resolveTheme, THEME_PRESETS } from '@nibleaf/shared/themes';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, type ReactNode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { Project } from '@/hooks/api';
+import { ThemeSettings as ThemeSection } from './theme-settings';
+
+/** Option labels are deliberately distinct from the raw option ids so a trigger
+ *  that shows the id instead of the label is caught. */
+const OPTION_IDS = [
+  'reference',
+  'editorial',
+  'console',
+  'compact',
+  'comfortable',
+  'relaxed',
+  'focused',
+  'balanced',
+  'wide',
+  'inline',
+  'stacked',
+  'floating',
+  'bordered',
+  'soft',
+  'rail',
+  'tree',
+  'sectioned',
+  'sharp',
+  'rounded',
+  'pill',
+  'system',
+  'dim',
+  'vivid',
+  'outline',
+  'solid',
+  'lifted',
+  'flat',
+  'underline',
+  'pills',
+  'boxed',
+  'lines',
+  'rows',
+  'cards',
+];
+const translations: Record<string, string> = Object.fromEntries(OPTION_IDS.map((id) => [`settings.theme.option.${id}`, `تسمية ${id}`]));
+
+const mutation = { isPending: false, mutate: vi.fn(), mutateAsync: vi.fn() };
+
+vi.mock('@nibleaf/i18n/react', () => ({
+  useT: () => (key: string) => translations[key] ?? key,
+  translateFn: (key: string) => key,
+}));
+vi.mock('@/hooks/api', () => ({
+  useUpdateProjectConfig: () => mutation,
+  useImportProjectTheme: () => mutation,
+  useExportProjectTheme: () => mutation,
+}));
+vi.mock('@tanstack/react-router', () => ({ useBlocker: () => undefined }));
+vi.mock('@/services/api-origin', () => ({ apiOrigin: () => 'http://dashboard.test' }));
+vi.mock('@/lib/site-theme', () => ({
+  projectThemeVariables: () => ({}),
+  projectThemeStyle: () => ({}),
+  siteAppearance: (config?: { styling?: { theme?: string } } | null) => config?.styling?.theme ?? 'system',
+}));
+vi.mock('@/components/site/documentation-theme-provider', () => ({
+  DocumentationThemeProvider: ({
+    children,
+    theme,
+    direction,
+  }: {
+    children: ReactNode;
+    theme: { id: string; layout: { shell: string } };
+    direction: string;
+  }) => (
+    <div data-preset={theme.id} data-shell={theme.layout.shell} data-testid="preview" dir={direction}>
+      {children}
+    </div>
+  ),
+  DocumentationStudioPreviewLayout: ({ header, navigation, content }: Record<'header' | 'navigation' | 'content', ReactNode>) => (
+    <div>
+      {header}
+      {navigation}
+      {content}
+    </div>
+  ),
+}));
+
+const project: Project = {
+  id: 'project-a',
+  organizationId: 'org-a',
+  name: 'Docs',
+  slug: 'docs',
+  description: null,
+  icon: null,
+  config: null,
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
+};
+
+const render = (root: ReturnType<typeof createRoot>, site: Project) =>
+  act(async () =>
+    root.render(
+      <QueryClientProvider client={new QueryClient()}>
+        <ConfirmProvider>
+          <ThemeSection project={site} />
+        </ConfirmProvider>
+      </QueryClientProvider>,
+    ),
+  );
+
+const preview = () => document.querySelector<HTMLElement>('[data-testid="preview"]');
+const triggers = () => [...document.querySelectorAll<HTMLElement>('[data-slot="select-trigger"]')];
+const triggerLabel = (trigger: HTMLElement) => trigger.querySelector('[data-slot="select-value"]')?.textContent;
+
+describe('ThemeSection controls', () => {
+  let container: HTMLDivElement;
+  let root: ReturnType<typeof createRoot>;
+
+  beforeEach(async () => {
+    Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe = vi.fn();
+        unobserve = vi.fn();
+        disconnect = vi.fn();
+      },
+    );
+    Element.prototype.scrollIntoView = vi.fn();
+    container = document.createElement('div');
+    container.dir = 'rtl';
+    document.body.append(container);
+    root = createRoot(container);
+    await render(root, project);
+  });
+
+  afterEach(async () => {
+    await act(async () => root.unmount());
+    document.body.replaceChildren();
+    vi.clearAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('renders every layout and component option as a design-system select showing the translated label', () => {
+    expect(container.querySelector('select')).toBeNull();
+    const resolved = resolveTheme(null);
+    const labels = triggers().map(triggerLabel);
+    expect(labels).toHaveLength(12);
+    expect(labels[0]).toBe(translations[`settings.theme.option.${resolved.layout.shell}`]);
+    expect(labels[7]).toBe(translations[`settings.theme.option.${resolved.components.codeBlocks}`]);
+    for (const label of labels) {
+      expect(label).toMatch(/^تسمية /);
+    }
+    // Every trigger is labelled for assistive tech through its visible label.
+    for (const trigger of triggers()) {
+      const id = trigger.getAttribute('id');
+      expect(id).toBeTruthy();
+      expect(container.querySelector(`label[for="${id}"]`)?.textContent).toBeTruthy();
+    }
+  });
+
+  it('updates the preview when an option is picked from the select', async () => {
+    const [shell] = triggers();
+    if (!shell) throw new Error('missing shell select');
+    expect(preview()?.dataset.shell).toBe(resolveTheme(null).layout.shell);
+
+    await act(async () => {
+      shell.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
+      shell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, button: 0 }));
+      shell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }));
+      shell.click();
+    });
+    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find((node) => node.textContent?.includes('console'));
+    if (!option) throw new Error('select popup did not open');
+    await act(async () => {
+      option.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }));
+      option.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, button: 0 }));
+      option.click();
+    });
+
+    expect(preview()?.dataset.shell).toBe('console');
+    expect(triggerLabel(triggers()[0] as HTMLElement)).toBe(translations['settings.theme.option.console']);
+  });
+
+  it('switches the preview to a preset and to Arabic without native controls', async () => {
+    const gallery = [...container.querySelectorAll<HTMLButtonElement>('button[aria-pressed]:has(strong)')];
+    expect(gallery).toHaveLength(3);
+    const signal = gallery[2];
+    if (!signal) throw new Error('missing preset button');
+    await act(async () => signal.click());
+    expect(preview()?.dataset.preset).toBe('signal');
+    expect(preview()?.dataset.shell).toBe(THEME_PRESETS.signal.layout.shell);
+
+    const toggle = container.querySelector<HTMLButtonElement>('button[lang="ar"]');
+    if (!toggle) throw new Error('missing preview language toggle');
+    expect(toggle.getAttribute('dir')).toBe('rtl');
+    expect(preview()?.getAttribute('dir')).toBe('ltr');
+    await act(async () => toggle.click());
+    expect(preview()?.getAttribute('dir')).toBe('rtl');
+    expect(container.querySelector('button[lang="en"]')?.getAttribute('dir')).toBe('ltr');
+  });
+
+  it('keeps code-like values left-to-right inside the RTL form', () => {
+    const hexes = [...container.querySelectorAll<HTMLElement>('code[dir="ltr"]')];
+    expect(hexes.length).toBeGreaterThan(0);
+    for (const hex of hexes) {
+      expect(hex.textContent).toMatch(/^#[0-9a-f]{6}$/i);
+    }
+    expect(container.querySelector('textarea')?.getAttribute('dir')).toBe('ltr');
+  });
+
+  it('shows no accent adjustment for a preset that already reads as text', () => {
+    expect(container.querySelector('[data-accent-adjustments]')).toBeNull();
+  });
+
+  it('shows the shade links will use when the authored accent fails as text, and keeps the input on the authored colour (PUB-006)', async () => {
+    const branded = { ...project, config: { theme: { version: 1, preset: 'harbor', colors: { light: { accent: '#b96a3d' } } } } } as Project;
+    // The project query answering with another theme reaches the clean draft.
+    await render(root, branded);
+    const readout = container.querySelector<HTMLElement>('[data-accent-adjustments]');
+    expect(readout).not.toBeNull();
+    expect(readout?.getAttribute('role')).toBeNull();
+    const line = readout?.querySelector('li')?.textContent ?? '';
+    expect(line).toMatch(/#b96a3d 3\.94:1→#[0-9a-f]{6} [4-9]\.\d\d:1/);
+    expect(readout?.querySelector('li')?.getAttribute('dir')).toBe('ltr');
+    const accentInput = [...container.querySelectorAll<HTMLInputElement>('input[type="color"]')].find((input) => input.value === '#b96a3d');
+    expect(accentInput).toBeDefined();
+  });
+});

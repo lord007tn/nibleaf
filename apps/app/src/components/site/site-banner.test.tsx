@@ -44,7 +44,9 @@ describe('SiteBanner storage recovery', () => {
     await act(async () => root.render(<SiteBanner banner={{ enabled: true, message: 'Service notice' }} lang="en" projectId="docs" />));
 
     expect(container.textContent).toContain('Service notice');
-    await act(async () => container.querySelector<HTMLButtonElement>('button')?.click());
+    const dismiss = container.querySelector<HTMLButtonElement>('button');
+    expect(dismiss?.classList.contains('size-11')).toBe(true);
+    await act(async () => dismiss?.click());
     expect(container.textContent).toBe('');
   });
 
@@ -104,12 +106,6 @@ describe('SiteBanner without a dismissal flash', () => {
     expect(errors).not.toHaveBeenCalled();
     expect(host.querySelector('[data-theme-region="banner"]')).toBeNull();
     await act(async () => root?.unmount());
-  });
-
-  it('gives the dismiss control a 44px target', async () => {
-    const host = document.createElement('div');
-    host.innerHTML = renderToString(<SiteBanner banner={banner} projectId="docs" />);
-    expect(host.querySelector('button')?.className).toContain('size-11');
   });
 });
 

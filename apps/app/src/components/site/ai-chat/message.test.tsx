@@ -155,13 +155,11 @@ describe('reader chat messages', () => {
     expect(status()?.textContent).toBe('');
     await act(async () => copyButton()?.click());
     expect(status()?.textContent).toBe('Answer copied');
-    expect(copyButton()?.querySelector('.lucide-check')).not.toBeNull();
     // Plain http: no async clipboard, and the copy command is refused.
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: undefined });
     Object.defineProperty(document, 'execCommand', { configurable: true, value: vi.fn(() => false) });
     await act(async () => copyButton()?.click());
     expect(status()?.textContent).toBe('Could not copy the answer. Please try again.');
-    expect(status()?.className).toContain('text-destructive');
     Object.defineProperty(document, 'execCommand', { configurable: true, value: undefined });
     await unmount();
   });

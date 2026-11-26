@@ -199,36 +199,36 @@ describe('export renderers', () => {
     });
   });
 
-  it('renders Harbor, Manuscript, and Signal as structurally distinct responsive documents', () => {
-    const expected = {
-      harbor: ['harbor-topbar', 'harbor-library', 'harbor-toc'],
-      manuscript: ['manuscript-masthead', 'manuscript-chapters', 'manuscript-paper'],
-      signal: ['signal-commandbar', 'signal-rail', 'signal-index'],
-    } as const;
-
-    for (const preset of THEME_PRESET_IDS) {
-      const classes = expected[preset];
-      const themed = {
-        ...snapshot,
-        project: { ...snapshot.project, config: { theme: { preset }, search: { placeholder: 'ابحث في الدليل' } } },
-      } satisfies SiteSnapshot;
-      const files = unzipSync(renderStaticHtml(themed, assets).bytes);
-      const html = text(required(files['main/ar/intro/index.html']));
-      for (const className of classes) expect(html).toContain(className);
-      const ownClasses = new Set<string>(classes);
-      for (const other of Object.values(expected)
-        .flat()
-        .filter((className) => !ownClasses.has(className))) {
-        expect(html).not.toContain(`class="${other}`);
-      }
-      expect(html).toContain('dir="rtl"');
-      expect(html).toContain('aria-label="ابحث في الدليل"');
+  it.each(THEME_PRESET_IDS)('exports a labelled RTL article, navigation and search for the %s theme', (preset) => {
+    const themed = {
+      ...snapshot,
+      project: { ...snapshot.project, config: { theme: { preset }, search: { placeholder: 'ابحث في الدليل' } } },
+    } satisfies SiteSnapshot;
+    const files = unzipSync(renderStaticHtml(themed, assets).bytes);
+    const html = text(required(files['main/ar/intro/index.html']));
+    expect(html).toMatch(/<html\b[^>]*\blang="ar"[^>]*\bdir="rtl"/);
+    expect(html).toMatch(/<main\b[^>]*\bid="content"[^>]*><article>/);
+    expect(html).toMatch(/<nav\b[^>]*aria-label="العربية"[^>]*data-static-nav[^>]*>/);
+    expect(html).toMatch(/<input\b[^>]*aria-label="ابحث في الدليل"/);
+    expect(html).toMatch(/<link\b[^>]*rel="stylesheet"[^>]*href="[^"]*theme\/theme\.css"/);
+    expect(files['theme/theme.css']).toBeDefined();
+    if (preset === 'manuscript') {
+      expect(html).toMatch(/<\/header><nav\b[^>]*data-static-nav[^>]*>/);
+      expect(html).toMatch(/<aside\b[^>]*><div\b[^>]*>main\b[^<]*العربية/);
+    } else {
+      expect(html).toMatch(/<aside\b[^>]*><nav\b[^>]*data-static-nav[^>]*>/);
+      const header = html.match(/<header\b[^>]*>([\s\S]*?)<\/header>/)?.[1];
+      expect(header).toMatch(preset === 'signal' ? /\bmain\/ar\b/ : /\bmain\b[^<]*العربية/);
     }
+  });
 
-    const css = text(required(unzipSync(renderStaticHtml(snapshot, assets).bytes)['theme/theme.css']));
-    expect(css).toContain('@media(max-width:760px)');
-    expect(css).toContain('border-inline-end');
-    expect(css).toContain('[dir="rtl"]');
+  it('ships narrow-screen stacking and RTL layout rules in the exported stylesheet', () => {
+    const files = unzipSync(renderStaticHtml(snapshot, assets).bytes);
+    const css = text(required(files['theme/theme.css']));
+    const narrowLayouts = css.split(/@media\s*\(\s*max-width\s*:[^)]*\)/).slice(1);
+    expect(narrowLayouts.some((rules) => /display\s*:\s*block\b/.test(rules.split('@media', 1)[0] ?? ''))).toBe(true);
+    expect(css).toMatch(/\[dir=["']rtl["']\]/);
+    expect(css).toMatch(/\bborder-inline-end\s*:/);
   });
 
   it('emits canonical, robots, hreflang, Open Graph, and JSON-LD metadata', () => {

@@ -1,4 +1,4 @@
-﻿// @vitest-environment jsdom
+// @vitest-environment jsdom
 import { Editor } from '@tiptap/core';
 import { describe, expect, it } from 'vitest';
 import { convertGitBookMarkdown } from '../../../../server/src/actions/importers/gitbook-markdown';
@@ -7,7 +7,7 @@ import { normalizeMintlifyMdx } from '../../../../server/src/actions/importers/m
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 describe('import fidelity through the real editor extensions', () => {
-  it('council P2 containers: imported videos round-trip inside lists, nested lists and blockquotes', () => {
+  it('imported videos round-trip inside lists, nested lists and blockquotes', () => {
     for (const source of [
       '- Step one\n\n  [Demo](https://youtu.be/abcdefghijk)\n\n  Finish.',
       '- Outer\n\n  - Step one\n\n    [Demo](https://youtu.be/abcdefghijk)\n\n    Finish.',

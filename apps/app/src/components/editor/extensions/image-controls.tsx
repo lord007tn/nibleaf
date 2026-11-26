@@ -6,6 +6,7 @@ import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { type KeyboardEvent, useCallback, useEffect, useId, useRef } from 'react';
+import { useMenuScrollTarget } from '../menu-anchor';
 import { imagePromptKey } from './block-image';
 import { canEditImages } from './image-upload';
 
@@ -24,6 +25,7 @@ export function addImageCaption(editor: Editor): number | null {
 
 export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
   const t = useT();
+  const scrollTarget = useMenuScrollTarget();
   const hintId = useId();
   const sizeLabelId = useId();
   const input = useRef<HTMLInputElement>(null);
@@ -137,7 +139,7 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
       editor={editor}
       pluginKey="image-description"
       updateDelay={0}
-      options={{ placement: 'bottom' }}
+      options={{ placement: 'bottom', scrollTarget }}
       shouldShow={() =>
         canEditImages(editor) && editor.isActive('image') && !dismissed.current && !document.activeElement?.classList.contains('pl-frame-title-input')
       }
@@ -155,7 +157,7 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
             ref={input}
             onKeyDown={onEscape}
             aria-describedby={hintId}
-            className="min-h-11 rounded border border-border bg-background p-2 focus-visible:outline-2 focus-visible:outline-ring"
+            className="min-h-11 rounded border border-input-edge bg-background p-2 focus-visible:outline-2 focus-visible:outline-ring"
             dir="auto"
             value={state.alt}
             onChange={(event) => {

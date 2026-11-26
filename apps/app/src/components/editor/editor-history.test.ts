@@ -66,7 +66,10 @@ describe('seedMarkdown leaves no undo history', () => {
     editor.on('update', updates);
     seedMarkdown(editor, PAGE_A);
     seedMarkdown(editor, PAGE_B);
-    expect(updates).not.toHaveBeenCalled();
     expect(getMarkdown(editor)).toBe(PAGE_B.trimEnd());
+    seedMarkdown(editor, '   \n');
+    expect(editor.state.doc.textContent).toBe('');
+    expect(getMarkdown(editor)).toBe('');
+    expect(updates).not.toHaveBeenCalled();
   });
 });

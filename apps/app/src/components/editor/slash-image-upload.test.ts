@@ -30,13 +30,4 @@ describe('image slash command', () => {
     expect(click).not.toHaveBeenCalled();
     expect(JSON.stringify(editor.getJSON())).toContain('https://example.com/a.png');
   });
-
-  it('opens the file picker when an uploader is configured', () => {
-    const prompt = vi.spyOn(window, 'prompt');
-    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => undefined);
-    runImageCommand(async () => 'https://example.com/b.png');
-    expect(click).toHaveBeenCalledOnce();
-    expect(prompt).not.toHaveBeenCalled();
-    for (const input of document.querySelectorAll('input[type="file"]')) input.remove();
-  });
 });

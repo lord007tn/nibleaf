@@ -169,19 +169,13 @@ The after section mentions zebras.`;
     expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);
   });
 
-  it.each(CODERABBIT_REPROS)('index the section after %s under its heading and anchor (#590 CodeRabbit review)', (_name, example) => {
+  it.each([...CODERABBIT_REPROS, ...CONTINUATION_FENCE_REPROS])('indexes the heading and anchor after %s', (_name, example) => {
     const content = `${example}\n\nThe after section mentions zebras.`;
     expect(sections(page(content)).at(-1)).toEqual(['After', 'after']);
     expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toContain('After');
   });
 
-  it.each(CONTINUATION_FENCE_REPROS)('index the section after %s under its heading and anchor (#590 CodeRabbit)', (_name, example) => {
-    const content = `${example}\n\nThe after section mentions zebras.`;
-    expect(sections(page(content)).at(-1)).toEqual(['After', 'after']);
-    expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toContain('After');
-  });
-
-  it('index the section after indented code that looks like a fence, once a quote has ended (#590 council)', () => {
+  it('index the section after indented code that looks like a fence, once a quote has ended', () => {
     const content = `${INDENTED_FENCE_AFTER_QUOTE}\n\nThe after section mentions zebras.`;
     expect(sections(page(content))).toEqual([[''], ['After', 'after']]);
     expect(chunkSearchDocument(scope, { ...page(content), sections: undefined }).map(({ heading }) => heading)).toEqual(['', 'After']);

@@ -109,7 +109,8 @@ function AnalyticsForm({ project }: { project: Project }) {
         </Callout>
       ) : null}
 
-      <SettingsSection title={t('settings.analytics.title')}>
+      {/* Named by the page's own heading (Integrations → Analytics). */}
+      <SettingsSection>
         <form.Field name="ga4" validators={validateOnBlurThenChange(ga4Message)}>
           {(field) => (
             <FormField<string> control="field" description={t('settings.analytics.ga4.hint')} field={field} label={t('settings.analytics.ga4.label')}>

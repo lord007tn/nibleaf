@@ -1,5 +1,6 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { DataListItem } from '@nibleaf/design-system/components/ui/data-list';
 import { useLocale } from '@nibleaf/i18n/react';
 import { Archive, Ban, Download } from 'lucide-react';
 import { useEffect, useRef } from 'react';
@@ -81,20 +82,20 @@ export function ExportRunRow({ projectId, run, canCreate }: { projectId: string;
   const formats = row.formats.map((format) => t(format)).join(', ');
   const createdAt = formatExportDate(run.createdAt, locale);
   return (
-    <div className="rounded-lg border border-border p-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 font-medium text-sm">
-            <Archive aria-hidden className="size-4" />
-            {formats} <Badge variant={row.status.variant}>{t(row.status.label)}</Badge>
-          </div>
-          <div className="mt-1 text-muted-foreground text-xs">
-            {t('settings.exports.workflow.publishedVersion', { version: run.snapshot.deploymentVersion })} ·{' '}
-            {t('settings.exports.workflow.pageCount', countVariables(locale, run.snapshot.pagesCount))} ·{' '}
-            {'name' in row.trigger ? <span dir="auto">{row.trigger.name}</span> : t(row.trigger.label)} · <bdi>{createdAt}</bdi>
-          </div>
-        </div>
-        {row.cancel ? (
+    <DataListItem
+      badges={<Badge variant={row.status.variant}>{t(row.status.label)}</Badge>}
+      leading={<Archive aria-hidden className="size-4 text-muted-foreground" />}
+      meta={
+        <>
+          <span>{t('settings.exports.workflow.publishedVersion', { version: run.snapshot.deploymentVersion })}</span>
+          <span>{t('settings.exports.workflow.pageCount', countVariables(locale, run.snapshot.pagesCount))}</span>
+          <span>{'name' in row.trigger ? <span dir="auto">{row.trigger.name}</span> : t(row.trigger.label)}</span>
+          <bdi>{createdAt}</bdi>
+        </>
+      }
+      title={formats}
+      trailing={
+        row.cancel ? (
           // Busy keeps focus on the button (focusableWhenDisabled), so a keyboard press doesn't drop it to the page.
           <Button focusableWhenDisabled loading={row.cancel.busy} onClick={() => void cancel()} size="sm" variant="outline">
             <Ban aria-hidden className="size-3.5" /> {t('common.cancel')}
@@ -104,8 +105,9 @@ export function ExportRunRow({ projectId, run, canCreate }: { projectId: string;
               {formats} <bdi>{createdAt}</bdi>
             </span>
           </Button>
-        ) : null}
-      </div>
+        ) : null
+      }
+    >
       {run.error ? (
         <div className="mt-3 min-w-0 rounded-md bg-destructive/10 p-2">
           <p className="text-muted-foreground text-xs">{t('settings.exports.workflow.attempt', { count: run.attempts })}</p>
@@ -132,6 +134,6 @@ export function ExportRunRow({ projectId, run, canCreate }: { projectId: string;
           ))}
         </div>
       ) : null}
-    </div>
+    </DataListItem>
   );
 }

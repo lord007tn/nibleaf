@@ -11,7 +11,7 @@ import { growthMs, growthTestsEnabled, linearGrowthLimit } from './testing/growt
 // spans several scheduler slices on a busy runner rather than one.
 describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () => {
   it.each([
-    ['ordinary code-heavy text (round 4)', (n: number) => 'a ` b '.repeat(n), 10_000],
+    ['ordinary code-heavy text', (n: number) => 'a ` b '.repeat(n), 10_000],
     ['bounded tight-list export', (n: number) => '- <script></script>\n      CODE\n- NEXT\n'.repeat(n), 100],
     [
       'malformed attribute ownership and authored entities',
@@ -75,7 +75,7 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
         expect(exportCodeSamples(portable(build(n)))).toEqual(exportCodeSamples(build(n)));
         expect(project(build(n)).map(renderedActiveHtml)).toEqual([0, 0]);
       }
-      if (label === 'ordinary code-heavy text (round 4)') {
+      if (label === 'ordinary code-heavy text') {
         console.info(`Code-heavy growth: ${small.toFixed(1)} / ${large.toFixed(1)} ms`);
         expect(project(build(4 * n))).toEqual([build(4 * n).trim(), build(4 * n)]);
       }
@@ -100,7 +100,7 @@ describe.runIf(growthTestsEnabled)('projection robustness (#341): growth', () =>
 });
 
 const quotedFence = (depth: number) => ['<x>', '', '~~~', 'X', '~~~'].map((line) => '> '.repeat(depth) + line).join('\n');
-describe.runIf(growthTestsEnabled)('round 4 deep-quote fence growth', () => {
+describe.runIf(growthTestsEnabled)('fences inside deeply nested quotes', () => {
   it.each([
     ['block count', (n: number) => Array.from({ length: n }, () => quotedFence(65)).join('\n\n'), 25],
     ['depth', (n: number) => quotedFence(n), 250],

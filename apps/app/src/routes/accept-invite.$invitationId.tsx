@@ -16,7 +16,7 @@ export const Route = createFileRoute('/accept-invite/$invitationId')({
   // invitation token that must never be crawled or indexed. The page sets a
   // title for the state it shows (invalid, expired, join <org>…).
   head: () => ({
-    meta: [{ title: 'Invitation — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }],
+    meta: [{ title: 'Invitation · Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }],
   }),
   component: AcceptInvitePage,
 });

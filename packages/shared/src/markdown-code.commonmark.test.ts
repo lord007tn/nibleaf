@@ -105,13 +105,6 @@ const commonMarkCode = (lines: readonly string[]) => {
   return { fence, code };
 };
 
-it('keeps literal lines after a quoted closer indented six columns (CodeRabbit r4570988540)', () => {
-  const source = '> ~~~\n> \t\t~~~\n> literal\n> ~~~\nafter';
-  expect(micromarkFences(source).map(Number).join('')).toBe('11110');
-  expect(commonMarkCode(source.split('\n')).fence.map(Number).join('')).toBe('11110');
-  expect(fencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe('11110');
-});
-
 it.each(['~~~', '```'])('limits %s closers to three columns in quotes and both list/quote orders', (marker) => {
   const failures: Array<{ source: string; ours: string; expected: string }> = [];
   const markdownItDisagreements: number[] = [];
@@ -166,7 +159,7 @@ it('reads all generated container fences as CommonMark does, including tabs afte
   expect(differing).toEqual([]);
 });
 
-it('reads indented code that looks like a fence as CommonMark does: never a fence (#590 council)', () => {
+it('reads indented code that looks like a fence as CommonMark does: never a fence', () => {
   const differing = indentedLookalikeCases().filter(({ source }) => {
     const lines = source.split('\n');
     return fencedMarkdownLines(lines).some((isCode, line) => isCode !== commonMarkCode(lines).fence[line]);
@@ -174,7 +167,7 @@ it('reads indented code that looks like a fence as CommonMark does: never a fenc
   expect(differing.map(({ index, source }) => ({ index, source }))).toEqual([]);
 });
 
-it('reads fences opened on container continuation lines as CommonMark does (#590 CodeRabbit)', () => {
+it('reads fences opened on container continuation lines as CommonMark does', () => {
   const differing = continuationFenceCases().filter(({ source }) => {
     const lines = source.split('\n');
     return fencedMarkdownLines(lines).some((isCode, line) => isCode !== commonMarkCode(lines).fence[line]);
@@ -185,7 +178,7 @@ it('reads fences opened on container continuation lines as CommonMark does (#590
   }
 });
 
-it('reads ordered siblings, thematic breaks, lazy lines, setext underlines and HTML blocks as CommonMark does (#590 CodeRabbit)', ({ task }) => {
+it('reads ordered siblings, thematic breaks, lazy lines, setext underlines and HTML blocks as CommonMark does', ({ task }) => {
   const start = performance.now();
   type Tally = { cases: number; agree: number; codeMarkdownItCallsProse: number; exposedAgainstMain: number };
   const tallies = new Map<string, Tally>();

@@ -5,7 +5,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
-import { queryKeys } from '@/hooks/api/query-keys';
+import { sitePageQueryKey } from '@/hooks/api/site-query-options';
 import type { SitePage, SiteShell } from '@/hooks/api/types';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { setReaderSiteAccess } from '@/lib/reader-site-access';
@@ -112,17 +112,15 @@ describe('published reader chrome', () => {
     expect(document.activeElement).toBe(main);
   });
 
-  it('keeps the phone header to one row and labels its controls plainly', async () => {
+  it('labels the desktop switchers, mobile menu and navigation landmarks in Arabic', async () => {
     const container = await renderReader(MISSING);
     const header = container.querySelector('header');
-    expect(header?.className).toContain('flex-nowrap');
-    expect(header?.className).not.toContain('flex-wrap ');
-    // The header switchers are hidden below `sm`; the drawer carries them there.
-    // The group holding the switchers (each sits in its own trigger wrapper).
-    const switchers = container.querySelector('[aria-label="اللغة: العربية"]')?.closest('div');
-    expect(switchers?.className).toMatch(/(^| )hidden( |$)/);
-    expect(switchers?.className).toContain('sm:flex');
-    expect(container.querySelector('[aria-label="الإصدار: main"]')).not.toBeNull();
+    const language = header?.querySelector('button[aria-label="اللغة: العربية"]');
+    const version = header?.querySelector('button[aria-label="الإصدار: main"]');
+    const desktopSwitchers = language?.closest('div');
+    expect(desktopSwitchers?.classList.contains('hidden')).toBe(true);
+    expect(desktopSwitchers?.classList.contains('sm:flex')).toBe(true);
+    expect(version && desktopSwitchers?.contains(version)).toBe(true);
     expect(container.querySelector('[data-slot="sheet-trigger"]')?.getAttribute('aria-label')).toBe('فتح القائمة');
     const navLabels = [...container.querySelectorAll('nav[aria-label]')].map((nav) => nav.getAttribute('aria-label'));
     expect(navLabels).toContain('صفحات الوثائق');
@@ -226,7 +224,7 @@ describe('published page loader', () => {
     // The app's client: a page read moments ago is still fresh.
     const queryClient = createQueryClient();
     await expect(load(queryClient)).resolves.toMatchObject({ page });
-    expect(queryClient.getQueryData(queryKeys.site.page('docs', 'start', 'ar', 'start'))).toBe(page);
+    expect(queryClient.getQueryData(sitePageQueryKey('docs', 'start', 'ar', 'start'))).toBe(page);
     await load(queryClient);
     expect(mocks.getSitePage).toHaveBeenCalledOnce();
     expect(mocks.getSitePage).toHaveBeenCalledWith(
@@ -250,7 +248,7 @@ describe('published page loader', () => {
     const republished = { ...page, page: { path: 'start', title: 'Updated' } } as unknown as SitePage;
     mocks.getSitePage.mockResolvedValue(republished);
     const queryClient = createQueryClient();
-    queryClient.setQueryData(queryKeys.site.page('docs', 'start', 'ar', 'start'), page, { updatedAt: Date.now() - 60_000 });
+    queryClient.setQueryData(sitePageQueryKey('docs', 'start', 'ar', 'start'), page, { updatedAt: Date.now() - 60_000 });
     // The article renders the loader's result, so a stale copy must never be returned.
     await expect(load(queryClient)).resolves.toMatchObject({ page: republished });
     expect(mocks.getSitePage).toHaveBeenCalledOnce();

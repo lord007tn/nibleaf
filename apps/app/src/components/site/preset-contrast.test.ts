@@ -935,3 +935,25 @@ describe('accent text keeps its colour on hover', () => {
     expect(classes).toContain('hover:underline');
   });
 });
+
+// #928 adds `--input-edge` (the dashboard's 3:1 field edge). Published sites keep
+// their own field edge until a per-theme one exists (#929): every sheet aliases it
+// to the same value as `--input`, for the shipped presets and for pre-v1 sites.
+describe('published field edge (#928)', () => {
+  it.each([
+    ['legacy default', {}],
+    ['legacy brand', { styling: { primaryColor: '#5546e8' } }],
+    ['harbor', { theme: { preset: 'harbor' } }],
+    ['manuscript', { theme: { preset: 'manuscript' } }],
+    ['signal', { theme: { preset: 'signal' } }],
+  ])('aliases --input-edge to the site input tone for %s', (_name, config) => {
+    const css = projectThemeCss(config as never);
+    expect(css).toContain('--input-edge:');
+    const blocks = [...css.matchAll(/\{[^}]*--input-edge:([^;}]+)[^}]*\}/g)];
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const [block, edge] of blocks) {
+      const input = /--input:([^;}]+)/.exec(block)?.[1];
+      expect(edge).toBe(input ?? 'var(--input)');
+    }
+  });
+});

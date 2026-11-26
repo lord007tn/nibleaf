@@ -3,6 +3,7 @@
 import { computeAccessibleName } from 'dom-accessibility-api';
 import { act, type ComponentType, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pending = { data: undefined, isPending: true };
@@ -10,6 +11,7 @@ const analytics = vi.hoisted(() => ({ hook: vi.fn(), chart: vi.fn() }));
 const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'members' | 'deployments' | 'domains' | 'session' | 'content', unknown>);
 const clipboard = vi.hoisted(() => ({ copy: vi.fn(), success: vi.fn(), error: vi.fn() }));
 const translation = vi.hoisted(() => ({ real: false }));
+const routeParams = vi.hoisted(() => ({ projectId: 'project-1' }));
 /** The settings-access tests' name for the same mocked members and publishes. */
 const navigation = queries;
 /** Signed in as the `viewer` the settings-access tests give a role to. */
@@ -28,7 +30,7 @@ vi.mock('@nibleaf/i18n/react', async (importOriginal) => {
 vi.mock('@/lib/invitations', () => ({ copyToClipboard: clipboard.copy }));
 vi.mock('sonner', () => ({ toast: { success: clipboard.success, error: clipboard.error } }));
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useParams: () => ({ projectId: 'project-1' }) }),
+  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useParams: () => ({ projectId: routeParams.projectId }) }),
   Link: ({
     children,
     className,
@@ -222,6 +224,17 @@ describe('site overview first load', () => {
     if (role !== 'member') expect(container.querySelector('a[href="/settings?section=integrations"]')).not.toBeNull();
   });
 
+  it('lets every KPI tile open the page behind its number', async () => {
+    await act(async () => root.render(<SiteOverviewPage />));
+    const tiles = [...container.querySelectorAll('[data-slot="card"] a.absolute')];
+    expect(tiles.map((link) => [link.getAttribute('aria-label'), link.getAttribute('data-to')])).toEqual([
+      ['overview.stats.pages', '/app/projects/$projectId/editor'],
+      ['overview.stats.members', '/app/projects/$projectId/settings'],
+      ['overview.stats.deploys', '/app/projects/$projectId/publishes'],
+      ['overview.stats.pageviews', '/app/projects/$projectId/analytics'],
+    ]);
+  });
+
   it('prefetches the page views the overview opens with, in the loader', async () => {
     const queryClient = {};
     (Route.options.loader as (context: { context: { queryClient: unknown }; params: { projectId: string } }) => void)({
@@ -375,6 +388,91 @@ describe('first-publish checklist and reserved address', () => {
     expect(clipboard.success).toHaveBeenCalledWith('URL copied');
   });
 
+  it('draws the checklist in the first paint, so it never pops in and pushes the page down', () => {
+    // The server render (and the first client render) used to omit it until an effect read the dismissal.
+    const html = renderToString(<SiteOverviewPage />);
+    expect(html).toContain('Your docs are not live yet');
+  });
+
+  // Storage-blocked dismissals are kept in memory for the whole visit (module scope), so
+  // these tests use their own site ids and never touch project-1's checklist.
+  it('closes the checklist for the visit even when storage writes fail', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    routeParams.projectId = 'blocked-only';
+    try {
+      await act(async () => root.render(<SiteOverviewPage />));
+      const dismiss = container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
+      expect(dismiss).not.toBeNull();
+      await act(async () => dismiss?.click());
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+    } finally {
+      routeParams.projectId = 'project-1';
+      setItem.mockRestore();
+    }
+  });
+
+  it('keeps a storage-blocked dismissal when the checklist unmounts while another site loads', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    routeParams.projectId = 'blocked-loading-a';
+    try {
+      await act(async () => root.render(<SiteOverviewPage />));
+      await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]')?.click());
+      // Site B opens and its site and publishes are still loading: no checklist is mounted at all.
+      routeParams.projectId = 'blocked-loading-b';
+      queries.project = { data: undefined, isPending: true };
+      queries.deployments = { data: undefined, isPending: true };
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.querySelector('ol')).toBeNull();
+      // Back to A once loaded: still dismissed.
+      routeParams.projectId = 'blocked-loading-a';
+      queries.project = neverPublishedSite;
+      queries.deployments = loaded([]);
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+    } finally {
+      routeParams.projectId = 'project-1';
+      setItem.mockRestore();
+    }
+  });
+
+  it('keeps a dismissed checklist hidden', async () => {
+    window.localStorage.setItem('nibleaf.publishNudge.project-1', '1');
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.textContent).not.toContain('Your docs are not live yet');
+    expect(container.querySelector('ol')).toBeNull();
+  });
+
+  it('keeps a dismissal to its own site when another site opens in the same page', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    routeParams.projectId = 'blocked-a';
+    try {
+      await act(async () => root.render(<SiteOverviewPage />));
+      await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]')?.click());
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+      routeParams.projectId = 'blocked-b';
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).toContain('Your docs are not live yet');
+      // Dismiss B too, then go back to A: both stay dismissed for the visit.
+      await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]')?.click());
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+      routeParams.projectId = 'blocked-a';
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+      routeParams.projectId = 'blocked-b';
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+    } finally {
+      routeParams.projectId = 'project-1';
+      setItem.mockRestore();
+    }
+  });
+
   it('reports a failed copy without a success toast', async () => {
     clipboard.copy.mockResolvedValue(false);
     await act(async () => root.render(<SiteOverviewPage />));
@@ -503,6 +601,20 @@ describe('site overview when something fails or is still connecting', () => {
       expect(tile('overview.stats.deploys')).toBe('4');
     });
 
+    it('tells a live site with no visits to share its address, not to publish', async () => {
+      queries.project = loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 1 });
+      queries.deployments = loaded([{ ...readyDeployment, version: 1 }]);
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(analytics.chart).toHaveBeenLastCalledWith(expect.objectContaining({ empty: 'overview.viewsEmptyLive' }));
+    });
+
+    it('keeps the generic empty message before the first publish', async () => {
+      queries.project = loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 0 });
+      queries.deployments = loaded([]);
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(analytics.chart).toHaveBeenLastCalledWith(expect.objectContaining({ empty: undefined }));
+    });
+
     it('never labels a failed attempt "Published docs" in the activity list', async () => {
       Object.assign(queries, {
         project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 1 }),
@@ -584,6 +696,19 @@ describe('site overview when something fails or is still connecting', () => {
       await act(async () => root.render(<SiteOverviewPage />));
       const statuses = [...container.querySelectorAll('[data-page-status]')].map((badge) => badge.getAttribute('data-page-status'));
       expect(statuses).toEqual(['changed', 'draft', 'live']);
+    });
+
+    it('lets each page title take its own direction and alignment, with the icon kept on the interface side (AUTH-39)', async () => {
+      await act(async () => root.render(<SiteOverviewPage />));
+      const rows = [...container.querySelectorAll('tbody tr')];
+      expect(rows).toHaveLength(3);
+      for (const row of rows) {
+        const cell = row.querySelector('td');
+        expect(cell?.hasAttribute('dir')).toBe(false);
+        const title = cell?.querySelector('a span[dir="auto"]');
+        // Fills the row after the icon and aligns to its own start: an Arabic title sits right in an English table.
+        expect(title?.className.split(' ')).toEqual(expect.arrayContaining(['flex-1', 'text-start']));
+      }
     });
 
     it('offers Viewers the state without a publish action', async () => {

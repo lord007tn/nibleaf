@@ -88,6 +88,24 @@ describe('ChatRoot', () => {
     frame.mockRestore();
   });
 
+  it("returns focus to the header's Ask AI entry when the launcher has given way to it (from 80rem)", async () => {
+    const header = document.createElement('button');
+    header.dataset.themeRegion = 'ask-ai-trigger';
+    document.body.append(header);
+    // The header entry is laid out; the launcher (display: none from 80rem) is not.
+    vi.spyOn(header, 'getClientRects').mockReturnValue([new DOMRect(0, 0, 90, 36)] as unknown as DOMRectList);
+    const openChat = vi.fn();
+    const view = await mount(<ChatRoot {...options} openChat={openChat} />);
+    await view.render(<ChatRoot {...options} openChat={openChat} request={{ ...request(1, 'How?'), source: 'deep_link', trigger: document.body }} />);
+    const frame = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0);
+      return 0;
+    });
+    await act(async () => mocks.panel.mock.lastCall?.[0].onOpenChange(false));
+    expect(document.activeElement).toBe(header);
+    frame.mockRestore();
+  });
+
   it('returns focus to the launcher after a deep-linked question, which has no trigger', async () => {
     const openChat = vi.fn();
     const view = await mount(<ChatRoot {...options} openChat={openChat} />);

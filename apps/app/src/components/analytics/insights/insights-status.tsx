@@ -2,8 +2,10 @@ import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/comp
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Card, CardContent } from '@nibleaf/design-system/components/ui/card';
 import { useLocale, useT } from '@nibleaf/i18n/react';
-import { BarChart3, CirclePause, Clock, Database, ExternalLink, Info, RotateCw } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Link } from '@tanstack/react-router';
+import { BarChart3, CirclePause, Clock, ExternalLink, Info, RotateCw } from 'lucide-react';
+import { createContext, type ReactNode, useContext, useEffect } from 'react';
+import { FeatureUnavailable } from '@/components/ui/feature-unavailable';
 import { useDeployments, useProject } from '@/hooks/api';
 import { docsUrl } from '@/lib/docs-url';
 import { dataFreshness, type InsightsState } from './insights-data';
@@ -64,9 +66,61 @@ export function InsightsRegion({ loading, children }: { loading: boolean; childr
   );
 }
 
-/** The availability notice for a section: unavailable, partial, or the not-configured setup card. */
-export function InsightsStatus({ state, projectId, retry }: { state: InsightsState; projectId: string; retry?: InsightsRetry }) {
+/**
+ * Tells the analytics layout that detailed analytics isn't on for this site, so
+ * it drops the range, comparison and section controls: they could change
+ * nothing (operations/ui-overhaul.md §6.6, WORKSPACE-01).
+ */
+const AnalyticsSetupReporter = createContext<((off: boolean) => void) | null>(null);
+export const AnalyticsSetupProvider = AnalyticsSetupReporter.Provider;
+
+/**
+ * Detailed analytics is off (not configured, or reads switched off): one
+ * `FeatureUnavailable` in place of the section. Plain product words only, no
+ * server, operator or storage names, because the same screen shows on Cloud.
+ * It points at the Overview, where page views are still counted, so the two
+ * pages no longer seem to contradict each other.
+ */
+function AnalyticsSetupNotice({ projectId }: { projectId: string }) {
   const { t, locale } = useLocale();
+  const report = useContext(AnalyticsSetupReporter);
+  useEffect(() => report?.(true), [report]);
+  return (
+    <FeatureUnavailable
+      action={
+        <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId" />} size="sm">
+          {t('analytics.setup.overview')}
+        </Button>
+      }
+      description={t('analytics.setup.body')}
+      icon={<BarChart3 />}
+      reason="notConfigured"
+      secondaryAction={
+        <Button
+          nativeButton={false}
+          render={<a href={docsUrl(locale, 'product/analytics')} rel="noreferrer" target="_blank" />}
+          size="sm"
+          variant="ghost"
+        >
+          {t('analytics.setup.learnMore')}
+          <ExternalLink aria-hidden className="size-3.5 rtl:-scale-x-100" />
+        </Button>
+      }
+      title={t('analytics.setup.title')}
+    />
+  );
+}
+
+/** Figures arrived: tell the layout analytics is on (it may have been off earlier), then show their freshness. */
+function AnalyticsOn({ projectId, lastEventAt }: { projectId: string; lastEventAt: string | null | undefined }) {
+  const report = useContext(AnalyticsSetupReporter);
+  useEffect(() => report?.(false), [report]);
+  return <FreshnessNotice lastEventAt={lastEventAt} projectId={projectId} />;
+}
+
+/** The availability notice for a section: unavailable, partial, or the analytics-off notice. */
+export function InsightsStatus({ state, projectId, retry }: { state: InsightsState; projectId: string; retry?: InsightsRetry }) {
+  const { t } = useLocale();
   if (state.availability === 'unavailable') {
     // An outage of the analytics store is not the owner's problem to fix: say so
     // calmly, in neutral colours, and let them check again.
@@ -94,39 +148,12 @@ export function InsightsStatus({ state, projectId, retry }: { state: InsightsSta
           <AlertTitle>{t('analytics.status.partial.title')}</AlertTitle>
           <AlertDescription>{t('analytics.status.partial.body')}</AlertDescription>
         </Alert>
-        <FreshnessNotice lastEventAt={state.lastEventAt} projectId={projectId} />
+        <AnalyticsOn lastEventAt={state.lastEventAt} projectId={projectId} />
       </>
     );
   }
-  if (state.availability === 'complete') return <FreshnessNotice lastEventAt={state.lastEventAt} projectId={projectId} />;
-  if (state.availability === 'not_configured' || state.availability === 'reads_disabled') {
-    return (
-      <Card>
-        <CardContent className="flex flex-col items-start gap-3 py-2 sm:flex-row sm:items-center">
-          <span className="grid size-10 shrink-0 place-items-center rounded-full bg-muted text-muted-foreground">
-            <Database aria-hidden className="size-5" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <h2 className="font-medium text-base">
-              {t(state.availability === 'reads_disabled' ? 'analytics.status.readsDisabled.title' : 'analytics.status.notConfigured.title')}
-            </h2>
-            <p className="mt-1 text-muted-foreground text-sm">
-              {t(state.availability === 'reads_disabled' ? 'analytics.status.readsDisabled.body' : 'analytics.status.notConfigured.body')}
-            </p>
-          </div>
-          <Button
-            nativeButton={false}
-            render={<a href={docsUrl(locale, 'self-hosting/clickhouse-analytics')} rel="noreferrer" target="_blank" />}
-            size="sm"
-            variant="outline"
-          >
-            {t('analytics.status.notConfigured.action')}
-            <ExternalLink aria-hidden className="size-3.5" />
-          </Button>
-        </CardContent>
-      </Card>
-    );
-  }
+  if (state.availability === 'complete') return <AnalyticsOn projectId={projectId} lastEventAt={state.lastEventAt} />;
+  if (state.availability === 'not_configured' || state.availability === 'reads_disabled') return <AnalyticsSetupNotice projectId={projectId} />;
   return null;
 }
 
