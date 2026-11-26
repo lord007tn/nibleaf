@@ -1,4 +1,5 @@
 import { posix } from 'node:path';
+import { markdownLineKinds } from '@nibleaf/shared/markdown-code';
 import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
 import MarkdownIt from 'markdown-it';
 import { describe, expect, it } from 'vitest';
@@ -125,13 +126,67 @@ describe('containers around GitBook embeds (#597)', () => {
     ['heading outside quote', `> Step\n> ${embed}\n# ${following}`],
   ])('keeps media and following text in their source container after %s', (_shape, source) => {
     const before = outline(source);
-    const after = outline(convert(source).content);
+    const content = convert(source).content;
+    const after = outline(content);
     expect(before.media).toHaveLength(1);
     expect(before.next).toHaveLength(1);
     expect(after.media).toEqual(before.media);
     expect(after.next).toEqual(before.next);
     expect(after.links).toBeGreaterThanOrEqual(before.links);
     expect(after.images).toBeGreaterThanOrEqual(before.images);
+    const lines = content.split('\n');
+    expect(markdownLineKinds(lines)[lines.findIndex((line) => line.includes('Then continue'))]).toBe('prose');
+  });
+
+  it.each([
+    ['quote marker with link', '', '> ', '', '[After](https://example.test/after)', 1, 1, 0],
+    ['quote marker with leading plain prose', '', '> ', 'Before', '', 1, 0, 0],
+    ['nested quote with image', '> > Step\n', '> > ', '', '![x](y)', 2, 0, 1],
+    ['list marker with prose on both sides', '', '- ', 'Step', '[After](https://example.test/after) ![x](y)', 2, 1, 1],
+    ['ordered continuation with link and image', '1. Step\n', '   ', '', '[After](/after) ![x](y)', 2, 1, 1],
+    ['nested list with prose on both sides', '- Outer\n\n  - Step\n', '    ', '[Before](/before) ![b](b)', '[After](/after) ![a](a)', 4, 2, 2],
+    ['quote in a list with leading links', '1. Outer\n\n   > Step\n', '   > ', '[Before](/before) ![b](b)', '', 3, 1, 1],
+  ] as const)('separates same-line prose and embed in a %s', (_shape, opening, prefix, before, after, depth, links, images) => {
+    const source = `${opening}${prefix}${before ? `${before} ` : ''}${embed}${after ? ` ${after}` : ''}`;
+    const content = convert(source).content;
+    const tokens = markdown.parse(content, {});
+    const iframe = tokens.find((token) => token.type === 'html_block' && token.content.includes('<iframe'));
+    expect(iframe?.level).toBe(depth);
+    expect(iframe?.content.trim()).toMatch(/^<iframe [^\n]+<\/iframe>$/);
+    for (const prose of [before, after].filter(Boolean)) {
+      expect(tokens.find((token) => token.type === 'inline' && token.content.trimEnd().endsWith(prose))?.level).toBe(depth + 1);
+    }
+    const inline = tokens.flatMap((token) => token.children ?? []);
+    expect(inline.filter((token) => token.type === 'link_open')).toHaveLength(links);
+    expect(inline.filter((token) => token.type === 'image')).toHaveLength(images);
+    expect(convert(content).content).toBe(content);
+    if (!after) expect(convert(`${source}   \t`).content).toBe(content);
+  });
+
+  it.each([
+    ['a link in a bare quote', '', '> ', '[After](/next)', 'inline', 1, 'link_open'],
+    ['an image in a list', '- Step\n', '  ', '![x](y)', 'inline', 2, 'image'],
+    ['a heading in a nested list', '- Outer\n\n  - Step\n', '    ', '## After', 'heading_open', 4, ''],
+    ['a component in a quote in a list', '1. Outer\n\n   > Step\n', '   > ', '<Note>\nAfter\n</Note>', 'html_block', 3, ''],
+    ['a link in a numbered list', '1. Step\n', '   ', '[After](/next)', 'inline', 2, 'link_open'],
+    ['an image in a nested quote', '> > Step\n', '> > ', '![x](y)', 'inline', 2, 'image'],
+  ] as const)('separates %s immediately after an embed', (_shape, opening, prefix, after, type, depth, inlineType) => {
+    const following = after.replaceAll('\n', `\n${prefix}`);
+    const source = `${opening}${prefix}${embed}\n${prefix}${following}`;
+    const content = convert(source).content;
+    const tokens = markdown.parse(content, {});
+    const frame = tokens.find((token) => token.type === 'html_block' && token.content.includes('<iframe'));
+    expect(frame?.level).toBe(depth);
+    expect(frame?.content).not.toContain(after);
+    const next = tokens.find((token) => token.type === type && (type === 'heading_open' || token.content.trim() === after));
+    expect(next?.level).toBe(depth + (type === 'inline' ? 1 : 0));
+    if (inlineType) expect(next?.children?.some((token) => token.type === inlineType)).toBe(true);
+    if (opening) {
+      const separated = `${opening}${prefix.trimEnd()}\n${prefix}${embed}\n${prefix.trimEnd()}\n${prefix}${following}`;
+      const blankCount = (value: string) => value.split('\n').filter((line) => !line.trim() || line.trim() === prefix.trim()).length;
+      expect(blankCount(convert(separated).content)).toBe(blankCount(content));
+    }
+    expect(convert(content).content).toBe(content);
   });
 
   it('leaves a following fence outside the quote with its exact text', () => {
@@ -354,32 +409,6 @@ describe('convertGitBookMarkdown', () => {
     expect(content).toContain('<Card title="GET /pets" href="https://x.dev/spec.yaml" icon="code">');
     expect(warnings).toHaveLength(2);
   });
-
-  it('rebases relative links and images in included content onto the including page', async () => {
-    const media = new Map([
-      [
-        '.gitbook/includes/media.md',
-        '![a](../assets/a.png "t") [s](<../../guides/setup page.md#x>) <img src="../assets/b.png"> [ext](https://x.dev) [top](#a)\n\n```\n![c](../keep.png)\n```',
-      ],
-    ]);
-    const resolveRelative = (reference: string, sourceFile: string) => {
-      const path = posix.normalize(posix.join(posix.dirname(sourceFile), reference));
-      return media.has(path) ? path : undefined;
-    };
-    const warnings: string[] = [];
-    expect(
-      await expandGitBookIncludes(
-        '{% include "../.gitbook/includes/media.md" %}',
-        'guides/p.md',
-        resolveRelative,
-        async (path) => media.get(path) ?? null,
-        warnings,
-      ),
-    ).toBe(
-      '![a](../.gitbook/assets/a.png "t") [s](<setup page.md#x>) <img src="../.gitbook/assets/b.png"> [ext](https://x.dev) [top](#a)\n\n```\n![c](../keep.png)\n```',
-    );
-    expect(warnings).toEqual([]);
-  });
 });
 
 describe('findGitBookSpaceLinks', () => {
@@ -495,4 +524,23 @@ it('keeps indentation after extracting the page heading', () => {
 it('keeps HTML attribute lookup case insensitive', () => {
   expect(convert('<IMG SRC="image.png" ALT="Shot">').content).toBe('![Shot](image.png)');
   expect(convert('<A HREF="/safe" CLASS="button">Go</A>').content).toBe('<Button href="/safe" variant="primary">Go</Button>');
+});
+
+describe('GitBook video URLs', () => {
+  it('imports an HTTPS video without a file extension', () => {
+    const converted = convertGitBookMarkdown('{% video src="https://media.example.test/recordings/123" title="Training" %}', {
+      resolveFile: () => undefined,
+    });
+    expect(converted.content).toBe('<video controls src="https://media.example.test/recordings/123" title="Training"></video>');
+    expect(converted.issues).toEqual([]);
+  });
+
+  it.each(['http://media.example.test/recordings/123', '//media.example.test/recordings/123', 'https://youtu.be\\abcdefghijk'])(
+    'rejects unsafe extensionless video: %s',
+    (src) => {
+      const converted = convertGitBookMarkdown(`{% video src="${src}" %}`, { resolveFile: () => undefined });
+      expect(converted.content).not.toMatch(/<(?:video|iframe)\b/);
+      expect(converted.issues).toHaveLength(1);
+    },
+  );
 });

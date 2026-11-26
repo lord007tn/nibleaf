@@ -113,15 +113,6 @@ export const queryKeys = {
     invitation: (invitationId: string) => ['public', 'invitations', invitationId] as const,
     joinLink: (token: string) => ['public', 'join', token] as const,
   },
-  site: {
-    shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,
-    page: (id: string, path: string, lang?: string, version?: string) => ['site', id, 'page', path, lang ?? null, version ?? null] as const,
-    search: (id: string, q: string, lang?: string, version?: string, limit?: number, prefer?: string) =>
-      ['site', id, 'search', q, lang ?? null, version ?? null, limit ?? null, prefer ?? null] as const,
-    /** Prefix of every reader search for one site, for invalidation. */
-    allSearch: (id: string) => ['site', id, 'search'] as const,
-    changelog: (id: string) => ['site', id, 'changelog'] as const,
-  },
   analytics: {
     /** Project home: page views and trend for one site. */
     project: (projectId: string, range: AnalyticsRange, timezone: string) => ['analytics', 'project', projectId, range, timezone] as const,

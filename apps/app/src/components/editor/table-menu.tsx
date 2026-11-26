@@ -7,8 +7,10 @@ import { CellSelection } from '@tiptap/pm/tables';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, Columns3, PanelTop, Rows3, Trash2, X } from 'lucide-react';
-import type { ComponentType, ReactNode } from 'react';
+import { type ComponentType, type ReactNode, useMemo, useState } from 'react';
 import { alignTableColumns, type ColumnAlignment } from './extensions/aligned-table';
+import { blockAnchor, MENU_EDGE_PADDING, useMenuScrollTarget } from './menu-anchor';
+import { scrollFadeStyle, useScrollEdges } from './scroll-edges';
 
 function AlignmentGlyph({ align }: { align: ColumnAlignment }) {
   const start = align === 'left' ? 3 : align === 'right' ? 9 : 6;
@@ -42,8 +44,9 @@ interface TableAction {
 /**
  * Floating table controls, shown while the caret (or a cell selection) is inside
  * a table: insert/delete rows and columns, toggle the header row, delete the
- * table. Positioned BELOW the selection so it never fights the text formatting
- * bubble (which floats above and only appears for non-empty text selections).
+ * table. It sits above the table (below when there is no room), never over the
+ * row being typed in, and only while no text is selected, so it never shows with
+ * the text formatting menu.
  */
 export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?: 'ltr' | 'rtl' }) {
   const t = useT();
@@ -63,6 +66,11 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
     }),
   });
 
+  const anchor = useMemo(() => blockAnchor(editor, '.tableWrapper', 'table'), [editor]);
+  // On a phone the row is wider than the screen: it scrolls, and a fade at the edge says so.
+  const [row, setRow] = useState<HTMLDivElement | null>(null);
+  const edges = useScrollEdges(row, 'x');
+  const scrollTarget = useMenuScrollTarget();
   const actions: TableAction[] = [
     {
       labelKey: 'editor.table.alignDefault',
@@ -160,7 +168,10 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
       data-editor-bubble-menu=""
       editor={editor}
       pluginKey="nibleaf-table-menu"
-      options={{ placement: 'bottom' }}
+      // Above the table (below when there is no room), never on the row being
+      // typed in, and inside the screen.
+      getReferencedVirtualElement={anchor}
+      options={{ placement: 'top', offset: 8, flip: { padding: MENU_EDGE_PADDING }, shift: { padding: MENU_EDGE_PADDING }, scrollTarget }}
       // Only while inside a table, and only when the text bubble is NOT showing:
       // caret (empty selection) or a cell selection. A non-empty text selection
       // inside a cell keeps the formatting bubble usable on its own.
@@ -171,31 +182,41 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
         const { selection } = current.state;
         return selection.empty || selection instanceof CellSelection;
       }}
-      className="flex max-w-[calc(100vw-2rem)] items-center gap-0.5 overflow-x-auto rounded-lg border border-border bg-card p-1 shadow-lg"
+      className="max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card shadow-lg"
       dir={dir}
     >
-      {actions.map((action) => {
-        const label = t(action.labelKey);
-        return (
-          <span key={action.labelKey} className="flex shrink-0 items-center gap-0.5">
-            {action.separatorBefore ? <span className="mx-0.5 h-5 w-px bg-border" /> : null}
-            <Button
-              aria-label={label}
-              aria-pressed={action.pressed}
-              className={cn('size-11 text-foreground/80', action.destructive && 'hover:bg-destructive/10 hover:text-destructive')}
-              disabled={!action.enabled}
-              onClick={action.run}
-              onMouseDown={(event) => event.preventDefault()}
-              size="icon-xs"
-              title={label}
-              type="button"
-              variant="ghost"
-            >
-              {action.content}
-            </Button>
-          </span>
-        );
-      })}
+      <div
+        className="flex items-center gap-0.5 overflow-x-auto p-1 [scrollbar-width:none]"
+        data-scroll-edges={[edges.start && 'start', edges.end && 'end'].filter(Boolean).join(' ') || undefined}
+        ref={setRow}
+        style={scrollFadeStyle(edges, 'x', dir === 'rtl')}
+      >
+        {actions.map((action) => {
+          const label = t(action.labelKey);
+          return (
+            <span key={action.labelKey} className="flex shrink-0 items-center gap-0.5">
+              {action.separatorBefore ? <span className="mx-0.5 h-5 w-px bg-border" /> : null}
+              <Button
+                aria-label={label}
+                aria-pressed={action.pressed}
+                className={cn(
+                  'size-8 text-foreground/80 pointer-coarse:size-11',
+                  action.destructive && 'hover:bg-destructive/10 hover:text-destructive',
+                )}
+                disabled={!action.enabled}
+                onClick={action.run}
+                onMouseDown={(event) => event.preventDefault()}
+                size="icon-xs"
+                title={label}
+                type="button"
+                variant="ghost"
+              >
+                {action.content}
+              </Button>
+            </span>
+          );
+        })}
+      </div>
     </BubbleMenu>
   );
 }

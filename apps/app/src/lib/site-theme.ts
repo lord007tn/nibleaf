@@ -47,6 +47,9 @@ const designSystemAliases = (tokens: ThemeColorTokens): Record<string, string> =
   '--destructive': tokens.danger,
   '--border': tokens.border,
   '--input': tokens.border,
+  // Published sites keep their theme's own field edge; the dashboard's 3:1 grey
+  // would ignore a custom palette. Deriving a 3:1 edge per theme is the reader's.
+  '--input-edge': tokens.border,
   '--ring': tokens.focus,
 });
 
@@ -101,6 +104,8 @@ const legacyTokenDeclarations = (accent: string, codeAccent: string): string =>
     '--theme-muted:var(--muted)',
     '--theme-muted-foreground:var(--muted-foreground)',
     '--theme-border:var(--border)',
+    // Pre-v1 sites keep their field edge too: the dashboard's 3:1 --input-edge is not theirs (#929).
+    '--input-edge:var(--input)',
     `--theme-accent:${accent}`,
     '--theme-accent-foreground:var(--primary-foreground)',
     `--theme-focus:${accent}`,

@@ -131,11 +131,11 @@ function page() {
     input,
     verify,
     button,
-    /** The wizard step shown (1–3), or null while the wizard is not shown. */
+    /** The connect page's progress: null while it is not shown, 1 until the token is checked, 2 once its account shows. */
     step: () => {
-      const steps = [...host.querySelectorAll('ol > li')];
-      const index = steps.findIndex((item) => item.getAttribute('aria-current') === 'step');
-      return index === -1 ? null : index + 1;
+      if (!host.querySelector('[data-slot="git-connect"]')) return null;
+      const checked = [...host.querySelectorAll('span')].some((span) => span.textContent?.startsWith(t('settings.git.workflow.authorizedAs')));
+      return checked ? 2 : 1;
     },
     /** The inline refusal under the token. */
     error: () => [...host.querySelectorAll('p')].filter((p) => p.textContent === t('settings.git.workflow.authorizeError')).length,
@@ -156,16 +156,15 @@ function page() {
       });
       await settle();
     },
-    /** Goes on to the review with a repository, to read the account the connection would be made with. */
+    /** Fills in the repository, so Connect is the next press. */
     review: async () => {
       const repository = host.querySelector<HTMLInputElement>('#git2-repo');
-      if (!repository) throw new Error('not on the repository step');
+      if (!repository) throw new Error('no repository field');
       const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
       await act(async () => {
         setter?.call(repository, 'acme-fixture/handbook');
         repository.dispatchEvent(new Event('input', { bubbles: true }));
       });
-      await act(async () => button('settings.git.workflow.review')?.click());
       await settle();
     },
     /** The account the review shows ("authorized as @login · name"), or null. */
@@ -204,6 +203,29 @@ afterEach(async () => {
   }
 });
 
+describe('the connect page', () => {
+  it('shows how to make the token, and says next to Connect what it is waiting for', async () => {
+    const tab = page();
+    await tab.open('site-a');
+    const create = [...tab.host.querySelectorAll('a')].find((link) => link.textContent?.includes(t('settings.git.connect.createToken')));
+    expect(create?.getAttribute('href')).toBe('https://github.com/settings/personal-access-tokens/new');
+    expect(create?.getAttribute('target')).toBe('_blank');
+    for (const permission of ['contents', 'pullRequests', 'metadata'] as const) {
+      expect(tab.host.textContent).toContain(t(`settings.git.connect.permission.${permission}`));
+    }
+    const connect = () => tab.button('settings.git.workflow.connect');
+    const reason = () => tab.host.querySelector('#git2-connect-reason')?.textContent ?? null;
+    expect([connect()?.getAttribute('aria-disabled') === 'true', reason()]).toEqual([true, t('settings.git.connect.checkFirst')]);
+    expect(connect()?.getAttribute('aria-describedby')).toBe('git2-connect-reason');
+    await tab.type(TOKEN_A);
+    await tab.press();
+    await answer(0, verified);
+    expect([connect()?.getAttribute('aria-disabled') === 'true', reason()]).toEqual([true, t('settings.git.connect.repositoryFirst')]);
+    await tab.review();
+    expect([connect()?.getAttribute('aria-disabled') === 'true', reason()]).toEqual([false, null]);
+  });
+});
+
 describe('a verification sends the token as typed and reports into the wizard', () => {
   it('sends the raw token for the site, refreshes that site, and goes on to step 2 with the account', async () => {
     const tab = page();
@@ -221,10 +243,10 @@ describe('a verification sends the token as typed and reports into the wizard', 
     expect(refreshed()).toEqual([detail('site-a')]);
     expect(tab.step()).toBe(2);
     await tab.review();
-    expect(tab.step()).toBe(3);
+    expect(tab.step()).toBe(2);
     expect(tab.account()).toBe(authorizedAs(ACCOUNT_A));
     // Kept for the final Connect request.
-    expect(tab.button('settings.git.workflow.connect')?.disabled).toBe(false);
+    expect(tab.button('settings.git.workflow.connect')?.getAttribute('aria-disabled') === 'true').toBe(false);
     expect(mocks.error).not.toHaveBeenCalled();
     expect(mocks.success).not.toHaveBeenCalled();
   });
@@ -275,16 +297,15 @@ describe('a verification sends the token as typed and reports into the wizard', 
     expect(mocks.error).not.toHaveBeenCalled();
   });
 
-  it('keeps Back and Verify as they were: back to step 1 with the token, and a new check from there', async () => {
+  it('asks for a new check once the checked token is edited', async () => {
     const tab = page();
     await tab.open('site-a');
     await tab.type(TOKEN_A);
     await tab.press();
     await answer(0, verified);
     expect(tab.step()).toBe(2);
-    await act(async () => tab.button('common.back')?.click());
+    await tab.type(`${TOKEN_A} `);
     expect(tab.step()).toBe(1);
-    expect(tab.input()?.value).toBe(TOKEN_A);
     await tab.press();
     expect(posts()).toHaveLength(2);
     await answer(1, verified);

@@ -184,7 +184,7 @@ describe.skipIf(process.env.ORG_PEOPLE_INTEGRATION !== '1')('organization people
     expect((await people.suggestPeopleToInvite(siteAdmin.id, f.org.id, loner.email, f.docs.id)).map((u) => u.id)).toEqual([loner.id]);
   });
 
-  describe('council fixes on #441', () => {
+  describe('concurrent membership and role transitions', () => {
     const siteAdminOf = async (f: Awaited<ReturnType<typeof fixture>>, projectId: string) => {
       const admin = await person('Site admin');
       await db.prisma.member.create({ data: { organizationId: f.org.id, userId: admin.id, orgRole: 'member', role: 'viewer' } });
