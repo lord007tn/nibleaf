@@ -5122,5 +5122,8 @@
   "editor_fix_explain_blogrootgroup": "قارئین سائیڈبار کے سب سے اوپر یہ نام دیکھتے ہیں۔ حصے کا نام اس کے صفحات کے مطابق رکھیں، جیسے گائیڈز۔",
   "editor_fix_placed": "{total} میں سے {placed} نمایاں کیے گئے",
   "editor_fix_previous": "پچھلا",
-  "editor_fix_insideblock": "ایسے بلاک کے اندر جو جیسا لکھا گیا ویسا ہی رکھا گیا ہے۔ اسے Markdown میں ٹھیک کریں۔"
+  "editor_fix_insideblock": "ایسے بلاک کے اندر جو جیسا لکھا گیا ویسا ہی رکھا گیا ہے۔ اسے Markdown میں ٹھیک کریں۔",
+  "settings_seo_description": "تلاش کے نتائج میں اور صفحات شیئر ہونے پر آپ کی سائٹ کیسی دکھتی ہے۔",
+  "settings_redirects_empty": "ابھی کوئی ری ڈائریکٹ نہیں",
+  "settings_variables_empty": "ابھی کوئی متغیر نہیں"
 }

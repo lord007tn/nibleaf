@@ -5131,5 +5131,8 @@
   "editor_fix_explain_blogrootgroup": "Los lectores ven este nombre en la parte superior de la barra lateral. Cambia el nombre de la sección por lo que contienen sus páginas, como Guías.",
   "editor_fix_placed": "Resaltados {placed} de {total}",
   "editor_fix_previous": "Anterior",
-  "editor_fix_insideblock": "Dentro de un bloque que se conserva tal como se escribió. Corrígelo en Markdown."
+  "editor_fix_insideblock": "Dentro de un bloque que se conserva tal como se escribió. Corrígelo en Markdown.",
+  "settings_seo_description": "Cómo aparece tu sitio en los resultados de búsqueda y al compartir sus páginas.",
+  "settings_redirects_empty": "Aún no hay redirecciones",
+  "settings_variables_empty": "Aún no hay variables"
 }

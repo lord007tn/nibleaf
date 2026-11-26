@@ -5131,5 +5131,8 @@
   "editor_fix_explain_blogrootgroup": "Leser sehen diesen Namen oben in der Seitenleiste. Benennen Sie den Bereich nach dem Inhalt seiner Seiten um, zum Beispiel Anleitungen.",
   "editor_fix_placed": "{placed} von {total} hervorgehoben",
   "editor_fix_previous": "Vorherige",
-  "editor_fix_insideblock": "In einem Block, der wie geschrieben bleibt. In Markdown beheben."
+  "editor_fix_insideblock": "In einem Block, der wie geschrieben bleibt. In Markdown beheben.",
+  "settings_seo_description": "Wie Ihre Website in Suchergebnissen und beim Teilen ihrer Seiten erscheint.",
+  "settings_redirects_empty": "Noch keine Weiterleitungen",
+  "settings_variables_empty": "Noch keine Variablen"
 }

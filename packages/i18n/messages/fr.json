@@ -5131,5 +5131,8 @@
   "editor_fix_explain_blogrootgroup": "Les lecteurs voient ce nom en haut de la barre latérale. Renommez la section d’après le contenu de ses pages, par exemple Guides.",
   "editor_fix_placed": "{placed} sur {total} mis en évidence",
   "editor_fix_previous": "Précédent",
-  "editor_fix_insideblock": "Dans un bloc conservé tel qu’il a été écrit. Corrigez-le en Markdown."
+  "editor_fix_insideblock": "Dans un bloc conservé tel qu’il a été écrit. Corrigez-le en Markdown.",
+  "settings_seo_description": "L’apparence de votre site dans les résultats de recherche et lors du partage de ses pages.",
+  "settings_redirects_empty": "Aucune redirection pour l’instant",
+  "settings_variables_empty": "Aucune variable pour l’instant"
 }

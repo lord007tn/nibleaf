@@ -5065,5 +5065,8 @@
   "editor_fix_explain_blogrootgroup": "পাঠকেরা সাইডবারের একেবারে ওপরে এই নামটি দেখেন। বিভাগটির নাম এর পৃষ্ঠাগুলোর বিষয় অনুযায়ী রাখুন, যেমন গাইড।",
   "editor_fix_placed": "{total}টির মধ্যে {placed}টি চিহ্নিত",
   "editor_fix_previous": "আগেরটি",
-  "editor_fix_insideblock": "যেমন লেখা তেমন রাখা একটি ব্লকের ভেতরে। Markdown-এ ঠিক করুন।"
+  "editor_fix_insideblock": "যেমন লেখা তেমন রাখা একটি ব্লকের ভেতরে। Markdown-এ ঠিক করুন।",
+  "settings_seo_description": "সার্চ ফলাফলে এবং পৃষ্ঠা শেয়ার করার সময় আপনার সাইট কেমন দেখায়।",
+  "settings_redirects_empty": "এখনও কোনো রিডাইরেক্ট নেই",
+  "settings_variables_empty": "এখনও কোনো ভ্যারিয়েবল নেই"
 }

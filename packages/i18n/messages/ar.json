@@ -5200,5 +5200,8 @@
   "editor_fix_explain_blogrootgroup": "يرى القرّاء هذا الاسم أعلى الشريط الجانبي. أعد تسمية القسم بما تحتويه صفحاته، مثل «الأدلة».",
   "editor_fix_placed": "تم تمييز {placed} من {total}",
   "editor_fix_previous": "السابق",
-  "editor_fix_insideblock": "داخل كتلة محفوظة كما كُتبت. أصلحها بصيغة Markdown."
+  "editor_fix_insideblock": "داخل كتلة محفوظة كما كُتبت. أصلحها بصيغة Markdown.",
+  "settings_seo_description": "كيف يظهر موقعك في نتائج البحث وعند مشاركة صفحاته.",
+  "settings_redirects_empty": "لا توجد عمليات إعادة توجيه بعد",
+  "settings_variables_empty": "لا توجد متغيرات بعد"
 }

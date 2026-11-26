@@ -5164,5 +5164,8 @@
   "editor_fix_explain_blogrootgroup": "Читатели видят это название вверху боковой панели. Переименуйте раздел по содержанию его страниц, например «Руководства».",
   "editor_fix_placed": "Выделено {placed} из {total}",
   "editor_fix_previous": "Предыдущее",
-  "editor_fix_insideblock": "Внутри блока, сохранённого как написано. Исправьте в Markdown."
+  "editor_fix_insideblock": "Внутри блока, сохранённого как написано. Исправьте в Markdown.",
+  "settings_seo_description": "Как ваш сайт выглядит в результатах поиска и при публикации ссылок на его страницы.",
+  "settings_redirects_empty": "Перенаправлений пока нет",
+  "settings_variables_empty": "Переменных пока нет"
 }

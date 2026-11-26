@@ -281,7 +281,7 @@ export function LanguageScopePicker({
   return (
     <div className="mb-6">
       <GroupLabel>{t('settings.chrome.scope.label')}</GroupLabel>
-      <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">{hint}</p>
+      <p className="mt-1 mb-2.5 text-muted-foreground text-sm">{hint}</p>
       <Segmented
         onChange={(next) => void handleChange(next)}
         options={[
@@ -290,7 +290,7 @@ export function LanguageScopePicker({
             label: defaultLanguage ? (
               <span className="inline-flex items-baseline gap-1.5">
                 {t('settings.chrome.scope.default')}
-                <span className="font-normal text-[12px] text-muted-foreground">
+                <span className="font-normal text-muted-foreground text-xs">
                   ·{' '}
                   <span dir={defaultLanguage.direction ? (defaultLanguage.direction === 'RTL' ? 'rtl' : 'ltr') : undefined}>
                     {defaultLanguage.label}

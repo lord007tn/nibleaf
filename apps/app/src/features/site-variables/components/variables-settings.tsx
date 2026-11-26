@@ -4,6 +4,7 @@ import { DataList, DataListEmpty } from '@nibleaf/design-system/components/ui/da
 import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { IconButton } from '@nibleaf/design-system/components/ui/icon-button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { SettingsSection } from '@nibleaf/design-system/components/ui/settings-section';
 import { useT } from '@nibleaf/i18n/react';
 import { useStore } from '@tanstack/react-form';
@@ -131,7 +132,8 @@ function VariablesForm({ project }: { project: Project }) {
   );
 
   return (
-    <form className="flex flex-col gap-4" noValidate ref={formRef} {...formProps}>
+    <form className="flex flex-col gap-6" noValidate ref={formRef} {...formProps}>
+      <PageHeader description={usage} title={t('settings.variables.title')} />
       <SaveRegionSubmit />
       {draft.conflicts.length > 0 ? (
         <Callout
@@ -160,14 +162,10 @@ function VariablesForm({ project }: { project: Project }) {
         </Callout>
       ) : null}
 
-      <SettingsSection
-        description={rows.length > 0 ? usage : undefined}
-        footer={rows.length > 0 ? addButton : undefined}
-        title={t('settings.variables.title')}
-      >
+      <SettingsSection footer={rows.length > 0 ? addButton : undefined}>
         {rows.length === 0 ? (
           <DataListEmpty>
-            <EmptyState action={addButton} icon={<Braces />} title={usage} />
+            <EmptyState action={addButton} headingLevel={2} icon={<Braces />} title={t('settings.variables.empty')} />
           </DataListEmpty>
         ) : (
           <DataList aria-label={t('settings.variables.title')}>
