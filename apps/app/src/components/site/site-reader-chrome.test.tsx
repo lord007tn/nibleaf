@@ -5,7 +5,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
-import { queryKeys } from '@/hooks/api/query-keys';
+import { siteQueryKeys } from '@/hooks/api/site-query-options';
 import type { SitePage, SiteShell } from '@/hooks/api/types';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { setReaderSiteAccess } from '@/lib/reader-site-access';
@@ -211,7 +211,7 @@ describe('published page loader', () => {
     // The app's client: a page read moments ago is still fresh.
     const queryClient = createQueryClient();
     await expect(load(queryClient)).resolves.toMatchObject({ page });
-    expect(queryClient.getQueryData(queryKeys.site.page('docs', 'start', 'ar', 'start'))).toBe(page);
+    expect(queryClient.getQueryData(siteQueryKeys.page('docs', 'start', 'ar', 'start'))).toBe(page);
     await load(queryClient);
     expect(mocks.getSitePage).toHaveBeenCalledOnce();
     expect(mocks.getSitePage).toHaveBeenCalledWith(
@@ -235,7 +235,7 @@ describe('published page loader', () => {
     const republished = { ...page, page: { path: 'start', title: 'Updated' } } as unknown as SitePage;
     mocks.getSitePage.mockResolvedValue(republished);
     const queryClient = createQueryClient();
-    queryClient.setQueryData(queryKeys.site.page('docs', 'start', 'ar', 'start'), page, { updatedAt: Date.now() - 60_000 });
+    queryClient.setQueryData(siteQueryKeys.page('docs', 'start', 'ar', 'start'), page, { updatedAt: Date.now() - 60_000 });
     // The article renders the loader's result, so a stale copy must never be returned.
     await expect(load(queryClient)).resolves.toMatchObject({ page: republished });
     expect(mocks.getSitePage).toHaveBeenCalledOnce();

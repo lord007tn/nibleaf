@@ -9,8 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ search: vi.fn() }));
 vi.mock('@/functions/site-search', () => ({ searchSiteFn: mocks.search }));
 
-import { queryKeys } from './query-keys';
-import { useSiteSearch } from './site-search';
+import { siteSearchQueryKeys, useSiteSearch } from './site-search';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
@@ -158,9 +157,9 @@ describe('the reader language preference', () => {
     ]);
     // Neither request narrows the search to one language.
     expect(mocks.search.mock.calls.every(([input]) => !('language' in (input as { data: object }).data))).toBe(true);
-    expect(client.getQueryData(queryKeys.site.search('docs', 'export', undefined, undefined, undefined, 'ar'))).toEqual([]);
-    expect(queryKeys.site.search('docs', 'export', undefined, undefined, undefined, 'ar')).not.toEqual(
-      queryKeys.site.search('docs', 'export', undefined, undefined, undefined, 'en'),
+    expect(client.getQueryData(siteSearchQueryKeys.search('docs', 'export', undefined, undefined, undefined, 'ar'))).toEqual([]);
+    expect(siteSearchQueryKeys.search('docs', 'export', undefined, undefined, undefined, 'ar')).not.toEqual(
+      siteSearchQueryKeys.search('docs', 'export', undefined, undefined, undefined, 'en'),
     );
   });
 });
