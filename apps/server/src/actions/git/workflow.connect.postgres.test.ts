@@ -447,8 +447,23 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git connection sav
     expect((await site()).gitSettingsRevisionFloor).toBe(4);
     expect((await put({ ...input('fictional/again'), token, expectedRevision: null })).status).toBe(200);
     expect((await read(setup.project.id)).settingsRevision).toBe(5);
+    // Two disconnects at once (two tabs): the second waits for the first, then finds nothing to remove.
+    expect((await put({ ...input('fictional/again'), expectedRevision: 5 })).status).toBe(200);
+    const both = await Promise.all([disconnect(), disconnect()]);
+    expect(both.map((response) => response.status)).toEqual([200, 200]);
+    expect((await site()).gitSettingsRevisionFloor).toBe(6);
+    expect(await db.prisma.platformEvent.count({ where: { projectId: setup.project.id, type: 'git_connection_disconnected' } })).toBe(3);
+    // A first connect racing a disconnect still starts past the revision that disconnect removes.
+    expect((await put({ ...input('fictional/raced'), token, expectedRevision: null })).status).toBe(200);
+    expect((await read(setup.project.id)).settingsRevision).toBe(7);
+    const [gone, raced] = await Promise.all([disconnect(), put({ ...input('fictional/racer'), token, expectedRevision: null })]);
+    expect(gone.status).toBe(200);
+    // Whichever committed first, the connection left (if any) is past every revision the removed one used.
+    const after = await db.prisma.gitConnection.findUnique({ where: { projectId: setup.project.id } });
+    if (raced.status === 200 && after) expect(after.settingsRevision).toBeGreaterThan(7);
+    else expect([200, 409]).toContain(raced.status);
+    if (after) await db.prisma.gitConnection.delete({ where: { projectId: setup.project.id } });
     // Disconnecting a site with no connection changes nothing.
-    await db.prisma.gitConnection.delete({ where: { projectId: setup.project.id } });
     const unconnected = await site();
     expect((await disconnect()).status).toBe(200);
     expect(await site()).toEqual(unconnected);

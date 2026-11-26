@@ -75,6 +75,7 @@ export function useGitFirstConnect(projectId: string) {
           // status again, as a settings save does, so the screen shows that connection before the person tries again.
           if (refused instanceof ApiResponseError && refused.status === 409) {
             await client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail(site) }).catch(() => undefined);
+            if (!current()) return null;
           }
           throw refused;
         }

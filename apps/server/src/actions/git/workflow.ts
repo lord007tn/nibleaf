@@ -225,7 +225,11 @@ const remoteThemeRepositoryIssues = (files: RemoteFile[], snapshot: Awaited<Retu
  */
 export const disconnectGitHub = async (projectId: string, actorUserId: string) => {
   await prisma.$transaction(async (tx) => {
-    const connection = await tx.gitConnection.findUnique({ where: { projectId } });
+    // Locks in the order a first connect takes them (the site, then its connection): a first connect waits for this
+    // disconnect and reads the floor it leaves, and a second disconnect waits, then finds no connection (#915).
+    await tx.$queryRaw`SELECT "id" FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
+    const [connection] = await tx.$queryRaw<Array<{ id: string; repository: string }>>`
+      SELECT "id", "repository" FROM "git_connection" WHERE "projectId" = ${projectId} FOR UPDATE`;
     if (!connection) return;
     await tx.gitAuditEvent.create({ data: { connectionId: connection.id, projectId, actorUserId, action: 'connection.disconnected' } });
     await tx.platformEvent.create({
@@ -317,7 +321,9 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
       } else {
         // A reconnect carries the revision on past the last disconnected connection's (#915), so a form left open
         // from before the disconnect (which still shows that connection's revision) is refused, never accepted.
-        const site = await tx.project.findUnique({ where: { id: projectId }, select: { gitSettingsRevisionFloor: true } });
+        // The site's row lock makes a disconnect still in flight finish first, so the floor read here is the one it left.
+        const [site] = await tx.$queryRaw<Array<{ gitSettingsRevisionFloor: number }>>`
+          SELECT "gitSettingsRevisionFloor" FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
         try {
           saved = await tx.gitConnection.create({
             data: {
