@@ -796,6 +796,15 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
         }
   });
 
+  // #928 adds `--input-edge` (the design system's field edge) as an alias of the
+  // theme's `--input`, so published fields look exactly as before. These pins
+  // predate it: take that one declaration out before hashing, and check it
+  // really is the same value wherever it appears.
+  const withoutInputEdge = (css: string) => {
+    for (const block of css.matchAll(/--input:([^;}]+)[^}]*?--input-edge:([^;}]+)/g)) expect(block[2]).toBe(block[1]);
+    return css.replace(/--input-edge:[^;}]+;/g, '').replace(/;--input-edge:[^;}]+(?=\})/g, '');
+  };
+
   it('leaves the CSS byte-identical for brands that already read, and for every themed site', () => {
     // sha256 of projectThemeCss on main before #744.
     const main = [
@@ -835,7 +844,7 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
     const now = main.map(([name]) => [
       name,
       createHash('sha256')
-        .update(before682(projectThemeCss(configFor(name as string) as never)))
+        .update(before682(withoutInputEdge(projectThemeCss(configFor(name as string) as never))))
         .digest('hex'),
     ]);
     expect(now).toEqual(main);
@@ -856,10 +865,11 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
     const now = shipped.map(([preset]) => [
       preset,
       createHash('sha256')
-        .update(projectThemeCss({ theme: { preset } } as never))
+        .update(withoutInputEdge(projectThemeCss({ theme: { preset } } as never)))
         .digest('hex'),
     ]);
     expect(now).toEqual(shipped);
+    expect(projectThemeCss({ theme: { preset: 'harbor' } } as never)).toContain('--input-edge:');
   });
 });
 
