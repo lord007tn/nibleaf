@@ -40,7 +40,19 @@ import {
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
-import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  type CSSProperties,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { toast } from 'sonner';
 import { ActiveBranchContext } from '@/components/editor/active-branch-context';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
@@ -1126,6 +1138,31 @@ function EditorPage() {
     await flushCurrentDraft();
     return configIsSaved();
   };
+
+  // Ctrl/⌘+S, the key writers press out of habit: save the draft now and say so,
+  // instead of the browser offering to save the web page. A failed save already
+  // shows its own banner and status, so nothing more is said here.
+  const saveNow = useEffectEvent(async () => {
+    try {
+      await flushCurrentDraft();
+      setStatus((current) => (current === 'idle' ? 'saved' : current));
+    } catch {
+      // The save banner or the conflict review says what happened.
+    }
+  });
+  useEffect(() => {
+    if (view !== 'content' || !page || !canEditContent) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.key.toLowerCase() !== 's') return;
+      if (event.isComposing || event.defaultPrevented) return;
+      // A dialog over the page (page settings, a confirm) owns its own keys.
+      if (event.target instanceof Element && event.target.closest('[role="dialog"], [role="alertdialog"]')) return;
+      event.preventDefault();
+      if (!event.repeat) void saveNow();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [view, page, canEditContent]);
 
   const openDraftPreview = async () => {
     if (!configIsSaved()) return;
