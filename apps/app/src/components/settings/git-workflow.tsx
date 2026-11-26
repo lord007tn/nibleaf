@@ -109,7 +109,9 @@ export function GitWorkflow({
       toast.success(t('settings.git.workflow.connected'));
       onConnected?.();
     },
-    failed: (error) => toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.connectError')),
+    // A 409: someone else connected the site meanwhile; the refreshed status now shows their connection.
+    failed: (error) =>
+      toast.error(friendlyErrorMessage(t, error, 'settings.git.workflow.connectError', { 409: 'settings.git.workflow.savedElsewhere' })),
   });
   const disconnect = useDisconnectGitWorkflow(projectId);
   // The operation panel shown: none while the status loads or failed to load (that screen replaces it).

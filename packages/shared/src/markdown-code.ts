@@ -4,8 +4,11 @@ export interface MarkdownFence {
   length: number;
 }
 
+// The lookaheads keep each run whole: without them, a rest holding a line terminator `.` can't
+// match (U+2028, say) made the regex retry the run at every shorter length (#917 re-check).
+// A shorter run was never an opener anyway, so lines read as before.
 export const openingMarkdownFence = (line: string, maxIndent = 3): MarkdownFence | undefined => {
-  const match = /^( *)(`{3,}|~{3,})(.*)$/.exec(line);
+  const match = /^( *)(`{3,}(?!`)|~{3,}(?!~))(.*)$/.exec(line);
   const delimiter = match?.[2];
   if (!delimiter || (match?.[1]?.length ?? 0) > maxIndent || (delimiter[0] === '`' && match?.[3]?.includes('`'))) return undefined;
   return { marker: delimiter.charAt(0), length: delimiter.length };
@@ -296,7 +299,7 @@ const interruptsParagraph = (content: string): boolean => {
  * or HTML block's container). Shared by the reader's MDX normalizer, heading
  * extraction and search sections, so all three agree on what is code.
  */
-const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts?: MarkdownLineFacts[]): MarkdownBlockLineKind[] => {
+const scanMarkdownLines = (lines: readonly string[], facts?: MarkdownLineFacts[], closers?: Set<number>): MarkdownBlockLineKind[] => {
   let fence: MarkdownFence | undefined;
   let mathFence = 0;
   // What `read` learns of the current line, for `facts`.
@@ -348,7 +351,7 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts
     // Outside a paragraph that is indented code (CommonMark: it can't interrupt one).
     if (components === 0 && indent >= 4) {
       continues = continuing && paragraph;
-      return indentedCode && !paragraph ? 'indented' : 'prose';
+      return facts && !paragraph ? 'indented' : 'prose';
     }
     const opening = openingMarkdownFence(body, components > 0 ? Number.POSITIVE_INFINITY : 3);
     if (opening) {
@@ -398,18 +401,20 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts
     continues = false;
     startsContainer = false;
     lazy = false;
-    const kind = readLine(line);
+    const kind = readLine(line, index);
     if (facts) facts[index] = { continues, startsContainer, lazy, depth: stack.items.length, content: content.index, indent: content.spare };
     return kind;
   });
-  function readLine(line: string): MarkdownBlockLineKind {
+  function readLine(line: string, index: number): MarkdownBlockLineKind {
     const continued = continuation(line, stack);
     content = continued.cursor;
     const inside = continued.matched === stack.items.length;
     if (fence) {
       if (inside) {
-        if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, components > 0 ? Number.POSITIVE_INFINITY : 3))
+        if (!continued.blank && closesMarkdownFence(contentAt(line, continued.cursor), fence, components > 0 ? Number.POSITIVE_INFINITY : 3)) {
           fence = undefined;
+          closers?.add(index);
+        }
         return 'code';
       }
       // The line leaves a container, which ends the fence; it starts afresh.
@@ -466,7 +471,15 @@ export interface MarkdownLineFacts {
  * code), and the facts the budget groups lines into paragraphs and tables by. */
 export const markdownBudgetLines = (lines: readonly string[]): { kinds: MarkdownBlockLineKind[]; facts: MarkdownLineFacts[] } => {
   const facts: MarkdownLineFacts[] = [];
-  return { kinds: scanMarkdownLines(lines, true, facts), facts };
+  return { kinds: scanMarkdownLines(lines, facts), facts };
+};
+
+/** `markdownLineKinds`, plus the lines that close a fence with a matching
+ * delimiter. A fence that ends by leaving its container, or at the end of the
+ * page, has no such line. */
+export const markdownFenceLines = (lines: readonly string[]): { kinds: MarkdownLineKind[]; closers: ReadonlySet<number> } => {
+  const closers = new Set<number>();
+  return { kinds: scanMarkdownLines(lines, undefined, closers) as MarkdownLineKind[], closers };
 };
 
 /** Whether each line belongs to fenced code (see `scanMarkdownLines`). */
