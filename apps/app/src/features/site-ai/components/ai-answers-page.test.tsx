@@ -183,6 +183,8 @@ describe('AI answers page states (§5.1)', () => {
     expect(document.querySelectorAll('[data-check][data-tone="problem"]')).toHaveLength(0);
     expect(check('source')?.textContent).toContain('settings.ai.check.source.none');
     expect(check('source')?.textContent).not.toContain('settings.ai.check.source.managed');
+    expect(button('settings.ai.fix.prepare')).toBeUndefined();
+    expect(check('prepared')?.textContent).toContain('settings.ai.check.needsSource');
     await act(async () => button('settings.ai.key.add', check('source') ?? document)?.click());
     expect(document.querySelector('[data-key-form="openai"]')).not.toBeNull();
     expect(text()).not.toMatch(/operator|encryption|self-host/i);
@@ -332,7 +334,7 @@ describe('AI answers controls', () => {
   });
 });
 
-describe('honest state (#566 council)', () => {
+describe('key health and preparation access', () => {
   it('a key refused while answers are off never reads as working', async () => {
     await show(cloud({ status: { source: 'openai', connections: [key('openai', 'rejected')] } }));
     expect(check('source')?.getAttribute('data-tone')).toBe('problem');
@@ -354,13 +356,6 @@ describe('honest state (#566 council)', () => {
     expect(card?.textContent).not.toContain('settings.ai.key.works');
     expect(check('source')?.getAttribute('data-tone')).toBe(tone);
     expect(check('source')?.textContent).toContain(row);
-  });
-
-  it('production today: never offers preparing before there is a source to prepare with', async () => {
-    await show(selfHosted({ status: { preparation: { state: 'none', pages: 0, expectedPages: 0, at: null } } }));
-    expect(button('settings.ai.fix.prepare')).toBeUndefined();
-    expect(check('prepared')?.textContent).toContain('settings.ai.check.needsSource');
-    expect(button('settings.ai.key.add', check('source') ?? document)).toBeDefined();
   });
 
   it('Editors and Viewers see why they cannot prepare, and pressing does nothing', async () => {

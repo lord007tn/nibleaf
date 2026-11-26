@@ -356,7 +356,7 @@ describe('reader search query length', () => {
     expect(window.localStorage.getItem('nibleaf:site-search:recent:docs')).toBe(stored);
   });
 
-  describe('editing inside a full field (#851 review)', () => {
+  describe('editing inside a full field (#851)', () => {
     const full = `${'a'.repeat(199)}z`;
 
     it.each(['input-first', 'compositionend-first'])(

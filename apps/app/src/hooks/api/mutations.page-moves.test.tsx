@@ -65,7 +65,7 @@ afterEach(async () => {
   document.body.replaceChildren();
 });
 
-it('council P1: overlapping rejected moves serialize and finish at server truth', async () => {
+it('overlapping rejected moves serialize and finish at server truth', async () => {
   const hooks = await render();
   let first: Promise<unknown> | undefined;
   let second: Promise<unknown> | undefined;
@@ -90,7 +90,7 @@ it('council P1: overlapping rejected moves serialize and finish at server truth'
   expect(simultaneousRequests).toBe(1);
 });
 
-it('council P1: rollback keeps an authoritative refetch that landed during a pending move', async () => {
+it('rollback keeps an authoritative refetch that landed during a pending move', async () => {
   const hooks = await render();
   let pending: Promise<unknown> | undefined;
   await act(async () => {
@@ -110,7 +110,7 @@ it('council P1: rollback keeps an authoritative refetch that landed during a pen
   expect(client.getQueryData(key)).toEqual(current);
 });
 
-it('council P1: rollback only owns unchanged optimistic structure fields, preserving other cached edits', async () => {
+it('rollback only owns unchanged optimistic structure fields, preserving other cached edits', async () => {
   const hooks = await render();
   let pending: Promise<unknown> | undefined;
   await act(async () => {
@@ -129,7 +129,7 @@ it('council P1: rollback only owns unchanged optimistic structure fields, preser
   });
 });
 
-it('council P1: every reorder observer sees a pending move for the project', async () => {
+it('every reorder observer sees a pending move for the project', async () => {
   const hooks = await render();
   await act(async () => {
     void hooks[0]?.mutateAsync(move('first')).catch(() => undefined);

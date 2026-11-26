@@ -255,7 +255,7 @@ const insideParagraph = (editor: Editor, text: string, offset: number) => {
   return position;
 };
 
-describe('the writer wins over a landing whose lookup is still pending (#553 council, #577)', () => {
+describe('the writer wins over a landing whose lookup is still pending (#553, #577)', () => {
   it('typing into the editor while the lookup is held keeps the caret where the writer typed', async () => {
     const { act, editor, followHeldLink, releaseAndSettle } = await renderEditor();
     await followHeldLink();

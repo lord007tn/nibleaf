@@ -384,7 +384,7 @@ describe('code inside lists and blockquotes', () => {
   });
 });
 
-describe('the council review of #573', () => {
+describe('raw HTML and MDX source boundaries', () => {
   // 1. A `<!--` inside a quoted attribute is part of the value, not a comment.
   it('keeps an image whose alt holds "<!--" an image with that alt', () => {
     const page = 'Before.\n\n<img alt="<!-- note -->" src="https://x.test/a.png">\n\nAfter.';

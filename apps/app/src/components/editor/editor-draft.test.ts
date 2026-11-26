@@ -316,7 +316,7 @@ describe('mayBeNormalizedWrite (#825)', () => {
     }
   });
 
-  it('the review repro and the server agree: a definition with its destination on the next line is rewritten, and matched', async () => {
+  it('a definition with its destination on the next line is rewritten, and matched', async () => {
     const { rewritePageLinks } = await import('../../../../server/src/lib/rewrite-page-links');
     const content = 'See [setup][ref].\n\n[ref]:\n  /installation\n';
     const stored = rewritePageLinks(content, (href) => (href === '/installation' ? '/en/installation' : href));
@@ -327,7 +327,7 @@ describe('mayBeNormalizedWrite (#825)', () => {
 });
 
 describe('aiAssistState', () => {
-  it('council: a conflicted draft never hydrates from a refreshed server copy or autosaves', () => {
+  it('a conflicted draft never hydrates from a refreshed server copy or autosaves', () => {
     const state = { synced: snapshotOf(pageA), draft: { title: pageA.title, content: pageA.content }, conflicted: true };
     const remote = { ...pageA, content: '[link](/new)', updatedAt: '2099-01-01T00:00:00Z' };
     expect(nextHydration(state, remote)).toBeNull();

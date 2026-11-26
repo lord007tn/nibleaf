@@ -54,12 +54,12 @@ const importsOf = memo((file) =>
 );
 
 /** The first import chain from `route` to the full translator, static or lazy. */
-function chainToTranslator(route: string): string[] | undefined {
+function chainToTranslator(route: string, forbidden = FULL_TRANSLATOR): string[] | undefined {
   const parents = new Map<string, string | null>([[route, null]]);
   const queue = [route];
   for (const file of queue) {
     for (const specifier of importsOf(file)) {
-      if (FULL_TRANSLATOR.test(specifier)) {
+      if (forbidden.test(specifier)) {
         const chain = [specifier];
         for (let current: string | null | undefined = file; current; current = parents.get(current)) chain.unshift(display(current));
         return chain;
@@ -141,7 +141,12 @@ describe('dashboard catalog boundary', () => {
       ),
     );
     expect(roots.length).toBeGreaterThan(10);
-    expect(roots.flatMap((file) => chainToTranslator(file) ?? [])).toEqual([]);
+    const authCatalog = /^@nibleaf\/i18n(?:\/(?:react|messages))?$/;
+    const chains = roots.flatMap((file) => {
+      const forbidden = relative(routesDir, file).split(sep)[0] === '(auth)' ? authCatalog : FULL_TRANSLATOR;
+      return chainToTranslator(file, forbidden) ?? [];
+    });
+    expect(chains).toEqual([]);
   });
 
   it.each([

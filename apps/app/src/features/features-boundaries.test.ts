@@ -35,8 +35,8 @@ export function checkFeatureImports(files: FeatureImports[]): string[] {
           // App components and the data layer (even type-only): a model takes plain values.
           target === 'components' ||
           target?.startsWith('components/') ||
-          target === 'hooks/api' ||
-          target?.startsWith('hooks/api/') ||
+          target === 'hooks' ||
+          target?.startsWith('hooks/') ||
           (dependency && /^(?:api|components)(?:\/|$)/.test(dependencyPath)))
       ) {
         reason('models must stay pure');

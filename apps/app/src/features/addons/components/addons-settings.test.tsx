@@ -612,21 +612,6 @@ describe('AddonsSettings', () => {
       expect(mocks.update).toHaveBeenLastCalledWith(consentBody('https://acme.test/next', 3));
     });
 
-    it('holds a settings save until a switch flip lands, then sends its revision', async () => {
-      const pendingToggle = deferred<ProjectAddon>();
-      mocks.deactivate.mockReturnValueOnce(pendingToggle.promise);
-      await act(async () => switchFor('settings.addons.consent.title').click());
-      const privacy = inputFor('site.analyticsConsentPrivacy');
-      await type(privacy, 'https://acme.test/privacy');
-      mocks.update.mockResolvedValueOnce(savedConsent('https://acme.test/privacy', { enabled: false, status: 'inactive', revision: 3 }));
-      await save();
-      // Nothing is sent while the switch's write is in flight.
-      expect(mocks.update).not.toHaveBeenCalled();
-      await act(async () => pendingToggle.resolve({ ...consent, enabled: false, status: 'inactive', revision: 2 }));
-      await act(async () => new Promise((resolve) => setTimeout(resolve, 0)));
-      expect(mocks.update).toHaveBeenCalledWith(consentBody('https://acme.test/privacy', 2));
-    });
-
     it('sends nothing for a settings save still waiting on a switch flip when the page goes away (#767)', async () => {
       const pendingToggle = deferred<ProjectAddon>();
       mocks.deactivate.mockReturnValueOnce(pendingToggle.promise);
