@@ -1,15 +1,6 @@
 import { keepPreviousData, queryOptions, skipToken, useQuery } from '@tanstack/react-query';
 import { searchSiteFn } from '@/functions/site-search';
-
-/** Reader search query keys, under the reader's `['site', id]` namespace
- * (siteQueryKeys in site-query-options.ts). Kept with the lazily loaded search
- * hook so neither module loads the other. */
-export const siteSearchQueryKeys = {
-  search: (id: string, q: string, lang?: string, version?: string, limit?: number, prefer?: string) =>
-    ['site', id, 'search', q, lang ?? null, version ?? null, limit ?? null, prefer ?? null] as const,
-  /** Prefix of every reader search for one site, for invalidation. */
-  all: (id: string) => ['site', id, 'search'] as const,
-};
+import { siteQueryKeys } from './site-query-keys';
 
 interface SiteSearchInput {
   siteId: string | undefined;
@@ -25,7 +16,7 @@ interface SiteSearchInput {
  * because only the lazily loaded search dialog uses it. */
 const siteSearchQueryOptions = ({ siteId, query, language, prefer, version, limit }: SiteSearchInput) =>
   queryOptions({
-    queryKey: siteSearchQueryKeys.search(siteId ?? '', query, language, version, limit, prefer),
+    queryKey: siteQueryKeys.search(siteId ?? '', query, language, version, limit, prefer),
     queryFn:
       siteId && query.trim()
         ? // The signal cancels the request once the reader has typed past it.

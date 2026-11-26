@@ -174,8 +174,9 @@ published page's eager set: the `/app` route's `beforeLoad` imported the
 session cache (with `useMutation`) statically, the reader's loaders read their
 keys from the app-wide factory (`hooks/api/query-keys.ts`), and the reader's
 analytics sent events through `useMutation`. The session cache now loads when
-`beforeLoad` runs, the reader's keys live in `hooks/api/site-query-options.ts`
-(search keys in `hooks/api/site-search.ts`), and analytics events are plain
+`beforeLoad` runs, a page's key lives in `hooks/api/site-query-options.ts` (the
+keys search and the dashboard share in `hooks/api/site-query-keys.ts`, which
+imports nothing), and analytics events are plain
 best-effort requests. The analytics validator (`insights/filters.ts`) keeps only
 validation; its query mapping moved to `insights/query.ts`.
 

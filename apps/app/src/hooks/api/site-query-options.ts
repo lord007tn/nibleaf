@@ -9,15 +9,11 @@ import { PageTransportError } from '@/lib/page-load-error';
  * module, so it ships in the public docs' first load. See apps/app/DATA_LOADING.md.
  */
 
-/** The reader's query keys (search keys live with the search hook, in
- * site-search.ts). Here rather than in the app-wide factory (query-keys.ts), so
- * a published page loads neither the dashboard's keys nor a chunk of its own
- * for these; the dashboard reads them from here too. */
-export const siteQueryKeys = {
-  shell: (id: string, lang?: string, version?: string) => ['site', id, lang ?? null, version ?? null] as const,
-  page: (id: string, path: string, lang?: string, version?: string) => ['site', id, 'page', path, lang ?? null, version ?? null] as const,
-  changelog: (id: string) => ['site', id, 'changelog'] as const,
-};
+/** A published page's query key, under the reader's `['site', id]` namespace
+ * (the rest of its keys are in site-query-keys.ts). Here rather than in a shared
+ * key module, so the reader's first load gets no extra chunk for it. */
+export const sitePageQueryKey = (id: string, path: string, lang?: string, version?: string) =>
+  ['site', id, 'page', path, lang ?? null, version ?? null] as const;
 
 /**
  * One published page. Reader loaders read it with `queryClient.query(...)`
@@ -37,7 +33,7 @@ export const siteQueryKeys = {
  */
 export const sitePageQueryOptions = (projectId: string, path: string, language?: string, version?: string, { fresh = true } = {}) =>
   queryOptions({
-    queryKey: siteQueryKeys.page(projectId, path, language, version),
+    queryKey: sitePageQueryKey(projectId, path, language, version),
     ...(fresh ? {} : { staleTime: 0 }),
     queryFn: async () => {
       let answered: { status: number; retryAfter?: string } | undefined;

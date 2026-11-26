@@ -39,10 +39,10 @@ const forbiddenPublicModules = [
   /\/apps\/app\/src\/lib\/dashboard-intent-preload\.ts$/,
   /\/packages\/shared\/src\/(?:mcp|rbac)\.ts$/,
   // The dashboard's session cache and the app-wide query-key factory: the
-  // /app route's beforeLoad imports the cache when it runs, and the reader
-  // reads its keys from hooks/api/site-query-options.ts. TanStack's mutation
-  // observer comes only with useMutation, which no published page uses: its
-  // analytics are plain requests (hooks/api/site-events.ts).
+  // /app route's beforeLoad imports the cache when it runs, and the reader's
+  // keys are in hooks/api/site-query-options.ts and site-query-keys.ts.
+  // TanStack's mutation observer comes only with useMutation, which no
+  // published page uses: its analytics are plain requests (site-events.ts).
   /\/apps\/app\/src\/integrations\/tanstack-query\/session-cache\.ts$/,
   /\/apps\/app\/src\/hooks\/api\/query-keys\.ts$/,
   /\/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?@tanstack\/(?:query-core\/build\/[^/]+\/mutationObserver|react-query\/build\/[^/]+\/useMutation)\.js$/,
