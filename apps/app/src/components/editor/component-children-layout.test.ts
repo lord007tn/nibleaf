@@ -135,11 +135,9 @@ describe('component children on the line after the opening tag (#606)', () => {
     expectFourCycles('<Note>\n| A | B |\n| --- | --- |\n| 1 | 2 |\n</Note>');
   });
 
-  it('a component right after a tag keeps its Markdown children; the tags between components are laid out as before', () => {
-    // A tag touching another tag (`<Steps>⏎<Step>`) was never lost: it keeps main's
-    // blank-line layout. The Markdown right after `<Step>` is what was lost.
+  it('adjacent components keep their tags and Markdown children on their original lines (#625)', () => {
     const steps = '<Steps>\n<Step title="One">\n- a\n</Step>\n</Steps>';
-    expect(getMarkdown(open(steps))).toBe('<Steps>\n\n<Step title="One">\n- a\n</Step>\n\n</Steps>');
+    expectFourCycles(steps);
     expectFourCycles('<Steps>\n\n<Step title="One">\n- a\n</Step>\n\n</Steps>');
     expectFourCycles(`<Tabs>\n\n<Tab title="A">\n- ${LANGUAGES.ar.item}\n</Tab>\n\n</Tabs>`);
   });

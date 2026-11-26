@@ -76,9 +76,9 @@ describe('angle-bracket autolinks next to component tags (#861)', () => {
     }
   });
 
-  it('keeps the existing blank-line layout for real adjacent component tags', () => {
+  it('keeps authored adjacent component tags adjacent (#625)', () => {
     const page = '<Note>\n<Card title="Tour">\n\nBody.\n\n</Card>\n</Note>';
-    expectRoundTrip(page, '<Note>\n\n<Card title="Tour">\n\nBody.\n\n</Card>\n\n</Note>');
+    expectRoundTrip(page);
     expect(nodeTypes(page)).toContain('mdxCard');
   });
 
@@ -484,10 +484,10 @@ describe('every other HTML element', () => {
     expectRoundTrip(`Press ${form} now.`);
   });
 
-  // The HTML the editor takes as its own content (`<p><a href>…`) is structured, as
-  // before, and saves as its Markdown form; pinned so it stays stable.
+  // Structured HTML without additional attributes keeps its Markdown spelling.
+  // An attributed paragraph remains structured and saves with its attributes (#575).
   it.each([
-    ['<p align>', '<p align="center">Centered</p>', 'Centered'],
+    ['<p align>', '<p align="center">Centered</p>', '<p align="center">Centered</p>'],
     ['<h2>', '<h2>Heading</h2>', '## Heading'],
     ['<ul>', '<ul>\n<li>one</li>\n</ul>', '- one'],
     ['<blockquote>', '<blockquote>Quoted</blockquote>', '> Quoted'],

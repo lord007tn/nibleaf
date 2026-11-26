@@ -71,11 +71,13 @@ const updateFields = {
   idempotencyKey: idempotencyKeySchema,
 };
 
+// The dashboard's saves of an existing connection strip unknown keys rather than rejecting them, so an API one release
+// behind ignores a field a newer dashboard sends (operations/runbook-rolling-deploys.md §6.1). Creating one stays strict.
 export const updateProjectIntegrationBody = z
   .discriminatedUnion('providerId', [
-    z.object({ providerId: z.literal('slack'), webhookUrl: slackWebhookUrl.optional(), ...updateFields }).strict(),
-    z.object({ providerId: z.literal('discord'), webhookUrl: discordWebhookUrl.optional(), ...updateFields }).strict(),
-    z.object({ providerId: z.literal('zapier'), webhookUrl: zapierWebhookUrl.optional(), ...updateFields }).strict(),
+    z.object({ providerId: z.literal('slack'), webhookUrl: slackWebhookUrl.optional(), ...updateFields }),
+    z.object({ providerId: z.literal('discord'), webhookUrl: discordWebhookUrl.optional(), ...updateFields }),
+    z.object({ providerId: z.literal('zapier'), webhookUrl: zapierWebhookUrl.optional(), ...updateFields }),
   ])
   .superRefine((value, ctx) => {
     if (value.webhookUrl && value.replaceCredential !== true) {
@@ -84,7 +86,7 @@ export const updateProjectIntegrationBody = z
   });
 export type UpdateProjectIntegrationBody = z.infer<typeof updateProjectIntegrationBody>;
 
-export const integrationRevisionBody = z.object({ expectedRevision: z.number().int().positive(), idempotencyKey: idempotencyKeySchema }).strict();
+export const integrationRevisionBody = z.object({ expectedRevision: z.number().int().positive(), idempotencyKey: idempotencyKeySchema });
 export type IntegrationRevisionBody = z.infer<typeof integrationRevisionBody>;
 
 const projectConnectionVerification = {
@@ -94,19 +96,18 @@ const projectConnectionVerification = {
 };
 
 export const verifyProjectIntegrationBody = z.discriminatedUnion('providerId', [
+  // GitHub verification sends no fields, and refuses any (a project-owned webhook's revision belongs to the others).
   z.object({ providerId: z.literal('github') }).strict(),
-  z.object({ providerId: z.literal('slack'), ...projectConnectionVerification }).strict(),
-  z.object({ providerId: z.literal('discord'), ...projectConnectionVerification }).strict(),
-  z.object({ providerId: z.literal('zapier'), ...projectConnectionVerification }).strict(),
+  z.object({ providerId: z.literal('slack'), ...projectConnectionVerification }),
+  z.object({ providerId: z.literal('discord'), ...projectConnectionVerification }),
+  z.object({ providerId: z.literal('zapier'), ...projectConnectionVerification }),
 ]);
 export type VerifyProjectIntegrationBody = z.infer<typeof verifyProjectIntegrationBody>;
 
-export const createIntegrationDeleteConfirmationBody = z
-  .object({
-    expectedRevision: z.number().int().positive(),
-    apiKeyId: z.string().min(1).max(120).optional(),
-  })
-  .strict();
+export const createIntegrationDeleteConfirmationBody = z.object({
+  expectedRevision: z.number().int().positive(),
+  apiKeyId: z.string().min(1).max(120).optional(),
+});
 export type CreateIntegrationDeleteConfirmationBody = z.infer<typeof createIntegrationDeleteConfirmationBody>;
 
 export const deleteProjectIntegrationBody = z.object({ confirmationToken: z.string().min(32).max(512) }).strict();

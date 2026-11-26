@@ -1,11 +1,16 @@
 import { PUBLISH_CHECK_CODES } from '@nibleaf/shared/publish-check-codes';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { aiDashboardSearch } from '@/components/ai-conversations/search';
-import { readAskSearch } from '@/components/site/ai-chat/ask-search';
 import { iconSize } from '@/components/site/mdx/icon';
 import { str } from '@/components/site/mdx/props';
-import { boundedText, flag, oneOf, readSearch, text, trimmedText, withFallback } from './search-params';
+import { Route as SignInRoute } from '@/routes/(auth)/sign-in';
+import { Route as SignUpRoute } from '@/routes/(auth)/sign-up';
+import { Route as VerifyEmailRoute } from '@/routes/(auth)/verify-email';
+import { Route as AiRoute } from '@/routes/app/projects/$projectId/ai';
+import { Route as EditorRoute } from '@/routes/app/projects/$projectId/editor';
+import { Route as PreviewRoute } from '@/routes/app/projects/$projectId/preview';
+import { Route as SiteRoute } from '@/routes/sites/$projectId/route';
+import { oneOf, readSearch, trimmedText, withFallback } from './search-params';
 
 // What the router can hand validateSearch: strings, the numbers, booleans,
 // arrays and objects its JSON-ish parser makes, and edge lengths.
@@ -51,17 +56,29 @@ const values: unknown[] = [
   'failed',
   'first-publish',
   PUBLISH_CHECK_CODES[0],
+  // #836: numbers a parser can make that aren't plain, objects without Object's prototype, and prototype names.
+  Number.NaN,
+  Number.POSITIVE_INFINITY,
+  Number.NEGATIVE_INFINITY,
+  -1,
+  -0,
+  Object.create(null),
+  { __proto__: null, a: 'b' },
+  '__proto__',
+  'constructor',
+  'toString',
 ];
 const flagSchema = z.preprocess((value) => (value === true || value === 'true' || value === '1' ? true : undefined), z.literal(true).optional());
 
 /** Every search a field can meet: the key missing, and the key set to each value. */
 const searches = (keys: string[]) => [{}, ...keys.flatMap((key) => values.map((value) => ({ [key]: value })))];
 
-// The schemas the eager routes used before (PUB-017), and their replacements.
+// The schemas the eager routes used before (PUB-017). Each route's own validateSearch is checked against its
+// schema (#836), so a field map changed in a route and not here, or the other way round, fails.
 const routes = {
   'sites/$projectId': {
     zod: z.object({ lang: z.string().min(1).optional().catch(undefined), ask: z.string().trim().min(2).max(500).optional().catch(undefined) }),
-    read: { lang: boundedText(1), ask: readAskSearch },
+    validate: SiteRoute.options.validateSearch,
   },
   '(auth)/sign-in': {
     zod: z.object({
@@ -70,7 +87,7 @@ const routes = {
       email: z.string().optional().catch(undefined),
       oauth_request: z.string().optional().catch(undefined),
     }),
-    read: { invite: text, next: text, email: text, oauth_request: text },
+    validate: SignInRoute.options.validateSearch,
   },
   '(auth)/sign-up': {
     zod: z.object({
@@ -79,7 +96,7 @@ const routes = {
       email: z.string().optional().catch(undefined),
       intent: z.literal('first-publish').optional().catch(undefined),
     }),
-    read: { invite: text, next: text, email: text, intent: oneOf(['first-publish']) },
+    validate: SignUpRoute.options.validateSearch,
   },
   '(auth)/verify-email': {
     zod: z.object({
@@ -89,7 +106,7 @@ const routes = {
       next: z.string().optional().catch(undefined),
       delivery: z.enum(['sent', 'failed']).optional().catch(undefined),
     }),
-    read: { email: text, token: text, invite: text, next: text, delivery: oneOf(['sent', 'failed']) },
+    validate: VerifyEmailRoute.options.validateSearch,
   },
   'app/projects/$projectId/editor': {
     zod: z.object({
@@ -99,7 +116,7 @@ const routes = {
       fixTarget: z.string().min(1).optional().catch(undefined),
       publish: flagSchema,
     }),
-    read: { firstPublish: flag, page: boundedText(1), fix: oneOf(PUBLISH_CHECK_CODES), fixTarget: boundedText(1), publish: flag },
+    validate: EditorRoute.options.validateSearch,
   },
   'app/projects/$projectId/preview': {
     zod: z.object({
@@ -107,7 +124,7 @@ const routes = {
       languageId: z.string().min(1).optional().catch(undefined),
       pageId: z.string().min(1).optional().catch(undefined),
     }),
-    read: { branchId: boundedText(1), languageId: boundedText(1), pageId: boundedText(1) },
+    validate: PreviewRoute.options.validateSearch,
   },
   'app/projects/$projectId/ai': {
     zod: z.object({
@@ -119,20 +136,27 @@ const routes = {
       q: z.string().trim().min(1).max(120).optional().catch(undefined),
       conversation: z.string().min(1).max(256).optional().catch(undefined),
     }),
-    // The route and the dashboard's own test call this parse.
-    parse: aiDashboardSearch.parse,
-    keys: ['tab', 'range', 'language', 'rating', 'status', 'q', 'conversation'],
+    validate: AiRoute.options.validateSearch,
   },
 };
 
 describe('search-param readers', () => {
-  it.each(Object.entries(routes))('read %s exactly as its zod schema did, keys included', (_route, route) => {
-    const keys = 'keys' in route ? route.keys : Object.keys(route.read);
-    const parse = 'parse' in route ? route.parse : (search: Record<string, unknown>) => readSearch(search, route.read);
+  it.each(Object.entries(routes))('read %s exactly as its zod schema did, keys and their order included', (_route, route) => {
+    const keys = Object.keys(route.zod.shape);
+    const parse = route.validate as (search: Record<string, unknown>) => Record<string, unknown>;
     const withUnknownKey = { unknown: 'dropped', ...Object.fromEntries(keys.slice(0, 1).map((key) => [key, 'ab'])) };
-    for (const search of [...searches(keys), Object.fromEntries(keys.map((key) => [key, 'x'])), withUnknownKey]) {
-      // toStrictEqual tells a missing key from one set to undefined.
-      expect(parse(search)).toStrictEqual(route.zod.parse(search));
+    // Prototype names as keys of the search itself (a parsed `?__proto__=x` makes an own key), a search without
+    // Object's prototype, and the keys in reverse order.
+    const prototypeKeys = JSON.parse('{"__proto__":"x","constructor":"x","toString":"x","hasOwnProperty":"x"}') as Record<string, unknown>;
+    const nullPrototype = Object.assign(Object.create(null) as Record<string, unknown>, Object.fromEntries(keys.map((key) => [key, 'ab'])));
+    const reversed = Object.fromEntries(keys.toReversed().map((key) => [key, 'ab']));
+    const extra = [Object.fromEntries(keys.map((key) => [key, 'x'])), withUnknownKey, prototypeKeys, nullPrototype, reversed];
+    for (const search of [...searches(keys), ...extra]) {
+      const expected = route.zod.parse(search);
+      const actual = parse(search);
+      // toStrictEqual tells a missing key from one set to undefined, but not the keys' order.
+      expect(actual).toStrictEqual(expected);
+      expect(Object.keys(actual)).toEqual(Object.keys(expected));
     }
   });
 

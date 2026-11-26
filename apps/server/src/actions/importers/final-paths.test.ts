@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { componentLinkFixtures } from './fixtures/component-links';
 import { extendedImportWrappers } from './fixtures/link-discovery-extended';
 import { linkDiscoveryRepros } from './fixtures/link-discovery-repros';
-import { traceLinkDiscovery, withMainLinkScanner } from './fixtures/link-discovery-trace';
+import { assertDefinitionDiscoveryDelta, traceLinkDiscovery, withMainLinkScanner } from './fixtures/link-discovery-trace';
 import { rewriteMainInternalLinks } from './fixtures/page-links.main-reference';
 import { convertGitBookMarkdown as convertHeadGitBookMarkdown } from './gitbook-markdown';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
@@ -234,7 +234,7 @@ const assertNoCollision = async (importer: typeof mintlifyImporter | typeof gitb
   ).toEqual([
     { path: 'guides/index', content: '[Relative](/guides/quickstart#section)' },
     { path: 'guides/quickstart', content: '## Section\n\nLiteral `[/old](/old)` stays.' },
-    { path: 'intro', content: body.replace('(guides/quickstart#section)', '(/guides/quickstart#section)') },
+    { path: 'intro', content: body.replaceAll('guides/quickstart#section', '/guides/quickstart#section') },
   ]);
   mem.rows = [];
   mem.files.clear();
@@ -414,7 +414,7 @@ describe('source identity and reference ownership', () => {
   });
 });
 
-describe('main discovery preserves reference definitions and literal lines', () => {
+describe('final routing changes valid link definitions and preserves literal lines', () => {
   const cases = [
     ['audit repro', ''],
     ['invalid definition with trailing text', '[also-not]: /topic/next "Quoted" extra text'],
@@ -435,7 +435,8 @@ describe('main discovery preserves reference definitions and literal lines', () 
       const literal = 'Literal example:\n\n[not-a-definition]: /topic/next extra text';
       const body = [literal, fragment, '[Go](/topic/next)'].filter(Boolean).join('\n\n');
       const converted = mintlify ? body : convertGitBookMarkdown(body, { resolveFile: () => undefined }).content;
-      const mapped = rewriteMainInternalLinks(converted, 'intro', new Map([['topic/next', '/topic-2/next']]));
+      const baseline = rewriteMainInternalLinks(converted, 'intro', new Map([['topic/next', '/topic-2/next']]));
+      const mapped = _name === 'valid definition with a quoted title' ? baseline.replace('[valid]: /topic/next', '[valid]: /topic-2/next') : baseline;
       const expected = mintlify ? normalizeMintlifyMdx(mapped) : mapped;
       mem.files.set(`intro.${mintlify ? 'mdx' : 'md'}`, body);
       mem.files.set(`topic/next.${mintlify ? 'mdx' : 'md'}`, 'Destination.');
@@ -472,7 +473,7 @@ describe('component children retain main link destinations', () => {
       expect(pageContentFacts(page.content).links).not.toContain('/next');
       assertExactTarget('intro', '/topic/next', 'topic/next');
     });
-    it(`${kind}: follow-up - reference-style links preserve main's pre-dedup target`, async () => {
+    it(`${kind}: retargets reference links to the imported page after deduplication`, async () => {
       const mintlify = kind === 'mintlify';
       seed('topic', mintlify ? 'PAGE' : 'GROUP');
       if (mintlify) mem.files.set('docs.json', JSON.stringify({ navigation: { pages: ['intro', { group: 'Topic', pages: ['next'] }] } }));
@@ -494,11 +495,10 @@ describe('component children retain main link destinations', () => {
         ]),
       );
       expect(main).toBe(source);
-      expect(stored).toBe(main);
+      expect(stored).toBe('[Go][r]\n\n[r]: /topic-2/next "Title"');
       expect(mem.rows.find((row) => row.path === 'topic-2/next')?.content).toBe('Destination.');
-      expect(pageContentFacts(stored ?? '').links).toEqual(['/topic/next']);
-      expect(findBrokenInternalLinks(snapshot())).toHaveLength(1);
-      console.info('deferred reference definition', { kind, main, head: stored });
+      expect(pageContentFacts(stored ?? '').links).toEqual(['/topic-2/next']);
+      expect(findBrokenInternalLinks(snapshot())).toHaveLength(0);
     });
   }
 });
@@ -541,6 +541,7 @@ it('independent generated collision imports across all containers', async () => 
   let codeChanges = 0;
   let cases = 0;
   let rewrittenLinks = 0;
+  let definitionVisits = 0;
   for (const kind of ['mintlify', 'gitbook'] as const)
     for (let i = 0; i < 128; i++) {
       mem.rows = [];
@@ -578,11 +579,12 @@ it('independent generated collision imports across all containers', async () => 
       const converted = mintlify ? source : convertGitBookMarkdown(source, { resolveFile: () => undefined }).content;
       const mainTrace = traceLinkDiscovery(rewriteMainInternalLinks, converted, 'docs/intro', routes);
       const headTrace = traceLinkDiscovery(rewriteMintlifyInternalLinks, converted, 'docs/intro', routes);
-      expect(headTrace.visits).toEqual(mainTrace.visits);
-      expect(headTrace.rewrites).toEqual(mainTrace.rewrites);
+      const delta = assertDefinitionDiscoveryDelta(converted, mainTrace, headTrace);
+      definitionVisits += delta.definitions;
+      expect(delta.definitions).toBe(1);
       rewrittenLinks += headTrace.rewrites.length;
       expect(headTrace.reports).toEqual(mainTrace.reports);
-      let expected = mainTrace.output;
+      let expected = mainTrace.output.replace('[ref]: /next', `[ref]: /${aTarget.path}`);
       if (mintlify) expected = normalizeMintlifyMdx(expected);
       if (stored !== expected) failures.push({ kind, i, collision, aTarget: aTarget.path, bTarget: bTarget.path, source, expected, stored });
       if (
@@ -594,7 +596,7 @@ it('independent generated collision imports across all containers', async () => 
         codeChanges++;
       cases++;
     }
-  console.info('seeded full imports', { seed: '0x663618', cases, rewrittenLinks, misses: failures.length, codeChanges });
+  console.info('seeded full imports', { seed: '0x663618', cases, rewrittenLinks, definitionVisits, misses: failures.length, codeChanges });
   expect(failures.slice(0, 1)).toEqual([]);
   expect(codeChanges).toBe(0);
 }, 60_000);

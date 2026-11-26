@@ -37,6 +37,8 @@ export interface ConnectGitInput {
   importBranchId?: string;
   importLanguageId?: string;
   token?: string;
+  /** The `settingsRevision` the form was loaded with; null expects no connection. Left out, nothing is checked. */
+  expectedRevision?: number | null;
 }
 
 export interface QueueGitInput {
@@ -213,6 +215,36 @@ const remoteThemeRepositoryIssues = (files: RemoteFile[], snapshot: Awaited<Retu
   );
 };
 
+/**
+ * Removes a site's Git connection, with its ledger, operations and audit (by
+ * cascade). The removal is audited first and mirrored to the durable platform
+ * event table, which outlives the connection. The revision it had reached is
+ * kept on the site as `gitSettingsRevisionFloor`, in the same transaction as the
+ * delete and read from the row the delete removed, so a save committed just
+ * before it still counts: the next connection starts past it (#915).
+ */
+export const disconnectGitHub = async (projectId: string, actorUserId: string) => {
+  await prisma.$transaction(async (tx) => {
+    // Locks in the order a first connect takes them (the site, then its connection): a first connect waits for this
+    // disconnect and reads the floor it leaves, and a second disconnect waits, then finds no connection (#915).
+    await tx.$queryRaw`SELECT "id" FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
+    const [connection] = await tx.$queryRaw<Array<{ id: string; repository: string }>>`
+      SELECT "id", "repository" FROM "git_connection" WHERE "projectId" = ${projectId} FOR UPDATE`;
+    if (!connection) return;
+    await tx.gitAuditEvent.create({ data: { connectionId: connection.id, projectId, actorUserId, action: 'connection.disconnected' } });
+    await tx.platformEvent.create({
+      data: { type: 'git_connection_disconnected', userId: actorUserId, projectId, metadata: { repository: connection.repository } },
+    });
+    const removed = await tx.$queryRaw<Array<{ settingsRevision: number }>>`
+      DELETE FROM "git_connection" WHERE "id" = ${connection.id} AND "projectId" = ${projectId} RETURNING "settingsRevision"`;
+    const revision = removed[0]?.settingsRevision;
+    if (revision === undefined) return;
+    // Raw, so the site's updatedAt doesn't move for a Git disconnect.
+    await tx.$executeRaw`
+      UPDATE "project" SET "gitSettingsRevisionFloor" = GREATEST("gitSettingsRevisionFloor", ${revision}) WHERE "id" = ${projectId}`;
+  });
+};
+
 export const connectGitHub = async (projectId: string, actorUserId: string, input: ConnectGitInput) => {
   const repository = normalizeRepository(input.repository);
   const baseBranch = normalizeGitBranch(input.baseBranch, 'Base branch');
@@ -224,6 +256,12 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
   const [observed] = await prisma.$queryRaw<Array<GitConnection & { saveVersion: string }>>`
     SELECT *, xmin::text AS "saveVersion" FROM "git_connection" WHERE "projectId" = ${projectId}`;
   const existing = observed ?? null;
+  const changed = () => conflict('The repository connection changed. Refresh and save again.');
+  // A form loaded before another save committed carries that save's previous
+  // revision (#876). The row version below only covers requests that overlap
+  // this one; this covers a save that finished before it began. Checked
+  // before GitHub is contacted, so a stale form costs nothing and writes nothing.
+  if (input.expectedRevision !== undefined && (existing?.settingsRevision ?? null) !== input.expectedRevision) throw changed();
   if (!input.token && !existing?.credentialEncrypted) throw badRequest('A fine-grained GitHub token is required for the first connection.');
   const provider = input.token
     ? new GitHubProvider(input.token)
@@ -266,7 +304,6 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
         existing.importBranchId !== (input.importBranchId || null) ||
         existing.importLanguageId !== (input.importLanguageId || null)),
   );
-  const changed = () => conflict('The repository connection changed. Refresh and save again.');
   // Provider reads finish before opening this transaction. Hold the row lock
   // through ledger initialization and audit, so success is one atomic commit.
   const connection = await prisma.$transaction(
@@ -280,12 +317,18 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
         WHERE "id" = ${existing.id} AND "projectId" = ${projectId} AND xmin::text = ${existing.saveVersion}
         FOR UPDATE`;
         if (locked.length === 0) throw changed();
-        saved = await tx.gitConnection.update({ where: { id: existing.id, projectId }, data: update });
+        saved = await tx.gitConnection.update({ where: { id: existing.id, projectId }, data: { ...update, settingsRevision: { increment: 1 } } });
       } else {
+        // A reconnect carries the revision on past the last disconnected connection's (#915), so a form left open
+        // from before the disconnect (which still shows that connection's revision) is refused, never accepted.
+        // The site's row lock makes a disconnect still in flight finish first, so the floor read here is the one it left.
+        const [site] = await tx.$queryRaw<Array<{ gitSettingsRevisionFloor: number }>>`
+          SELECT "gitSettingsRevisionFloor" FROM "project" WHERE "id" = ${projectId} FOR NO KEY UPDATE`;
         try {
           saved = await tx.gitConnection.create({
             data: {
               ...update,
+              settingsRevision: (site?.gitSettingsRevisionFloor ?? 0) + 1,
               projectId,
               provider: 'github',
               credentialEncrypted: update.credentialEncrypted as string,

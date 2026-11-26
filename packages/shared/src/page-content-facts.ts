@@ -110,8 +110,17 @@ type HtmlNode = {
   tagName?: string;
   properties?: Record<string, unknown>;
   children?: HtmlNode[];
+  /** An HTML `<template>`'s inert contents. */
+  content?: unknown;
   position?: { start: { offset?: number } };
 };
+
+/* A `<template>` inside `<svg>` or `<math>` is an ordinary foreign element: it has no
+ * inert contents, and the reader renders its children (#908). Only an HTML template
+ * is a non-link context. In HAST, only an HTML template carries `content`. */
+const htmlNonLinkContext = (node: HtmlNode): boolean =>
+  node.tagName !== undefined && NON_LINK_CONTEXTS.has(node.tagName) && (node.tagName !== 'template' || node.content !== undefined);
+const HTML_NAMESPACE = 'http://www.w3.org/1999/xhtml';
 
 /** CommonMark may end a raw HTML node at a blank line inside e.g. <title>.
  * Keep the source HTML context even if rehype-raw reparents generated nodes.
@@ -130,7 +139,12 @@ const htmlNonLinkRanges = (tree: Root, content: string): { start: number; end: n
   keepHtml(tree);
   const ranges: { start: number; end: number }[] = [];
   const visit = (node: DefaultTreeAdapterTypes.ChildNode) => {
-    if ('tagName' in node && NON_LINK_CONTEXTS.has(node.tagName) && node.sourceCodeLocation) {
+    if (
+      'tagName' in node &&
+      NON_LINK_CONTEXTS.has(node.tagName) &&
+      (node.tagName !== 'template' || node.namespaceURI === HTML_NAMESPACE) &&
+      node.sourceCodeLocation
+    ) {
       // An unclosed context runs to the end of the page.
       ranges.push({ start: node.sourceCodeLocation.startOffset, end: node.sourceCodeLocation.endOffset ?? content.length });
       return;
@@ -253,7 +267,7 @@ const htmlLinks = (tree: Root, content: string, embeds: EmbedFacts): string[] =>
     // Every complete iframe became the reader's embed element (./reader-embeds), so one
     // still here has no closer in its block (or a tag the rewrite couldn't read).
     if (node.tagName === 'iframe') embeds.unclosedEmbeds.push(propertyText(node.properties?.src) || '<iframe>');
-    if (node.tagName && NON_LINK_CONTEXTS.has(node.tagName)) return;
+    if (htmlNonLinkContext(node)) return;
     if (node.tagName && (LINK_ELEMENTS.has(node.tagName) || EMBED_ELEMENTS.has(node.tagName))) {
       const offset = node.position?.start.offset;
       if (offset !== undefined && suppressed(offset)) return;

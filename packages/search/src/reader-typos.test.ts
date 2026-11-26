@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createDocIndex, type SearchDoc, searchDocs } from './index';
+import { readerSearchFields, readerSearchTerms, readerTypoRelevanceScore } from './reader-relevance';
 
 const doc = (id: string, title: string, content = ''): SearchDoc => ({ id, title, path: id, content, headings: '', description: '' });
 const reader = { relevance: 'reader' as const };
@@ -44,6 +45,51 @@ describe('reader one-letter typos', () => {
   it('keeps the lexical relevance floor for weak prefix matches', async () => {
     const index = await createDocIndex([doc('exact', 'Invoice'), doc('body', 'Manual', 'Invoice'), doc('weak', 'Exports', 'Invoices')]);
     expect((await searchDocs(index, 'invoice', reader)).map((hit) => hit.id)).toEqual(['exact', 'body']);
+  });
+
+  /**
+   * #831: the 5-letter threshold and the one-edit check count letters (code points) of the normalized, stemmed
+   * terms, not UTF-16 units. The relevance gate is checked directly: retrieval may return the candidate or not
+   * (Orama's own tolerance), but the gate must never pass a typo the rule refuses.
+   */
+  describe('the 5-letter threshold, in letters', () => {
+    const typoScore = (title: string, query: string, language?: 'arabic') =>
+      readerTypoRelevanceScore(
+        readerSearchTerms(query, language),
+        readerSearchFields({ title, headings: '', description: '', content: '' }, language),
+      );
+    const letters = (word: string, language?: 'arabic') => [...readerSearchTerms(word, language)].map((term) => [...term].length);
+
+    it.each([
+      // CJK runs are one term: four characters stay exact, five may take one edit.
+      ['CJK, 4 characters', '发布流程', '发表流程', 4, false],
+      ['CJK, 5 characters', '文档发布流程', '文档发表流程', 6, true],
+      // Characters outside the Basic Multilingual Plane are two UTF-16 units each.
+      ['astral, 3 letters (6 units)', '𠀀𠀁𠀂', '𠀀𠀁𠀃', 3, false],
+      ['astral, 4 letters (8 units)', '𠀀𠀁𠀂𠀃', '𠀀𠀁𠀂𠀅', 4, false],
+      ['astral, 5 letters (10 units)', '𠀀𠀁𠀂𠀃𠀄', '𠀀𠀁𠀂𠀃𠀅', 5, true],
+      ['astral, 5 letters, one deleted', '𠀀𠀁𠀂𠀃𠀄', '𠀀𠀁𠀂𠀄', 4, false],
+      ['astral, 6 letters, one deleted', '𠀀𠀁𠀂𠀃𠀄𠀅', '𠀀𠀁𠀂𠀄𠀅', 5, true],
+      ['astral, 5 letters, one inserted', '𠀀𠀁𠀂𠀃𠀄', '𠀀𠀁𠀂𠀆𠀃𠀄', 6, true],
+      ['astral, 5 letters, two replaced', '𠀀𠀁𠀂𠀃𠀄', '𠀀𠀁𠀇𠀃𠀅', 5, false],
+      ['mixed astral and Latin, 5 letters', 'ab𠀀cd', 'ab𠀁cd', 5, true],
+    ] as const)('%s', (_name, title, query, queryLetters, accepted) => {
+      expect(letters(query)).toEqual([queryLetters]);
+      expect(typoScore(title, query) > 0).toBe(accepted);
+    });
+
+    it('counts Arabic letters after normalization and light stemming', () => {
+      // Five letters after stemming: one substitution is a typo.
+      expect(letters('برنامح', 'arabic')).toEqual([6]);
+      expect(typoScore('برنامج', 'برنامح', 'arabic')).toBeGreaterThan(0);
+      expect(letters('تطبيك', 'arabic')).toEqual([5]);
+      expect(typoScore('تطبيق', 'تطبيك', 'arabic')).toBeGreaterThan(0);
+      // Four letters: exact only, even when the typed word was longer before its suffix was stemmed off.
+      expect(letters('مكتت', 'arabic')).toEqual([4]);
+      expect(typoScore('مكتب', 'مكتت', 'arabic')).toBe(0);
+      expect(letters('مكتتة', 'arabic')).toEqual([4]);
+      expect(typoScore('مكتبة', 'مكتتة', 'arabic')).toBe(0);
+    });
   });
 
   it('recovers an Arabic typo and preserves Arabic text and existing morphology', async () => {

@@ -1454,6 +1454,7 @@ const gitBranchName = z
     'Use a valid Git branch name.',
   );
 
+/** The Git connection save (`PUT /git/connection`). Tolerates unknown keys (rolling deploys, see below). */
 export const gitConnectionBody = z
   .object({
     repository: z
@@ -1469,8 +1470,14 @@ export const gitConnectionBody = z
     /** Fine-grained token: Repository metadata read, Contents read/write, Pull
      * requests read/write. Accepted once and never returned. */
     token: z.string().min(20).max(500).optional(),
+    /** The connection's `settingsRevision` the form was loaded with, or null
+     *  when it expects no connection yet (the first Connect). A save whose
+     *  revision is no longer current is refused (409) rather than replacing a
+     *  save it never saw (#876). Left out, no revision is checked. */
+    expectedRevision: z.number().int().min(1).max(2_147_483_647).nullable().optional(),
   })
-  .strict()
+  // Not strict: unknown keys are stripped, so an API one release behind ignores a field a newer dashboard sends
+  // instead of refusing the save (#915; operations/runbook-rolling-deploys.md §6.1).
   .refine((body) => body.baseBranch !== body.headBranch, { message: 'Use a dedicated authoring branch.', path: ['headBranch'] });
 export type GitConnectionBody = z.infer<typeof gitConnectionBody>;
 
