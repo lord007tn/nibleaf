@@ -195,12 +195,15 @@ it.runIf(baselineDir)(
  *  had already lost its nesting on load), `failing` (fails only checks main fails), and
  *  `textKept` (LIST_ITEM_LEAD_TEXT_KEPT). Every class loses and adds no more text than main. */
 const EXPECTED_CLASSES = {
-  plain: { same: 5, better: 1, failing: 287, textKept: 1 },
-  edited: { same: 1, better: 107, kept: 42, failing: 143, textKept: 1 },
+  plain: { same: 5, better: 1, failing: 290, textKept: 1 },
+  edited: { same: 2, better: 108, kept: 43, failing: 143, textKept: 1 },
 };
 
+// #864 keeps code inside the authored fence by adding a closer on these pages.
+const CHANGED_PAGES = [...LIST_ITEM_LEAD_DIFFERENTIAL_PAGES, 321, 728, 999].sort((a, b) => a - b);
+
 it.skipIf(baselineDir)(
-  `the ${LIST_ITEM_LEAD_DIFFERENTIAL_PAGES.length} named list item lead and quoted mark pages keep every check main passes, and lose and add no more text`,
+  `the ${CHANGED_PAGES.length} named list, quote and fence pages keep every check main passes, and lose and add no more text`,
   async () => {
     const fixture = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { sources: string; pages: string[] };
     expect({ sources: fixture.sources, count: fixture.pages.length }).toEqual({ sources, count: cases.length });
@@ -253,7 +256,7 @@ it.skipIf(baselineDir)(
     });
     console.info(`[list-item-leads-main] ${changed.length} named pages, ${layoutPages.length} also with a #625 layout, ${JSON.stringify(classes)}`);
     expect(worse, JSON.stringify(worse)).toEqual([]);
-    expect(changed, 'corpus pages with changed nodes or saves').toEqual(LIST_ITEM_LEAD_DIFFERENTIAL_PAGES);
+    expect(changed, 'corpus pages with changed nodes or saves').toEqual(CHANGED_PAGES);
     expect(classes).toEqual(EXPECTED_CLASSES);
   },
   900_000,

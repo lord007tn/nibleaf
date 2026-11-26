@@ -27,7 +27,7 @@ import {
   unchangedStructuredLinkBody,
   writeStructuredHtmlBlock,
 } from './structured-html-source';
-import { readsBackTight, writesTight } from './tight-lists';
+import { authoredFenceBoundary, readsBackTight, writesTight } from './tight-lists';
 
 /*
  * Saving a page writes its Markdown into one output buffer (#612). The serializer
@@ -370,8 +370,15 @@ class LinearMarkdownSerializerState extends SerializerState {
   inTable = false;
   /** The nodes being rendered, outermost first, each with its parent and index: a
    *  fence reads what comes after the containers it ends (fence-source.ts). */
-  readonly path: Array<{ node: PMNode; parent: PMNode | Fragment; index: number; position: number; lastChildEnd?: number; lastChildIndex?: number }> =
-    [];
+  readonly path: Array<{
+    node: PMNode;
+    parent: PMNode | Fragment;
+    index: number;
+    position: number;
+    lastChildEnd?: number;
+    lastChildIndex?: number;
+    listTight?: boolean;
+  }> = [];
   private readonly offsets = new WeakMap<object, number[]>();
   private readonly writtenHeadings = new WeakSet<StructuredHtmlSource>();
   private closedOwner: SerializedLineOwner | null = null;
@@ -540,6 +547,12 @@ class LinearMarkdownSerializerState extends SerializerState {
   }
 
   override render(node: PMNode, parent: PMNode, index: number): void {
+    const container = this.path.at(-1);
+    if (index === 0 && container?.node === parent && (node.type.name === 'listItem' || node.type.name === 'taskItem')) {
+      container.listTight = this.inTightList;
+    }
+    const previous = this.closed;
+    if (this.inTightList && parent.type?.name === 'listItem' && previous && authoredFenceBoundary(previous, node)) this.flushClose(1);
     const previousOwner = this.output.owner;
     let position = -1;
     if (this.output.tracksLines && node.isBlock) {

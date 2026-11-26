@@ -2,6 +2,7 @@
 import { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { afterAll, describe, expect, it } from 'vitest';
+import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 /*
@@ -48,6 +49,52 @@ describe('a tight list holding a loose list stays tight (#638)', () => {
   }
 });
 
+describe('a tight list item keeps the text after its fence tight (#605)', () => {
+  it.each([
+    ['bullet', '- Step:\n  ```sh\n  npm i\n  ```\n  After.\n- Next'],
+    ['ordered', '1. Step:\n   ```sh\n   npm i\n   ```\n   After.\n2. Next'],
+    ['nested', '- Setup\n  - Step:\n    ```sh\n    npm i\n    ```\n    After.\n  - Next\n- Done'],
+  ])('preserves the authored %s list', (_shape, source) => {
+    expectTenIdenticalSaves(source);
+  });
+
+  it('preserves the blank lines in a loose item', () => {
+    expectTenIdenticalSaves('- Step:\n\n  ```sh\n  npm i\n  ```\n\n  After.\n\n- Next');
+  });
+
+  it.each([
+    [15, '  ```\n\n- the **bold at the end**'],
+    [88, '  ````\n\n  saves [external]'],
+  ])('keeps the loose fence boundary in corpus page %i', (page, boundary) => {
+    const source = serializerCorpus()[page]?.source;
+    expect(source).toBeDefined();
+    const saved = save(source ?? '');
+    expect(saved).toContain(boundary);
+    expect(save(saved)).toContain(boundary);
+  });
+});
+
+describe('a lazy quoted continuation keeps its authored prefixes and breaks (#638)', () => {
+  it('records only authored lines when quoted component markup spans several lines', () => {
+    save('Intro.\n\n> Some <Icon icon="a\n>  \u00a0\n> b" data-x={1}\n> \n>  /> more text.\n\nOutro.');
+    const paragraph = editor.state.doc.child(1).firstChild;
+    expect(paragraph?.type.name).toBe('paragraph');
+    expect(paragraph?.attrs.sourceParagraph).not.toContain('\0');
+  });
+
+  for (const { locale, a, b, c } of LOCALES) {
+    it.each([
+      ['soft', ''],
+      ['two-space hard', '  '],
+      ['backslash hard', '\\'],
+    ])(`preserves the %s break in ${locale}`, (_shape, marker) => {
+      expectTenIdenticalSaves(`> ${a}${marker}\n${b}\n\n${c}`);
+      expectTenIdenticalSaves(`> > ${a}${marker}\n> ${b}\n\n${c}`);
+      expectTenIdenticalSaves(`>> ${a}${marker}\n> ${b}\n\n${c}`);
+    });
+  }
+});
+
 describe('a paragraph added after an unclosed fence stays out of its code (#649)', () => {
   const codes = () => {
     const found: string[] = [];
@@ -78,6 +125,21 @@ describe('a paragraph added after an unclosed fence stays out of its code (#649)
     expectCodeKept('- ~~~js\n  a\n   \n   ');
   });
 
+  it.each([
+    ['- ~~~js\n  a', '  ~~~'],
+    ['- Top\n  - ~~~js\n    a', '    ~~~'],
+    ['1. Top\n\n    ~~~js\n     a', '   ~~~'],
+  ])('closes %j before the newly appended paragraph without adding code whitespace (#864)', (source, closer) => {
+    editor.commands.setContent(source, { emitUpdate: false });
+    const before = codes();
+    expect(before).toHaveLength(1);
+    editor.commands.insertContentAt(editor.state.doc.content.size, paragraph);
+    const saved = getMarkdown(editor);
+    expect(saved).toBe(`${source}\n${closer}\n\nAppended`);
+    expect(save(saved)).toBe(saved);
+    expect(codes()).toEqual(before);
+  });
+
   it('keeps the code of a fence ending a quoted list item, with a paragraph added in the quote', () => {
     expectCodeKept('> - ~~~js\n>   a\n>    \n>    ', true);
   });
@@ -98,6 +160,18 @@ describe('a paragraph added after an unclosed fence stays out of its code (#649)
     const reloaded = editor.state.doc.firstChild as PMNode;
     expect([reloaded.childCount, reloaded.lastChild?.textContent]).toEqual([2, 'Appended']);
     expect(save(saved)).toBe(saved);
+  });
+
+  it('closes a fence before a newly appended sibling in a loose list (#864)', () => {
+    const source = '- Before\n\n- ~~~js\n  a';
+    editor.commands.setContent(source, { emitUpdate: false });
+    const before = codes();
+    const list = editor.state.doc.firstChild as PMNode;
+    editor.commands.insertContentAt(list.nodeSize - 1, { type: 'listItem', content: [paragraph] });
+    const saved = getMarkdown(editor);
+    expect(saved).toBe(`${source}\n  ~~~\n\n- Appended`);
+    expect(save(saved)).toBe(saved);
+    expect(codes()).toEqual(before);
   });
 
   // Regression guards, which main passes too: a fence that ends its quote is ended
