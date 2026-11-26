@@ -290,6 +290,19 @@ describe('callouts the reader renders literally keep main bytes (#917 re-check)'
 describe('large pages through both exports and the reader (#917 re-check)', () => {
   const PAGE = '1. >~~~md\n   > CODEMARK\n   > ~~~\n\n<Note>ReviewText</Note>\n\n';
 
+  it.each(projectors)('keeps the original callouts past the parse caps even with a long tail', (project) => {
+    const source = `${PAGE}${'<Note>ReviewText</Note>\n\n'.repeat(5999)}${'q'.repeat(90_000)}`;
+    const expected = project === normalizePublicMarkdownContent ? source.replace('1. >~~~md', '1. &gt;~~~md') : source;
+    expect(project(source)).toBe(expected);
+  });
+
+  it('quotes callouts within the caps when the page has a long tail', () => {
+    const source = `${PAGE}${'q'.repeat(90_000)}`;
+    const expected = source.replace('<Note>ReviewText</Note>', '> ReviewText');
+    expect(portablePublicMdxMarkdown(source)).toBe(expected);
+    expect(normalizePublicMarkdownContent(source)).toBe(expected.replace('1. >~~~md', '1. &gt;~~~md'));
+  });
+
   it('exports a 260 KB page without exhausting the stack, quoting the callout the reader shows', () => {
     const source = `${PAGE}${'a\n'.repeat(130_000)}`;
     expect(source.length).toBeGreaterThan(260_000);
@@ -311,6 +324,14 @@ describe('large pages through both exports and the reader (#917 re-check)', () =
     const source = `\`\`\`\n${'a\n'.repeat(130_000)}\`\`\``;
     expect(normalizeMdxBlocks(source)).toBe(source);
   }, 30_000);
+});
+
+it('keeps the original callout when the React reader drops the body of a File component', () => {
+  const source = '<File name="file.txt">\n\n1. >~~~md\n   > CODEMARK\n   > ~~~\n\n<Note>ReviewText</Note>\n\n</File>';
+  expect(portablePublicMdxMarkdown(source)).toBe(source);
+  expect(normalizePublicMarkdownContent(source)).toBe(
+    source.replace('<File name="file.txt">', '&lt;File name="file.txt"&gt;').replace('1. >~~~md', '1. &gt;~~~md'),
+  );
 });
 
 describe('the fence opener reads lines as its regex did, in linear time (#917 re-check)', () => {

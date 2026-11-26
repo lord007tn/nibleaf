@@ -42,6 +42,8 @@ export interface DocumentationComponentContract {
   attributes: Readonly<Record<string, DocumentationComponentAttributeType>>;
   /** The body is Markdown: the reader pads the tags with blank lines so CommonMark parses it. */
   markdownBody?: boolean;
+  /** The reader component map deliberately omits children from this renderer. */
+  readerDropsChildren?: boolean;
   /** An item inside a container: the reader unwraps paragraphs that hold only such items. */
   structural?: boolean;
   /** A callout variant (`<Note>`, `<Warning>`…); `Callout` itself reads its `type` attribute. */
@@ -103,7 +105,14 @@ export const DOCUMENTATION_COMPONENT_CONTRACT = {
   // File/folder names are display-only: nothing may resolve them against a repository or filesystem.
   FileTree: { kind: 'block', attributes: {}, markdownBody: true },
   Folder: { kind: 'block', attributes: { name: 'string', defaultOpen: 'boolean' }, markdownBody: true, structural: true },
-  File: { kind: 'block', selfClosing: true, attributes: { name: 'string', icon: 'icon' }, markdownBody: true, structural: true },
+  File: {
+    kind: 'block',
+    selfClosing: true,
+    attributes: { name: 'string', icon: 'icon' },
+    markdownBody: true,
+    structural: true,
+    readerDropsChildren: true,
+  },
   ApiExample: { kind: 'block', attributes: { title: 'string' }, markdownBody: true },
   RequestExample: { kind: 'block', attributes: { title: 'string' }, markdownBody: true, structural: true },
   ResponseExample: { kind: 'block', attributes: { title: 'string', status: 'string' }, markdownBody: true, structural: true },
@@ -131,6 +140,10 @@ type ReaderTagOf<Tag extends DocumentationComponentTag> = (typeof DOCUMENTATION_
 
 /** Element names the reader sees after HTML parsing (`<Frame>` becomes `mdxframe`). */
 export type DocumentationReaderTag = { [Tag in DocumentationComponentTag]: ReaderTagOf<Tag> }[DocumentationComponentTag];
+
+export type ChildlessDocumentationReaderTag = {
+  [Tag in DocumentationComponentTag]: (typeof DOCUMENTATION_COMPONENT_CONTRACT)[Tag] extends { readerDropsChildren: true } ? ReaderTagOf<Tag> : never;
+}[DocumentationComponentTag];
 
 export const documentationComponentContractEntries = (): Array<[DocumentationComponentTag, DocumentationComponentContract]> =>
   Object.entries(DOCUMENTATION_COMPONENT_CONTRACT) as Array<[DocumentationComponentTag, DocumentationComponentContract]>;

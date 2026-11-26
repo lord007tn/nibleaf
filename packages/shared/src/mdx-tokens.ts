@@ -378,7 +378,7 @@ const readerForms = (
         eligible.push(candidate);
     }
   }
-  return readerRenderedCallouts(lines, eligible);
+  return readerRenderedCallouts(source, lines, eligible);
 };
 
 /** How each line reads (#591). `reader` is the shared scanner's kind for each authored line
