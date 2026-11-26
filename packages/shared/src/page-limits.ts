@@ -24,6 +24,7 @@ export const MARKDOWN_PARSE_LIMITS = {
   lineCharacters: 128 * 1024,
   syntaxMarkers: 1024,
   nesting: 64,
+  tableRows: 2048,
 } as const;
 
 export type MarkdownParseLimit = keyof typeof MARKDOWN_PARSE_LIMITS;
@@ -33,7 +34,7 @@ export interface MarkdownParseOverflow {
   limit: MarkdownParseLimit;
   /** The line, numbered from 1 as the editor numbers them (for markers, the paragraph's first line); 0 for the page size. */
   line: number;
-  /** What was measured: UTF-8 bytes of the page, the line's characters or nesting levels, or the paragraph's markers. */
+  /** What was measured: page bytes or table rows, line characters or nesting, or the paragraph's markers. */
   amount: number;
   /** For `nesting`: what nests, tags or the line's own quotes, list markers and brackets. */
   nesting?: 'tags' | 'markers';
@@ -85,6 +86,9 @@ const HTML_TAG =
   /<[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[A-Za-z_:][A-Za-z0-9_.:-]*(?:[ \t]*=[ \t]*(?:[^ \t"'=<>`\r\n]+|'[^'\r\n]*'|"[^"\r\n]*"))?)*[ \t]*\/?>|<\/[A-Za-z][A-Za-z0-9-]*[ \t]*>/y;
 /** Where raw HTML (a tag, comment, declaration) or an autolink may start. */
 const MAY_START_HTML = /[A-Za-z/!?]/;
+/** A complete single-line link reference definition, with an optional title. */
+const REFERENCE_DEFINITION =
+  /^\[((?!\^)(?:\\[\\[\]]|[^\\[\]]){1,999})\]:[ \t]*(?:<[^<>]*>|[^\s<>()\p{Cc}]+)(?:[ \t]+(?:"[^"]*"|'[^']*'|\([^()]*\)))?[ \t]*$/u;
 /** Any tag, as the reader's HTML and MDX parsers may read it, across lines. */
 const TAG = /<(\/?)([A-Za-z][\w.:-]*)(?=[\s/>])[^<>]*>/g;
 
@@ -145,23 +149,25 @@ interface InlineUnit {
  * (`code`) and the spans that hold no Markdown (`quiet`: code spans and the
  * attributes of complete tags, such as an SVG path).
  *
- * A code span pairs anywhere in the unit, across its lines too. Raw HTML binds
- * before code, so from a `<` that may start HTML this scan can't bound to the
+ * Code and math delimiters can pair across lines in a unit. Raw HTML binds
+ * before either, so from a `<` that may start HTML this scan can't bound to the
  * end of the unit everything is counted, which never undercounts. In a `strict`
  * unit (a paragraph that might hold a table this scan did not recognise), a span
  * that holds a `|` or a line break is not taken as code either: a cell boundary
- * could cut it first. Linear: each run of backticks finds its closer through a
- * forward-only pointer per length.
+ * could cut it first. Each delimiter run finds its closer through a
+ * forward-only pointer per delimiter and length.
  */
 const readInline = (source: string, from: number, to: number, unit: InlineUnit, code: Range[], quiet: Range[], strict: boolean): void => {
   const runs = new Map<number, number[]>();
   for (let at = from; at < to; at++) {
-    if (source[at] !== '`') continue;
+    const char = source[at];
+    if (char !== '`' && char !== '$') continue;
     let end = at + 1;
-    while (end < to && source[end] === '`') end++;
-    const starts = runs.get(end - at);
+    while (end < to && source[end] === char) end++;
+    const key = char === '$' ? at - end : end - at;
+    const starts = runs.get(key);
     if (starts) starts.push(at);
-    else runs.set(end - at, [at]);
+    else runs.set(key, [at]);
     at = end - 1;
   }
   const pointers = new Map<number, number>();
@@ -180,11 +186,11 @@ const readInline = (source: string, from: number, to: number, unit: InlineUnit, 
       at += source[at + 1] === '\n' || source[at + 1] === '\r' ? 1 : 2;
       continue;
     }
-    if (char === '`') {
+    if (char === '`' || char === '$') {
       let end = at + 1;
-      while (end < to && source[end] === '`') end++;
+      while (end < to && source[end] === char) end++;
       const length = end - at;
-      const close = unit.uncertain ? -1 : closerAfter(length, end);
+      const close = unit.uncertain ? -1 : closerAfter(char === '$' ? -length : length, end);
       if (close !== -1) {
         if (!strict || !/[|\r\n]/.test(source.slice(end, close))) {
           code.push([at, close + length]);
@@ -195,7 +201,7 @@ const readInline = (source: string, from: number, to: number, unit: InlineUnit, 
         }
         unit.uncertain = true;
       }
-      // No closer in the unit: literal backticks.
+      // No closer in the unit: literal delimiters.
       unit.markers += length;
       at = end;
       continue;
@@ -260,12 +266,19 @@ const indentOf = (line: SourceLine, facts: MarkdownLineFacts): number => {
   for (let at = facts.content; line.text[at] === ' ' || line.text[at] === '\t'; at++) columns += line.text[at] === '\t' ? 4 : 1;
   return columns;
 };
-/** What GFM ends a table at although the line scanner reads it as a paragraph line: raw HTML, a
- *  footnote or link definition, display math, or an ordered item (or it may; ending early only counts more). */
-const NOT_A_ROW = /^[ \t]*(?:[<[$]|\d{1,9}[.)])/;
+/** An ordered list item or a GFM footnote definition can end a table. */
+const NOT_A_ROW = /^(?:\[\^[^\]\s]+\]:|\d{1,9}[.)](?:[ \t]|$))/;
 /** Whether a line in a table's containers can be one of its rows (or its header). */
-const mayBeRow = (line: SourceLine, facts: MarkdownLineFacts): boolean =>
-  indentOf(line, facts) <= 3 && !NOT_A_ROW.test(line.text.slice(facts.content));
+const mayBeRow = (line: SourceLine, facts: MarkdownLineFacts): boolean => {
+  if (indentOf(line, facts) > 3) return false;
+  const text = line.text.slice(facts.content).trim();
+  if (NOT_A_ROW.test(text)) return false;
+  // A whole HTML tag on its own line starts a raw HTML block after a table.
+  // An inline tag, autolink, link label, or dollar-delimited formula can be a cell.
+  if (!text.startsWith('<')) return true;
+  HTML_TAG.lastIndex = 0;
+  return HTML_TAG.exec(text)?.[0] !== text;
+};
 
 interface TagEvent {
   line: number;
@@ -362,18 +375,21 @@ const readLines = (source: string, lines: readonly SourceLine[]) => {
     const [rowLine, headLine] = [lines[index] as SourceLine, lines[header] as SourceLine];
     if (indentOf(rowLine, row) > 3 || !mayBeRow(headLine, head)) return false;
     const delimiters = cellsOf(source, rowLine.start + row.content, rowLine.end);
-    if (!pipesIn(source, rowLine.start + row.content, rowLine.end).length) return false;
     if (!delimiters.every(([from, to]) => DELIMITER_CELL.test(source.slice(from, to)))) return false;
     const headStart = headLine.start + head.content;
-    return pipesIn(source, headStart, headLine.end).length > 0 && cellsOf(source, headStart, headLine.end).length === delimiters.length;
+    return cellsOf(source, headStart, headLine.end).length === delimiters.length;
   };
   let lastRow = -2;
+  let tableStart = -1;
+  let tableRows = 0;
   /** A table row: one unit, read cell by cell. */
   const readRow = (index: number, delimiter: boolean) => {
     lastRow = index;
     const line = lines[index] as SourceLine;
     const unit: InlineUnit = { markers: 0, uncertain: false };
     if (!delimiter) {
+      tableRows++;
+      if (tableRows > MARKDOWN_PARSE_LIMITS.tableRows) overflowAt[tableStart] ??= { limit: 'tableRows', line: line.index + 1, amount: tableRows };
       const start = line.start + (facts[index]?.content ?? 0);
       unit.markers += pipesIn(source, start, line.end).length;
       for (const [from, to] of cellsOf(source, start, line.end)) {
@@ -417,10 +433,23 @@ const readLines = (source: string, lines: readonly SourceLine[]) => {
     if (index + 1 < lines.length && delimiterUnder(index + 1)) {
       // The header row ends the paragraph before it (a table interrupts one).
       closeUnit(index - 1);
+      tableStart = index;
       readRow(index, false);
       readRow(++index, true);
       table = facts[index]?.depth ?? 0;
       continue;
+    }
+    // Definitions are recognized at the start of a block or after other
+    // definitions. A definition-shaped line does not interrupt existing prose.
+    if (fact && !fact.lazy && (first < 0 || !fact.continues) && indentOf(line, fact) <= 3) {
+      const label = REFERENCE_DEFINITION.exec(line.text.slice(fact.content).trimStart())?.[1];
+      if (label?.trim()) {
+        closeUnit(index - 1);
+        quiet.push([line.start, line.end]);
+        masks.push([line.start, line.end]);
+        checkLine(index);
+        continue;
+      }
     }
     const delimiterLike = DELIMITER_ROW.test(line.text) && line.text.includes('-');
     if (first >= 0 && fact?.continues) {

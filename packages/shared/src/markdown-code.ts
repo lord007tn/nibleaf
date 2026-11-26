@@ -160,6 +160,9 @@ const STARTS_BLOCK = /^ {0,3}(?:>|[-*+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|#{1,6}
 const NOT_PARAGRAPH = /^(?:#{1,6}(?:[ \t]|$)|<|([-*_])(?:[ \t]*\1){2,}[ \t\r]*$)/;
 /** Under a paragraph, a setext heading underline ends it. */
 const SETEXT_UNDERLINE = /^(?:=+|-+)[ \t\r]*$/;
+// remark-math flow uses at least two dollars, and its optional meta holds no dollars.
+const MATH_FENCE_OPEN = /^ {0,3}(\${2,})(?!\$)[^$]*$/;
+const MATH_FENCE_CLOSE = /^ {0,3}(\$+)[ \t]*$/;
 
 /** Where a line's thematic break (`- - -`, `***`, `_ _ _`) may start: one of
  * -*_ three or more times, with only spaces or tabs between and after. The tail
@@ -295,6 +298,7 @@ const interruptsParagraph = (content: string): boolean => {
  */
 const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts?: MarkdownLineFacts[]): MarkdownBlockLineKind[] => {
   let fence: MarkdownFence | undefined;
+  let mathFence = 0;
   // What `read` learns of the current line, for `facts`.
   let continues = false;
   let lazy = false;
@@ -314,7 +318,8 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts
     }
     if (continued.matched < stack.items.length) {
       // A paragraph line may continue lazily without its containers' prefixes.
-      if (paragraph && !interruptsParagraph(contentAt(line, continued.cursor))) {
+      const remaining = contentAt(line, continued.cursor);
+      if (paragraph && !interruptsParagraph(remaining) && !(facts && MATH_FENCE_OPEN.test(remaining))) {
         continues = true;
         lazy = true;
         return 'prose';
@@ -348,6 +353,15 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts
       fence = opening;
       paragraph = false;
       return 'code';
+    }
+    // The budget counts neither TeX nor Markdown-looking lines inside it. The
+    // ordinary fence scanner still reports Markdown's original fence roles.
+    if (facts) {
+      mathFence = MATH_FENCE_OPEN.exec(body)?.[1]?.length ?? 0;
+      if (mathFence) {
+        paragraph = false;
+        return 'code';
+      }
     }
     if (indent < 4 && text.startsWith('<') && !COMPONENT_OPENER.test(text) && !COMPONENT_CLOSER.test(text)) {
       const block = HTML_BLOCK_STARTS.find(([start, , interruptsParagraph]) => (interruptsParagraph || !paragraph) && start.test(text));
@@ -397,6 +411,13 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts
       }
       // The line leaves a container, which ends the fence; it starts afresh.
       fence = undefined;
+    }
+    if (mathFence) {
+      if (inside) {
+        if ((MATH_FENCE_CLOSE.exec(contentAt(line, continued.cursor))?.[1]?.length ?? 0) >= mathFence) mathFence = 0;
+        return 'code';
+      }
+      mathFence = 0;
     }
     if (html) {
       if (inside && !(continued.blank && html === 'blank')) {

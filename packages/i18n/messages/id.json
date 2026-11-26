@@ -4907,6 +4907,7 @@
   "publish_checks_markdownlimitpagebytes": "Halaman berisi {size} KiB teks sumber (batas {limit} KiB), jadi seluruhnya tampil sebagai teks biasa.",
   "publish_checks_markdownlimitlinecharacters": "Baris {line} berisi {count} karakter (batas {limit}).",
   "publish_checks_markdownlimitsyntaxmarkers": "Paragraf yang dimulai di baris {line} berisi {count} penanda Markdown (batas {limit}).",
+  "publish_checks_markdownlimittablerows": "Jumlah baris tabel Markdown mencapai {count} pada baris {line} (batas {limit} per halaman).",
   "publish_checks_markdownlimitnesting": "Baris {line} menyusun kutipan, daftar, atau kurung hingga {count} tingkat (batas {limit}).",
   "publish_checks_markdownlimitnestingtags": "Baris {line} menyusun {count} tag bertingkat (batas {limit}).",
   "publish_checks_videoposterhidden": "Poster video dari situs lain",

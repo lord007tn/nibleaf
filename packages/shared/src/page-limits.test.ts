@@ -89,6 +89,50 @@ describe('oversizedPageContent', () => {
 describe('markdownParseBudget', () => {
   const dense = '*a* '.repeat(600);
 
+  it('skips display and inline math that the reader parses as raw text', () => {
+    const mathRow = String.raw`x_{i,j} &= \frac{a_i+b_i}{c_i-d_i} + y_{i,j} \\`;
+    const display = ['$$', String.raw`\begin{aligned}`, ...Array.from({ length: 64 }, () => mathRow), String.raw`\end{aligned}`, '$$'].join('\n');
+    const inline = `Before ${'$x_{i,j} = \\sqrt{a_i*b_i}$ '.repeat(180)}after.`;
+    expect(markdownParseBudget(display).overflow).toBeNull();
+    expect(markdownParseBudget(inline).overflow).toBeNull();
+    expect(markdownParseBudget(`${display}\n\n${dense}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 70 });
+    // A fence-looking line inside a math block cannot hide Markdown after the math closer.
+    expect(markdownParseBudget(`$$\n~~~\n$$\n\n${dense}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 5 });
+  });
+
+  it('counts each reference definition as its own unit in a definition run', () => {
+    const definitions = Array.from({ length: 600 }, (_, i) => `[#${i}]: /releases/${i}`).join('\n');
+    const source = `# Changes\n\n[#17][#17]\n\n${definitions}`;
+    expect(markdownParseBudget(source).overflow).toBeNull();
+    expect(markdownParseBudget(source).content).toBe(source);
+    expect(markdownParseBudget(`Prose above a literal run.\n${definitions}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
+  });
+
+  it('reads no-leading-pipe GFM tables whose rows start with links, inline HTML or math', () => {
+    const rows = Array.from({ length: 256 }, (_, i) => {
+      const firstCell = [`[\`E${i}\`](/errors/${i})`, `<span>E${i}</span>`, `$x_${i}$`][i % 3];
+      return `${firstCell} | [Open](/details/${i}) | **Error**`;
+    });
+    const source = ['Code | Details | Type', '--- | --- | ---', ...rows].join('\n');
+    expect(markdownParseBudget(source).overflow).toBeNull();
+    expect(markdownParseBudget(source).content).toBe(source);
+  });
+
+  it('bounds cumulative GFM table rows and preserves Markdown after the over-budget table', () => {
+    const table = (rows: number) => ['Kind | Value', '--- | ---', ...Array.from({ length: rows }, () => 'A | B')].join('\n');
+    const first = table(1023);
+    const second = table(1024);
+    const under = `${first}\n\n${table(1023)}`;
+    expect(markdownParseBudget(under)).toMatchObject({ overflow: null, content: under });
+    const source = `${first}\n\n${second}\n\n## Next\n\n[Read next](/next)`;
+    const budget = markdownParseBudget(source);
+    expect(budget.overflow).toEqual({ limit: 'tableRows', line: 2052, amount: 2049 });
+    expect(budget.regions).toEqual([[1026, 2051]]);
+    expect(budget.content).toBe(`${first}\n\n\`\`\`${MARKDOWN_PLAIN_LANGUAGE}\n${second}\n\`\`\`\n\n## Next\n\n[Read next](/next)`);
+    // A one-column GFM table can lack pipes even in its header and delimiter.
+    expect(markdownParseBudget(`Value\n:-:\n${'A\n'.repeat(16_000)}`).overflow).toMatchObject({ limit: 'tableRows', amount: 2049 });
+  });
+
   it('fences only the block over budget, from blank line to blank line, and names its first line', () => {
     const source = ['# Guide', '', 'Intro.', '', 'Lead-in line', dense, 'tail line', '', '## After', '', 'Done.'].join('\n');
     const budget = markdownParseBudget(source);

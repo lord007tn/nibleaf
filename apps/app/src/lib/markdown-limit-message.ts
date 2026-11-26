@@ -16,5 +16,6 @@ export const markdownLimitMessage = (t: Translate, locale: string, overflow: Mar
   const values = { line: String(overflow.line), count: format(overflow.amount), limit: format(MARKDOWN_PARSE_LIMITS[overflow.limit]) };
   if (overflow.limit === 'lineCharacters') return t('publish.checks.markdownLimitLineCharacters', values);
   if (overflow.limit === 'syntaxMarkers') return t('publish.checks.markdownLimitSyntaxMarkers', values);
+  if (overflow.limit === 'tableRows') return t('publish.checks.markdownLimitTableRows', values);
   return t(overflow.nesting === 'tags' ? 'publish.checks.markdownLimitNestingTags' : 'publish.checks.markdownLimitNesting', values);
 };

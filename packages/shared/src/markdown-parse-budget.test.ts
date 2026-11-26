@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { collectPageContentFacts } from './page-content-facts';
 import { markdownParseLimit } from './page-limits';
-import { pageContentFacts } from './publish-checks';
 import { readerHeadings } from './reader-headings';
 import { arabicParagraph, ORDINARY_PAGES } from './testing/markdown-parse-budget-cases';
 
@@ -17,7 +17,17 @@ describe('the Markdown parse budget on ordinary pages', () => {
   it.each(ORDINARY_PAGES)('keeps %s within budget, parsed as on main', (_name, content) => {
     expect(markdownParseLimit(content)).toBeNull();
     // The facts are read from the parse: a link beside the content is still checked.
-    expect(pageContentFacts(`[Guide](/guide)\n\n${content}`, false).links[0]).toBe('/guide');
+    expect(collectPageContentFacts(`[Guide](/guide)\n\n${content}`).links[0]).toBe('/guide');
+  });
+
+  it('still resolves links after a long run of reference definitions', () => {
+    const definitions = Array.from({ length: 600 }, (_, index) => `[#${index}]: /releases/${index}`).join('\n');
+    expect(collectPageContentFacts(`[Issue 17][#17]\n\n${definitions}`).links).toEqual(['/releases/17']);
+  });
+
+  it('reads math as raw content in the publish link check too', () => {
+    const content = '$$\n[Display](/inside-display)\n$$\n\nUse $[Inline](/inside-inline)$ next.\n\n[Guide](/guide)';
+    expect(collectPageContentFacts(content).links).toEqual(['/guide']);
   });
 });
 
@@ -27,7 +37,7 @@ describe('a page with one block over the budget', () => {
 
   it('checks and renders the rest of the page', () => {
     expect(markdownParseLimit(content)).toBe('nesting');
-    expect(pageContentFacts(content, false).links).toEqual(['/before', '/after']);
+    expect(collectPageContentFacts(content).links).toEqual(['/before', '/after']);
     expect(readerHeadings(content).map(({ text }) => text)).toEqual(['Guide', 'After']);
   });
 });

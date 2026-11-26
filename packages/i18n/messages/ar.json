@@ -5031,6 +5031,7 @@
   "publish_checks_markdownlimitpagebytes": "حجم نص الصفحة الأصلي: {size} كيبيبايت (الحد {limit} كيبيبايت)، لذا تُعرض الصفحة كلها كنص عادي.",
   "publish_checks_markdownlimitlinecharacters": "السطر {line}: عدد الأحرف {count} (الحد {limit}).",
   "publish_checks_markdownlimitsyntaxmarkers": "الفقرة التي تبدأ في السطر {line}: عدد علامات ترميز Markdown هو {count} (الحد {limit}).",
+  "publish_checks_markdownlimittablerows": "يبلغ عدد صفوف جداول Markdown {count} عند السطر {line} (الحد {limit} على مستوى الصفحة).",
   "publish_checks_markdownlimitnesting": "السطر {line}: مستويات تداخل الاقتباسات أو القوائم أو الأقواس {count} (الحد {limit}).",
   "publish_checks_markdownlimitnestingtags": "السطر {line}: مستويات تداخل الوسوم {count} (الحد {limit}).",
   "publish_checks_videoposterhidden": "صور غلاف فيديو من مواقع أخرى",

@@ -4977,6 +4977,7 @@
   "publish_checks_markdownlimitpagebytes": "La page contient {size} Kio de texte source (limite {limit} Kio) : elle s’affiche donc entièrement en texte brut.",
   "publish_checks_markdownlimitlinecharacters": "La ligne {line} contient {count} caractères (limite {limit}).",
   "publish_checks_markdownlimitsyntaxmarkers": "Le paragraphe qui commence à la ligne {line} contient {count} marqueurs Markdown (limite {limit}).",
+  "publish_checks_markdownlimittablerows": "Le total des lignes de tableaux Markdown atteint {count} à la ligne {line} (limite de {limit} par page).",
   "publish_checks_markdownlimitnesting": "La ligne {line} imbrique {count} niveaux de citations, de listes ou de crochets (limite {limit}).",
   "publish_checks_markdownlimitnestingtags": "La ligne {line} imbrique {count} balises (limite {limit}).",
   "publish_checks_videoposterhidden": "Images d’aperçu de vidéo provenant d’autres sites",

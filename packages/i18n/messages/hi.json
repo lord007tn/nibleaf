@@ -4912,6 +4912,7 @@
   "publish_checks_markdownlimitpagebytes": "पेज के मूल टेक्स्ट का आकार: {size} KiB (सीमा {limit} KiB), इसलिए पूरा पेज सादे टेक्स्ट में दिखता है।",
   "publish_checks_markdownlimitlinecharacters": "पंक्ति {line}: वर्णों की संख्या {count} (सीमा {limit})।",
   "publish_checks_markdownlimitsyntaxmarkers": "पंक्ति {line} से शुरू होने वाला अनुच्छेद: Markdown चिह्नों की संख्या {count} (सीमा {limit})।",
+  "publish_checks_markdownlimittablerows": "पंक्ति {line} पर Markdown तालिकाओं की पंक्तियों की कुल संख्या {count} हो जाती है (पूरे पृष्ठ की सीमा {limit} है)।",
   "publish_checks_markdownlimitnesting": "पंक्ति {line}: उद्धरण, सूची या कोष्ठक के नेस्टिंग स्तर {count} (सीमा {limit})।",
   "publish_checks_markdownlimitnestingtags": "पंक्ति {line}: टैग के नेस्टिंग स्तर {count} (सीमा {limit})।",
   "publish_checks_videoposterhidden": "दूसरी साइटों के वीडियो पोस्टर",

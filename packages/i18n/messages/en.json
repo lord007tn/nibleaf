@@ -4977,6 +4977,7 @@
   "publish_checks_markdownlimitpagebytes": "The page has {size} KiB of source text (limit {limit} KiB), so all of it shows as plain text.",
   "publish_checks_markdownlimitlinecharacters": "Line {line} has {count} characters (limit {limit}).",
   "publish_checks_markdownlimitsyntaxmarkers": "The paragraph starting on line {line} has {count} Markdown markers (limit {limit}).",
+  "publish_checks_markdownlimittablerows": "The Markdown table row count reaches {count} at line {line} (limit {limit} across the page).",
   "publish_checks_markdownlimitnesting": "Line {line} nests {count} levels of quotes, lists or brackets (limit {limit}).",
   "publish_checks_markdownlimitnestingtags": "Line {line} nests {count} tags (limit {limit}).",
   "publish_checks_videoposterhidden": "Video posters from other sites",

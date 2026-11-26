@@ -4891,6 +4891,7 @@
   "publish_checks_markdownlimitpagebytes": "页面源文本为 {size} KiB（上限 {limit} KiB），因此整个页面以纯文本显示。",
   "publish_checks_markdownlimitlinecharacters": "第 {line} 行有 {count} 个字符（上限 {limit}）。",
   "publish_checks_markdownlimitsyntaxmarkers": "从第 {line} 行开始的段落有 {count} 个 Markdown 标记（上限 {limit}）。",
+  "publish_checks_markdownlimittablerows": "在第 {line} 行，Markdown 表格的累计行数达到 {count}（每页上限为 {limit}）。",
   "publish_checks_markdownlimitnesting": "第 {line} 行的引用、列表或括号嵌套了 {count} 层（上限 {limit}）。",
   "publish_checks_markdownlimitnestingtags": "第 {line} 行嵌套了 {count} 层标签（上限 {limit}）。",
   "publish_checks_videoposterhidden": "来自其他网站的视频封面",

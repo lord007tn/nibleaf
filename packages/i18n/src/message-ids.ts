@@ -4915,6 +4915,7 @@ export const MESSAGE_IDS = {
   'publish.checks.markdownLimitPageBytes': 'publish_checks_markdownlimitpagebytes',
   'publish.checks.markdownLimitLineCharacters': 'publish_checks_markdownlimitlinecharacters',
   'publish.checks.markdownLimitSyntaxMarkers': 'publish_checks_markdownlimitsyntaxmarkers',
+  'publish.checks.markdownLimitTableRows': 'publish_checks_markdownlimittablerows',
   'publish.checks.markdownLimitNesting': 'publish_checks_markdownlimitnesting',
   'publish.checks.markdownLimitNestingTags': 'publish_checks_markdownlimitnestingtags',
   'publish.checks.videoPosterHidden': 'publish_checks_videoposterhidden',

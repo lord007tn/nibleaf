@@ -4977,6 +4977,7 @@
   "publish_checks_markdownlimitpagebytes": "La página tiene {size} KiB de texto fuente (límite {limit} KiB), así que se muestra entera como texto sin formato.",
   "publish_checks_markdownlimitlinecharacters": "La línea {line} tiene {count} caracteres (límite {limit}).",
   "publish_checks_markdownlimitsyntaxmarkers": "El párrafo que empieza en la línea {line} tiene {count} marcas de Markdown (límite {limit}).",
+  "publish_checks_markdownlimittablerows": "El total de filas de tablas Markdown llega a {count} en la línea {line} (límite de {limit} por página).",
   "publish_checks_markdownlimitnesting": "La línea {line} anida {count} niveles de citas, listas o corchetes (límite {limit}).",
   "publish_checks_markdownlimitnestingtags": "La línea {line} anida {count} etiquetas (límite {limit}).",
   "publish_checks_videoposterhidden": "Portadas de vídeo de otros sitios",
