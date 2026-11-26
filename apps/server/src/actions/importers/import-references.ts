@@ -1,7 +1,9 @@
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
+import MarkdownIt, { type Env, type StateBlock, type Token } from 'markdown-it';
 import { type CompileContext, type Extension, fromMarkdown } from 'mdast-util-from-markdown';
 import { mdxFromMarkdown } from 'mdast-util-mdx';
 import { mdxjs } from 'micromark-extension-mdxjs';
+import { importBlockContentStart, importContainerContinuation, readImportComponentTag } from './import-markdown-code';
 export interface ImportReference {
   value: string;
   start: number;
@@ -84,52 +86,268 @@ export const markdownReferences = (source: string): ImportReference[] => {
   return references;
 };
 
-// micromark's inline resolution can be quadratic in paragraph length. Bound the
-// entire parse, since a reference and its definition can be anywhere on the page.
+/** Keep micromark's potentially expensive inline resolution within this bound.
+ * On longer pages, Markdown-it locates definition blocks and reads references.
+ * Only those individual definition blocks are sent to micromark. */
 const MAX_DEFINITION_PARSE_LENGTH = 4096;
 
-/** Read valid destination spans from the parser while keeping source spelling,
- * including escapes. Only the first definition of an actual link qualifies.
- * A definition shared with an image keeps the image's destination. */
-export const markdownLinkDefinitions = (source: string): ImportReference[] => {
-  if (source.length > MAX_DEFINITION_PARSE_LENGTH || !source.includes(']:')) return [];
-  const collect = (mdx: boolean): ImportReference[] => {
-    const destinations = new Map<string, ImportReference>();
-    const spans: Extension = {
-      exit: {
-        definitionDestination(token) {
-          const node = this.stack.at(-1);
-          const from = token.start.offset;
-          const to = token.end.offset;
-          if (node?.type !== 'definition' || from === undefined || to === undefined || destinations.has(node.identifier)) return;
-          const bracketed = source[from] === '<';
-          const start = from + Number(bracketed);
-          const end = to - Number(bracketed);
-          destinations.set(node.identifier, { value: source.slice(start, end), start, end, image: false });
-        },
+interface Definition {
+  label: string;
+  start: number;
+  end: number;
+  destination?: ImportReference;
+}
+
+interface ReferenceUses {
+  links: Set<string>;
+  images: Set<string>;
+}
+
+const collectDefinitions = (source: string, mdx: boolean) => {
+  const destinations = new Map<number, ImportReference>();
+  const spans: Extension = {
+    exit: {
+      definitionDestination(token) {
+        const node = this.stack.at(-1);
+        const nodeStart = node?.position?.start.offset;
+        const from = token.start.offset;
+        const to = token.end.offset;
+        if (node?.type !== 'definition' || nodeStart === undefined || from === undefined || to === undefined) return;
+        const bracketed = source[from] === '<';
+        const start = from + Number(bracketed);
+        const end = to - Number(bracketed);
+        destinations.set(nodeStart, { value: source.slice(start, end), start, end, image: false });
       },
-    };
-    const tree = fromMarkdown(source, mdx ? { extensions: [mdxjs()], mdastExtensions: [mdxFromMarkdown(), spans] } : { mdastExtensions: [spans] });
-    const links = new Set<string>();
-    const images = new Set<string>();
-    const pending: CompileContext['stack'] = [tree];
-    for (const node of pending) {
-      if (node.type === 'linkReference' && !node.identifier.startsWith('^')) links.add(node.identifier);
-      if (node.type === 'imageReference') images.add(node.identifier);
-      if ('children' in node) for (const child of node.children) pending.push(child);
-    }
-    return [...destinations].flatMap(([label, span]) => (span.value && links.has(label) && !images.has(label) ? [span] : []));
+    },
   };
-  // CommonMark handles raw HTML. MDX syntax additionally recognizes a
-  // definition immediately inside a component's opening and closing lines.
-  if (/<[A-Z]/.test(source)) {
-    try {
-      return collect(true);
-    } catch {
-      return collect(false);
+  const tree = fromMarkdown(source, mdx ? { extensions: [mdxjs()], mdastExtensions: [mdxFromMarkdown(), spans] } : { mdastExtensions: [spans] });
+  const links = new Set<string>();
+  const images = new Set<string>();
+  const definitions: Definition[] = [];
+  const pending: CompileContext['stack'] = [tree];
+  while (pending.length) {
+    const node = pending.pop();
+    if (!node) break;
+    if (node.type === 'linkReference' && !node.identifier.startsWith('^')) links.add(node.identifier);
+    if (node.type === 'imageReference') images.add(node.identifier);
+    if (node.type === 'definition') {
+      const start = node.position?.start.offset;
+      const end = node.position?.end.offset;
+      if (start !== undefined && end !== undefined) definitions.push({ label: node.identifier, start, end, destination: destinations.get(start) });
+    }
+    if ('children' in node) {
+      for (let index = node.children.length - 1; index >= 0; index--) {
+        const child = node.children[index];
+        if (child) pending.push(child);
+      }
     }
   }
-  return collect(false);
+  return { definitions, links, images };
+};
+
+/** A definition span covering its title and the destination of its first link use, if eligible. */
+interface DefinitionEdit {
+  start: number;
+  end: number;
+  destination?: ImportReference;
+}
+
+const definitionEdits = (definitions: Definition[], { links, images }: ReferenceUses): DefinitionEdit[] => {
+  const seen = new Set<string>();
+  const edits: DefinitionEdit[] = [];
+  for (const { start, end, label, destination } of definitions) {
+    // The importer's Markdown supports footnotes. CommonMark alone may report
+    // their first line as a definition, but its prose still contains links.
+    if (label.startsWith('^')) continue;
+    const first = !seen.has(label);
+    seen.add(label);
+    edits.push({
+      start,
+      end,
+      destination: first && destination?.value && links.has(label) && !images.has(label) ? destination : undefined,
+    });
+  }
+  return edits;
+};
+
+const reader = new MarkdownIt('commonmark', { html: true });
+// This parser discovers source spans. Even a destination the route resolver
+// leaves alone must shadow later definitions with the same label.
+reader.validateLink = () => true;
+const parseReferenceBlock = reader.block.ruler.getRules('').find((rule) => rule.name === 'reference');
+
+interface ReferenceScanEnv extends Env {
+  captureDefinition?: (state: StateBlock, from: number, to: number, firstLabel?: string) => void;
+  definedLabel?: string;
+}
+
+if (parseReferenceBlock) {
+  reader.block.ruler.at('reference', (state, from, end, silent) => {
+    const env = state.env as ReferenceScanEnv;
+    if (!silent) env.definedLabel = undefined;
+    const accepted = parseReferenceBlock(state, from, end, silent);
+    if (accepted && !silent) env.captureDefinition?.(state, from, state.line, env.definedLabel);
+    return accepted;
+  });
+}
+
+const COMPONENT_START = /^ {0,3}<\/?[A-Z]/;
+const COMPONENT_NAME = /^ {0,3}<(\/?)([A-Z][\w.]*)(?=[ \t/>])/;
+const BLANK = /^[ \t]*$/;
+
+/** Code has already been masked by protectImportCode. Blank only complete
+ * MDX comments, keeping every offset and newline in place. */
+const maskMdxComments = (source: string): string | undefined => {
+  const opener = /\{\s*\/\*/g;
+  const closer = /\*\/\s*\}/y;
+  const pieces: string[] = [];
+  let copied = 0;
+  for (let match = opener.exec(source); match; match = opener.exec(source)) {
+    if (escaped(source, match.index)) continue;
+    closer.lastIndex = source.indexOf('*/', opener.lastIndex);
+    if (closer.lastIndex < 0 || !closer.test(source)) return undefined;
+    pieces.push(source.slice(copied, match.index), source.slice(match.index, closer.lastIndex).replace(/[^\n]/g, ' '));
+    copied = closer.lastIndex;
+    opener.lastIndex = copied;
+  }
+  if (!pieces.length) return source;
+  return pieces.join('') + source.slice(copied);
+};
+
+/** Match the Markdown blocks inside standalone MDX components while keeping
+ * offsets stable. Use CommonMark on mixed or unbalanced component syntax. */
+const maskComponentLines = (source: string): string => {
+  if (!/<[A-Z]/.test(source)) return source;
+  const commentsMasked = maskMdxComments(source);
+  if (commentsMasked === undefined) return source;
+  const lines = commentsMasked.split('\n');
+  const components: Array<{ name: string; continues: (prefix: string) => boolean }> = [];
+  const masked: Array<{ index: number; start: number }> = [];
+  for (const [index, line] of lines.entries()) {
+    const content = importBlockContentStart(line);
+    const body = line.slice(content);
+    if (!COMPONENT_START.test(body)) continue;
+    const match = COMPONENT_NAME.exec(body);
+    if (!match?.[2]) return source;
+    const [, closing, name] = match;
+    const start = content + body.indexOf('<');
+    const tag = readImportComponentTag(line, start);
+    if (!tag.complete) return source;
+    if (!BLANK.test(line.slice(tag.end))) {
+      // A complete inline component need not change the surrounding block
+      // scan. A partial opener instead requires the CommonMark fallback.
+      if (!closing && (tag.selfClosing || line.trimEnd().endsWith(`</${name}>`))) continue;
+      return source;
+    }
+    const prefix = line.slice(0, start);
+    if (closing) {
+      const open = components.pop();
+      if (open?.name !== name || !open.continues(prefix)) return source;
+    } else if (!tag.selfClosing) components.push({ name, continues: importContainerContinuation(prefix) });
+    masked.push({ index, start });
+  }
+  if (components.length) return source;
+  for (const { index, start } of masked) {
+    const line = lines[index] ?? '';
+    lines[index] = line.slice(0, start) + ' '.repeat(line.length - start);
+  }
+  return lines.join('\n');
+};
+
+const longPageDefinitionEdits = (source: string): DefinitionEdit[] => {
+  const definitions: Definition[] = [];
+  const links = new Set<string>();
+  const images = new Set<string>();
+  const removedCr: number[] = [0];
+  let removed = 0;
+  const normalized = source.replace(/\r\n|\r|\n/g, (lineBreak) => {
+    if (lineBreak === '\r\n') removed++;
+    removedCr.push(removed);
+    return '\n';
+  });
+  const captureDefinition: NonNullable<ReferenceScanEnv['captureDefinition']> = (state, from, to, firstLabel) => {
+    const firstStart = (state.bMarks[from] ?? 0) + (state.tShift[from] ?? 0);
+    if (state.src.startsWith('[^', firstStart)) return;
+    const parts: string[] = [];
+    const offsets: Array<{ relative: number; absolute: number }> = [];
+    let length = 0;
+    for (let line = from; line < to; line++) {
+      const start = (state.bMarks[line] ?? 0) + (state.tShift[line] ?? 0);
+      const end = state.eMarks[line] ?? start;
+      if (length + end - start > MAX_DEFINITION_PARSE_LENGTH) {
+        // Its title is still literal, and the block parser has already
+        // recorded the label for duplicate detection.
+        const first = firstStart + (removedCr[from] ?? 0);
+        const last = (state.eMarks[to - 1] ?? end) + (removedCr[to - 1] ?? 0);
+        definitions.push({ label: firstLabel ?? '', start: first, end: last });
+        return;
+      }
+      offsets.push({ relative: length, absolute: start + (removedCr[line] ?? 0) });
+      parts.push(state.src.slice(start, end));
+      length += end - start + 1;
+    }
+    const fragment = parts.join('\n');
+    const absolute = (position: number): number => {
+      let index = offsets.length - 1;
+      while (index > 0 && position < (offsets[index]?.relative ?? 0)) index--;
+      const line = offsets[index];
+      return line ? position + line.absolute - line.relative : position;
+    };
+    for (const { label, start, end, destination } of collectDefinitions(fragment, false).definitions) {
+      const normalizedLabel = reader.utils.normalizeReference(label);
+      let mappedDestination: ImportReference | undefined;
+      if (destination && normalizedLabel === firstLabel) {
+        const from = absolute(destination.start);
+        const to = absolute(destination.end);
+        mappedDestination = { value: source.slice(from, to), start: from, end: to, image: false };
+      }
+      definitions.push({
+        label: normalizedLabel,
+        start: absolute(start),
+        end: absolute(end),
+        destination: mappedDestination,
+      });
+    }
+  };
+  const blocks: Token[] = [];
+  const env: ReferenceScanEnv = { captureDefinition };
+  env.references = new Proxy(Object.create(null) as NonNullable<Env['references']>, {
+    set(target, property, value) {
+      if (typeof property === 'string') env.definedLabel = property;
+      return Reflect.set(target, property, value);
+    },
+  });
+  reader.block.parse(maskComponentLines(normalized), reader, env, blocks);
+  if (!definitions.length) return [];
+  for (const block of blocks) {
+    if (block.type !== 'inline' || !block.content.includes('[')) continue;
+    const tokens: Token[] = [];
+    reader.inline.parse(block.content, reader, env, tokens);
+    for (const token of tokens) {
+      const label = token.meta?.label;
+      if (typeof label !== 'string') continue;
+      if (token.type === 'link_open') links.add(label);
+      else if (token.type === 'image') images.add(label);
+    }
+  }
+  return definitionEdits(definitions, { links, images });
+};
+
+/** Only the first definition of a link may change. Image uses keep the
+ * destination as written, and all valid definition titles remain literal. */
+export const markdownLinkDefinitions = (source: string): DefinitionEdit[] => {
+  if (!source.includes(']:')) return [];
+  if (source.length > MAX_DEFINITION_PARSE_LENGTH) return longPageDefinitionEdits(source);
+  if (/<[A-Z]/.test(source)) {
+    try {
+      const parsed = collectDefinitions(source, true);
+      return definitionEdits(parsed.definitions, parsed);
+    } catch {
+      // The total MDX + CommonMark parse size is at most twice the small-page cap.
+    }
+  }
+  const parsed = collectDefinitions(source, false);
+  return definitionEdits(parsed.definitions, parsed);
 };
 
 export const replaceImportReferences = (

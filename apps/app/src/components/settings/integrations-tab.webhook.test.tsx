@@ -7,14 +7,21 @@
 // (INTEGRATION_CATALOG), which shows only Remove, so this form is reachable only once that is turned off.
 import { INTEGRATION_CATALOG, type IntegrationCatalogEntry } from '@nibleaf/shared/integrations';
 import { dehydrate, onlineManager, QueryClientProvider } from '@tanstack/react-query';
-import { act } from 'react';
+import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), locale: 'en' }));
 vi.mock('sonner', () => ({ toast: { success: mocks.success, error: mocks.error } }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => `${mocks.locale}:${key}` }));
-vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }));
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  Link: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <a className={className} href="#settings">
+      {children}
+    </a>
+  ),
+}));
 vi.mock('@/features/site-analytics-settings/components/analytics-settings', () => ({ AnalyticsSettings: () => null }));
 // `services/api` as the browser runs it: Vitest has no Start compiler, so take its client branch.
 vi.mock('@tanstack/react-start', () => ({ createIsomorphicFn: () => ({ server: () => ({ client: (client: () => string) => client }) }) }));
@@ -129,22 +136,23 @@ const press = async (element: HTMLElement | undefined) => {
   await act(async () => element.click());
   await settle();
 };
-/** The tab for a site, as the settings route mounts it (keyed by site). */
-const tab = async (projectId = 'site-a') => {
+let shownSite = 'site-a';
+/** The tab for a site, as the settings route mounts it (keyed by site), with the integration the URL opens. */
+const tab = async (projectId = 'site-a', integration?: Provider) => {
+  shownSite = projectId;
   await act(async () =>
     root.render(
       <QueryClientProvider client={client}>
-        <IntegrationsTab key={`integrations-${projectId}`} project={project(projectId)} projectId={projectId} />
+        <IntegrationsTab integration={integration} key={`integrations-${projectId}`} project={project(projectId)} projectId={projectId} />
       </QueryClientProvider>,
     ),
   );
   await settle();
 };
-const open = async (providerId: Provider = 'slack', projectId = 'site-a') => {
-  await tab(projectId);
-  await press(button(`settings.integrations.provider.${providerId}`));
-};
-const back = () => press(button('settings.integrations.allIntegrations'));
+/** Opens an integration's page, as following its card's link does. */
+const open = (providerId: Provider = 'slack', projectId = 'site-a') => tab(projectId, providerId);
+/** Back to the hub, as the back link or the browser's Back does. */
+const back = () => tab(shownSite);
 const field = (id: string) => {
   const input = container.querySelector<HTMLInputElement>(`#${id}`);
   if (!input) throw new Error(`no #${id}`);
@@ -421,7 +429,8 @@ describe('the request', () => {
     await type('slack-url', URL_A);
     await press(submit());
     expect(catalogReads('site-a')).toBe(before + 1);
-    expect(container.textContent).toContain(k('settings.integrations.statusTitle'));
+    // The new connection's page: its status badge and the Save it now offers.
+    expect(container.textContent).toContain(k('settings.integrations.connected'));
     expect(button('common.save')).toBeDefined();
   });
 });
@@ -512,10 +521,10 @@ describe('ownership of the answer', () => {
     const write = holdWrite();
     await press(submit());
     await back();
-    await press(button('settings.integrations.provider.discord'));
+    await open('discord');
     expect(isBusy()).toBe(false);
     await back();
-    await press(button('settings.integrations.provider.slack'));
+    await open('slack');
     expect(field('slack-url').value).toBe('');
     expect(isBusy()).toBe(true);
     await press(submit());
@@ -549,7 +558,7 @@ describe('ownership of the answer', () => {
     const write = holdWrite();
     await press(submit());
     mocks.locale = 'ar';
-    await tab();
+    await open();
     await write.answer(echoed());
     expect(errors()).toEqual(['ar:settings.integrations.actionError']);
   });

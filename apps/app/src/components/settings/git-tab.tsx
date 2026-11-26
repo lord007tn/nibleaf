@@ -2,6 +2,7 @@ import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
@@ -417,7 +418,8 @@ export function GitTab({ projectId }: { projectId?: string }) {
   ) : null;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
+      <PageHeader description={t('settings.git.workflow.connectDescription')} title={t('settings.git')} />
       {/* The one place to connect, sync and disconnect Git for this site. */}
       {projectId ? (
         <div className="scroll-mt-6" id="git-connection">

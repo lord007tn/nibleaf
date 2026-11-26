@@ -121,7 +121,6 @@ const press = async (element: HTMLElement | undefined) => {
   await act(async () => element?.click());
   await settle();
 };
-const surface = (title: string) => press(buttons().find((item) => item.closest('nav') && item.textContent?.startsWith(title)));
 /** Each export prefix a write asked to read again, in order. */
 let refreshed: () => unknown[];
 const seed = (...projectIds: string[]) => {
@@ -178,7 +177,7 @@ describe('one-time export', () => {
     expect(create?.getAttribute('aria-busy')).toBeNull();
     expect(refreshed()).toEqual([queryKeys.exports.all('site-a')]);
     expect(
-      [...container.querySelectorAll('[role="switch"]')].map((item) => item.getAttribute('aria-checked') ?? item.getAttribute('data-checked')),
+      [...container.querySelectorAll('[role="checkbox"]')].map((item) => item.getAttribute('aria-checked') ?? item.getAttribute('data-checked')),
     ).toEqual(['true', 'true', 'true']);
   });
 
@@ -212,7 +211,7 @@ describe('one-time export', () => {
 
     await section('site-a');
     await press(button('Create export'));
-    await surface('Run history');
+    await render(null);
     await failed.answer(refused(500));
     expect(mocks.error).not.toHaveBeenCalled();
   });
@@ -315,7 +314,6 @@ describe('Cancel', () => {
   it('after a refusal keeps no guessed status, reads the run back, and a stale poll cannot overwrite the newer answer', async () => {
     server['site-a'] = [running('run-1')];
     await section('site-a');
-    await surface('Run history');
     // A poll is in flight with the old status when the refusal arrives; the server has since finished the run.
     const stalePoll = held();
     mocks.list.mockReturnValueOnce(stalePoll.promise);
@@ -353,7 +351,6 @@ describe('Cancel', () => {
     mocks.download.mockResolvedValueOnce(ok({ fileUrl: '/files/run-3.pdf', fileName: 'run-3.pdf' }));
     mocks.runSchedule.mockResolvedValueOnce(json(201, { data: { id: 'run-4' } }));
     await section('site-a', { canManageSchedules: true });
-    await surface('Run history');
     const [cancelFirst, cancelSecond] = buttons().filter((item) => name(item).startsWith('Cancel'));
     await press(cancelFirst);
     expect(cancelFirst?.getAttribute('aria-busy')).toBe('true');
@@ -363,7 +360,6 @@ describe('Cancel', () => {
     await press(button('PDF'));
     expect(mocks.cancel.mock.calls.map(([request]) => request.param.id)).toEqual(['run-1', 'run-2']);
     expect(clicks.map(({ href }) => href)).toEqual(['/files/run-3.pdf']);
-    await surface('Schedules');
     await press(button('Run now'));
     expect(mocks.runSchedule).toHaveBeenCalledTimes(1);
     await first.answer(ok());
@@ -464,9 +460,10 @@ describe('accessible names', () => {
     mocks.locale = locale;
     await row('site-a', run({ status: 'RUNNING' }));
     const names = buttons().map(name);
+    // The downloads sit under the run's details; Cancel sits at the row's end.
     expect(names).toHaveLength(2);
-    expect(names[0]?.startsWith(cancel)).toBe(true);
-    expect(names[1]?.startsWith(download)).toBe(true);
+    expect(names[0]?.startsWith(download)).toBe(true);
+    expect(names[1]?.startsWith(cancel)).toBe(true);
     // Both end with the run's time, so the same format of two runs can be told apart.
     expect(names.every((item) => item.endsWith(new Date('2026-10-16T09:30:00Z').toLocaleString(locale === 'ar' ? 'ar-u-nu-latn' : 'en')))).toBe(true);
   });

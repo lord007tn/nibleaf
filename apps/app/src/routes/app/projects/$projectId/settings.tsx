@@ -121,7 +121,7 @@ const SECTION_ICONS: Record<SectionId, LucideIcon> = {
 };
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
-  // Old links keep working: Analytics opens Integrations, and Appearance's former
+  // Old links keep working: Analytics opens Integrations → Analytics, and Appearance's former
   // SEO, Redirects, Variables and Search subsections open their own pages.
   validateSearch: parseSettingsSearch,
   loaderDeps: ({ search }) => ({ section: search.section }),
@@ -197,7 +197,7 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
 function ProjectSettingsPage() {
   const reportDirty = useSettingsDirtyGuard();
   const { projectId } = Route.useParams();
-  const { section: requestedOrMoved, appearanceSection } = Route.useSearch();
+  const { section: requestedOrMoved, appearanceSection, integration } = Route.useSearch();
   // Plan and Notifications moved to the organization: an old link shows a pointer under Usage.
   const movedSection = isMovedSectionId(requestedOrMoved) ? requestedOrMoved : undefined;
   const requestedSection = isMovedSectionId(requestedOrMoved) ? 'usage' : requestedOrMoved;
@@ -384,6 +384,7 @@ function ProjectSettingsPage() {
                 key={place}
                 canCreateExports={access.canEditContent}
                 canManageSchedules={access.canManage}
+                integration={integration}
                 movedSection={movedSection}
                 organization={organization}
                 project={project}
@@ -407,6 +408,7 @@ function ActiveSection({
   canCreateExports,
   role,
   appearanceSection,
+  integration,
   movedSection,
   organization,
 }: {
@@ -419,6 +421,7 @@ function ActiveSection({
   canCreateExports: boolean;
   role: string;
   appearanceSection?: AppearanceSectionId;
+  integration?: string;
 }) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {
@@ -447,7 +450,7 @@ function ActiveSection({
         />
       </>
     ),
-    integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
+    integrations: <IntegrationsTab integration={integration} key={`integrations-${projectId}`} project={project} projectId={projectId} />,
     ai: <AiAnswersPage key={`ai-${projectId}`} project={project} />,
     exports: (
       <ExportsSection canCreate={canCreateExports} canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />

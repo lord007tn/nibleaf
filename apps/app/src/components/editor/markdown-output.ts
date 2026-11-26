@@ -24,9 +24,10 @@ import {
   STRUCTURED_BLOCK_NODES,
   type StructuredHtmlSource,
   structuredLinkSource,
+  unchangedStructuredLinkBody,
   writeStructuredHtmlBlock,
 } from './structured-html-source';
-import { readsBackTight, writesTight } from './tight-lists';
+import { authoredFenceBoundary, readsBackTight, writesTight } from './tight-lists';
 
 /*
  * Saving a page writes its Markdown into one output buffer (#612). The serializer
@@ -369,14 +370,22 @@ class LinearMarkdownSerializerState extends SerializerState {
   inTable = false;
   /** The nodes being rendered, outermost first, each with its parent and index: a
    *  fence reads what comes after the containers it ends (fence-source.ts). */
-  readonly path: Array<{ node: PMNode; parent: PMNode | Fragment; index: number; position: number; lastChildEnd?: number; lastChildIndex?: number }> =
-    [];
+  readonly path: Array<{
+    node: PMNode;
+    parent: PMNode | Fragment;
+    index: number;
+    position: number;
+    lastChildEnd?: number;
+    lastChildIndex?: number;
+    listTight?: boolean;
+  }> = [];
   private readonly offsets = new WeakMap<object, number[]>();
   private readonly writtenHeadings = new WeakSet<StructuredHtmlSource>();
   private closedOwner: SerializedLineOwner | null = null;
   /** The marker each list was written with: its bullet, or its ordered delimiter (`renderList`). */
   private readonly listMarkers = new WeakMap<PMNode, string>();
   private readonly inlines: InlineState[] = [];
+  private structuredLinkBody: { from: number; start: number } | undefined;
   private readonly scanDelims: ScanDelims;
 
   constructor(nodes: NodeWriters, marks: MarkWriters, options: SerializerOptions, scanDelims: ScanDelims) {
@@ -538,6 +547,12 @@ class LinearMarkdownSerializerState extends SerializerState {
   }
 
   override render(node: PMNode, parent: PMNode, index: number): void {
+    const container = this.path.at(-1);
+    if (index === 0 && container?.node === parent && (node.type.name === 'listItem' || node.type.name === 'taskItem')) {
+      container.listTight = this.inTightList;
+    }
+    const previous = this.closed;
+    if (this.inTightList && parent.type?.name === 'listItem' && previous && authoredFenceBoundary(previous, node)) this.flushClose(1);
     const previousOwner = this.output.owner;
     let position = -1;
     if (this.output.tracksLines && node.isBlock) {
@@ -594,7 +609,22 @@ class LinearMarkdownSerializerState extends SerializerState {
   override markString(mark: Mark, open: boolean, parent: PMNode, index: number): string {
     if (mark.type.name === 'link') {
       const source = structuredLinkSource(mark);
-      if (source) return open ? source.open : source.close;
+      if (source) {
+        if (source.inner !== undefined) {
+          if (open) {
+            this.write();
+            this.structuredLinkBody = { from: index, start: this.output.length + source.open.length };
+          } else {
+            const body = this.structuredLinkBody;
+            this.structuredLinkBody = undefined;
+            if (body && unchangedStructuredLinkBody(source.inner, parent, mark, body.from, index)) {
+              this.output.truncate(body.start);
+              this.output.append(source.inner);
+            }
+          }
+        }
+        return open ? source.open : source.close;
+      }
     }
     const info = this.marks[mark.type.name];
     if (info?.expelEnclosingWhitespace) {
