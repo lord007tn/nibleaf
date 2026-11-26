@@ -25,7 +25,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { type ComponentProps, useMemo, useState, useSyncExternalStore } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { compareDelta } from '@/components/analytics/insights/metrics';
@@ -365,7 +365,7 @@ function SiteOverviewPage() {
           label={t('overview.stats.pages')}
           value={overview.pageCount}
           icon={<FileText className="size-4" />}
-          link={<TileLink label={t('overview.stats.pages')} params={{ projectId }} to="/app/projects/$projectId/editor" />}
+          link={<Link className={TILE_LINK} aria-label={t('overview.stats.pages')} params={{ projectId }} to="/app/projects/$projectId/editor" />}
           loading={pagesPending && !pagesFailed}
         />
         <StatCard
@@ -373,8 +373,9 @@ function SiteOverviewPage() {
           value={overview.memberCount}
           icon={<Users className="size-4" />}
           link={
-            <TileLink
-              label={t('overview.stats.members')}
+            <Link
+              className={TILE_LINK}
+              aria-label={t('overview.stats.members')}
               params={{ projectId }}
               search={{ section: 'members' }}
               to="/app/projects/$projectId/settings"
@@ -386,7 +387,9 @@ function SiteOverviewPage() {
           label={t('overview.stats.deploys')}
           value={overview.publishCount}
           icon={<Rocket className="size-4" />}
-          link={<TileLink label={t('overview.stats.deploys')} params={{ projectId }} to="/app/projects/$projectId/publishes" />}
+          link={
+            <Link className={TILE_LINK} aria-label={t('overview.stats.deploys')} params={{ projectId }} to="/app/projects/$projectId/publishes" />
+          }
           loading={projectPending}
         />
         <StatCard
@@ -395,7 +398,9 @@ function SiteOverviewPage() {
           icon={<BarChart3 className="size-4" />}
           delta={viewsDelta}
           hint={viewsDelta ? t('analytics.vsPrevious') : undefined}
-          link={<TileLink label={t('overview.stats.pageviews')} params={{ projectId }} to="/app/projects/$projectId/analytics" />}
+          link={
+            <Link className={TILE_LINK} aria-label={t('overview.stats.pageviews')} params={{ projectId }} to="/app/projects/$projectId/analytics" />
+          }
           loading={analyticsPending}
           refreshing={analyticsQuery.isPlaceholderData}
         />
@@ -898,9 +903,7 @@ function NudgeStep({
 }
 
 /** A KPI tile's link: stretched over the tile, named after it. */
-function TileLink({ label, ...props }: { label: string } & ComponentProps<typeof Link>) {
-  return <Link aria-label={label} className="absolute inset-0 rounded-xl" {...props} />;
-}
+const TILE_LINK = 'absolute inset-0 rounded-xl';
 
 function ManageRow({ icon: Icon, title, desc, children }: { icon: LucideIcon; title: string; desc: string; children: React.ReactNode }) {
   return (
