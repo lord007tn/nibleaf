@@ -154,17 +154,21 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
       fixTarget: boundedText(1),
       publish: flag,
     }),
-  loaderDeps: ({ search: { page } }) => ({ page }),
   // The parent route prefetches the site, languages, branches and publishes. This
   // adds the page tree (every language, default branch), the site's AI drafting
   // capability and, for a deep link, the page and its comments. The pending-changes
   // check is left to the component: it is always stale, so a prefetch would only
   // fetch it twice.
-  loader: ({ context: { queryClient }, params: { projectId }, deps: { page } }) => {
+  // `?page=` is read from the location, not declared as a loader dependency: a
+  // dependency change makes a new route match, which suspends and hides the whole
+  // editor for a moment (dropping focus mid-typing) every time the address names
+  // another page. The editor loads the page it opens itself.
+  loader: ({ context: { queryClient }, params: { projectId }, location }) => {
+    const page = (location?.search as { page?: unknown } | undefined)?.page;
     prefetchScopedPages(queryClient, projectId, { languageId: 'all' });
     prefetchRouteData(queryClient, aiDraftCapabilityQueryOptions(projectId));
     prefetchRouteData(queryClient, projectMembersQueryOptions(projectId));
-    if (page) {
+    if (typeof page === 'string' && page) {
       prefetchRouteData(queryClient, pageQueryOptions(projectId, page));
       prefetchRouteData(queryClient, commentsQueryOptions(projectId, page));
     }
