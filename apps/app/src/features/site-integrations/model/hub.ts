@@ -1,5 +1,4 @@
 import type { IntegrationCatalogEntry, IntegrationProviderId } from '@nibleaf/shared/integrations';
-import type { IntegrationDetailId } from '@/features/site-settings/model/ids';
 
 /**
  * Settings → Integrations as a hub of what a site owner connects
@@ -10,6 +9,18 @@ import type { IntegrationDetailId } from '@/features/site-settings/model/ids';
  * AI keys live on the AI answers page, which a pointer row links to.
  */
 export type HubGroupId = 'sync' | 'analytics' | 'notifications' | 'automation';
+
+/**
+ * The integrations that open a page of their own inside Integrations
+ * (`?section=integrations&integration=…`), so Back closes it and a link can
+ * point at it. Git sources open the Git page instead.
+ */
+const INTEGRATION_DETAIL_IDS = ['analytics', 'slack', 'discord', 'zapier'] as const;
+export type IntegrationDetailId = (typeof INTEGRATION_DETAIL_IDS)[number];
+
+/** The page a link's `integration` names, or undefined (the hub) for anything else. */
+export const integrationDetailId = (value: string | undefined): IntegrationDetailId | undefined =>
+  (INTEGRATION_DETAIL_IDS as readonly (string | undefined)[]).includes(value) ? (value as IntegrationDetailId) : undefined;
 
 const HUB_GROUPS: ReadonlyArray<{ id: HubGroupId; providers: readonly IntegrationProviderId[] }> = [
   { id: 'sync', providers: ['github', 'gitlab', 'public-git'] },

@@ -90,14 +90,11 @@ describe('parseSettingsSearch', () => {
     expect(parseSettingsSearch({ section: 'analytics' })).toEqual({ section: 'integrations', integration: 'analytics' });
   });
 
-  it('keeps an open integration only under Integrations, and only a known one', () => {
-    for (const integration of ['analytics', 'slack', 'discord', 'zapier']) {
+  it('keeps an open integration only under Integrations, as text; Integrations decides which exist', () => {
+    for (const integration of ['analytics', 'slack', 'qdrant', 'toString']) {
       expect(parseSettingsSearch({ section: 'integrations', integration })).toEqual({ section: 'integrations', integration });
     }
-    // Unknown ids, infrastructure and AI providers fall back to the hub.
-    for (const integration of ['qdrant', 'openai', 'github', 'toString', 42]) {
-      expect(parseSettingsSearch({ section: 'integrations', integration })).toEqual({ section: 'integrations' });
-    }
+    expect(parseSettingsSearch({ section: 'integrations', integration: 42 })).toEqual({ section: 'integrations' });
     expect(parseSettingsSearch({ section: 'general', integration: 'slack' })).toEqual({ section: 'general' });
   });
 });

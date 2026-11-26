@@ -62,7 +62,6 @@ import { AiAnswersPage } from '@/features/site-ai/components/ai-answers-page';
 import {
   APPEARANCE_SECTION_IDS,
   type AppearanceSectionId,
-  type IntegrationDetailId,
   isMovedSectionId,
   type MovedSectionId,
   parseSettingsSearch,
@@ -422,7 +421,7 @@ function ActiveSection({
   canCreateExports: boolean;
   role: string;
   appearanceSection?: AppearanceSectionId;
-  integration?: IntegrationDetailId;
+  integration?: string;
 }) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {

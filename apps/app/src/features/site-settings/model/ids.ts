@@ -47,14 +47,6 @@ const PROMOTED_APPEARANCE_SECTIONS = { seo: 'seo', redirects: 'redirects', varia
   SectionId
 >;
 
-/**
- * The integrations that open a page of their own inside Integrations
- * (`?section=integrations&integration=…`), so Back closes it and a link can
- * point at it. Git sources open the Git page instead.
- */
-const INTEGRATION_DETAIL_IDS = ['analytics', 'slack', 'discord', 'zapier'] as const;
-export type IntegrationDetailId = (typeof INTEGRATION_DETAIL_IDS)[number];
-
 const includes = <T extends string>(list: readonly T[], value: unknown): value is T => (list as readonly unknown[]).includes(value);
 export const isSectionId = (value: unknown): value is SectionId => includes(SECTION_IDS, value);
 export const isMovedSectionId = (value: unknown): value is MovedSectionId => includes(MOVED_SECTION_IDS, value);
@@ -63,7 +55,12 @@ const isAppearanceSectionId = (value: unknown): value is AppearanceSectionId => 
 export type SettingsSearch = {
   section?: SectionId | MovedSectionId;
   appearanceSection?: AppearanceSectionId;
-  integration?: IntegrationDetailId;
+  /**
+   * The integration open inside Integrations (`?integration=…`), kept as the link gave it: Integrations
+   * itself knows which ones exist (features/site-integrations/model/hub.ts), so the list stays out of this
+   * eager chunk, and an unknown one shows the hub.
+   */
+  integration?: string;
 };
 
 /**
@@ -84,6 +81,6 @@ export function parseSettingsSearch(search: Record<string, unknown>): SettingsSe
   return {
     section: parsed,
     ...(parsed === 'appearance' && isAppearanceSectionId(appearanceSection) ? { appearanceSection } : {}),
-    ...(parsed === 'integrations' && includes(INTEGRATION_DETAIL_IDS, integration) ? { integration } : {}),
+    ...(parsed === 'integrations' && typeof integration === 'string' ? { integration } : {}),
   };
 }

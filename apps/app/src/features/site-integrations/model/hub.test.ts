@@ -1,6 +1,6 @@
 import { INTEGRATION_CATALOG, type IntegrationCatalogEntry, type IntegrationConnectionSummary } from '@nibleaf/shared/integrations';
 import { describe, expect, it } from 'vitest';
-import { detailEntry, hubCard, hubGroups } from './hub';
+import { detailEntry, hubCard, hubGroups, integrationDetailId } from './hub';
 
 type Connection = NonNullable<IntegrationCatalogEntry['connection']>;
 const entry = (id: IntegrationCatalogEntry['id'], overrides: Partial<IntegrationCatalogEntry> = {}): IntegrationCatalogEntry => {
@@ -128,6 +128,13 @@ describe('hubCard', () => {
     'cloudflare',
   ] as const)('never draws %s', (id) => {
     expect(hubCard(entry(id))).toBeNull();
+  });
+});
+
+describe('integrationDetailId', () => {
+  it('opens only the pages Integrations has; anything else, inherited names included, is the hub', () => {
+    for (const id of ['analytics', 'slack', 'discord', 'zapier']) expect(integrationDetailId(id)).toBe(id);
+    for (const id of ['qdrant', 'openai', 'github', 'toString', '__proto__', '', undefined]) expect(integrationDetailId(id)).toBeUndefined();
   });
 });
 

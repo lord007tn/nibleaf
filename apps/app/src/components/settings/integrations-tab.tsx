@@ -27,8 +27,9 @@ import {
   type HubGroupId,
   hubCard,
   hubGroups,
+  type IntegrationDetailId,
+  integrationDetailId,
 } from '@/features/site-integrations/model/hub';
-import type { IntegrationDetailId } from '@/features/site-settings/model/ids';
 import {
   type Project,
   useActivateProjectIntegration,
@@ -601,26 +602,28 @@ function WebhookDetail({ projectId, entry }: { projectId: string; entry: Integra
  * own page. The open integration is in the URL (`integration`), so Back
  * closes it and a link can point at it.
  */
-type IntegrationsTabProps = { projectId: string; project: Project; integration?: IntegrationDetailId };
+type IntegrationsViewProps = { projectId: string; project: Project; integration?: IntegrationDetailId };
 
-export function IntegrationsTab(props: IntegrationsTabProps) {
+/** `integration` is the URL's value as given; an unknown one shows the hub. */
+export function IntegrationsTab({ integration: requested, ...props }: Omit<IntegrationsViewProps, 'integration'> & { integration?: string }) {
+  const integration = integrationDetailId(requested);
   const ref = useRef<HTMLDivElement>(null);
-  const shown = useRef(props.integration);
+  const shown = useRef(integration);
   useEffect(() => {
-    if (shown.current === props.integration) return;
-    shown.current = props.integration;
+    if (shown.current === integration) return;
+    shown.current = integration;
     // Opening an integration, or going back to the hub, starts keyboard and screen reader users at the new
     // page's heading, as changing settings page does; the link they followed is gone.
     ref.current?.querySelector<HTMLElement>('h1')?.focus();
-  }, [props.integration]);
+  }, [integration]);
   return (
     <div ref={ref}>
-      <IntegrationsView {...props} />
+      <IntegrationsView {...props} integration={integration} />
     </div>
   );
 }
 
-function IntegrationsView({ projectId, project, integration }: IntegrationsTabProps) {
+function IntegrationsView({ projectId, project, integration }: IntegrationsViewProps) {
   const t = useT();
   const integrations = useProjectIntegrations(projectId);
 
