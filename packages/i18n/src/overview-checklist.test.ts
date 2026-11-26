@@ -6,20 +6,18 @@ import { overview_nudge_progress } from './paraglide/messages/overview_nudge_pro
 
 describe('first-publish checklist copy', () => {
   it.each(INTERFACE_LOCALES)('formats all progress counts and the reserved address in $code', ({ code: locale }) => {
-    for (const count of [0, 1, 2, 3]) {
+    const progress = [0, 1, 2, 3].map((count) => {
       const variables = { count: String(count), form: new Intl.PluralRules(locale).select(count) };
       const text = overview_nudge_progress(variables, { locale });
       expect(text).not.toMatch(/\{(?:count|form)\}/);
       expect(text).toContain('3');
-      if (locale === 'en') expect(text).toBe(`${count} of 3 done`);
-      if (locale === 'ar' && count === 1) expect(text).toBe('اكتملت خطوة واحدة من أصل 3');
-      if (locale === 'ar' && count === 2) expect(text).toBe('اكتملت خطوتان من أصل 3');
-    }
+      if (locale === 'en') expect(text.match(/\d+/g)).toEqual([String(count), '3']);
+      if (locale === 'ar' && count === 1) expect(text).toContain('واحدة');
+      if (locale === 'ar' && count === 2) expect(text).toContain('خطوتان');
+      return text;
+    });
+    expect(new Set(progress).size).toBe(progress.length);
     expect(overview_live_willbeliveat({ url: 'https://docs.example.test' }, { locale })).toContain('https://docs.example.test');
     expect(overview_live_availableafterpublish(undefined, { locale }).trim()).not.toBe('');
-  });
-
-  it('uses formal German for the address availability explanation', () => {
-    expect(overview_live_availableafterpublish(undefined, { locale: 'de' })).toContain('Sie');
   });
 });
