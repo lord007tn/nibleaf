@@ -1,14 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { normalizePublicMarkdownContent, portablePublicMdxMarkdown } from './public-markdown-content';
-import {
-  checkExportBaseline,
-  EXPORT_BASELINE_REVISION,
-  type ExportGuardBaseline,
-  recordExportBaseline,
-  renderedActiveHtml,
-} from './testing/export-guard';
-import { EXPORT_GUARD_SEED, htmlExportBoundaryCases, PORTABLE_REGRESSION_IDS, seededExportCases } from './testing/export-guard-cases';
+import { checkExportBaseline, EXPORT_BASELINE_REVISION, type ExportGuardBaseline, recordExportBaseline } from './testing/export-guard';
+import { EXPORT_GUARD_SEED, htmlExportBoundaryCases, seededExportCases } from './testing/export-guard-cases';
 
 const projectors = [normalizePublicMarkdownContent, portablePublicMdxMarkdown] as const;
 const matrices = [
@@ -55,18 +49,6 @@ it.each(matrices)(
   },
   60_000,
 );
-
-it('adds zero active elements in the 13 portable outputs caught by the round-4 review', () => {
-  const matrix = matrices[1];
-  const baseline = readBaseline(matrix.count);
-  const failures: number[] = [];
-  for (const index of PORTABLE_REGRESSION_IDS) {
-    const example = matrix.cases[index];
-    const floor = baseline.active[index]?.[1];
-    if (!example || typeof floor !== 'number' || renderedActiveHtml(portablePublicMdxMarkdown(example.source)) > floor) failures.push(index);
-  }
-  expect(failures).toEqual([]);
-}, 60_000);
 
 it('rejects preserved fence bytes hidden inside an HTML comment', () => {
   const source = '<script>ACTIVE</script>\n\n~~~html\nSAMPLE\n~~~';

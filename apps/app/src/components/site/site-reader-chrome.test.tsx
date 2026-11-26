@@ -129,6 +129,21 @@ describe('published reader chrome', () => {
     expect(new Set(navLabels).size).toBe(navLabels.length);
   });
 
+  it('groups the quick links in a named navigation landmark', async () => {
+    mocks.getSite.mockResolvedValue({
+      ...shell,
+      project: {
+        ...shell.project,
+        config: { navbar: { anchors: [{ label: 'Community', href: 'https://community.example.com' }] } },
+      },
+    });
+    const container = await renderReader(MISSING);
+    const quickLinks = container.querySelector('nav[aria-label="روابط سريعة"]');
+    const quickLink = quickLinks?.querySelector('li a');
+    expect(quickLink?.textContent).toBe('Community');
+    expect(quickLink?.getAttribute('href')).toBe('https://community.example.com');
+  });
+
   it('renders a missing page inside the chrome, in the site language, with a way back into the docs', async () => {
     const container = await renderReader(MISSING);
     await vi.waitFor(() => expect(container.querySelector('[data-site-not-found]')).not.toBeNull());
