@@ -92,7 +92,7 @@ describe('editor link resolution (PUBLIC-18)', () => {
     expect(resolve('setup#')).toEqual({ kind: 'page', pageId: 'setup' });
   });
 
-  it('a redirect’s section wins, as the published redirect lands (#553 council)', () => {
+  it('a redirect’s section wins, as the published redirect lands (#553)', () => {
     const resolve = resolveFrom('intro');
     // The redirect supplies the section.
     expect(resolve('/old-install')).toEqual({ kind: 'page', pageId: 'setup', anchor: 'install' });

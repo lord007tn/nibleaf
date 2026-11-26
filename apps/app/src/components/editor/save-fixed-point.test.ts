@@ -109,7 +109,7 @@ describeVariants('an unclosed code fence (#602)', [
 // A last line blank inside the fence's containers, at the end of the page: markdown-it
 // gives it no content, which read as a closing line and was replaced by one (#622 re-check).
 describeVariants('an unclosed fence ending in a line blank inside its containers (#602)', [
-  { name: 'the re-check’s repro, `> ` at the end', block: () => '> ~~~~~js\n> </Step>\n> ' },
+  { name: '`> ` at the end', block: () => '> ~~~~~js\n> </Step>\n> ' },
   { name: '`>` with no space at the end', block: () => '> ~~~~~js\n> </Step>\n>' },
   { name: 'a backtick fence', block: () => `> ${T}js\n> a\n> ` },
   { name: 'two blank quoted lines', block: () => '> ~~~js\n> a\n>\n> ' },
@@ -124,7 +124,7 @@ describeVariants('an unclosed fence ending in a line blank inside its containers
 // of the page: markdown-it reads the last of them outside the container, so they
 // belong to no block. Dropped, each save lost one more of them (#622 round 4).
 describeVariants('an unclosed fence in a container, then whitespace-only lines (#602)', [
-  { name: 'the round-4 repro, two lines of three spaces after a list item', block: () => '- ~~~js\n  a\n   \n   ' },
+  { name: 'two lines of three spaces after a list item', block: () => '- ~~~js\n  a\n   \n   ' },
   { name: 'one line of three spaces after a list item', block: () => '- ~~~js\n  a\n   ' },
   { name: 'one line of two spaces after a list item (dropped on main too)', block: () => '- ~~~js\n  a\n  ' },
   { name: 'three lines after a list item', block: () => '- ~~~js\n  a\n   \n   \n   ' },
@@ -218,7 +218,7 @@ const structure = () => {
   return { callouts, opaque };
 };
 
-describe('a raw-text tag that Markdown reads as text (#622 review)', () => {
+describe('a raw-text tag that Markdown reads as text (#622)', () => {
   // A backslash before `<` escapes it (CommonMark, as markdown-it reads it): the tag
   // is literal text and starts no raw text, so the Note after it stays editable.
   // The `\<tag>` itself still saves as an escaped placeholder

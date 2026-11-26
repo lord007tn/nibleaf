@@ -39,7 +39,7 @@ describe('line endings follow editor positions (#754)', () => {
     return restoreLineEndings(readLineEndings(source), storage.markdown.serializer.serialize(editor.state.doc));
   };
 
-  it('final review: a no-op paragraph update keeps every original ending', () => {
+  it('a no-op paragraph update keeps every original ending', () => {
     const page = '# Start\r\n\r\nOne\nwrapped.\r\n\r\nTwo.\n\r\n# End';
     load(page);
     const node = editor.state.doc.nodeAt(7);
@@ -53,7 +53,7 @@ describe('line endings follow editor positions (#754)', () => {
     ['blockquote', '> One\n> wrapped.\r\n\r\nAfter.'],
     ['codeBlock', '```text\r\none\nwrapped.\r\n```\r\n\r\nAfter.'],
     ['horizontalRule', '---\n\r\nAfter.\r\n\r\nEnd.'],
-  ])('final review: a no-op %s wrapper keeps main endings', (type, page) => {
+  ])('a no-op %s wrapper keeps main endings', (type, page) => {
     load(page);
     let at = -1;
     editor.state.doc.descendants((node, pos) => {
@@ -69,7 +69,7 @@ describe('line endings follow editor positions (#754)', () => {
     ['paragraph', '# Start\r\n\r\nOne\nwrapped.\r\n\r\nTwo.\n\r\n# End', { textAlign: 'center' }],
     ['heading', '# One\n\r\nTwo.\n\r\n# End', { level: 2 }],
     ['codeBlock', '```text\nalpha\r\nbeta\n```\r\n\r\nAfter.', { language: 'javascript' }],
-  ] as const)('final review: attribute-only %s changes keep main endings', (type, page, attrs) => {
+  ] as const)('attribute-only %s changes keep main endings', (type, page, attrs) => {
     load(page);
     let at = -1;
     editor.state.doc.descendants((node, pos) => {
@@ -81,13 +81,13 @@ describe('line endings follow editor positions (#754)', () => {
     expect(getMarkdown(editor)).toBe(mainSave(page));
   });
 
-  it('final review: an extra header line does not shift the y row ending', () => {
+  it('an extra header line does not shift the y row ending', () => {
     load('| H |\r\n| --- |\r\n| x |\r\n| y |\n\r\nAfter.');
     editor.view.dispatch(editor.state.tr.insertText('new\nline', 5));
     expect(getMarkdown(editor)).toBe('| Hnew\r\nline |\r\n| --- |\r\n| x |\r\n| y |\n\r\nAfter.');
   });
 
-  it.each(['J', 'a'])('final review: multiline text in table cell %s keeps the later row ending', (cell) => {
+  it.each(['J', 'a'])('multiline text in table cell %s keeps the later row ending', (cell) => {
     const page = '| H | J |\r\n| --- | --- |\r\n| x | a |\r\n| y | b |\n\r\nAfter.';
     load(page);
     let at = -1;
