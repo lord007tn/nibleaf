@@ -259,6 +259,10 @@ describe('a verification sends the token as typed and reports into the wizard', 
     expect(tab.verify()?.getAttribute('aria-disabled')).toBe('true');
     expect(tab.verify()?.getAttribute('aria-describedby')).toBe('git2-authorize-reason');
     expect(tab.host.querySelector('#git2-authorize-reason')?.textContent).toBe(t('settings.git.connect.pasteFirst'));
+    // Reachable, but a press while blocked checks nothing.
+    await tab.press();
+    expect(posts()).toEqual([]);
+    expect(tab.busy()).toBe(false);
     await tab.type('x'.repeat(20));
     expect(tab.verify()?.getAttribute('aria-disabled')).not.toBe('true');
     expect(tab.host.querySelector('#git2-authorize-reason')).toBeNull();

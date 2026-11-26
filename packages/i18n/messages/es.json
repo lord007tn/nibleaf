@@ -3100,7 +3100,7 @@
   "settings_integrations_googleanalytics_description": "Mida las visitas y el compromiso en su documentación publicada.",
   "settings_integrations_plausible_description": "Utiliza análisis respetuosos con la privacidad en tu documentación publicada.",
   "settings_integrations_status_notsendingyet": "Aún no envía",
-  "settings_integrations_comingsoon_description": "Publica cuando se publica tu sitio.",
+  "settings_integrations_comingsoon_description": "Avisa cuando se publica tu sitio.",
   "settings_integrations_comingsoon_saved": "Esta conexión está guardada, pero Nibleaf aún no le envía nada. Puedes quitarla.",
   "settings_integrations_remove": "Quitar",
   "settings_integrations_removetitle": "¿Quitar {name}?",
