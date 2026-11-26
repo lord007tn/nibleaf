@@ -94,7 +94,7 @@ describe('published theme projection', () => {
   });
 
   it('JSON-encodes the per-site before-paint appearance bootstrap', () => {
-    const projectId = 'project";</script><script>alert(1)</script>\u2028';
+    const projectId = 'project";</script><script>alert(1)</script>&\u2028';
     const script = siteThemeNoFlashScript(projectId, 'system');
     expect(script).toContain('localStorage.getItem(k)');
     expect(script).toContain("classList.remove('light','dark')");
@@ -102,6 +102,7 @@ describe('published theme projection', () => {
     expect(script).toContain('\\u003c/script\\u003e\\u003cscript\\u003ealert(1)');
     expect(script).not.toContain('</script>');
     expect(script).not.toContain('\u2028');
+    expect(script).toContain('\\u0026');
     expect(script).toContain('\\u2028');
     expect(script).not.toContain(`+"${projectId}"`);
   });
@@ -110,6 +111,7 @@ describe('published theme projection', () => {
     /** Run the before-paint script with the OS preference and stored choice given. */
     const paint = (configured: Parameters<typeof siteThemeNoFlashScript>[1], osDark: boolean, stored?: 'light' | 'dark') => {
       const classes = new Set<string>();
+      const style = { colorScheme: '' };
       const storage = new Map(stored ? [['nibleaf.site.theme.site-1', stored]] : []);
       vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null });
       vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(prefers-color-scheme: dark)' && osDark }));
@@ -121,13 +123,15 @@ describe('published theme projection', () => {
               for (const name of names) classes.delete(name);
             },
           },
-          style: {},
+          style,
         },
       });
       // Runs the exact inline script the server emits.
       new Function(configured === undefined ? siteThemeNoFlashScript('site-1') : siteThemeNoFlashScript('site-1', configured))();
       vi.unstubAllGlobals();
-      return [...classes].join(' ');
+      const theme = [...classes].join(' ');
+      expect(style.colorScheme).toBe(theme);
+      return theme;
     };
 
     it('follows the device when the owner never chose', () => {

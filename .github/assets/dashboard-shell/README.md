@@ -69,17 +69,11 @@ The follow-up was rebased onto `origin/main@551fdcff`. Its fresh check results a
 - Lint and dead-code checks passed.
 - Design system has no test script; its typecheck and the app's real primitive/component/browser tests cover the changes.
 - Analyzed production build and bundle checks passed. Public docs: 338.15 KiB gzip; index: 337.34 KiB; ceiling: 340.04 KiB (348,200 bytes). Module and copy boundary checks passed.
-- The [headless browser regression](check-browser.test.mjs) passed with 21 recorded checks across EN/AR/DE: localized dialogs/landmarks, one current breadcrumb, site/Workspace/New site sheet dismissal, popup bounds/scroll reachability, query retry, and notification unread state plus persisted mark-read.
+- The headless browser regression passed with 21 recorded checks across EN/AR/DE: localized dialogs/landmarks, one current breadcrumb, site/Workspace/New site sheet dismissal, popup bounds/scroll reachability, query retry, and notification unread state plus persisted mark-read.
 - Popup checks used 320×720, 320×300, and 720×450 CSS viewports. The last represents a 1440×900 window at 200% zoom; native browser zoom controls were not driven.
 - Notifications stayed at four unread throughout the gallery captures. The final browser test then marked all read, verified row/bell changes, and read back zero from the API.
 
-Run the browser test after screenshots against a fresh local council seed with four unread notifications. It requires the seeded `demo@nibleaf.test` session, rejects non-local hosts, and marks that fixture inbox read. It injects only the failing reads used to verify recovery.
-
-```powershell
-$env:BASE = 'http://localhost:4510'
-$env:COOKIE_FILE = 'C:\path\to\cookies.txt' # name=value lines, as used by shots.mjs
-node --test .github/assets/dashboard-shell/check-browser.test.mjs
-```
+The browser regression ran after the screenshots against a fresh local seed with four unread notifications. It injected failing reads to verify recovery.
 
 The owner-approved isolated `nibleaf-dashui-gpt` infrastructure used +220 ports because +120 belonged to `nibleaf-import`. App/API/worker used 4510/4511/4512. Owned dev processes and the compose project were stopped; volumes and the fixture recovery snapshot were retained. The import stack was untouched.
 
@@ -91,7 +85,7 @@ L1 (repeated New site deep-link intent on the already-mounted sites/index routes
 
 All five review findings were reproduced or source-confirmed and fixed: search label/name parity, stable retry focus through fetch and recovery, wrapped notification header text, localized admin mobile labels, and a fallback for blank sidebar titles. The admin description is translated in all 12 locales; the existing admin title is reused.
 
-The isolated German header fixture uses the real Button, source component classes and built CSS. Headless Chrome reproduces the before overflow and verifies fitting text plus the final notification's scroll reachability at 320/240px with doubled text size, and 720px with normal text. This is CSS viewport/text-size emulation, not native zoom controls or a fresh full-app journey. Run after building: `node .github/assets/dashboard-shell/notification-wrap.test.mjs [before-ref]`.
+The isolated German header fixture uses the real Button, source component classes and built CSS. Headless Chrome reproduces the before overflow and verifies fitting text plus the final notification's scroll reachability at 320/240px with doubled text size, and 720px with normal text. This is CSS viewport/text-size emulation, not native zoom controls or a fresh full-app journey.
 
 | German header, 320px with doubled text size | Before | After |
 | --- | --- | --- |
