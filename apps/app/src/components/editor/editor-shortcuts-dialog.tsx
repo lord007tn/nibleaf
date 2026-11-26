@@ -58,7 +58,7 @@ const GROUPS: Array<{ heading: MessageKey; rows: Row[] }> = [
 export function EditorShortcutsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();
   // The list scrolls under the heading; a fade at its edge shows there is more.
-  const [list, setList] = useState<HTMLDivElement | null>(null);
+  const [list, setList] = useState<HTMLElement | null>(null);
   const edges = useScrollEdges(list, 'y');
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
@@ -67,10 +67,14 @@ export function EditorShortcutsDialog({ open, onOpenChange }: { open: boolean; o
           <DialogTitle>{t('shortcuts.title')}</DialogTitle>
           <DialogDescription>{t('shortcuts.editor.description')}</DialogDescription>
         </DialogHeader>
-        <div
-          className="-mx-6 min-h-0 space-y-6 overflow-y-auto px-6 pb-1"
+        {/* Focusable so the keys scroll it in every browser (Safari doesn't focus scrollers itself). */}
+        <section
+          aria-label={t('shortcuts.title')}
+          className="-mx-6 min-h-0 space-y-6 overflow-y-auto rounded-md px-6 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
           data-scroll-edges={[edges.start && 'start', edges.end && 'end'].filter(Boolean).join(' ') || undefined}
           ref={setList}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard (WCAG 2.1.1, axe scrollable-region-focusable).
+          tabIndex={0}
           style={scrollFadeStyle(edges, 'y')}
         >
           {GROUPS.map((group) => (
@@ -90,7 +94,7 @@ export function EditorShortcutsDialog({ open, onOpenChange }: { open: boolean; o
               </dl>
             </section>
           ))}
-        </div>
+        </section>
       </DialogContent>
     </Dialog>
   );

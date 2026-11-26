@@ -86,6 +86,7 @@ import { isSlashMenuOpen, SlashCommand, scaffoldLocaleOf } from './extensions/sl
 import { VideoEmbed } from './extensions/video-embed';
 import { annotateFences, type FenceSerializeState, writeFence } from './fence-source';
 import { LinearMarkdown } from './markdown-output';
+import { MenuScrollTargetContext, scrollParent, useMenuScrollTarget } from './menu-anchor';
 import { pageLanguageText } from './page-language-messages';
 import { SourceParagraph } from './paragraph-source';
 import { withShortcut } from './shortcut-label';
@@ -525,12 +526,13 @@ function CommentSelectionMenu({
   onAddComment: (anchor: { quote: string; from: number; to: number }) => void;
 }) {
   const t = useT();
+  const scrollTarget = useMenuScrollTarget();
   return (
     <BubbleMenu
       data-editor-bubble-menu=""
       editor={editor}
       shouldShow={({ editor: current }) => !current.state.selection.empty}
-      options={{ placement: 'top' }}
+      options={{ placement: 'top', scrollTarget }}
     >
       <button
         type="button"
@@ -1073,6 +1075,15 @@ export function TiptapEditor({
     // table resizability is baked into the Table extension configuration.
     [dir, lang, variant],
   );
+  // The menus follow the page's own scroll box as it scrolls (see MenuScrollTargetContext).
+  // They render once that box is known for this editor: a BubbleMenu takes its options
+  // when its plugin starts, and @tiptap/react drops the first update after that.
+  const [menuScroll, setMenuScroll] = useState<{ editor: Editor; target: HTMLElement | undefined } | null>(null);
+  useEffect(() => {
+    if (!editor) return;
+    setMenuScroll({ editor, target: scrollParent(editor.view.dom) ?? undefined });
+  }, [editor]);
+  const menusReady = editor !== null && menuScroll?.editor === editor;
 
   // Re-seed when `value` changes externally (differs from what the editor last emitted).
   useEffect(() => {
@@ -1148,12 +1159,16 @@ export function TiptapEditor({
       style={style}
     >
       {editor && variant === 'wysiwyg' && tools ? <DocumentToolbar editor={editor} /> : null}
-      {editor && tools ? <CalloutMenu editor={editor} /> : null}
-      {editor && tools ? <ImageControls editor={editor} dir={dir} /> : null}
-      {editor && tools ? <EditorBubbleMenu editor={editor} onComment={onAddComment ? startComment : undefined} /> : null}
-      {editor && tools ? <TableBubbleMenu editor={editor} dir={dir} /> : null}
-      {editor && tools ? <CodeBlockMenu editor={editor} /> : null}
-      {editor && commentMode && onAddComment ? <CommentSelectionMenu editor={editor} onAddComment={onAddComment} /> : null}
+      {editor && menusReady ? (
+        <MenuScrollTargetContext.Provider value={menuScroll?.target}>
+          {tools ? <CalloutMenu editor={editor} /> : null}
+          {tools ? <ImageControls editor={editor} dir={dir} /> : null}
+          {tools ? <EditorBubbleMenu editor={editor} onComment={onAddComment ? startComment : undefined} /> : null}
+          {tools ? <TableBubbleMenu editor={editor} dir={dir} /> : null}
+          {tools ? <CodeBlockMenu editor={editor} /> : null}
+          {commentMode && onAddComment ? <CommentSelectionMenu editor={editor} onAddComment={onAddComment} /> : null}
+        </MenuScrollTargetContext.Provider>
+      ) : null}
       {editor && tools && variant === 'visual' ? <BlockHandle editor={editor} dir={dir ?? 'ltr'} /> : null}
       {variant === 'wysiwyg' ? (
         <div className="pl-document-scroll">
@@ -1173,12 +1188,13 @@ export function TiptapEditor({
 function CalloutMenu({ editor }: { editor: Editor }) {
   const t = useT();
   const variants = ['note', 'tip', 'info', 'check', 'warning', 'danger'] as const;
+  const scrollTarget = useMenuScrollTarget();
   return (
     <BubbleMenu
       data-editor-bubble-menu=""
       editor={editor}
       pluginKey="callout-controls"
-      options={{ placement: 'bottom' }}
+      options={{ placement: 'bottom', scrollTarget }}
       // Hidden once the writer types in the callout (see calloutMenuKey), so it
       // never covers the lines being written; a click in the callout brings it back.
       shouldShow={() =>
