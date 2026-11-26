@@ -85,6 +85,51 @@ interface SlashAnchorRect {
   bottom: number;
 }
 
+/** The part of the page the writer can see, in the coordinates `position: fixed` uses. */
+export interface VisibleArea {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * The visible area: the visual viewport where the browser has one. A phone's
+ * on-screen keyboard shrinks only the visual viewport (iOS Safari, Chrome on
+ * Android), so `window.innerHeight` would count the space under the keyboard.
+ */
+export const visibleArea = (): VisibleArea => {
+  const visual = window.visualViewport;
+  return visual
+    ? { left: visual.offsetLeft, top: visual.offsetTop, width: visual.width, height: visual.height }
+    : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+};
+
+/**
+ * Where the "/" menu goes: below the "/" when it fits in the visible area, else
+ * above it when that fits, else on the side with more room. `maxHeight` is that
+ * side's room, so a list that doesn't fit scrolls inside the menu instead of
+ * running under the keyboard or off the screen.
+ */
+export function slashMenuPlacement(
+  anchor: SlashAnchorRect,
+  size: { width: number; height: number },
+  area: VisibleArea,
+  rtl: boolean,
+  { gap = 6, edge = 12 } = {},
+): { left: number; top: number; maxHeight: number } {
+  const minTop = area.top + edge;
+  const maxBottom = area.top + area.height - edge;
+  const roomBelow = maxBottom - (anchor.bottom + gap);
+  const roomAbove = anchor.top - gap - minTop;
+  const below = size.height <= roomBelow || (size.height > roomAbove && roomBelow >= roomAbove);
+  const maxHeight = Math.max(0, below ? roomBelow : roomAbove);
+  const height = Math.min(size.height, maxHeight);
+  const top = below ? anchor.bottom + gap : Math.max(minTop, anchor.top - gap - height);
+  const left = Math.max(area.left + edge, Math.min(rtl ? anchor.right - size.width : anchor.left, area.left + area.width - size.width - edge));
+  return { left, top, maxHeight };
+}
+
 /** Resolve the first visible popup anchor. The suggestion decoration may not
  * have committed on the slash transaction, while coordsAtPos is already valid. */
 export const resolveSlashAnchor = (
@@ -196,7 +241,7 @@ const SlashList = ({ items, query, command, editorDom, ref }: SlashListProps) =>
       dir={isRtl(locale) ? 'rtl' : 'ltr'}
       className="z-50 h-auto w-[320px] border border-border bg-card p-0 shadow-xl"
     >
-      <CommandList ref={listRef} label={t('editor.insertBlock')} className="max-h-[min(26rem,calc(100vh-6rem))] p-1">
+      <CommandList ref={listRef} label={t('editor.insertBlock')} className="max-h-[min(26rem,var(--slash-room,calc(100vh-6rem)))] p-1">
         {options.length === 0 ? <CommandEmpty className="px-3 py-3 text-start text-muted-foreground">{t('editor.slash.empty')}</CommandEmpty> : null}
         {groups.map((group) => (
           <CommandGroup key={group.key} heading={t(group.heading)} className="p-0.5">
@@ -273,14 +318,13 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
         if (!anchor) return;
 
         const popup = component.element;
-        const gap = 6;
-        const edge = 12;
         const popupRect = popup.getBoundingClientRect();
         const rtl = currentProps.editor.view.dom.closest('[dir]')?.getAttribute('dir') === 'rtl';
         popup.dir = rtl ? 'rtl' : 'ltr';
-        const left = Math.max(edge, Math.min(rtl ? anchor.right - popupRect.width : anchor.left, window.innerWidth - popupRect.width - edge));
-        const below = anchor.bottom + gap;
-        const top = below + popupRect.height <= window.innerHeight - edge ? below : Math.max(edge, anchor.top - popupRect.height - gap);
+        // The list's full height, not the height it was last limited to, so the side never flips back and forth.
+        const list = popup.querySelector<HTMLElement>('[cmdk-list]');
+        const height = list ? popupRect.height - list.clientHeight + list.scrollHeight : popupRect.height;
+        const { left, top, maxHeight } = slashMenuPlacement(anchor, { width: popupRect.width, height }, visibleArea(), rtl);
 
         Object.assign(popup.style, {
           position: 'fixed',
@@ -289,6 +333,7 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
           width: 'max-content',
           zIndex: '50',
         });
+        popup.style.setProperty('--slash-room', `${maxHeight}px`);
       };
 
       return {
@@ -321,12 +366,17 @@ const createSuggestion = (onUpload?: UploadFn, locale?: Locale): Omit<Suggestion
           };
           window.addEventListener('resize', reposition);
           window.addEventListener('scroll', reposition, true);
+          // The on-screen keyboard opening or closing resizes only the visual viewport.
+          window.visualViewport?.addEventListener('resize', reposition);
+          window.visualViewport?.addEventListener('scroll', reposition);
           document.addEventListener('pointerdown', dismiss, true);
           cleanup = () => {
             if (positionFrame !== null) cancelAnimationFrame(positionFrame);
             positionFrame = null;
             window.removeEventListener('resize', reposition);
             window.removeEventListener('scroll', reposition, true);
+            window.visualViewport?.removeEventListener('resize', reposition);
+            window.visualViewport?.removeEventListener('scroll', reposition);
             document.removeEventListener('pointerdown', dismiss, true);
             component?.element.remove();
           };
