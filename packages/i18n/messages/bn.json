@@ -5030,5 +5030,8 @@
   "settings_appearance_onthispage": "এই পৃষ্ঠায়",
   "settings_appearance_preview_title": "লাইভ প্রিভিউ",
   "settings_appearance_preview_hint": "অসংরক্ষিত পরিবর্তনগুলো করার সঙ্গে সঙ্গে দেখায়।",
-  "settings_appearance_preview_mode": "প্রিভিউর রঙের মোড"
+  "settings_appearance_preview_mode": "প্রিভিউর রঙের মোড",
+  "settings_seo_description": "সার্চ ফলাফলে এবং পৃষ্ঠা শেয়ার করার সময় আপনার সাইট কেমন দেখায়।",
+  "settings_redirects_empty": "এখনও কোনো রিডাইরেক্ট নেই",
+  "settings_variables_empty": "এখনও কোনো ভ্যারিয়েবল নেই"
 }

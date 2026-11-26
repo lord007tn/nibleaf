@@ -5025,5 +5025,8 @@
   "settings_appearance_onthispage": "Di halaman ini",
   "settings_appearance_preview_title": "Pratinjau langsung",
   "settings_appearance_preview_hint": "Menampilkan perubahan yang belum disimpan saat Anda membuatnya.",
-  "settings_appearance_preview_mode": "Mode warna pratinjau"
+  "settings_appearance_preview_mode": "Mode warna pratinjau",
+  "settings_seo_description": "Tampilan situs Anda di hasil pencarian dan saat halamannya dibagikan.",
+  "settings_redirects_empty": "Belum ada pengalihan",
+  "settings_variables_empty": "Belum ada variabel"
 }

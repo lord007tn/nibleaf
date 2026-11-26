@@ -4,6 +4,7 @@ import { DataList, DataListEmpty } from '@nibleaf/design-system/components/ui/da
 import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { IconButton } from '@nibleaf/design-system/components/ui/icon-button';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { SettingsSection, SettingsSectionBody } from '@nibleaf/design-system/components/ui/settings-section';
 import { useT } from '@nibleaf/i18n/react';
 import { useStore } from '@tanstack/react-form';
@@ -198,7 +199,8 @@ function RedirectsForm({ project }: { project: Project }) {
   );
 
   return (
-    <form className="flex flex-col gap-4" noValidate ref={formRef} {...formProps}>
+    <form className="flex flex-col gap-6" noValidate ref={formRef} {...formProps}>
+      <PageHeader description={t('settings.redirects.description')} title={t('settings.redirects.title')} />
       <SaveRegionSubmit />
       {draft.conflicts.length > 0 ? (
         <Callout
@@ -227,14 +229,10 @@ function RedirectsForm({ project }: { project: Project }) {
         </Callout>
       ) : null}
 
-      <SettingsSection
-        description={rows.length > 0 ? t('settings.redirects.description') : undefined}
-        footer={rows.length > 0 ? addButton : undefined}
-        title={t('settings.redirects.title')}
-      >
+      <SettingsSection footer={rows.length > 0 ? addButton : undefined}>
         {rows.length === 0 ? (
           <DataListEmpty>
-            <EmptyState action={addButton} icon={<Route />} title={t('settings.redirects.description')} />
+            <EmptyState action={addButton} headingLevel={2} icon={<Route />} title={t('settings.redirects.empty')} />
           </DataListEmpty>
         ) : (
           <DataList aria-label={t('settings.redirects.title')}>

@@ -5096,5 +5096,8 @@
   "settings_appearance_onthispage": "On this page",
   "settings_appearance_preview_title": "Live preview",
   "settings_appearance_preview_hint": "Shows your unsaved changes as you make them.",
-  "settings_appearance_preview_mode": "Preview color mode"
+  "settings_appearance_preview_mode": "Preview color mode",
+  "settings_seo_description": "How your site appears in search results and when its pages are shared.",
+  "settings_redirects_empty": "No redirects yet",
+  "settings_variables_empty": "No variables yet"
 }

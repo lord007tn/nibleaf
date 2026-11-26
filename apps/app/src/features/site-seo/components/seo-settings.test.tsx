@@ -177,6 +177,15 @@ describe('SeoSettings: the project scope', () => {
     expect(dirty.size).toBe(0);
   });
 
+  // B5b: the settings layout, one page heading that says what the page is for, its fields in one panel.
+  it('is a page with one heading and a description, its fields in one panel', () => {
+    const header = container.querySelector('[data-slot="page-header"]');
+    expect(header?.querySelector('h1')?.textContent).toBe('settings.seo.title');
+    expect(header?.textContent).toContain('settings.seo.description');
+    expect(container.querySelectorAll('h1')).toHaveLength(1);
+    expect(container.querySelectorAll('[data-slot="settings-section-panel"]')).toHaveLength(1);
+  });
+
   it('shows the site name, description and a sample path when the fields are empty', async () => {
     await render(site({}, 'site-b'));
     expect(values()).toStrictEqual({ metaTitle: '', metaDescription: '', socialImage: '', allowIndex: true });

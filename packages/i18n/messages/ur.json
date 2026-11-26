@@ -5087,5 +5087,8 @@
   "settings_appearance_onthispage": "اس صفحے پر",
   "settings_appearance_preview_title": "براہ راست پیش منظر",
   "settings_appearance_preview_hint": "آپ کی غیر محفوظ تبدیلیاں کرتے ہی دکھاتا ہے۔",
-  "settings_appearance_preview_mode": "پیش منظر کا رنگ موڈ"
+  "settings_appearance_preview_mode": "پیش منظر کا رنگ موڈ",
+  "settings_seo_description": "تلاش کے نتائج میں اور صفحات شیئر ہونے پر آپ کی سائٹ کیسی دکھتی ہے۔",
+  "settings_redirects_empty": "ابھی کوئی ری ڈائریکٹ نہیں",
+  "settings_variables_empty": "ابھی کوئی متغیر نہیں"
 }

@@ -5096,5 +5096,8 @@
   "settings_appearance_onthispage": "Sur cette page",
   "settings_appearance_preview_title": "Aperçu en direct",
   "settings_appearance_preview_hint": "Affiche vos modifications non enregistrées au fur et à mesure.",
-  "settings_appearance_preview_mode": "Mode de couleur de l’aperçu"
+  "settings_appearance_preview_mode": "Mode de couleur de l’aperçu",
+  "settings_seo_description": "L’apparence de votre site dans les résultats de recherche et lors du partage de ses pages.",
+  "settings_redirects_empty": "Aucune redirection pour l’instant",
+  "settings_variables_empty": "Aucune variable pour l’instant"
 }

@@ -5165,5 +5165,8 @@
   "settings_appearance_onthispage": "في هذه الصفحة",
   "settings_appearance_preview_title": "معاينة مباشرة",
   "settings_appearance_preview_hint": "تعرض تغييراتك غير المحفوظة فور إجرائها.",
-  "settings_appearance_preview_mode": "وضع ألوان المعاينة"
+  "settings_appearance_preview_mode": "وضع ألوان المعاينة",
+  "settings_seo_description": "كيف يظهر موقعك في نتائج البحث وعند مشاركة صفحاته.",
+  "settings_redirects_empty": "لا توجد عمليات إعادة توجيه بعد",
+  "settings_variables_empty": "لا توجد متغيرات بعد"
 }

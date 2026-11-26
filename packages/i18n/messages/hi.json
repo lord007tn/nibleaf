@@ -5031,5 +5031,8 @@
   "settings_appearance_onthispage": "इस पेज पर",
   "settings_appearance_preview_title": "लाइव पूर्वावलोकन",
   "settings_appearance_preview_hint": "आपके बिना सहेजे बदलाव, जैसे-जैसे आप करते हैं, दिखाता है।",
-  "settings_appearance_preview_mode": "पूर्वावलोकन का रंग मोड"
+  "settings_appearance_preview_mode": "पूर्वावलोकन का रंग मोड",
+  "settings_seo_description": "खोज परिणामों में और पेज शेयर होने पर आपकी साइट कैसी दिखती है।",
+  "settings_redirects_empty": "अभी कोई रीडायरेक्ट नहीं",
+  "settings_variables_empty": "अभी कोई वेरिएबल नहीं"
 }
