@@ -1158,19 +1158,31 @@ function EditorPage() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   useEffect(() => {
     if (view !== 'content' || !page || !canEditContent) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
-      const key = event.key.toLowerCase();
-      if ((key !== 's' && key !== '/') || event.isComposing || event.defaultPrevented) return;
-      // A dialog over the page (page settings, a confirm) owns its own keys.
+    // Ctrl/⌘+S runs after the page's own handlers: a dialog that saves its own
+    // form (page settings) marks the key handled. It is matched by the physical
+    // key too, so it works on an Arabic or Russian layout, where the key reads "س".
+    const onSave = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.isComposing || event.defaultPrevented) return;
+      if (event.key.toLowerCase() !== 's' && event.code !== 'KeyS') return;
+      event.preventDefault();
+      if (!event.repeat) void saveNow();
+    };
+    // Ctrl/⌘+/ is matched by the character, since "/" takes Shift on German and
+    // French keyboards, and read before the page body, which would otherwise take
+    // Ctrl+Shift+7 as a numbered list.
+    const onShortcuts = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing || event.key !== '/') return;
       if (event.target instanceof Element && event.target.closest('[role="dialog"], [role="alertdialog"]')) return;
       event.preventDefault();
-      if (event.repeat) return;
-      if (key === 's') void saveNow();
-      else setShortcutsOpen(true);
+      event.stopPropagation();
+      if (!event.repeat) setShortcutsOpen(true);
     };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onSave);
+    window.addEventListener('keydown', onShortcuts, true);
+    return () => {
+      window.removeEventListener('keydown', onSave);
+      window.removeEventListener('keydown', onShortcuts, true);
+    };
   }, [view, page, canEditContent]);
 
   const openDraftPreview = async () => {
@@ -1886,7 +1898,9 @@ function EditorPage() {
                   </DropdownMenuItem>
                   {canEditContent ? (
                     <DropdownMenuItem onClick={() => setShortcutsOpen(true)}>
-                      <Keyboard /> {t('shortcuts.title')}
+                      <Keyboard />
+                      <span className="flex-1">{t('shortcuts.title')}</span>
+                      <DropdownMenuShortcut>{modShortcut('/')}</DropdownMenuShortcut>
                     </DropdownMenuItem>
                   ) : null}
                   <DropdownMenuCheckboxItem

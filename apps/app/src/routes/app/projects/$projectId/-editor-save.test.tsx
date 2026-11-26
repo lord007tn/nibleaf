@@ -333,6 +333,24 @@ describe('AUTH-16 editor save lifecycle', () => {
     expect(dialog?.textContent).toContain('shortcuts.editor.saveDraft');
     expect(dialog?.textContent).toContain('Ctrl+S');
   });
+  it('Ctrl+S saves on an Arabic keyboard layout, where the key reads "س"', async () => {
+    mocks.update.mockImplementation(async ({ body }: { body: { content: string } }) => ({ ...page, content: body.content, updatedAt: 'revision-2' }));
+    await edit('مسودة');
+    const event = await pressSave({ ctrlKey: true, key: 'س', code: 'KeyS' });
+    expect(event.defaultPrevented).toBe(true);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.update).toHaveBeenCalledOnce();
+  });
+  it('Ctrl+/ opens the list where "/" takes Shift (German, French)', async () => {
+    const input = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]');
+    if (!input) throw new Error('Missing editor input');
+    const event = new KeyboardEvent('keydown', { key: '/', code: 'Digit7', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true });
+    await act(async () => {
+      input.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('shortcuts.title');
+  });
   it('leaves Ctrl+Shift+S and Alt+S to the browser', async () => {
     expect((await pressSave({ ctrlKey: true, shiftKey: true })).defaultPrevented).toBe(false);
     expect((await pressSave({ ctrlKey: true, altKey: true })).defaultPrevented).toBe(false);

@@ -85,6 +85,41 @@ describe('moving a block with the keyboard', () => {
     expect(saved().endsWith('Intro')).toBe(true);
   });
 
+  it('never moves a later block of a list item above the item’s own text', () => {
+    seedMarkdown(editor, '- Item\n\n  ```\n  code\n  ```\n- Next');
+    const before = saved();
+    caretIn('code', 1);
+    expect(press('ArrowUp')).toBe(true);
+    expect(saved()).toBe(before);
+    expect(caretText()).toBe('code');
+  });
+
+  it('leaves a selection across blocks to the browser, which extends it', () => {
+    seedMarkdown(editor, 'First\n\nSecond\n\nThird');
+    let from = -1;
+    let to = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === 'Second') from = pos + 1;
+      if (node.isText && node.text === 'Third') to = pos + 3;
+    });
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, from, to)));
+    expect(press('ArrowDown')).toBe(false);
+    expect(press('ArrowUp')).toBe(false);
+    expect(saved()).toBe('First\n\nSecond\n\nThird');
+  });
+
+  it('moves a selection inside one block with its block', () => {
+    seedMarkdown(editor, 'First\n\nSecond');
+    let from = -1;
+    editor.state.doc.descendants((node, pos) => {
+      if (node.isText && node.text === 'Second') from = pos + 1;
+    });
+    editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, from, from + 3)));
+    expect(press('ArrowUp')).toBe(true);
+    expect(saved()).toBe('Second\n\nFirst');
+    expect(editor.state.doc.textBetween(editor.state.selection.from, editor.state.selection.to)).toBe('eco');
+  });
+
   it('leaves plain Shift+arrow selection alone', () => {
     seedMarkdown(editor, 'First\n\nSecond');
     caretIn('Second');

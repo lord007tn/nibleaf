@@ -22,21 +22,30 @@ function movingBlock(state: EditorState): { parentDepth: number; index: number }
 
 /**
  * Swap the block holding the selection with the one before or after it, keeping
- * the selection where it was in the moved text. Null when there is nothing to
- * move or it is already first or last.
+ * the selection where it was in the moved text. `none` when there is nothing to
+ * move, it is already first or last, or the swap would break its parent (a list
+ * item must start with its paragraph). `spans` when the selection reaches beyond
+ * the block: that is the browser's selection key, so it is left alone.
  */
-function moveBlockTransaction(state: EditorState, direction: 'up' | 'down'): Transaction | null {
+function moveBlockTransaction(state: EditorState, direction: 'up' | 'down'): Transaction | 'none' | 'spans' {
   const block = movingBlock(state);
-  if (!block) return null;
-  const { $from } = state.selection;
+  if (!block) return 'none';
+  const { $from, $to } = state.selection;
   const parent = $from.node(block.parentDepth);
+  const within =
+    state.selection instanceof NodeSelection ||
+    ($to.depth > block.parentDepth &&
+      $to.start(block.parentDepth) === $from.start(block.parentDepth) &&
+      $to.index(block.parentDepth) === block.index);
+  if (!within) return 'spans';
   const sibling = direction === 'up' ? block.index - 1 : block.index + 1;
-  if (sibling < 0 || sibling >= parent.childCount) return null;
+  if (sibling < 0 || sibling >= parent.childCount) return 'none';
   const first = Math.min(block.index, sibling);
-  let start = $from.start(block.parentDepth);
-  for (let index = 0; index < first; index += 1) start += parent.child(index).nodeSize;
   const a = parent.child(first);
   const b = parent.child(first + 1);
+  if (!parent.canReplace(first, first + 2, Fragment.from([b, a]))) return 'none';
+  let start = $from.start(block.parentDepth);
+  for (let index = 0; index < first; index += 1) start += parent.child(index).nodeSize;
   const tr = state.tr.replaceWith(start, start + a.nodeSize + b.nodeSize, Fragment.from([b, a]));
   // The moved block shifted by its neighbour's size.
   const shift = direction === 'up' ? -parent.child(sibling).nodeSize : parent.child(sibling).nodeSize;
@@ -53,7 +62,8 @@ function moveBlockTransaction(state: EditorState, direction: 'up' | 'down'): Tra
 /**
  * Ctrl/⌘+Shift+↑/↓ moves the block the caret is in, the keyboard way to do what
  * the block handle's drag does (Notion's binding). At the top or bottom the key
- * does nothing, rather than extending the selection.
+ * does nothing, rather than extending the selection; a selection across blocks
+ * keeps the browser's meaning (extend it).
  */
 export const MoveBlock = Extension.create({
   name: 'moveBlock',
@@ -62,7 +72,8 @@ export const MoveBlock = Extension.create({
       const { editor } = this;
       if (!editor.isEditable || editor.view.composing) return false;
       const tr = moveBlockTransaction(editor.state, direction);
-      if (tr) editor.view.dispatch(tr);
+      if (tr === 'spans') return false;
+      if (tr !== 'none') editor.view.dispatch(tr);
       return true;
     };
     return { 'Mod-Shift-ArrowUp': move('up'), 'Mod-Shift-ArrowDown': move('down') };

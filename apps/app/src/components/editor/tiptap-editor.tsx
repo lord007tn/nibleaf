@@ -762,8 +762,9 @@ function DocumentToolbar({ editor }: { editor: Editor }) {
     else if (event.key === 'Home') next = 0;
     else if (event.key === 'End') next = items.length - 1;
     else if (event.key === 'Escape') {
-      // Back to the text, where the writer was.
+      // Back to the text, where the writer was, closing the link field if open.
       event.preventDefault();
+      setLinkOpen(false);
       editor.commands.focus();
       return;
     } else return;
