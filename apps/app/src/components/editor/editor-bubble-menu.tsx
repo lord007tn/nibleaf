@@ -35,7 +35,6 @@ import { selectionMenuApplies, selectionMenuRequest } from './extensions/selecti
 import { embedLinkedVideo, VIDEO_EMBED_NODE } from './extensions/video-embed';
 import { isEmbeddableVideoLink } from './extensions/video-embed-url';
 import { isPageQuery, normalizeLinkUrl, type PageLinkMatch } from './link-utils';
-import { MENU_EDGE_PADDING } from './menu-anchor';
 import { currentTurnIntoKind, TURN_INTO_OPTIONS, type TurnIntoKind, turnInto } from './turn-into';
 
 const PageLinkPicker = lazy(() => import('./extensions/page-link-picker'));
@@ -409,7 +408,7 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
     () => ({
       placement: 'bottom',
       // Never flush against the edge of a phone screen.
-      shift: { padding: MENU_EDGE_PADDING },
+      shift: { padding: 8 },
       onShow: () => setVisible(true),
       onHide: () => {
         setVisible(false);
