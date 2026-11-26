@@ -6,6 +6,17 @@ const routes = new Map([['topic/next', '/topic-2/next']]);
 const rewrite = (source: string) => rewriteMintlifyInternalLinks(source, 'intro', routes);
 
 describe.runIf(growthTestsEnabled)('link reference definitions: growth', () => {
+  it('bounds an unclosed MDX component near the small-page parse cap', () => {
+    const source = (n: number) => `[Go][ref]\n\n[ref]: /topic/next\n\n<Note>\n\n${'_a* '.repeat(n)}`;
+    const small = source(990);
+    const large = source(3960);
+    expect(small.length).toBeGreaterThan(3900);
+    expect(small.length).toBeLessThan(4096);
+    for (const input of [small, large]) expect(rewrite(input)).toBe(input.replace('/topic/next', '/topic-2/next'));
+    const [smallMs, largeMs] = growthMs(rewrite, small, large, { minMs: 30 });
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+  }, 60_000);
+
   it.each([
     ['unmatched emphasis delimiters', '_a* ', 1250],
     ['repeated shortcut labels', '[a] ', 5000],
