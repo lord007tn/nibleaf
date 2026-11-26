@@ -8,33 +8,22 @@ vi.mock('@/functions/marketing', () => ({ getGithubStarsFn: vi.fn(async () => 7)
 import { load as loadArabic } from './ar-use-case';
 import { load as loadEnglish } from './use-case';
 
-type Loader = (input: { params: { slug: string } }) => Promise<{ slug: string; head: unknown; stars: number }>;
-type Head = (input: { loaderData?: unknown }) => {
-  meta?: Record<string, string>[];
-  links?: { rel: string; hrefLang?: string; href: string }[];
-  scripts?: { children: string }[];
-};
-
 describe.each([
   ['en', loadEnglish, useCasesEn, 'en_US'],
   ['ar', loadArabic, useCasesAr, 'ar_AR'],
 ] as const)('%s use-case page', (lang, load, copies, locale) => {
-  const loader = load as unknown as Loader;
-  const head = ({ loaderData }: { loaderData?: unknown }) =>
-    ((loaderData as { head?: ReturnType<Head> } | undefined)?.head ?? {}) as ReturnType<Head>;
-
   it.each(['unknown', 'Support-Teams', 'toString', 'support-teams.md'])('returns not found for slug %s', async (slug) => {
-    const error = await loader({ params: { slug } }).catch((caught: unknown) => caught);
+    const error = await load({ params: { slug } }).catch((caught: unknown) => caught);
     expect(isNotFound(error)).toBe(true);
   });
 
   it('builds head metadata from the lazily loaded copy', async () => {
-    const data = await loader({ params: { slug: 'support-teams' } });
+    const data = await load({ params: { slug: 'support-teams' } });
     const copy = copies['support-teams'];
     expect(data.stars).toBe(7);
     expect(data.slug).toBe('support-teams');
 
-    const result = head({ loaderData: data });
+    const result = data.head;
     const path = `${lang === 'ar' ? '/ar' : ''}/use-cases/support-teams`;
     expect(result.meta).toContainEqual({ title: copy.meta.title });
     expect(result.meta).toContainEqual({ name: 'description', content: copy.meta.description });
@@ -52,9 +41,5 @@ describe.each([
       [lang === 'ar' ? 'الرئيسية' : 'Home', lang === 'ar' ? '/ar' : '/'],
       [copy.navLabel, path],
     ]);
-  });
-
-  it('renders an empty head without loader data', () => {
-    expect(head({})).toEqual({});
   });
 });

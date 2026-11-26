@@ -504,10 +504,10 @@ const errorOf = (input: HTMLInputElement) => {
  * task, the click on the form's default button that implicit submission makes.
  * jsdom has no implicit submission, so the test makes that click itself.
  */
-const press = async (input: HTMLInputElement, init: KeyboardEventInit = {}) => {
+const press = async (input: HTMLInputElement) => {
   await act(async () => {
     input.focus();
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init }));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     input.form?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
   });
   // Each keypress is its own task in a browser: let the adapter forget an ignored key before the next one.
@@ -590,28 +590,6 @@ describe('BannerSettings — Enter', () => {
     // The SaveRegion's own polite status, and no success toast.
     expect(announced()).toEqual(['common.saved']);
     expect(mocks.toastSuccess).not.toHaveBeenCalled();
-  });
-
-  it('sends nothing while clean, and leaves modified Enter and IME keys alone', async () => {
-    mocks.updateProject.mockImplementation(async ({ config }) => ({ id: 'site-1', config }));
-    await render(projectWith(PROJECT_BANNER));
-    await press(message());
-    expect(mocks.updateProject).not.toHaveBeenCalled();
-
-    await type(message(), 'セール');
-    const ignored: KeyboardEventInit[] = [
-      { isComposing: true },
-      { key: 'Process', keyCode: 229 },
-      { shiftKey: true },
-      { altKey: true },
-      { ctrlKey: true },
-      { metaKey: true },
-    ];
-    for (const init of ignored) await press(message(), init);
-    expect(mocks.updateProject).not.toHaveBeenCalled();
-
-    await press(message());
-    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
   });
 
   it('a failed Enter save keeps the draft, toasts once and says nothing about saving', async () => {

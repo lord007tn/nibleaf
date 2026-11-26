@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { insightsQueryForSearch, validateInsightsSearch } from '@/components/analytics/insights/filters';
+import { validateInsightsSearch } from '@/components/analytics/insights/filters';
+import { insightsQueryForSearch } from '@/components/analytics/insights/query';
 import { SearchSection } from '@/components/analytics/insights/search-section';
 import { searchInsightsQueryOptions } from '@/hooks/api/analytics/insights';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
