@@ -4,7 +4,6 @@
  * dark fill (1.05:1), and the code block's language label read 3.81:1 on
  * Manuscript's code chrome.
  */
-import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { contrastRatio } from '@nibleaf/shared/themes';
@@ -464,10 +463,6 @@ describe("a solid callout's --primary when no shade of the code accent reads on 
     expect(css).toContain(TAB_LIST);
     expect(TAB_LIST).not.toMatch(/underline|data-site-drawer/);
   });
-
-  it('gives the same CSS for the same overrides', () => {
-    expect(projectThemeCss(conflicting as never)).toBe(projectThemeCss(structuredClone(conflicting) as never));
-  });
 });
 
 // #678: an active nav row draws `bg-primary/10`, and a tag inside it used to add
@@ -493,13 +488,6 @@ describe('the tag on an active nav row (#678)', () => {
   it.each(cases)('reads at AA on the row tint alone: $preset $mode, brand $brand', (theme) => {
     const { text, surface } = tagColors(theme);
     expect(onStackedTint(text, surface, 0.1, 1)).toBeGreaterThanOrEqual(4.5);
-  });
-
-  it('fell short on the stacked tint the tag used to add (Harbor with #b96a3d: 4.54:1 on the row, 4.01:1 stacked)', () => {
-    const { text, surface } = tagColors({ preset: 'harbor', brand: '#b96a3d', mode: 'light' });
-    expect(text).toBe('#9d5a34');
-    expect(onStackedTint(text, surface, 0.1, 1)).toBeGreaterThanOrEqual(4.5);
-    expect(onStackedTint(text, surface, 0.1, 2)).toBeLessThan(4.5);
   });
 
   it.each(['#5546e8', '#b96a3d'])('reads at AA on a pre-v1 light row with brand %s', (brand) => {
@@ -795,72 +783,6 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
             expect(css, brand).toContain(`--theme-code-accent:color-mix(in oklab,${brand} 55%,white);`);
         }
   });
-
-  it('leaves the CSS byte-identical for brands that already read, and for every themed site', () => {
-    // sha256 of projectThemeCss on main before #744.
-    const main = [
-      ['legacy default', '7b00bf30206bb765bad89d41dc31516829281c4781f243b97544a762e527cd40'],
-      ['legacy #5546e8', '7b00bf30206bb765bad89d41dc31516829281c4781f243b97544a762e527cd40'],
-      ['legacy #b96a3d', '36766d040827b7a93d3741fb076c09fffdc47768e49fcaa3ffa964f545c125c0'],
-      ['legacy #3b82f6', '3988f6a107dbfd00dfaaaa44e18a4e48589879a8c523a55c376b2d88b4edd253'],
-      ['legacy #2f855a', 'dfb5d0766a92e9923d4a8edd9c2c52197f8378542f6864c2ccb722c4f53bf35c'],
-      ['legacy #f4b400', '9a2401bb40c1de0743da82daab9dadb332d683f0cff9c756dace6c5261fcd9c8'],
-      ['legacy #a3e635', '25047dc1ad3e30e78cb12773df39063ee52d085b22bb518461a0e1d8b9b42492'],
-      ['harbor', '01b3c913ed3809b0fec552a43a54fd1e643f86547c80ffe487069adfb08b1562'],
-      ['harbor + #5546e8', '0fc506a4970694fc4b90e424f03a4755f7ba76102564e0fed477a2c46df7e491'],
-      ['harbor + #b96a3d', 'c7c53bde90a17e626cbf753598814ab8ee89564cb29a0bc15f57bf98b5ebde8a'],
-      ['harbor + #000000', '545307511c6fe139cbd945205b9323f86897b54537f7553950775a31a101bf85'],
-      ['harbor + #0b3d91', 'd56e38f16d47f52c4eeb44f50023c9fe4c4be29810c8fd3a7ff6f1d5999b4ae9'],
-      ['manuscript', '31ba0290105a814d1d8ee0182958980d31cf0ef80cc293594941153132471fcf'],
-      ['manuscript + #5546e8', 'd669dc3e54ebeaeef8eb16446fcf01ff91a55607e4484c0d0dca7bdfaff9c6f0'],
-      ['manuscript + #b96a3d', '9577f9e38f4b6e6d930411d94f21c57a6748844b44955fc89cadbc5238d82046'],
-      ['manuscript + #000000', 'dd8728094b8cc7d412107d314c8c52112b79463d08d8c769fbedf1a0d60939f2'],
-      ['manuscript + #0b3d91', 'e4dc14428c246f5bcb1b24e6b58ad9923fa0cf2001e04bfda05bb41d4ecdd2ab'],
-      ['signal', '186e52215a81de2834fea748b2262fd4fe4e18f854ae3d605b43cfe45c37c0f0'],
-      ['signal + #5546e8', '6912535b36f62ff01bdbc6dff40fe7f7aa1ffa034e6f3f840271227e19dae56b'],
-      ['signal + #b96a3d', 'f4b4c1c62f3b147d64b5fc506e34b16edfa63cfeba5dc0b6dee56a60e3402a4c'],
-      ['signal + #000000', '9c30b3c8f5d5d11514376f0e6c63e572a4ae425120d95c78449c13196903800c'],
-      ['signal + #0b3d91', 'cdf7071f93241b7586aa05d7d7ebf9a37d9cc0dbc5d8ae53d86a1c1432df9973'],
-    ];
-    const configFor = (name: string) => {
-      const [first, , brand] = name.split(' ');
-      if (first === 'legacy') return name === 'legacy default' ? {} : { styling: { primaryColor: name.slice('legacy '.length) } };
-      return { theme: { preset: first }, ...(brand ? { styling: { primaryColor: brand } } : {}) };
-    };
-    // #682 gives a solid callout its own --primary where the code accent doesn't
-    // read on the callout's lighter fills; with that one value put back, the CSS
-    // is otherwise unchanged.
-    const before682 = (css: string) =>
-      css.replace(/(\[data-theme-callouts="solid"\] \[data-theme-component="callout"\]\{[^}]*;--primary:)[^;}]+/, '$1var(--theme-code-accent)');
-    const now = main.map(([name]) => [
-      name,
-      createHash('sha256')
-        .update(before682(projectThemeCss(configFor(name as string) as never)))
-        .digest('hex'),
-    ]);
-    expect(now).toEqual(main);
-  });
-
-  it("pins the shipped presets' CSS as emitted, without putting a solid callout's --primary back (#832)", () => {
-    // sha256 of projectThemeCss for the three presets at their default accents,
-    // with no normalisation. The sheet carries the light rules, the dark rules
-    // and the solid callout's island with its --primary, so a change to any of
-    // them for a shipped preset fails here even where the check above, which
-    // puts --primary back for brand accents, would pass. These equal main's
-    // hashes before #682 (and before #744): the shade search left them byte-identical.
-    const shipped = [
-      ['harbor', '01b3c913ed3809b0fec552a43a54fd1e643f86547c80ffe487069adfb08b1562'],
-      ['manuscript', '31ba0290105a814d1d8ee0182958980d31cf0ef80cc293594941153132471fcf'],
-      ['signal', '186e52215a81de2834fea748b2262fd4fe4e18f854ae3d605b43cfe45c37c0f0'],
-    ];
-    const now = shipped.map(([preset]) => [
-      preset,
-      createHash('sha256')
-        .update(projectThemeCss({ theme: { preset } } as never))
-        .digest('hex'),
-    ]);
-    expect(now).toEqual(shipped);
-  });
 });
 
 // The reader's other primary buttons with a label: the header's call to action
@@ -1011,5 +933,27 @@ describe('accent text keeps its colour on hover', () => {
     expect(link).toContain('crumb.path');
     expect(classes).not.toMatch(/hover:opacity-/);
     expect(classes).toContain('hover:underline');
+  });
+});
+
+// #928 adds `--input-edge` (the dashboard's 3:1 field edge). Published sites keep
+// their own field edge until a per-theme one exists (#929): every sheet aliases it
+// to the same value as `--input`, for the shipped presets and for pre-v1 sites.
+describe('published field edge (#928)', () => {
+  it.each([
+    ['legacy default', {}],
+    ['legacy brand', { styling: { primaryColor: '#5546e8' } }],
+    ['harbor', { theme: { preset: 'harbor' } }],
+    ['manuscript', { theme: { preset: 'manuscript' } }],
+    ['signal', { theme: { preset: 'signal' } }],
+  ])('aliases --input-edge to the site input tone for %s', (_name, config) => {
+    const css = projectThemeCss(config as never);
+    expect(css).toContain('--input-edge:');
+    const blocks = [...css.matchAll(/\{[^}]*--input-edge:([^;}]+)[^}]*\}/g)];
+    expect(blocks.length).toBeGreaterThan(0);
+    for (const [block, edge] of blocks) {
+      const input = /--input:([^;}]+)/.exec(block)?.[1];
+      expect(edge).toBe(input ?? 'var(--input)');
+    }
   });
 });

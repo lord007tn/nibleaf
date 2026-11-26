@@ -8,6 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import jsxOpeners from './__fixtures__/jsx-openers-main.json';
+import { attributeEditHolds, listItemLeadSources, quotedMarkSources } from './__fixtures__/list-item-leads';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { normalizeLineEndings, readLineEndings, restoreLineEndings } from './line-endings';
@@ -127,6 +128,14 @@ const corpora = [
   ...[HARD_WRAPPED_EN, HARD_WRAPPED_AR, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART].map((page) => ({ page, key: 'title' })),
 ];
 const pages = [...seeded, ...corpora];
+/** #604: the corpus pages with a list item led by a quote, heading or list, and those whose
+ *  quoted marks main doubled (QUOTED_MARK_PAGES), checked against main in
+ *  list-item-leads-main.test.ts. */
+const leadSources = listItemLeadSources(true);
+const quotedSources = quotedMarkSources();
+const isNamed = (page: string) => leadSources.has(page) || quotedSources.has(page);
+/** The quoted mark pages whose saves here held a doubled mark on main: all but page 898, whose doubled mark only the serializer corpus edits write. */
+const QUOTED_MARK_CHANGES = 7;
 
 describe('the differential pages', () => {
   it(`cover every registry component on at least ${MIN_PAGES} pages, and none holds a blank line inside a value`, () => {
@@ -146,6 +155,15 @@ describe('the differential pages', () => {
 describe('pages without a blank line inside an attribute value read as on main', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => editor.destroy());
+  /** Every node's attributes in `markdown`, loaded. */
+  const attributesOf = (markdown: string): Array<Record<string, unknown>> => {
+    editor.commands.setContent(markdown, { emitUpdate: false });
+    const all: Array<Record<string, unknown>> = [];
+    editor.state.doc.descendants((node) => {
+      all.push(node.attrs);
+    });
+    return all;
+  };
 
   /** The page's nodes with their attributes, its save, and its save after the first
    *  node with `key` has it set to `Edited`. */
@@ -194,7 +212,7 @@ describe('pages without a blank line inside an attribute value read as on main',
     expect(crPages.every((index) => index < seeded.length)).toBe(true);
   });
 
-  it(`gives main’s nodes, save and edited save for all ${pages.length} pages`, () => {
+  it(`gives main’s nodes, save and edited save for all ${pages.length} pages, but #604’s`, () => {
     const recording = process.env.WRITE_BLANK_LINE_MAIN;
     const results = pages.map(({ page, key }, index) =>
       result(page, key, !recording && COMPONENT_LAYOUT_CORPUS_PAGES.includes(index - seeded.length)),
@@ -210,8 +228,17 @@ describe('pages without a blank line inside an attribute value read as on main',
     expect(main.pages).toBe(pages.length);
     expect(main.crAsLf.length).toBe(CR_PAGES);
     const crAsLf = new Map(crPages.map((index, at) => [index, main.crAsLf[at]]));
+    const leadPages: number[] = [];
+    const editBroken: number[] = [];
     const differences = digests.flatMap((value, index) => {
       const { page } = pages[index] as { page: string };
+      if (value !== main.digests[index] && isNamed(page)) {
+        leadPages.push(index);
+        // Its attribute-edited save must still change only the attribute (attributeEditHolds).
+        const { saved, edited } = results[index] as { saved: string; edited: string | null };
+        if (!attributeEditHolds(attributesOf, saved, edited, pages[index]?.key ?? '', page)) editBroken.push(index);
+        return [];
+      }
       const lfDigest = crAsLf.get(index);
       if (lfDigest === undefined) return value === main.digests[index] ? [] : [page];
       const { nodes, saved, edited } = results[index] as ReturnType<typeof result>;
@@ -227,5 +254,11 @@ describe('pages without a blank line inside an attribute value read as on main',
       `[blank-line-differential] ${pages.length} pages (${crPages.length} with a CR, read as LF on main), ${differences.length} differences, ${componentLayouts} replayed with main's #625 layout`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
+    const quotedPages = leadPages.filter((index) => quotedSources.has(pages[index]?.page ?? ''));
+    expect(leadPages.filter((index) => !quotedPages.includes(index))).toEqual(
+      pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])),
+    );
+    expect(quotedPages.length).toBe(QUOTED_MARK_CHANGES);
+    expect(editBroken, 'named pages whose attribute edit changes more than the attribute').toEqual([]);
   }, 600_000);
 });

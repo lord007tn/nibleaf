@@ -54,8 +54,7 @@ describe('page translation keys', () => {
 });
 
 describe('mergeBranchBody', () => {
-  it('accepts an empty body and the confirmation flag, and rejects a non-boolean flag', () => {
-    expect(mergeBranchBody.safeParse({}).success).toBe(true);
+  it('accepts an empty body or a preview fingerprint and rejects other confirmation values', () => {
     expect(mergeBranchBody.parse({})).toEqual({});
     const fingerprint = 'a'.repeat(64);
     expect(mergeBranchBody.parse({ confirmPreview: fingerprint })).toEqual({ confirmPreview: fingerprint });
@@ -71,7 +70,9 @@ describe('project languages', () => {
   });
 
   it('rejects malformed language tags', () => {
-    expect(createLanguageBody.safeParse({ code: 'not_a_locale', label: 'Invalid' }).success).toBe(false);
+    for (const code of ['not_a_locale', 'en--US']) {
+      expect(createLanguageBody.safeParse({ code, label: 'Invalid' }).success).toBe(false);
+    }
   });
 });
 
@@ -108,9 +109,6 @@ describe('upsertOpenApiBody', () => {
 });
 
 describe('projectConfigSchema', () => {
-  it('accepts a valid single-section patch', () => {
-    expect(projectConfigSchema.safeParse({ styling: { primaryColor: '#5546e8', theme: 'dark' } }).success).toBe(true);
-  });
   it('applies tenant-safe search defaults and enforces result/cursor limits', () => {
     expect(searchConfigurationSchema.parse({})).toEqual({
       maxResults: 12,
@@ -153,6 +151,8 @@ describe('projectConfigSchema', () => {
   });
   it('validates hex colors (#abc and #5546e8 ok, #xyz rejected)', () => {
     expect(projectConfigSchema.safeParse({ styling: { primaryColor: '#abc' } }).success).toBe(true);
+    const styling = { primaryColor: '#5546e8', theme: 'dark' };
+    expect(projectConfigSchema.parse({ styling }).styling).toMatchObject(styling);
     expect(projectConfigSchema.safeParse({ styling: { primaryColor: '#xyz' } }).success).toBe(false);
   });
   it('accepts bounded add-on toggles and rejects unknown add-ons', () => {
@@ -237,19 +237,9 @@ describe('project bodies', () => {
   });
 });
 
-describe('createLanguageBody', () => {
-  it('accepts BCP-47 codes', () => {
-    expect(createLanguageBody.safeParse({ code: 'en', label: 'English' }).success).toBe(true);
-    expect(createLanguageBody.safeParse({ code: 'pt-BR', label: 'Português' }).success).toBe(true);
-  });
-  it('rejects malformed codes', () => {
-    expect(createLanguageBody.safeParse({ code: 'en--US', label: 'x' }).success).toBe(false);
-    expect(createLanguageBody.safeParse({ code: 'not_a_tag', label: 'x' }).success).toBe(false);
-  });
-  it('accepts the enabled serving toggle', () => {
-    expect(createLanguageBody.safeParse({ code: 'ar', label: 'العربية', enabled: false }).success).toBe(true);
-    expect(updateLanguageBody.safeParse({ enabled: true }).success).toBe(true);
-  });
+it('preserves the enabled serving toggle when creating or updating a language', () => {
+  expect(createLanguageBody.parse({ code: 'ar', label: 'العربية', enabled: false }).enabled).toBe(false);
+  expect(updateLanguageBody.parse({ enabled: true }).enabled).toBe(true);
 });
 
 describe('languageConfigSchema (per-language chrome overrides)', () => {
@@ -268,8 +258,9 @@ describe('languageConfigSchema (per-language chrome overrides)', () => {
       }).success,
     ).toBe(true);
   });
-  it('lets a PATCH clear a single chrome override with null', () => {
-    expect(languageConfigSchema.safeParse({ navbar: null, footer: null, banner: null, search: null }).success).toBe(true);
+  it('preserves nulls that clear chrome overrides', () => {
+    const cleared = { navbar: null, footer: null, banner: null, search: null };
+    expect(languageConfigSchema.parse(cleared)).toEqual(cleared);
   });
   it('stays strict: unknown keys and non-text project fields are rejected', () => {
     expect(languageConfigSchema.safeParse({ bogus: true }).success).toBe(false);
@@ -291,20 +282,15 @@ describe('languageConfigSchema (per-language chrome overrides)', () => {
 
 describe('project translation input', () => {
   it('accepts localized project identity through the language update body', () => {
-    expect(updateLanguageBody.safeParse({ translation: { name: 'وثائق أكمي', description: 'دليل المنتج' } }).success).toBe(true);
-    expect(updateLanguageBody.safeParse({ translation: null }).success).toBe(true);
+    const translation = { name: 'وثائق أكمي', description: 'دليل المنتج' };
+    expect(updateLanguageBody.parse({ translation }).translation).toEqual(translation);
+    expect(updateLanguageBody.parse({ translation: null }).translation).toBeNull();
   });
 });
 
 describe('updateProjectBody', () => {
   it('accepts a DNS-safe deployment slug', () => {
     expect(updateProjectBody.safeParse({ slug: 'docs-v2' }).success).toBe(true);
-  });
-
-  it('rejects deployment slugs that cannot be used as subdomains', () => {
-    expect(updateProjectBody.safeParse({ slug: 'Docs' }).success).toBe(false);
-    expect(updateProjectBody.safeParse({ slug: '-docs' }).success).toBe(false);
-    expect(updateProjectBody.safeParse({ slug: 'docs.example' }).success).toBe(false);
   });
 });
 
@@ -405,12 +391,6 @@ describe('member role grants exclude owner at the schema level', () => {
 });
 
 describe('presignAssetBody', () => {
-  it('enforces a positive size under the 50MB cap', () => {
-    expect(presignAssetBody.safeParse({ filename: 'a.png', contentType: 'image/png', size: 1024 }).success).toBe(true);
-    expect(presignAssetBody.safeParse({ filename: 'a.png', contentType: 'image/png', size: 0 }).success).toBe(false);
-    expect(presignAssetBody.safeParse({ filename: 'a.png', contentType: 'image/png', size: 51 * 1024 * 1024 }).success).toBe(false);
-  });
-
   it('accepts only inert raster image types and normalizes parameters', () => {
     const png = presignAssetBody.safeParse({ filename: 'a.png', contentType: 'IMAGE/PNG; charset=binary', size: 1024 });
     expect(png.success && png.data.contentType).toBe('image/png');

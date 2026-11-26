@@ -1,9 +1,9 @@
 import { PassThrough } from 'node:stream';
+import { needsRichMarkdown } from '@nibleaf/shared/reader-rich';
 import type { ReactNode } from 'react';
 import { renderToPipeableStream } from 'react-dom/server.node';
 import { describe, expect, it } from 'vitest';
 import { MAX_HIGHLIGHT_LENGTH } from '@/components/site/reader-highlight';
-import { needsRichMarkdown } from '@/lib/reader-hydration-modules';
 import { Markdown } from './markdown';
 
 /*

@@ -1,5 +1,5 @@
+import { needsRichMarkdown } from '@nibleaf/shared/reader-rich';
 import { describe, expect, it } from 'vitest';
-import { needsRichMarkdown } from './reader-hydration-modules';
 
 describe('needsRichMarkdown', () => {
   it.each([

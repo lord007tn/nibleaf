@@ -38,6 +38,14 @@ const forbiddenPublicModules = [
   // The signed-in shell's intent preload, which reads the dashboard's chunk lists.
   /\/apps\/app\/src\/lib\/dashboard-intent-preload\.ts$/,
   /\/packages\/shared\/src\/(?:mcp|rbac)\.ts$/,
+  // The dashboard's session cache and the app-wide query-key factory: the
+  // /app route's beforeLoad imports the cache when it runs, and the reader's
+  // keys are in hooks/api/site-query-options.ts and site-query-keys.ts.
+  // TanStack's mutation observer comes only with useMutation, which no
+  // published page uses: its analytics are plain requests (site-events.ts).
+  /\/apps\/app\/src\/integrations\/tanstack-query\/session-cache\.ts$/,
+  /\/apps\/app\/src\/hooks\/api\/query-keys\.ts$/,
+  /\/node_modules\/(?:\.pnpm\/[^/]+\/node_modules\/)?@tanstack\/(?:query-core\/build\/[^/]+\/mutationObserver|react-query\/build\/[^/]+\/useMutation)\.js$/,
   // Zod (~23 KiB gzip, PUB-017). Eager route options read their search params
   // with lib/search-params.ts, the reader's renderers use plain checks, and the
   // reader imports its language and nav helpers apart from @nibleaf/shared/site

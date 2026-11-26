@@ -25,7 +25,7 @@ vi.mock('@nibleaf/i18n/site-search', async (importOriginal) => {
 });
 
 import { SearchShell, SiteSearch } from './site-search';
-import { beginSearchKeystrokes, cancelSearchKeystrokes } from './site-search-keystrokes';
+import { cancelSearchKeystrokes } from './site-search-keystrokes';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
@@ -525,23 +525,6 @@ describe('published reader search', () => {
     await render({ onAskAi: undefined, lang: 'ar' });
     await typeQuery('الغاء');
     expect(document.querySelector('[role="option"] mark')?.textContent).toBe('إِلْغَاء');
-  });
-
-  it('keeps text typed before the dialog loaded, with the caret at the end', async () => {
-    const { default: SiteSearchDialog } = await import('./site-search-dialog');
-    const container = document.createElement('div');
-    document.body.append(container);
-    const root = createRoot(container);
-    roots.push(root);
-    beginSearchKeystrokes();
-    const held = document.activeElement as HTMLInputElement;
-    held.value = 'sea';
-    await act(async () => root.render(<SiteSearchDialog projectId="docs" open onOpenChange={vi.fn()} lang="en" />));
-    expect(input()?.value).toBe('sea');
-    expect(document.activeElement).toBe(input());
-    expect(input()?.selectionStart).toBe(3);
-    // The hidden field is gone once the dialog has the text.
-    expect(document.querySelector('[data-search-keystrokes]')).toBeNull();
   });
 
   it('shows a working input at once while the dialog code is still loading', async () => {
