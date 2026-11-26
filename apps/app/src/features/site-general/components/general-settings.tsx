@@ -228,7 +228,7 @@ function GeneralForm({ project, languages }: { project: Project; languages: Lang
                 <>
                   {/* Hostnames are always LTR, so the suffix trails the name in an RTL dashboard too. */}
                   <div
-                    className="flex h-(--control-size-default) w-full rounded-md border border-input bg-transparent shadow-xs focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-aria-invalid:border-destructive dark:bg-input/30"
+                    className="flex h-(--control-size-default) w-full rounded-md border border-input-edge bg-transparent shadow-xs focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50 has-aria-invalid:border-destructive dark:bg-input/30"
                     dir="ltr"
                   >
                     <Input

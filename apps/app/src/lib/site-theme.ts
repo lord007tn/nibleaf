@@ -47,6 +47,9 @@ const designSystemAliases = (tokens: ThemeColorTokens): Record<string, string> =
   '--destructive': tokens.danger,
   '--border': tokens.border,
   '--input': tokens.border,
+  // Published sites keep their theme's own field edge; the dashboard's 3:1 grey
+  // would ignore a custom palette. Deriving a 3:1 edge per theme is the reader's.
+  '--input-edge': tokens.border,
   '--ring': tokens.focus,
 });
 
