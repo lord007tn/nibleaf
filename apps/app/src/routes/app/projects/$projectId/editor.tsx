@@ -1929,7 +1929,7 @@ function EditorPage() {
           {!navigationCollapsed ? <SidebarResizer onResize={setSidebarWidth} /> : null}
           {/* Sidebar header: section label + the collapse control (lives ON the sidebar). */}
           <div className="flex h-12 shrink-0 items-center justify-between border-border border-b ps-3 pe-1.5">
-            <span className="font-semibold text-[11px] text-muted-foreground uppercase tracking-wider">
+            <span className="font-semibold text-muted-foreground text-xs uppercase tracking-wider">
               {view === 'config' ? t('editor.config.heading') : t('editor.pages')}
             </span>
             <Button
@@ -2019,7 +2019,7 @@ function EditorPage() {
                                 onClick={() => toggleLang(lang.id)}
                                 aria-expanded={!langCollapsed}
                                 title={langCollapsed ? t('editor.expand') : t('editor.collapse')}
-                                className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-start font-semibold text-[12.5px] text-foreground"
+                                className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 text-start font-semibold text-foreground text-xs"
                               >
                                 <ChevronRight
                                   className={cn(
@@ -2037,7 +2037,7 @@ function EditorPage() {
                                   {lang.label}
                                 </span>
                                 {lang.isDefault ? (
-                                  <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 font-medium text-[9px] text-accent-foreground">
+                                  <span className="shrink-0 rounded bg-accent px-1.5 py-0.5 font-medium text-accent-foreground text-xs leading-none">
                                     {t('editor.default')}
                                   </span>
                                 ) : null}
@@ -2090,7 +2090,7 @@ function EditorPage() {
                             </div>
 
                             {!langCollapsed && langPages.length === 0 ? (
-                              <p className="px-2 py-1 text-[12px] text-muted-foreground/70">{t('editor.noPagesYet')}</p>
+                              <p className="px-2 py-1 text-muted-foreground/70 text-xs">{t('editor.noPagesYet')}</p>
                             ) : null}
                           </LanguageDropTarget>
 
@@ -2493,7 +2493,7 @@ function EditorPage() {
                 {unsupportedTags.length > 0 && effectiveMode !== 'markdown' ? (
                   <div
                     className={cn(
-                      'flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-[13px] text-amber-700 leading-snug dark:text-amber-300',
+                      'flex items-start gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3.5 py-2.5 text-amber-700 text-sm leading-snug dark:text-amber-300',
                       effectiveMode === 'wysiwyg' ? 'mx-4 mt-4 sm:mx-7' : 'mx-auto mb-5 max-w-[720px]',
                     )}
                     role="status"

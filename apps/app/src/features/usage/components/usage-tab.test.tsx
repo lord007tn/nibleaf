@@ -11,7 +11,7 @@ vi.mock('@nibleaf/i18n/react', () => ({
 }));
 vi.mock('@/hooks/api', () => ({ useProjectUsage: mocks.usage }));
 
-import { UsageTab } from './usage-tab';
+import { UsageTab } from './usage-overview';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 

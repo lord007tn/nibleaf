@@ -10,11 +10,6 @@ import { HYDRATION_MODULE_ATTRIBUTE, type HydrationModule, hydrationModule, load
  * so keep it to these declarations.
  */
 
-/** Moved to @nibleaf/shared/reader-rich, so the parser that reads a page's headings
- * as the reader renders them picks the same renderer. */
-import { needsMathMarkdown, needsRichMarkdown } from '@nibleaf/shared/reader-rich';
-
-export { needsRichMarkdown };
 /** The article renderer (Markdown, GFM, code highlighting): pages with an
  *  article, not the API reference or a not-found page. */
 export const articleMarkdownModule = hydrationModule('markdown', () => import('@/components/markdown').then((module) => module.Markdown));
@@ -47,34 +42,46 @@ export const highlightLanguageModule = (name: LazyHighlightLanguage): HydrationM
 /** The renderer modules beyond the article's own that a page needs: the rich
  *  renderer for raw HTML/MDX or math, and KaTeX only with it (the plain
  *  renderer has no math syntax, so a code-only page never fetches KaTeX). */
-export const articleRendererModules = (content: string) =>
-  needsRichMarkdown(content) ? [richMarkdownModule, ...(needsMathMarkdown(content) ? [mathMarkdownModule] : [])] : [];
+export const articleRendererModules = async (content: string) => {
+  const { needsMathMarkdown, needsRichMarkdown } = await import('@nibleaf/shared/reader-rich');
+  return needsRichMarkdown(content) ? [richMarkdownModule, ...(needsMathMarkdown(content) ? [mathMarkdownModule] : [])] : [];
+};
 
 /** Loads the renderers an article needs before it renders, so navigating to it
  *  never shows a fallback first. Never rejects: a failed download is left to
  *  the article's island, which retries and says so inline (not the route's
  *  error page). */
-export const loadArticleRenderer = async (content: string): Promise<void> => {
+export const loadArticleRenderer = async (source: string): Promise<void> => {
+  const article = articleMarkdownModule.load().catch(() => undefined);
+  // Only article navigation needs the budget scanner. This module also loads
+  // with the eager page shell, before the article renderer is requested.
+  const budget =
+    typeof source === 'string'
+      ? await import('@nibleaf/shared/page-limits').then(({ markdownParseBudget }) => markdownParseBudget(source)).catch(() => null)
+      : null;
+  if (!budget || budget.whole) {
+    await article;
+    return;
+  }
+  // What the renderer reads: blocks over the parse budget are plain text.
+  const { content } = budget;
   const grammars = import('@/lib/highlight-languages')
     .then((languages) => Promise.all(languages.lazyHighlightLanguages(content).map((name) => highlightLanguageModule(name).load())))
+    .catch(() => undefined);
+  const guessed = articleRendererModules(content)
+    .then((modules) => Promise.allSettled(modules.map((module) => module.load())))
     .catch(() => undefined);
   // The line scan's guess starts at once; then, with the article module (which
   // holds the parser) loaded, the renderer's own decision is awaited too, so
   // the island never falls back to the plain renderer after navigating.
-  const decided = (async () => {
-    try {
-      await articleMarkdownModule.load();
-      const markdown = await import('@/components/markdown');
-      await Promise.all(markdown.rendererModulesFor(content).map((module) => module.load().catch(() => undefined)));
-    } catch {
-      // A failed download is the article island's to retry.
-    }
-  })();
-  await Promise.all([
-    ...[articleMarkdownModule, ...articleRendererModules(content)].map((module) => module.load().catch(() => undefined)),
-    decided,
-    grammars,
-  ]);
+  const decided = article
+    .then(async (loaded) => {
+      if (!loaded) return;
+      const { rendererModulesFor } = await import('@/components/markdown');
+      await Promise.allSettled(rendererModulesFor(content).map((module) => module.load()));
+    })
+    .catch(() => undefined);
+  await Promise.all([guessed, decided, grammars]);
 };
 
 /** Loads the reader modules whose markup is in the server HTML under `root`

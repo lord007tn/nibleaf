@@ -4,10 +4,10 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link } from '@tanstack/react-router';
 import { Braces, type LucideIcon, Palette, Route, Search, SearchCheck } from 'lucide-react';
-import { RedirectsSection } from '@/components/project-settings/redirects-section';
-import { SeoSection } from '@/components/project-settings/seo-section';
-import { VariablesSection } from '@/components/project-settings/variables-section';
 import { AppearancePage } from '@/features/site-appearance/components/appearance-page';
+import { RedirectsSettings as RedirectsSection } from '@/features/site-redirects/components/redirects-settings';
+import { SeoSettings as SeoSection } from '@/features/site-seo/components/seo-settings';
+import { VariablesSettings as VariablesSection } from '@/features/site-variables/components/variables-settings';
 import type { Project } from '@/hooks/api';
 
 /**

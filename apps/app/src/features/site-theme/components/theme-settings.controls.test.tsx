@@ -8,9 +8,9 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppearanceDraftsProvider, useAppearanceDrafts } from '@/features/site-appearance/components/preview-drafts';
 import { previewWithDrafts } from '@/features/site-appearance/model/preview-config';
-import { LivePreview } from '@/features/site-theme/components/live-preview';
-import { ThemeSettings } from '@/features/site-theme/components/theme-settings';
 import type { Project } from '@/hooks/api';
+import { LivePreview } from './live-preview';
+import { ThemeSettings } from './theme-settings';
 
 /** The Appearance page's live preview (with its mode and language controls), reading the form's draft. */
 function DraftPreview({ config }: { config: Project['config'] }) {
