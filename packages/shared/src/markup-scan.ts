@@ -389,8 +389,9 @@ const skipWhitespace = (text: string, from: number): number => {
  * `text.replace(/(`+)[\s\S]*?\1|\{\s*\/\*[\s\S]*?\*\/\s*\}/g, (match, code) => (code ? match : ''))`:
  * MDX comments removed and inline code spans kept as written, whichever starts
  * first, in linear time. When one comment finds no close, no later one can.
+ * Each removed comment's `[start, end)` range goes into `removed`, when given.
  */
-export const removeMdxCommentsOutsideCode = (text: string): string => {
+export const removeMdxCommentsOutsideCode = (text: string, removed?: Array<[start: number, end: number]>): string => {
   const spanEnd = codeSpanEnds(text);
   const nextTick = forwardIndexOf(text, '`');
   const nextBrace = forwardIndexOf(text, '{');
@@ -425,6 +426,7 @@ export const removeMdxCommentsOutsideCode = (text: string): string => {
       continue;
     }
     out += text.slice(copied, start);
+    removed?.push([start, end]);
     copied = end;
     from = end;
   }

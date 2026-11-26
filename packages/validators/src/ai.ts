@@ -9,6 +9,8 @@ const apiKey = z
   .refine((value) => !/[\r\n]/.test(value));
 
 export const workspaceAiModelsBody = z.object({ providerId: aiProviderIdSchema, apiKey: apiKey.optional() }).strict();
+// The dashboard's AI saves strip unknown keys rather than rejecting them, so an API one release behind ignores a field
+// a newer dashboard sends (operations/runbook-rolling-deploys.md §6.1).
 export const saveWorkspaceAiConnectionBody = z
   .object({
     providerId: aiProviderIdSchema,
@@ -17,16 +19,17 @@ export const saveWorkspaceAiConnectionBody = z
     expectedRevision: z.number().int().nonnegative(),
     replaceCredential: z.literal(true).optional(),
   })
-  .strict()
   .superRefine((value, ctx) => {
     if (value.expectedRevision === 0 && !value.apiKey)
       ctx.addIssue({ code: 'custom', path: ['apiKey'], message: 'An API key is required for a new connection.' });
     if (value.expectedRevision > 0 && value.apiKey && !value.replaceCredential)
       ctx.addIssue({ code: 'custom', path: ['replaceCredential'], message: 'Confirm credential replacement.' });
   });
-export const workspaceAiSelectionBody = z
-  .object({ providerId: aiSelectionSchema, answersEnabled: z.boolean(), expectedRevision: z.number().int().positive().optional() })
-  .strict();
+export const workspaceAiSelectionBody = z.object({
+  providerId: aiSelectionSchema,
+  answersEnabled: z.boolean(),
+  expectedRevision: z.number().int().positive().optional(),
+});
 
 export type WorkspaceAiModelsBody = z.infer<typeof workspaceAiModelsBody>;
 export type SaveWorkspaceAiConnectionBody = z.infer<typeof saveWorkspaceAiConnectionBody>;

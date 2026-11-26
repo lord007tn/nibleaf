@@ -1,7 +1,8 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { DataListItem } from '@nibleaf/design-system/components/ui/data-list';
 import { useLocale } from '@nibleaf/i18n/react';
-import { Play } from 'lucide-react';
+import { CalendarClock, Play } from 'lucide-react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { FailureMessage } from '@/components/failure-message';
@@ -68,36 +69,43 @@ export function ScheduleRow({
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border p-3">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 font-medium text-sm">
-          <span dir="auto">{row.name}</span>
-          <Badge variant="secondary">{t(row.status)}</Badge>
-        </div>
-        <div className="mt-1 text-muted-foreground text-xs">
-          {t(row.cadence)} {t('settings.exports.workflow.at')}{' '}
-          <span dir="ltr">
-            {row.time} {row.timezone}
-          </span>{' '}
-          · {t('settings.exports.workflow.next')} {formatExportDate(row.nextRunAt, locale)} ·{' '}
-          {t('settings.exports.workflow.runCount', { count: row.runCount })}
-        </div>
-        {row.lastError ? <FailureMessage context="export" error={row.lastError} /> : null}
-      </div>
-      {row.actions ? (
-        <div className="flex gap-2">
-          {/* Busy keeps focus on the button (focusableWhenDisabled), so a keyboard press doesn't drop it to the page.
-              The schedule's name completes each button's accessible name. */}
-          <Button focusableWhenDisabled loading={row.actions.run.busy} onClick={() => void runNow()} size="sm" variant="outline">
-            <Play aria-hidden className="size-3.5" /> {t(row.actions.run.label)}
-            <span className="sr-only"> {row.name}</span>
-          </Button>
-          <Button focusableWhenDisabled loading={row.actions.toggle.busy} onClick={() => void toggle()} size="sm" variant="outline">
-            {t(row.actions.toggle.label)}
-            <span className="sr-only"> {row.name}</span>
-          </Button>
-        </div>
-      ) : null}
-    </div>
+    <DataListItem
+      badges={<Badge variant="secondary">{t(row.status)}</Badge>}
+      leading={<CalendarClock aria-hidden className="size-4 text-muted-foreground" />}
+      meta={
+        <>
+          <span>
+            {t(row.cadence)} {t('settings.exports.workflow.at')}{' '}
+            <span dir="ltr">
+              {row.time} {row.timezone}
+            </span>
+          </span>
+          <span>
+            {t('settings.exports.workflow.next')} <bdi>{formatExportDate(row.nextRunAt, locale)}</bdi>
+          </span>
+          <span>{t('settings.exports.workflow.runCount', { count: row.runCount })}</span>
+        </>
+      }
+      title={<span dir="auto">{row.name}</span>}
+      trailing={
+        row.actions ? (
+          <>
+            {/* Busy keeps focus on the button (focusableWhenDisabled), so a keyboard press doesn't drop it to the page.
+                The schedule's name completes each button's accessible name. */}
+            <Button focusableWhenDisabled loading={row.actions.run.busy} onClick={() => void runNow()} size="sm" variant="outline">
+              <Play aria-hidden className="size-3.5" /> {t(row.actions.run.label)}
+              <span className="sr-only"> {row.name}</span>
+            </Button>
+            <Button focusableWhenDisabled loading={row.actions.toggle.busy} onClick={() => void toggle()} size="sm" variant="outline">
+              {t(row.actions.toggle.label)}
+              <span className="sr-only"> {row.name}</span>
+            </Button>
+          </>
+        ) : null
+      }
+      trailingLayout="stack"
+    >
+      {row.lastError ? <FailureMessage context="export" error={row.lastError} /> : null}
+    </DataListItem>
   );
 }

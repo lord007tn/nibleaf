@@ -101,7 +101,7 @@ function SearchTermsControls({ projectId, threshold }: { projectId: string; thre
       <TurnOnSearchTermsButton projectId={projectId} threshold={threshold ?? DEFAULT_TERM_THRESHOLD} />
       <Button
         nativeButton={false}
-        render={<Link params={{ projectId }} search={{ section: 'integrations' }} to="/app/projects/$projectId/settings" />}
+        render={<Link params={{ projectId }} search={{ section: 'integrations', integration: 'analytics' }} to="/app/projects/$projectId/settings" />}
         size="sm"
         variant="link"
       >

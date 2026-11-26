@@ -136,6 +136,7 @@ describe('AUTH-16 editor save lifecycle', () => {
     mocks.pages = [page];
     mocks.role = 'member';
     mocks.update.mockReset();
+    mocks.navigate.mockReset();
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -188,6 +189,78 @@ describe('AUTH-16 editor save lifecycle', () => {
     expect(drawerOpen()).toBe('false');
     const title = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="editor.pageTitlePlaceholder"]');
     expect(document.activeElement).toBe(title);
+  });
+  it('names a page the writer creates in the address, in place, so a reload or a copied address reopens it', async () => {
+    type Navigation = {
+      replace?: boolean;
+      hash?: unknown;
+      search?: (previous: Record<string, unknown>) => Record<string, unknown>;
+      state?: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    const named = (id: string) =>
+      mocks.navigate.mock.calls
+        .map(([options]) => options as Navigation)
+        .filter((options) => typeof options?.search === 'function' && options.search({}).page === id);
+    // Opening the editor writes nothing: an address that changed by itself already names its page.
+    expect(named('page-1')).toEqual([]);
+    const created = { ...page, id: 'page-new', title: '', slug: 'untitled', path: 'untitled' };
+    mocks.create.mockImplementation((_body, callbacks) => {
+      mocks.page = created;
+      mocks.pages = [page, created];
+      callbacks.onSuccess(created);
+      callbacks.onSettled();
+    });
+    const newPage = [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('editor.newPage'));
+    if (!newPage) throw new Error('Missing new page action');
+    await act(async () => newPage.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    const [navigation, ...more] = named('page-new');
+    expect(more).toEqual([]);
+    expect(navigation?.replace).toBe(true);
+    // No section of the page before (no hash), other parameters kept, a Fix for another page dropped.
+    expect(navigation?.hash).toBeUndefined();
+    expect(navigation?.search?.({ publish: true, fix: 'missing-alt', fixTarget: 'x' })).toEqual({
+      publish: true,
+      page: 'page-new',
+      fix: undefined,
+      fixTarget: undefined,
+    });
+    // The page before's scroll position doesn't come along.
+    expect(navigation?.state?.({ editorScroll: 640, editorKeepScroll: true, other: 1 })).toEqual({
+      editorScroll: undefined,
+      editorKeepScroll: undefined,
+      other: 1,
+    });
+  });
+  it('keeps a title, Enter and body typed before the new page shows: the title gets the title, the body the rest', async () => {
+    const created = { ...page, id: 'page-new', title: '', slug: 'untitled', path: 'untitled', content: '' };
+    mocks.create.mockImplementation((_body, callbacks) => {
+      // Created, but the new page itself loads later (as over a real network).
+      mocks.pages = [page, created];
+      callbacks.onSuccess(created);
+      callbacks.onSettled();
+    });
+    const newPage = [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('editor.newPage'));
+    if (!newPage) throw new Error('Missing new page action');
+    await act(async () => {
+      newPage.focus();
+      newPage.click();
+    });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    // Typed into whatever has focus meanwhile (the New page button), as a fast writer does.
+    const type = (key: string) => document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    await act(async () => {
+      for (const key of [...'Setup', 'Enter', ...'Hi']) type(key);
+    });
+    expect(mocks.create).toHaveBeenCalledOnce();
+    // The page arrives; its title takes focus.
+    mocks.page = created;
+    await act(async () => root.render(<Editor />));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(container.querySelector<HTMLTextAreaElement>('textarea[data-page-title]')?.value).toBe('Setup');
+    const body = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]');
+    expect(document.activeElement).toBe(body);
+    expect(body?.value).toBe('Hi');
   });
   it('AUTH-07: failed creation clears the pending canvas and restores the action focus', async () => {
     mocks.page = undefined;
@@ -284,6 +357,76 @@ describe('AUTH-16 editor save lifecycle', () => {
     await debounce();
     expect(mocks.update).not.toHaveBeenCalled();
     expect(container.textContent).not.toContain('editor.savingShort');
+  });
+  /** Ctrl/⌘+S, as a writer presses it in the page body. */
+  async function pressSave(init: KeyboardEventInit = { ctrlKey: true }) {
+    const input = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]');
+    if (!input) throw new Error('Missing editor input');
+    const event = new KeyboardEvent('keydown', { key: 's', bubbles: true, cancelable: true, ...init });
+    await act(async () => {
+      input.dispatchEvent(event);
+    });
+    return event;
+  }
+  it.each([
+    ['Ctrl+S', { ctrlKey: true }],
+    ['⌘S', { metaKey: true }],
+  ])('%s saves the draft now, instead of the browser saving the web page', async (_name, init) => {
+    mocks.update.mockImplementation(async ({ body }: { body: { content: string } }) => ({ ...page, content: body.content, updatedAt: 'revision-2' }));
+    await edit('Written just now');
+    const event = await pressSave(init);
+    // The browser's "Save page as" dialog never opens.
+    expect(event.defaultPrevented).toBe(true);
+    // Sent at once, not after the autosave pause.
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.update).toHaveBeenCalledOnce();
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ body: expect.objectContaining({ content: 'Written just now' }) }));
+    expect(container.textContent).toContain('editor.savedShort');
+    // The autosave that was waiting doesn't send the same draft again.
+    await pace();
+    expect(mocks.update).toHaveBeenCalledOnce();
+  });
+  it('Ctrl+S with nothing to save says the draft is saved, without a request', async () => {
+    const event = await pressSave();
+    expect(event.defaultPrevented).toBe(true);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(container.textContent).toContain('editor.savedShort');
+  });
+  it('Ctrl+/ lists the keyboard shortcuts', async () => {
+    const input = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]');
+    if (!input) throw new Error('Missing editor input');
+    const event = new KeyboardEvent('keydown', { key: '/', ctrlKey: true, bubbles: true, cancelable: true });
+    await act(async () => {
+      input.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog?.textContent).toContain('shortcuts.title');
+    expect(dialog?.textContent).toContain('shortcuts.editor.saveDraft');
+    expect(dialog?.textContent).toContain('Ctrl+S');
+  });
+  it('Ctrl+S saves on an Arabic keyboard layout, where the key reads "س"', async () => {
+    mocks.update.mockImplementation(async ({ body }: { body: { content: string } }) => ({ ...page, content: body.content, updatedAt: 'revision-2' }));
+    await edit('مسودة');
+    const event = await pressSave({ ctrlKey: true, key: 'س', code: 'KeyS' });
+    expect(event.defaultPrevented).toBe(true);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.update).toHaveBeenCalledOnce();
+  });
+  it('Ctrl+/ opens the list where "/" takes Shift (German, French)', async () => {
+    const input = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]');
+    if (!input) throw new Error('Missing editor input');
+    const event = new KeyboardEvent('keydown', { key: '/', code: 'Digit7', ctrlKey: true, shiftKey: true, bubbles: true, cancelable: true });
+    await act(async () => {
+      input.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain('shortcuts.title');
+  });
+  it('leaves Ctrl+Shift+S and Alt+S to the browser', async () => {
+    expect((await pressSave({ ctrlKey: true, shiftKey: true })).defaultPrevented).toBe(false);
+    expect((await pressSave({ ctrlKey: true, altKey: true })).defaultPrevented).toBe(false);
   });
   it('unmounts mid-save and reopens without a stuck status or React warnings', async () => {
     let resolve!: (value: unknown) => void;

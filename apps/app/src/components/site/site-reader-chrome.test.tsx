@@ -5,7 +5,7 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
-import { queryKeys } from '@/hooks/api/query-keys';
+import { sitePageQueryKey } from '@/hooks/api/site-query-options';
 import type { SitePage, SiteShell } from '@/hooks/api/types';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { setReaderSiteAccess } from '@/lib/reader-site-access';
@@ -129,6 +129,21 @@ describe('published reader chrome', () => {
     expect(new Set(navLabels).size).toBe(navLabels.length);
   });
 
+  it('groups the quick links in a named navigation landmark', async () => {
+    mocks.getSite.mockResolvedValue({
+      ...shell,
+      project: {
+        ...shell.project,
+        config: { navbar: { anchors: [{ label: 'Community', href: 'https://community.example.com' }] } },
+      },
+    });
+    const container = await renderReader(MISSING);
+    const quickLinks = container.querySelector('nav[aria-label="روابط سريعة"]');
+    const quickLink = quickLinks?.querySelector('li a');
+    expect(quickLink?.textContent).toBe('Community');
+    expect(quickLink?.getAttribute('href')).toBe('https://community.example.com');
+  });
+
   it('renders a missing page inside the chrome, in the site language, with a way back into the docs', async () => {
     const container = await renderReader(MISSING);
     await vi.waitFor(() => expect(container.querySelector('[data-site-not-found]')).not.toBeNull());
@@ -211,7 +226,7 @@ describe('published page loader', () => {
     // The app's client: a page read moments ago is still fresh.
     const queryClient = createQueryClient();
     await expect(load(queryClient)).resolves.toMatchObject({ page });
-    expect(queryClient.getQueryData(queryKeys.site.page('docs', 'start', 'ar', 'start'))).toBe(page);
+    expect(queryClient.getQueryData(sitePageQueryKey('docs', 'start', 'ar', 'start'))).toBe(page);
     await load(queryClient);
     expect(mocks.getSitePage).toHaveBeenCalledOnce();
     expect(mocks.getSitePage).toHaveBeenCalledWith(
@@ -235,7 +250,7 @@ describe('published page loader', () => {
     const republished = { ...page, page: { path: 'start', title: 'Updated' } } as unknown as SitePage;
     mocks.getSitePage.mockResolvedValue(republished);
     const queryClient = createQueryClient();
-    queryClient.setQueryData(queryKeys.site.page('docs', 'start', 'ar', 'start'), page, { updatedAt: Date.now() - 60_000 });
+    queryClient.setQueryData(sitePageQueryKey('docs', 'start', 'ar', 'start'), page, { updatedAt: Date.now() - 60_000 });
     // The article renders the loader's result, so a stale copy must never be returned.
     await expect(load(queryClient)).resolves.toMatchObject({ page: republished });
     expect(mocks.getSitePage).toHaveBeenCalledOnce();

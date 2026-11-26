@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { api } from '@/services/api';
 
 export type SiteAnalyticsConsent = 'denied' | 'granted' | 'not_required' | 'unknown';
@@ -36,12 +36,26 @@ interface SiteAnalyticsEvent {
   payload: PublicAnalyticsPayload;
 }
 
+/** Waits for the connection to come back before sending, as a paused mutation
+ * did: an event recorded offline is sent once the reader is online again. */
+const whenOnline = () =>
+  typeof navigator === 'undefined' || navigator.onLine !== false
+    ? Promise.resolve()
+    : new Promise<void>((resolve) => window.addEventListener('online', () => resolve(), { once: true }));
+
+/** Sends one analytics event, best effort: never retried, and a failure is
+ * dropped silently (the reader never sees analytics). */
+export async function sendSiteAnalyticsEvent(projectId: string, event: SiteAnalyticsEvent): Promise<void> {
+  try {
+    await whenOnline();
+    await api.public.sites[':id'].events.$post({ param: { id: projectId }, json: event }, { init: { keepalive: true } });
+  } catch {
+    // Analytics never interrupt reading.
+  }
+}
+
+/** The reader's analytics sender. A plain request rather than a TanStack
+ * mutation: nothing reads its state, and `useMutation` would put the mutation
+ * observer in every published page's first load. */
 export const useCreateSiteAnalyticsEvent = (projectId: string) =>
-  useMutation({
-    mutationFn: async (event: SiteAnalyticsEvent) => {
-      const response = await api.public.sites[':id'].events.$post({ param: { id: projectId }, json: event }, { init: { keepalive: true } });
-      if (!response.ok) {
-        throw new Error('Could not record the analytics event.');
-      }
-    },
-  });
+  useMemo(() => ({ mutate: (event: SiteAnalyticsEvent) => void sendSiteAnalyticsEvent(projectId, event) }), [projectId]);

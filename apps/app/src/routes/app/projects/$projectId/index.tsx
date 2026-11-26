@@ -671,7 +671,7 @@ function PublishFailureCard({
                   )}
                   <span className="ms-2 text-muted-foreground">{issue.detail}</span>
                 </div>
-                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-medium text-[10.5px] text-muted-foreground uppercase tracking-wide">
+                <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 font-medium text-muted-foreground text-xs uppercase tracking-wide">
                   {issue.type === 'broken-link' ? t('overview.publishFailed.type.brokenLink') : t('overview.publishFailed.type.grammar')}
                 </span>
               </li>
@@ -829,7 +829,7 @@ function NudgeStep({
         current && 'border-primary',
       )}
     >
-      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-[12px] text-primary">
+      <span className="grid size-6 shrink-0 place-items-center rounded-full bg-primary/10 font-semibold text-primary text-xs">
         {/* Named with its step, so a list of checks says which ones are finished. */}
         {done ? <Check aria-label={t('overview.nudge.stepDone', { step: title })} className="size-4" role="img" /> : n}
       </span>
