@@ -83,12 +83,6 @@ function holdConfirm() {
   );
   return (confirmed: boolean) => answer(confirmed);
 }
-/** The pressed surface: create, schedules or history. */
-const surfaceNow = () =>
-  (['create', 'schedules', 'history'] as const)[
-    [...container.querySelectorAll('nav button')].findIndex((item) => item.getAttribute('aria-pressed') === 'true')
-  ];
-
 const button = (text: string) => [...container.querySelectorAll('button')].find((item) => item.textContent?.includes(text));
 const field = <T extends HTMLElement = HTMLInputElement>(label: string) => {
   const match = [...container.querySelectorAll('label')].find((item) => item.textContent === label);
@@ -456,7 +450,6 @@ describe('the draft and its site', () => {
 describe('inside the exports section', () => {
   const openForm = async () => {
     await renderSection();
-    await click(button('Schedules'));
     await click(button('New schedule'));
   };
 
@@ -468,19 +461,18 @@ describe('inside the exports section', () => {
     expect(button('Create schedule')).toBeUndefined();
   });
 
-  it('asks before an edited draft is closed or left for another surface, and keeps it when the person stays', async () => {
+  it('asks before an edited draft is closed, and keeps it when the person stays', async () => {
     await openForm();
     await type(field('Schedule name'), 'Edited');
     mocks.confirm.mockResolvedValue(false);
 
-    await click(button('Run history'));
     await click(button('New schedule'));
-    expect(mocks.confirm).toHaveBeenCalledTimes(2);
+    expect(mocks.confirm).toHaveBeenCalledOnce();
     expect(mocks.confirm).toHaveBeenCalledWith(expect.objectContaining({ title: 'Leave without saving?' }));
     expect(field('Schedule name').value).toBe('Edited');
 
     mocks.confirm.mockResolvedValue(true);
-    await click(button('Run history'));
+    await click(button('New schedule'));
     expect(button('Create schedule')).toBeUndefined();
     expect(dirtyNow()).toBe(false);
   });
@@ -502,10 +494,7 @@ describe('inside the exports section', () => {
   });
 
   // Async-contract hardening: the real modal blocks reopening behind it, so these hold the answer open by hand.
-  it.each([
-    ['closing the form', 'New schedule'],
-    ['leaving for another surface', 'Run history'],
-  ])('ignores a late answer about %s once the draft it was about is gone', async (_case, control) => {
+  it('ignores a late answer about closing the form once the draft it was about is gone', async () => {
     const response = deferred();
     mocks.post.mockReturnValue(response.promise);
     let answer: (confirmed: boolean) => void = () => undefined;
@@ -516,7 +505,7 @@ describe('inside the exports section', () => {
     );
     await openForm();
     await click(button('Create schedule'));
-    await click(button(control));
+    await click(button('New schedule'));
     expect(mocks.confirm).toHaveBeenCalledOnce();
 
     // The creation completes and closes its form; a new draft is opened and edited.
@@ -529,7 +518,6 @@ describe('inside the exports section', () => {
 
     expect(field('Schedule name').value).toBe('A new draft');
     expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('true');
-    expect(button('Schedules')?.getAttribute('aria-pressed')).toBe('true');
     expect(dirtyNow()).toBe(true);
   });
 
@@ -552,34 +540,34 @@ describe('inside the exports section', () => {
     const answer = holdConfirm();
     await openForm();
     await type(field('Schedule name'), 'Edited');
-    await click(button('Run history'));
+    await click(button('New schedule'));
 
     await replace();
     expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('true');
     await type(field('Schedule name'), 'replacement permission draft 709');
     await act(async () => answer(true));
 
-    expect(surfaceNow()).toBe('schedules');
+    expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('true');
     expect(field('Schedule name').value).toBe('replacement permission draft 709');
   });
 
   it('acts on only the first of two answers about the same draft', async () => {
-    const leaveForHistory = holdConfirm();
-    const closeForm = holdConfirm();
+    const firstClose = holdConfirm();
+    const secondClose = holdConfirm();
     await openForm();
     await type(field('Schedule name'), 'Edited');
-    await click(button('Run history'));
+    await click(button('New schedule'));
     await click(button('New schedule'));
     expect(mocks.confirm).toHaveBeenCalledTimes(2);
 
     await act(async () => {
-      leaveForHistory(true);
-      closeForm(true);
+      firstClose(true);
+      secondClose(true);
     });
 
-    expect(surfaceNow()).toBe('history');
-    // The form was not also closed: back on Schedules it is open, as a fresh draft.
-    await click(button('Schedules'));
+    // The first answer closed the draft; the second was about that same draft and does nothing more.
+    expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('false');
+    await click(button('New schedule'));
     expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('true');
     expect(field('Schedule name').value).toBe('Nightly archive');
   });
@@ -598,11 +586,11 @@ describe('inside the exports section', () => {
     const answer = holdConfirm();
     await openForm();
     await type(field('Schedule name'), 'Edited');
-    await click(button('Run history'));
+    await click(button('New schedule'));
     mocks.locale = 'ar';
     await renderSection();
     await act(async () => answer(true));
-    expect(surfaceNow()).toBe('history');
+    expect(button('Create schedule')).toBeUndefined();
   });
 
   it('still acts on an answer about the draft that is open', async () => {
@@ -614,9 +602,9 @@ describe('inside the exports section', () => {
     );
     await openForm();
     await type(field('Schedule name'), 'Edited');
-    await click(button('Run history'));
+    await click(button('New schedule'));
     await act(async () => answer(true));
-    expect(button('Run history')?.getAttribute('aria-pressed')).toBe('true');
+    expect(button('New schedule')?.getAttribute('aria-expanded')).toBe('false');
     expect(button('Create schedule')).toBeUndefined();
   });
 
@@ -635,7 +623,6 @@ describe('inside the exports section', () => {
     const render = renderSection;
     it('keeps a pristine draft clean when the dashboard language changes', async () => {
       await render();
-      await act(async () => button('Schedules')?.click());
       await act(async () => button('New schedule')?.click());
       expect(dirtyNow()).toBe(false);
 
@@ -643,12 +630,12 @@ describe('inside the exports section', () => {
       await render();
 
       expect(dirtyNow()).toBe(false);
-      expect((container.querySelector('input[maxlength], input') as HTMLInputElement).value).toBe('Nightly archive');
+      // The name field, found by its length limit: its label is in Arabic now.
+      expect((container.querySelector('input[maxlength]') as HTMLInputElement).value).toBe('Nightly archive');
     });
 
     it('lets a number field stay blank instead of turning it into 0', async () => {
       await render();
-      await act(async () => button('Schedules')?.click());
       await act(async () => button('New schedule')?.click());
       const runs = [...container.querySelectorAll('label')].find((label) => label.textContent?.includes('Runs to retain'));
       const input = document.getElementById(runs?.getAttribute('for') ?? '') as HTMLInputElement;

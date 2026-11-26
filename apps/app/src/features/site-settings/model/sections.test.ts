@@ -13,6 +13,11 @@ describe('settings sections', () => {
     expect(SETTINGS_GROUPS.flatMap((group) => group.sections)).toEqual([...SECTION_IDS]);
   });
 
+  it('puts Integrations in the Website group, after Add-ons, and keeps the AI group to the two AI pages (D4)', () => {
+    expect(SETTINGS_GROUPS.find((group) => group.id === 'website')?.sections.at(-1)).toBe('integrations');
+    expect(SETTINGS_GROUPS.find((group) => group.id === 'ai')?.sections).toEqual(['ai', 'apiKeys']);
+  });
+
   it('orders the groups as §5.7 does, with the Danger zone last and unlabelled', () => {
     expect(SETTINGS_GROUPS.map((group) => group.id)).toEqual(['website', 'content', 'publishing', 'ai', 'team', 'usage', 'danger']);
     expect(SETTINGS_GROUPS.at(-1)).toMatchObject({ labelKey: null, sections: ['danger'] });
@@ -81,7 +86,15 @@ describe('parseSettingsSearch', () => {
     expect(parseSettingsSearch({ section: 'appearance', appearanceSection: name })).toEqual({ section: 'appearance' });
   });
 
-  it('sends the old Analytics section to Integrations', () => {
-    expect(parseSettingsSearch({ section: 'analytics' })).toEqual({ section: 'integrations' });
+  it('sends the old Analytics section to Integrations → Analytics', () => {
+    expect(parseSettingsSearch({ section: 'analytics' })).toEqual({ section: 'integrations', integration: 'analytics' });
+  });
+
+  it('keeps an open integration only under Integrations, as text; Integrations decides which exist', () => {
+    for (const integration of ['analytics', 'slack', 'qdrant', 'toString']) {
+      expect(parseSettingsSearch({ section: 'integrations', integration })).toEqual({ section: 'integrations', integration });
+    }
+    expect(parseSettingsSearch({ section: 'integrations', integration: 42 })).toEqual({ section: 'integrations' });
+    expect(parseSettingsSearch({ section: 'general', integration: 'slack' })).toEqual({ section: 'general' });
   });
 });

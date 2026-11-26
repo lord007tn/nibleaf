@@ -121,7 +121,8 @@ function deferred<T>() {
 
 describe('AnalyticsSettings', () => {
   it('opens pristine: the saved values, both opt-ins off, no errors and no save bar', () => {
-    expect(container.querySelector('h2')?.textContent).toBe('settings.analytics.title');
+    // The page's own heading (Integrations → Analytics) names the form; no second heading repeats it.
+    expect(container.querySelector('h2')).toBeNull();
     expect(ga4().value).toBe('G-ABC123');
     expect(plausible().value).toBe('');
     expect(checked(campaign())).toBe(false);

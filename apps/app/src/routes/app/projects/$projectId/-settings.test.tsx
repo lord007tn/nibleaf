@@ -463,7 +463,7 @@ describe('site settings permissions', () => {
     const validate = Route.options.validateSearch as (search: Record<string, unknown>) => { section?: string };
     expect(validate({})).toEqual({ section: undefined });
     expect(validate({ section: 'general' })).toEqual({ section: 'general' });
-    expect(validate({ section: 'analytics' })).toEqual({ section: 'integrations' });
+    expect(validate({ section: 'analytics' })).toEqual({ section: 'integrations', integration: 'analytics' });
   });
 
   it('does not redirect while membership is unknown or its request failed', async () => {
