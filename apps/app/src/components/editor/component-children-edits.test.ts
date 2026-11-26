@@ -125,28 +125,22 @@ describe('edits next to the tags of a component whose children touch them (#606 
   });
 
   // Deleting the first text of a list item that holds a nested list leaves the item an
-  // empty paragraph and then that list. Left out, the empty paragraph put the nested list's
-  // marker on the item's own line (`- - Beta`); it is written as main writes it, the nested
-  // list on the next line. That save does not load to itself yet: the editor needs a
-  // paragraph first in a list item, so the nested list is lifted out on load, as on a page
-  // with no component (#604). No text is lost.
-  it('an emptied list item before its nested list keeps the nested list off the item’s line', () => {
+  // empty paragraph and then that list. Main wrote the nested list on the next line, which
+  // loaded with the list lifted out of its item. The empty paragraph is now a lead
+  // (list-item-leads.ts): left out, the nested list opens on the item's own line (`- - Beta`)
+  // and loads back into the item (#604).
+  it('an emptied list item before its nested list keeps the nested list in the item', () => {
     const cases: Array<[string, string]> = [
-      ['<Note>\n- Alpha\n  - Beta\n\n  - Charlie\n- Delta\n\nTail.\n</Note>', '<Note>\n- \n  - Beta\n\n  - Charlie\n- Delta\n\nTail.\n</Note>'],
-      ['<Note>\n1. Alpha\n   - Beta\n\n   - Gamma\n2. Delta\n\nTail.\n</Note>', '<Note>\n1. \n   - Beta\n\n   - Gamma\n2. Delta\n\nTail.\n</Note>'],
+      ['<Note>\n- Alpha\n  - Beta\n\n  - Charlie\n- Delta\n\nTail.\n</Note>', '<Note>\n- - Beta\n\n  - Charlie\n- Delta\n\nTail.\n</Note>'],
+      ['<Note>\n1. Alpha\n   - Beta\n\n   - Gamma\n2. Delta\n\nTail.\n</Note>', '<Note>\n1. - Beta\n\n   - Gamma\n2. Delta\n\nTail.\n</Note>'],
       [
         '> <Note>\n> - Alpha\n>   - Beta\n> \n>   - Charlie\n> - Delta\n> \n> Tail.\n> </Note>',
-        '> \n>\n> <Note>\n> - \n>   - Beta\n>\n>   - Charlie\n> - Delta\n>\n> Tail.\n> </Note>',
+        '> \n>\n> <Note>\n> - - Beta\n>\n>   - Charlie\n> - Delta\n>\n> Tail.\n> </Note>',
       ],
     ];
     for (const [page, saved] of cases) expect(edited(page, 'deleteFirst').saved).toBe(saved);
-    const sharedLine = /^[ \t>]*(?:[-*+]|\d+[.)]) +(?:[-*+]|\d+[.)]) /m;
     for (const body of [`- ${AR.first}\n  - ${AR.second}\n- ${AR.tail}`, '- Top\n  - > Alpha', `1. ${AR.first}\n   - ${AR.second}`])
-      for (const page of placed(`<Accordion title="A">\n${body}\n\nTail.\n</Accordion>`)) {
-        const result = edited(page, 'deleteFirst');
-        expect(result.saved, JSON.stringify(page)).not.toMatch(sharedLine);
-        expect(result.againText).toBe(result.text);
-      }
+      for (const page of placed(`<Accordion title="A">\n${body}\n\nTail.\n</Accordion>`)) expectStable(page, 'deleteFirst');
   });
 
   it('a blank paragraph at the start of a list item or quote opening the children is not written', () => {

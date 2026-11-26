@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { isDraftDirty, reconcileSaveSuccess, reconcileServerChange, resolveConflict } from '@/lib/forms/server-draft';
 import {
-  canSaveOpenApi,
   confirmedOpenApiValues,
   DEFAULT_OPENAPI_PATH,
   type OpenApiSavedSource,
   type OpenApiValues,
+  openApiSaveBlocker,
   openApiUpsertBody,
   openApiValues,
   sourceValueOf,
@@ -80,23 +80,23 @@ describe('openApiUpsertBody', () => {
   });
 });
 
-describe('canSaveOpenApi', () => {
+describe('openApiSaveBlocker: whether Save can run', () => {
   it('needs a name and a path', () => {
-    expect(canSaveOpenApi(values({ title: ' ' }), urlConfig)).toBe(false);
-    expect(canSaveOpenApi(values({ path: '' }), urlConfig)).toBe(false);
-    expect(canSaveOpenApi(values(), urlConfig)).toBe(true);
+    expect(openApiSaveBlocker(values({ title: ' ' }), urlConfig) === null).toBe(false);
+    expect(openApiSaveBlocker(values({ path: '' }), urlConfig) === null).toBe(false);
+    expect(openApiSaveBlocker(values(), urlConfig) === null).toBe(true);
   });
 
   it('needs a source for a new reference', () => {
-    expect(canSaveOpenApi(openApiValues(null, 'OpenAPI'), null)).toBe(false);
-    expect(canSaveOpenApi({ ...openApiValues(null, 'OpenAPI'), source: { type: 'upload', value: 'openapi: 3.1.0' } }, null)).toBe(true);
+    expect(openApiSaveBlocker(openApiValues(null, 'OpenAPI'), null) === null).toBe(false);
+    expect(openApiSaveBlocker({ ...openApiValues(null, 'OpenAPI'), source: { type: 'upload', value: 'openapi: 3.1.0' } }, null) === null).toBe(true);
   });
 
   it('needs a source only when switching to another kind', () => {
     const upload = config({ type: 'upload' });
-    expect(canSaveOpenApi(values({ source: { type: 'upload', value: '' } }), upload)).toBe(true);
-    expect(canSaveOpenApi(values({ source: { type: 'url', value: '' } }), upload)).toBe(false);
-    expect(canSaveOpenApi(values({ source: { type: 'url', value: 'https://x.test' } }), upload)).toBe(true);
+    expect(openApiSaveBlocker(values({ source: { type: 'upload', value: '' } }), upload) === null).toBe(true);
+    expect(openApiSaveBlocker(values({ source: { type: 'url', value: '' } }), upload) === null).toBe(false);
+    expect(openApiSaveBlocker(values({ source: { type: 'url', value: 'https://x.test' } }), upload) === null).toBe(true);
   });
 });
 
@@ -171,5 +171,13 @@ describe('the OpenAPI draft across server changes', () => {
     const result = reconcileSaveSuccess({ submitted, current: submitted, confirmed: confirmedOpenApiValues(values(), submitted) });
     expect(isDraftDirty(result.current, result.baseline)).toBe(false);
     expect(result.current.source.value).toBe('');
+  });
+});
+
+describe('openApiSaveBlocker', () => {
+  it('names what is missing: the name and address first, then the document', () => {
+    expect(openApiSaveBlocker({ ...openApiValues(null, 'OpenAPI'), title: '' }, null)).toBe('settings.openapi.needNameAndPath');
+    expect(openApiSaveBlocker(openApiValues(null, 'OpenAPI'), null)).toBe('settings.openapi.needSource');
+    expect(openApiSaveBlocker({ ...openApiValues(null, 'OpenAPI'), source: { type: 'upload', value: 'openapi: 3.1.0' } }, null)).toBeNull();
   });
 });

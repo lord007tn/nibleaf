@@ -17,16 +17,16 @@ import {
   SearchCheck,
   Type,
 } from 'lucide-react';
-import { BannerSection } from '@/components/project-settings/banner-section';
-import { BrandingSection } from '@/components/project-settings/branding-section';
-import { FooterSection } from '@/components/project-settings/footer-section';
-import { NavbarSection } from '@/components/project-settings/navbar-section';
-import { RedirectsSection } from '@/components/project-settings/redirects-section';
-import { SeoSection } from '@/components/project-settings/seo-section';
-import { StylingSection } from '@/components/project-settings/styling-section';
-import { ThemeSection } from '@/components/project-settings/theme-section';
-import { TypographySection } from '@/components/project-settings/typography-section';
-import { VariablesSection } from '@/components/project-settings/variables-section';
+import { BannerSettings as BannerSection } from '@/features/site-banner/components/banner-settings';
+import { BrandingSettings as BrandingSection } from '@/features/site-branding/components/branding-settings';
+import { FooterSettings as FooterSection } from '@/features/site-footer/components/footer-settings';
+import { NavbarSettings as NavbarSection } from '@/features/site-navbar/components/navbar-settings';
+import { RedirectsSettings as RedirectsSection } from '@/features/site-redirects/components/redirects-settings';
+import { SeoSettings as SeoSection } from '@/features/site-seo/components/seo-settings';
+import { StylingSettings as StylingSection } from '@/features/site-styling/components/styling-settings';
+import { ThemeSettings as ThemeSection } from '@/features/site-theme/components/theme-settings';
+import { TypographySettings as TypographySection } from '@/features/site-typography/components/typography-settings';
+import { VariablesSettings as VariablesSection } from '@/features/site-variables/components/variables-settings';
 import type { Project } from '@/hooks/api';
 
 /**

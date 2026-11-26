@@ -443,7 +443,9 @@ describe('Turn into (AUTH-37)', () => {
     expect(markdown.split('\n')[0]).toBe('## Parent');
     // The children stay a list after the heading, in order, with the sibling.
     expect(markdown).toMatch(/- Child one\n\s*- Child two/);
-    expect(markdown).toContain('- Sibling');
+    // The sibling's list follows the children's, so it takes the other bullet to stay its
+    // own list (#604): with the same one, the two read back as one list.
+    expect(markdown).toContain('* Sibling');
     expect(markdown).not.toContain('- Parent');
   });
 
