@@ -38,7 +38,8 @@ const otherTab = () => {
 
 describe('a language chosen in another tab (AUTH-20)', () => {
   it('switches this tab whole: its messages, lang and dir together', async () => {
-    const { getLocale, subscribeLanguage } = await import('./runtime');
+    const { getLocale, subscribeLanguage } = await import('@nibleaf/i18n/locale-state');
+    (await import('./interface-language-sync')).startInterfaceLanguageSync();
     const changed = vi.fn();
     subscribeLanguage(changed);
     otherTab().postMessage({ locale: 'ar' });
@@ -51,7 +52,8 @@ describe('a language chosen in another tab (AUTH-20)', () => {
   });
 
   it('tells the other tabs when this one chooses, and does not echo what it was told', async () => {
-    const { setLanguage } = await import('./runtime');
+    const { setLanguage } = await import('@nibleaf/i18n/locale-state');
+    (await import('./interface-language-sync')).startInterfaceLanguageSync();
     const other = otherTab();
     const heard = vi.fn();
     other.onmessage = (event) => heard(event.data);
@@ -66,7 +68,8 @@ describe('a language chosen in another tab (AUTH-20)', () => {
   });
 
   it('ignores anything that is not a supported locale', async () => {
-    const { getLocale } = await import('./runtime');
+    const { getLocale } = await import('@nibleaf/i18n/locale-state');
+    (await import('./interface-language-sync')).startInterfaceLanguageSync();
     const tab = otherTab();
     tab.postMessage({ locale: 'xx' });
     tab.postMessage('ar');
@@ -75,9 +78,8 @@ describe('a language chosen in another tab (AUTH-20)', () => {
     expect(document.documentElement.dir).toBe('ltr');
   });
 
-  it('leaves documents rendered outside the product (marketing, published sites) alone', async () => {
-    document.documentElement.removeAttribute('data-locale');
-    await import('./runtime');
+  it('is started only by the dashboard locale module, so published sites never open the channel', async () => {
+    await import('@nibleaf/i18n/locale-state');
     expect(Bus.channels.size).toBe(0);
   });
 });

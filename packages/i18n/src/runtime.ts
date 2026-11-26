@@ -101,31 +101,6 @@ export async function setLanguage(locale: Locale): Promise<void> {
   chosenLocale = locale;
   synchronizeDocumentLanguageFn(locale);
   for (const listener of languageListeners) listener();
-  if (!applyingOtherTab) otherTabs?.postMessage({ locale });
-}
-
-/**
- * Product tabs share one interface language. A choice made in one tab reaches
- * the others through a BroadcastChannel, and each applies it through
- * `setLanguage`, so the catalog, `lang` and `dir` switch together. Before,
- * another tab's choice only reached here half-way (AUTH-20). Marketing and
- * published-site documents (no `data-locale`) don't take part.
- */
-const LANGUAGE_CHANNEL = 'nibleaf-interface-language';
-let applyingOtherTab = false;
-const otherTabs: BroadcastChannel | undefined =
-  typeof document !== 'undefined' && typeof BroadcastChannel !== 'undefined' && documentInterfaceLocale() !== undefined
-    ? new BroadcastChannel(LANGUAGE_CHANNEL)
-    : undefined;
-if (otherTabs) {
-  otherTabs.onmessage = (event: MessageEvent) => {
-    const locale = toLocale((event.data as { locale?: unknown } | null)?.locale) as Locale | undefined;
-    if (!locale || locale === getLocale()) return;
-    applyingOtherTab = true;
-    void setLanguage(locale).finally(() => {
-      applyingOtherTab = false;
-    });
-  };
 }
 
 export function synchronizeDocumentLanguageFn(requestedLocale?: Locale): void {
