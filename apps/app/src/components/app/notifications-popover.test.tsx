@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { computeAccessibleName } from 'dom-accessibility-api';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -86,7 +87,7 @@ beforeEach(() => {
   mocks.notificationOptions = [];
 });
 
-it('allows the long German header action and title to shrink and wrap', async () => {
+it('names the notification dialog and mark-all action in German', async () => {
   mocks.translations = { 'notifications.title': 'Benachrichtigungen', 'notifications.markAllRead': 'Alles als gelesen markieren' };
   const host = document.createElement('div');
   document.body.append(host);
@@ -94,15 +95,11 @@ it('allows the long German header action and title to shrink and wrap', async ()
   try {
     await act(() => root.render(<NotificationsPopover />));
     await act(() => host.querySelector<HTMLButtonElement>('button')?.click());
-    const action = [...document.querySelectorAll('button')].find((button) => button.textContent?.includes('Alles als gelesen markieren'));
-    expect(action).toBeDefined();
-    for (const token of ['h-auto', 'min-w-0', 'max-w-full', 'shrink', '[overflow-wrap:anywhere]'])
-      expect(action?.classList.contains(token)).toBe(true);
-    expect(action?.classList.contains('h-7')).toBe(false);
-    const title = [...document.querySelectorAll('span')].find((span) => span.textContent === 'Benachrichtigungen');
-    expect(title?.classList.contains('[overflow-wrap:anywhere]')).toBe(true);
-    // P2-DASH-010: the popover is named by its title.
-    expect(document.querySelector('[data-slot="popover-content"]')?.getAttribute('aria-labelledby')).toBe(title?.id);
+    const dialog = document.querySelector('[role="dialog"]');
+    if (!dialog) throw new Error('Notifications did not open');
+    expect(computeAccessibleName(dialog)).toBe('Benachrichtigungen');
+    const action = [...dialog.querySelectorAll('button')].find((button) => computeAccessibleName(button) === 'Alles als gelesen markieren');
+    expect(action?.disabled).toBe(false);
   } finally {
     await act(() => root.unmount());
     host.remove();

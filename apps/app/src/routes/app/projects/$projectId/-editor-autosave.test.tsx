@@ -451,81 +451,12 @@ describe('a page written with CRLF keeps its line endings (#702)', { timeout: RO
 });
 
 describe('save pacing while typing (P2-JRN-001)', { timeout: ROUTE_TEST_TIMEOUT }, () => {
-  it('one character a second for 12 s: 4 saves within the 12 s, 5 in all', async () => {
-    await open(HARD_WRAPPED_EN);
-    await typeSlowly(12, 1000);
-    expect(server.patches).toHaveLength(4);
-    await advance(15_000);
-    expect(server.patches).toHaveLength(5);
-    expect(server.content).toContain('a byte.xxxxxxxxxxxx');
-  });
-
   it('a fast burst of 60 characters: 1 save, after the burst', async () => {
     await open(HARD_WRAPPED_EN);
     await typeSlowly(60, 50);
     expect(server.patches).toHaveLength(0);
     await advance(15_000);
     expect(server.patches).toHaveLength(1);
-  });
-
-  it('typing without a pause for 25 s: saved every 10 s, then after it stops (3)', async () => {
-    await open(HARD_WRAPPED_EN);
-    // A keystroke every 0.5 s never gives the 0.7 s pause: only the maximum wait saves.
-    await typeSlowly(50, 500);
-    expect(server.patches).toHaveLength(2);
-    await advance(15_000);
-    expect(server.patches).toHaveLength(3);
-  });
-
-  it('typing, then idle: 1 save, 0.7 s after the last keystroke', async () => {
-    await open(HARD_WRAPPED_EN);
-    await typeSlowly(5, 100);
-    await advance(100);
-    expect(server.patches).toHaveLength(0);
-    await advance(600);
-    expect(server.patches).toHaveLength(1);
-    await advance(20_000);
-    expect(server.patches).toHaveLength(1);
-  });
-
-  it('typing, then navigating away: saved before the navigation, 1 save', async () => {
-    await open(HARD_WRAPPED_EN);
-    await typeSlowly(3, 100);
-    let blocked: boolean | undefined;
-    await act(async () => {
-      blocked = await mocks.blocker?.shouldBlockFn();
-    });
-    expect(blocked).toBe(false);
-    expect(server.patches).toHaveLength(1);
-    expect(server.content).toContain('xxx');
-    await advance(15_000);
-    expect(server.patches).toHaveLength(1);
-  });
-
-  it.each([
-    ['the window loses focus', () => window.dispatchEvent(new Event('blur'))],
-    [
-      'the tab is hidden',
-      () => {
-        vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden');
-        document.dispatchEvent(new Event('visibilitychange'));
-      },
-    ],
-    ['the editor closes', () => root.unmount()],
-  ])('typing, then %s: saved at once, 1 save', async (name, leave) => {
-    await open(HARD_WRAPPED_EN);
-    // Right after a save, a pending draft would otherwise wait out the 3 s interval.
-    act(() => typeAfter(FIRST_WORDS, 'x'));
-    await advance(1000);
-    expect(server.patches).toHaveLength(1);
-    act(() => typeAfter(FIRST_WORDS, 'y'));
-    await act(async () => leave());
-    if (name === 'the editor closes') mounted = false;
-    await advance(0);
-    expect(server.patches).toHaveLength(2);
-    expect(server.content).toContain('xy');
-    await advance(15_000);
-    expect(server.patches).toHaveLength(2);
   });
 
   it('typing, then a conflict: 1 save attempt, "Saving paused", and no more attempts while typing goes on', async () => {

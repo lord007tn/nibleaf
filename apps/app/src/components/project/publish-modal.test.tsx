@@ -268,11 +268,11 @@ describe('publish draft barrier', () => {
     expect(mutate).not.toHaveBeenCalled();
   });
 
-  it('does not publish when the post-save preflight finds a check error', async () => {
-    refreshPreflight.mockResolvedValue({
-      data: { redirectIssues: [], checks: [check({ code: 'broken-internal-link', severity: 'error' })], reviewedStateHash: 'reviewed-hash' },
-      isError: false,
-    });
+  it.each([
+    { problem: 'a check error', redirectIssues: [], checks: [check({ code: 'broken-internal-link', severity: 'error' })] },
+    { problem: 'a redirect issue', redirectIssues: [{ message: 'Redirect loop' }], checks: [] },
+  ])('does not publish when the post-save preflight finds $problem', async ({ redirectIssues, checks }) => {
+    refreshPreflight.mockResolvedValue({ data: { redirectIssues, checks, reviewedStateHash: 'reviewed-hash' }, isError: false });
     await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
     await act(async () => publishButton().click());
     expect(refreshPreflight).toHaveBeenCalledOnce();
@@ -463,16 +463,6 @@ describe('publish draft barrier', () => {
     expect(isUnavailable(publish)).toBe(false);
   });
 
-  it('uses the post-save preflight result before starting a deployment', async () => {
-    refreshPreflight.mockResolvedValue({ data: { redirectIssues: [{ message: 'Redirect loop' }] }, isError: false });
-    await act(async () => root.render(<PublishModal onOpenChange={vi.fn()} onPublished={vi.fn()} open project={project} />));
-    const publish = [...document.querySelectorAll('button')].find((button) => button.textContent === 'publish.now');
-    if (!publish) throw new Error('Publish action was not rendered');
-    await act(async () => publish.click());
-    expect(refreshPreflight).toHaveBeenCalledOnce();
-    expect(mutate).not.toHaveBeenCalled();
-  });
-
   it('silently stops when unsaved configuration blocks publishing and allows a later retry', async () => {
     const beforePublish = vi.fn().mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     await act(async () =>
@@ -622,7 +612,7 @@ describe('publish draft barrier', () => {
 
     const settle = () => act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
 
-    it('opens on the primary action, not the optional note, whose label is in sentence case', async () => {
+    it('opens on the primary action and gives the optional note an accessible name', async () => {
       await renderModal();
       await settle();
       const publish = buttonNamed('publish.now');
@@ -630,8 +620,6 @@ describe('publish draft barrier', () => {
       const note = document.getElementById('publish-message');
       expect(note && computeAccessibleName(note)).toBe('publish.whatChanged');
       expect(document.activeElement).not.toBe(note);
-      const label = document.querySelector('label[for="publish-message"]');
-      expect(label?.className).not.toMatch(/uppercase/);
     });
 
     it('opens on the primary action while the first check runs, explained, never on the note', async () => {

@@ -566,17 +566,16 @@ describe('saves keep their moments and their content (P2-ED-005)', { timeout: RO
     const start = Date.now();
     key();
     await advance(1000);
-    key('x');
+    key('y');
     // Inside the 3 s interval, and before the editor's pause: nothing serialized yet.
     await advance(10);
     await act(async () => leave());
     if (name === 'the editor unmounts') mounted = false;
     await advance(0);
-    expect(saves(start)).toEqual([
-      [700, 1],
-      [1010, 2],
+    expect(server.patches.map(({ at, content }) => [at - start, content])).toEqual([
+      [700, withTyped('x')],
+      [1010, withTyped('xy')],
     ]);
-    expect(server.content).toBe(withTyped('xx'));
     await advance(15_000);
     expect(server.patches).toHaveLength(2);
   });
@@ -1348,8 +1347,8 @@ function replaceLastTyped(text: string) {
 }
 const FOREIGN_AT = '2026-11-14T10:00:00.000Z';
 
-describe('#735 review: a repeat is skipped only when the pending write stored it', { timeout: ROUTE_TEST_TIMEOUT }, () => {
-  it('repro 1: the A write commits, undo, another client saves B, B is replaced by A, navigate, unmount: A is stored', async () => {
+describe('a repeat is skipped only when the pending write stored it', { timeout: ROUTE_TEST_TIMEOUT }, () => {
+  it('the A write commits, undo, another client saves B, B is replaced by A, navigate, unmount: A is stored', async () => {
     await open(ORIGINAL);
     serveWrites('request');
     await typeAndHoldTheSave();
@@ -1396,7 +1395,7 @@ describe('#735 review: a repeat is skipped only when the pending write stored it
     expect(server.content).toBe(withTyped('A'));
   });
 
-  it('repro 2: the #735 sequence, and the compensating write is stored normalized: the undone text is sent again and stored', async () => {
+  it('sends the undone text again when the server normalizes a compensating write', async () => {
     await open(ORIGINAL);
     serveWrites('response');
     storeAs = (index, content) => (index === 1 ? `${content}${NORMALIZED}` : content);
@@ -1411,7 +1410,7 @@ describe('#735 review: a repeat is skipped only when the pending write stored it
     expect(server.content).toBe(ORIGINAL);
   });
 
-  it('the #735 sequence, and the A write is stored normalized: the compensating write stores the undone text, sent once', async () => {
+  it('the A write is stored normalized: the compensating write stores the undone text, sent once', async () => {
     await open(ORIGINAL);
     serveWrites('response');
     storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
@@ -1426,7 +1425,7 @@ describe('#735 review: a repeat is skipped only when the pending write stored it
     expect(server.content).toBe(ORIGINAL);
   });
 
-  it('the #735 sequence, and the compensating write fails, then its replacement lands: the undone text is stored', async () => {
+  it('the compensating write fails, then its replacement lands: the undone text is stored', async () => {
     await open(ORIGINAL);
     serveWrites('response');
     await typeAndHoldTheSave();
@@ -1473,7 +1472,7 @@ function conflictJustified(copy: string) {
   return draft !== server.content.trimEnd() && !own.has(copy.trimEnd());
 }
 
-describe('#735 review differential: foreign copies and normalized writes', { timeout: 180_000 }, () => {
+describe('foreign copies and normalized writes across seeded save timings', { timeout: 180_000 }, () => {
   it.each(REVIEW_SEEDS)('seed %i', async (seed) => {
     const random = seeded(seed);
     const pick = <T,>(items: readonly T[]): T => items[Math.floor(random() * items.length)] as T;
@@ -1606,7 +1605,7 @@ const savedShown = () => {
 };
 
 describe("#757: after another client's copy is adopted, the final draft is stored", { timeout: ROUTE_TEST_TIMEOUT }, () => {
-  it('repro 1: A commits (response held), undo, another client saves B, B is replaced by A, staying: A is stored', async () => {
+  it('A commits (response held), undo, another client saves B, B is replaced by A, staying: A is stored', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('request');
     await typeAndHoldTheSave();
@@ -1623,7 +1622,7 @@ describe("#757: after another client's copy is adopted, the final draft is store
     expect(refused).toBe(0);
   });
 
-  it.each(leaves)('repro 1, then %s before the response lands: A is stored', async (_name, leave) => {
+  it.each(leaves)('leaving by %s before the first response lands still stores the final draft', async (_name, leave) => {
     await open(ORIGINAL);
     serveLikeTheServer('request');
     await typeAndHoldTheSave();
@@ -1636,7 +1635,7 @@ describe("#757: after another client's copy is adopted, the final draft is store
     expect(refused).toBe(0);
   });
 
-  it('repro 1, the response lands before B is replaced: the editor keeps showing B, and A is stored after it', async () => {
+  it('the first response keeps the adopted draft visible until the author edits it again', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('request');
     await typeAndHoldTheSave();
@@ -1675,7 +1674,7 @@ describe("#757: after another client's copy is adopted, the final draft is store
  * is never written over without that review, and an undo cannot look clean.
  */
 describe("#790: another client's copy over unsent changes is reviewed, never silently left or overwritten", { timeout: ROUTE_TEST_TIMEOUT }, () => {
-  it('repro: type, another client saves, undo to the loaded text, stay: the conflict banner shows, nothing is written', async () => {
+  it('shows a conflict without writing after an edit, a foreign save and an undo to the loaded text', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('response');
     key('A');
@@ -1690,7 +1689,7 @@ describe("#790: another client's copy over unsent changes is reviewed, never sil
     expect(server.content).toBe(withTyped('F'));
   });
 
-  it('repro, then the page is closed (pagehide) before the undo is serialized: the banner showed first, nothing is written', async () => {
+  it('shows the conflict before pagehide serializes the undo and writes nothing', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('request');
     key('c');
@@ -1918,7 +1917,7 @@ describe("#790: another client's copy over unsent changes is reviewed, never sil
     expect(refused).toBe(0);
   });
 
-  it('guard: our own write refetched before its response, stored as sent, with AB unsent: AB is saved, no banner', async () => {
+  it('our own write refetched before its response, stored as sent, with AB unsent: AB is saved, no banner', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('request');
     await typeAndHoldTheSave();
@@ -1930,7 +1929,7 @@ describe("#790: another client's copy over unsent changes is reviewed, never sil
     expect(server.content).toBe(withTyped('AB'));
   });
 
-  it('guard: the conflict stays reviewable through an older write failing offline, then coming back online', async () => {
+  it('the conflict stays reviewable through an older write failing offline, then coming back online', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('response');
     await typeAndHoldTheSave();
@@ -1948,7 +1947,7 @@ describe("#790: another client's copy over unsent changes is reviewed, never sil
   });
 
   // Guards: copies that are not over unsent changes load as before.
-  it('guard: their copy arrives while the only change is the write in flight, which the server stored first: it is loaded, with no banner', async () => {
+  it('their copy arrives while the only change is the write in flight, which the server stored first: it is loaded, with no banner', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('request');
     await typeAndHoldTheSave();
@@ -1964,7 +1963,7 @@ describe("#790: another client's copy over unsent changes is reviewed, never sil
     expect(refused).toBe(0);
   });
 
-  it('guard: their copy arrives over a clean draft: it is loaded, with no banner', async () => {
+  it('their copy arrives over a clean draft: it is loaded, with no banner', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('response');
     await foreignCopyNow(withTyped('F'));
@@ -2147,7 +2146,7 @@ describe('#825: our own write, refetched with its links rewritten before its res
     expect(conflictShown()).toBe(false);
   };
 
-  it('P1: our own write, the author undoes to the loaded text, and the editor unmounts while the banner waits: the loaded text is stored', async () => {
+  it('our own write, the author undoes to the loaded text, and the editor unmounts while the banner waits: the loaded text is stored', async () => {
     await holdOn(true);
     undo();
     undo();
@@ -2163,7 +2162,7 @@ describe('#825: our own write, refetched with its links rewritten before its res
     expect(getMarkdown(current())).toBe(ORIGINAL.trimEnd());
   });
 
-  it("P1: another client's copy, the author undoes to the loaded text, and the editor unmounts while the banner waits: reopened, it is back as a conflict", async () => {
+  it("another client's copy, the author undoes to the loaded text, and the editor unmounts while the banner waits: reopened, it is back as a conflict", async () => {
     await holdOn(false);
     undo();
     undo();
@@ -2182,25 +2181,22 @@ describe('#825: our own write, refetched with its links rewritten before its res
   it.each([
     ['our own write', true],
     ["another client's link-only copy", false],
-  ] as const)(
-    'P2: the banner waits on %s, and a newer copy with other text arrives: it shows at once, and nothing is written',
-    async (_name, own) => {
-      await holdOn(own);
-      const theirs = withTyped('FOREIGN');
-      await foreignCopyNow(theirs);
-      // 3fc0609f: hidden until A settled or the timeout.
-      expect(conflictShown()).toBe(true);
-      await settleWrite();
-      await drain();
-      // The response shows the first copy was ours, not the latest: the conflict stays, and AB is never sent.
-      expect(conflictShown()).toBe(true);
-      expect(sent()).toEqual(['original+A']);
-      expect(refused).toBe(0);
-      expect(server.content).toBe(theirs);
-    },
-  );
+  ] as const)('the banner waits on %s, and a newer copy with other text arrives: it shows at once, and nothing is written', async (_name, own) => {
+    await holdOn(own);
+    const theirs = withTyped('FOREIGN');
+    await foreignCopyNow(theirs);
+    // 3fc0609f: hidden until A settled or the timeout.
+    expect(conflictShown()).toBe(true);
+    await settleWrite();
+    await drain();
+    // The response shows the first copy was ours, not the latest: the conflict stays, and AB is never sent.
+    expect(conflictShown()).toBe(true);
+    expect(sent()).toEqual(['original+A']);
+    expect(refused).toBe(0);
+    expect(server.content).toBe(theirs);
+  });
 
-  it('P2: the session ends while the banner waits, then the editor unmounts and A fails: nothing of the old account is kept', async () => {
+  it('the session ends while the banner waits, then the editor unmounts and A fails: nothing of the old account is kept', async () => {
     await holdOn(false);
     const { resetDashboardSession, syncDashboardSession } = await import('@/integrations/tanstack-query/session-cache');
     const client = { clear: vi.fn() } as unknown as Parameters<typeof resetDashboardSession>[0];
@@ -2214,7 +2210,7 @@ describe('#825: our own write, refetched with its links rewritten before its res
     expect(sent()).toEqual(['original+A']);
   });
 
-  it('guard: a copy with other text over A at the server still shows the banner at once (#790)', async () => {
+  it('a copy with other text over A at the server still shows the banner at once (#790)', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('request');
     await typeAndHoldTheSave();
@@ -2226,7 +2222,7 @@ describe('#825: our own write, refetched with its links rewritten before its res
 });
 
 describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_TIMEOUT }, () => {
-  it('repro 2: the final draft is stored normalized once: it is sent again, and stored as typed', async () => {
+  it('the final draft is stored normalized once: it is sent again, and stored as typed', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('response');
     storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
@@ -2240,7 +2236,7 @@ describe('#757: a write the server stores as other text', { timeout: ROUTE_TEST_
     expect(savedShown()).toBe(true);
   });
 
-  it.each(leaves)('repro 2, then %s before the write lands: the final draft is sent again and stored', async (_name, leave) => {
+  it.each(leaves)('leaving by %s before a normalized write lands still stores the final draft', async (_name, leave) => {
     await open(ORIGINAL);
     serveLikeTheServer('response');
     storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
@@ -2481,7 +2477,7 @@ describe('#789: an unmount while the server normalizes the last write keeps the 
     expect(refused).toBe(0);
   });
 
-  it('repro, then the author reviews and keeps the draft: it is stored', async () => {
+  it('stores the draft when the author keeps it in the conflict review', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('response');
     storeAs = (index, content) => (index < 2 ? `${content}${NORMALIZED}` : content);
@@ -2773,7 +2769,7 @@ describe('#789: an unmount while the server normalizes the last write keeps the 
   });
 
   // Guards: what main already did right stays so.
-  it('guard: the re-send stores the draft: opened again, it shows the stored draft, with no banner and no more writes', async () => {
+  it('the re-send stores the draft: opened again, it shows the stored draft, with no banner and no more writes', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('response');
     storeAs = (index, content) => (index === 0 ? `${content}${NORMALIZED}` : content);
@@ -2788,7 +2784,7 @@ describe('#789: an unmount while the server normalizes the last write keeps the 
     expect(errorShown()).toBe(false);
   });
 
-  it('guard: navigating away while every write is normalized is refused with the banner, and the review stays on that editor', async () => {
+  it('navigating away while every write is normalized is refused with the banner, and the review stays on that editor', async () => {
     await open(ORIGINAL);
     serveLikeTheServer('response');
     storeAs = (_index, content) => `${content}${NORMALIZED}`;
