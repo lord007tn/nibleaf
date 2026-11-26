@@ -100,12 +100,16 @@ const storedConnection = () => ({
   createdById: 'user-0',
 });
 
+/** The site's revision floor (#915) a first connection reads. */
+let floor = 0;
 /** PostgreSQL version reads/locks are mocked here; the separate PG suite proves isolation. */
 const installConnection = (row: ReturnType<typeof storedConnection> | null) => {
   mocks.prisma.gitConnection.findUnique.mockResolvedValue(row);
-  mocks.prisma.$queryRaw.mockImplementation(async (query: TemplateStringsArray) =>
-    query.join('').includes('FOR UPDATE') ? (row ? [{ id: row.id }] : []) : row ? [{ ...row, saveVersion: 'fictional-version' }] : [],
-  );
+  mocks.prisma.$queryRaw.mockImplementation(async (query: TemplateStringsArray) => {
+    const sql = query.join('');
+    if (sql.includes('"gitSettingsRevisionFloor"')) return [{ gitSettingsRevisionFloor: floor }];
+    return sql.includes('FOR UPDATE') ? (row ? [{ id: row.id }] : []) : row ? [{ ...row, saveVersion: 'fictional-version' }] : [];
+  });
   mocks.prisma.gitConnection.update.mockImplementation(async ({ data }: { data: object }) => ({ ...row, ...data }));
   mocks.prisma.gitConnection.create.mockImplementation(async ({ data }: { data: object }) => ({ id: 'connection-new', ...data }));
 };
@@ -127,6 +131,7 @@ beforeEach(() => {
     typeof work === 'function' ? work(mocks.prisma) : Promise.all(work as Promise<unknown>[]),
   );
   mocks.prisma.gitFileState.upsert.mockResolvedValue({});
+  floor = 0;
   mocks.prisma.gitFileState.deleteMany.mockResolvedValue({ count: 1 });
   mocks.prisma.gitAuditEvent.create.mockResolvedValue({});
   mocks.prisma.page.findMany.mockResolvedValue([]);
@@ -383,10 +388,21 @@ describe('a connection save checks the revision its form was loaded with', () =>
     expect(mocks.prisma.gitAuditEvent.create).toHaveBeenCalledTimes(1);
   });
 
-  it('creates a first connection that expected none', async () => {
+  it('creates a first connection that expected none, at revision 1 for a site that never disconnected one', async () => {
     installConnection(null);
     await connectGitHub('project-1', 'user-1', { ...body, token: NEW_TOKEN, expectedRevision: null });
-    expect(firstInput<{ data: Record<string, unknown> }>(mocks.prisma.gitConnection.create).data).not.toHaveProperty('settingsRevision');
+    expect(firstInput<{ data: Record<string, unknown> }>(mocks.prisma.gitConnection.create).data).toHaveProperty('settingsRevision', 1);
+  });
+
+  it('starts a reconnect past the revision the disconnected connection reached (#915)', async () => {
+    installConnection(null);
+    floor = 7;
+    await connectGitHub('project-1', 'user-1', { ...body, token: NEW_TOKEN, expectedRevision: null });
+    const read = mocks.prisma.$queryRaw.mock.calls.find(([query]) => (query as string[]).join('').includes('"gitSettingsRevisionFloor"'));
+    if (!read) throw new Error('Expected the first connection to read the revision floor');
+    expect(read.slice(1)).toEqual(['project-1']);
+    expect((read[0] as string[]).join('')).toContain('FOR NO KEY UPDATE');
+    expect(firstInput<{ data: Record<string, unknown> }>(mocks.prisma.gitConnection.create).data).toHaveProperty('settingsRevision', 8);
   });
 
   it('accepts the revision through the real validator, and only a positive whole number or null', () => {

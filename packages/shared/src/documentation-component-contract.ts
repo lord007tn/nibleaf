@@ -132,6 +132,11 @@ type ReaderTagOf<Tag extends DocumentationComponentTag> = (typeof DOCUMENTATION_
 /** Element names the reader sees after HTML parsing (`<Frame>` becomes `mdxframe`). */
 export type DocumentationReaderTag = { [Tag in DocumentationComponentTag]: ReaderTagOf<Tag> }[DocumentationComponentTag];
 
+/** Tags whose bodies are parsed as Markdown but whose reader renderers discard children.
+ *  The React component map uses these tags to type its childless renderers. */
+export const READER_TAGS_WITHOUT_MARKDOWN_CHILDREN = ['file'] as const satisfies readonly DocumentationReaderTag[];
+export type ChildlessDocumentationReaderTag = (typeof READER_TAGS_WITHOUT_MARKDOWN_CHILDREN)[number];
+
 export const documentationComponentContractEntries = (): Array<[DocumentationComponentTag, DocumentationComponentContract]> =>
   Object.entries(DOCUMENTATION_COMPONENT_CONTRACT) as Array<[DocumentationComponentTag, DocumentationComponentContract]>;
 
