@@ -7,13 +7,15 @@ describe('site creation', () => {
   it('accepts existing callers and strips whitespace from names', () => {
     expect(createProjectBody.parse({ name: ' Docs ' })).toEqual({ name: 'Docs' });
   });
-  it.each(LANGUAGE_CATALOG)('accepts catalog language $code', ({ code }) => {
-    expect(createProjectBody.safeParse({ name: 'Docs', language: code }).success).toBe(true);
+  it('keeps every site-creation language from the catalog', () => {
+    for (const { code } of LANGUAGE_CATALOG) {
+      expect(createProjectBody.parse({ name: 'Docs', language: code }).language).toBe(code);
+    }
   });
   it.each(['blank', 'product-docs', 'help-center'])('accepts %s starter', (starter) => {
     expect(createProjectBody.safeParse({ name: 'Docs', starter }).success).toBe(true);
   });
-  it.each(['', 'Bad', '-bad', 'bad-', 'a.b', 'a'.repeat(64)])('uses the update slug rules for %s', (slug) => {
+  it.each(['', 'Docs', '-docs', 'docs-', 'docs.example', 'docs_site', 'a'.repeat(64)])('uses the update slug rules for %s', (slug) => {
     expect(createProjectBody.safeParse({ name: 'Docs', slug }).success).toBe(false);
     expect(updateProjectBody.safeParse({ slug }).success).toBe(false);
     expect(projectAvailabilityQuery.safeParse({ name: 'Docs', slug }).success).toBe(false);
@@ -55,8 +57,5 @@ describe('site creation', () => {
   // after it was given; the API refuses a reserved address only as a change.
   it('leaves reservation on update to the API, which knows the current address', () => {
     expect(updateProjectBody.safeParse({ slug: 'docs' }).success).toBe(true);
-  });
-  it.each(['', 'Docs', '-docs', 'docs-', 'docs_site', 'a'.repeat(64)])('rejects the malformed address %j on update', (slug) => {
-    expect(updateProjectBody.safeParse({ slug }).success).toBe(false);
   });
 });

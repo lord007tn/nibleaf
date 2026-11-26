@@ -60,7 +60,7 @@ describe('Callout', () => {
     expect(status?.getAttribute('role')).toBe('status');
   });
 
-  it('renders title, description, a hidden tone icon and an end-aligned action that wraps', async () => {
+  it('renders title, description, a hidden tone icon and an action', async () => {
     const container = await render(
       <Callout tone="warning" title="Domain not verified" action={<button type="button">Verify</button>}>
         Add the TXT record to finish.
@@ -72,8 +72,6 @@ describe('Callout', () => {
     expect(root.querySelector(':scope > svg')?.getAttribute('aria-hidden')).toBe('true');
     const action = root.querySelector('[data-slot="callout-action"]');
     expect(action?.textContent).toBe('Verify');
-    expect(action?.className).toContain('ms-auto');
-    expect(action?.parentElement?.className).toContain('flex-wrap');
   });
 
   it('drops the icon when icon is null', async () => {

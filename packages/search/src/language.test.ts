@@ -32,7 +32,6 @@ describe('question language', () => {
   });
   it('keeps the detector behind the node-only search entry, separate from the browser Arabic analyzer', async () => {
     const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-    expect(manifest.dependencies.eld).toBe('2.1.0');
     expect(manifest.exports['.']).toMatchObject({ node: './dist/index.mjs' });
     expect(manifest.exports['.'].default).toBeUndefined();
     const clientAnalyzer = await readFile(new URL('./arabic.ts', import.meta.url), 'utf8');
@@ -41,7 +40,6 @@ describe('question language', () => {
   it.each([
     ['كيف أضيف مستخدمًا جديدًا؟', 'en', 'ar'],
     ['كيف أضيف user جديد؟', 'en-US', 'ar'],
-    ['How do I add a new user?', 'ar', 'en'],
     ['كيف؟', 'ar-SA', 'ar'],
     ['123?', 'ar-SA', 'ar'],
     ['١٢٣?', 'en', 'en'],

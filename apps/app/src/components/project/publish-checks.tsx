@@ -6,6 +6,7 @@ import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale, useT } from '@nibleaf/i18n/react';
+import { parseMarkdownParseOverflow } from '@nibleaf/shared/page-limits';
 import { isLocatablePublishCheck, publishFixSearch } from '@nibleaf/shared/publish-check-codes';
 import { Link } from '@tanstack/react-router';
 import { ChevronDown, CircleCheck, PenLine } from 'lucide-react';
@@ -13,6 +14,7 @@ import { useId, useMemo, useState } from 'react';
 import type { PublishCheck } from '@/hooks/api/types';
 import { useFormatters } from '@/lib/format';
 import { languageName } from '@/lib/language-name';
+import { markdownLimitMessage } from '@/lib/markdown-limit-message';
 
 type CheckCode = PublishCheck['code'];
 
@@ -35,6 +37,7 @@ const CHECK_META: Record<CheckCode, { title: MessageKey; hint: MessageKey; order
   'unreadable-slug': { title: 'publish.checks.unreadableSlug', hint: 'publish.checks.unreadableSlugHint', order: 11 },
   'home-untranslated': { title: 'publish.checks.homeUntranslated', hint: 'publish.checks.homeUntranslatedHint', order: 12 },
   'blog-root-group': { title: 'publish.checks.blogRootGroup', hint: 'publish.checks.blogRootGroupHint', order: 13 },
+  'markdown-parse-limit': { title: 'publish.checks.markdownLimit', hint: 'publish.checks.markdownLimitHint', order: 14 },
 };
 
 /** One row per thing to fix: a page-level problem is one row for its page; a
@@ -299,6 +302,10 @@ const homeLanding = (detail: string): { language: string; landing: string; key: 
 function CheckDetails({ code, details, tooLong = [] }: { code: CheckCode; details: string[]; tooLong?: string[] }) {
   const { locale, t } = useLocale();
   if (details.length === 0 || code === 'unreadable-slug') return null;
+  if (code === 'markdown-parse-limit') {
+    const overflow = parseMarkdownParseOverflow(details[0] ?? '');
+    return overflow ? <span>{markdownLimitMessage(t, locale, overflow)}</span> : null;
+  }
   if (code === 'duplicate-title') {
     return <span>{t('publish.checks.duplicateOf', { path: `/${details[0] ?? ''}` })}</span>;
   }

@@ -6,15 +6,15 @@ export { addonConfigSchemas, parseAddonConfig };
 export const addonIdSchema = sharedAddonIdSchema;
 export const addonIdParam = z.object({ addonId: addonIdSchema, projectId: z.string().min(1) }).strict();
 
-export const updateProjectAddonBody = z
-  .object({
-    config: z.record(z.string(), z.unknown()),
-    expectedRevision: z.number().int().min(0),
-  })
-  .strict();
+// The dashboard's add-on saves strip unknown keys rather than rejecting them, so an API one release behind ignores a
+// field a newer dashboard sends (operations/runbook-rolling-deploys.md §6.1). `config` is checked per add-on.
+export const updateProjectAddonBody = z.object({
+  config: z.record(z.string(), z.unknown()),
+  expectedRevision: z.number().int().min(0),
+});
 export type UpdateProjectAddonBody = z.infer<typeof updateProjectAddonBody>;
 
-export const mutateProjectAddonBody = z.object({ expectedRevision: z.number().int().min(0) }).strict();
+export const mutateProjectAddonBody = z.object({ expectedRevision: z.number().int().min(0) });
 export type MutateProjectAddonBody = z.infer<typeof mutateProjectAddonBody>;
 
 export const listProjectAddonAuditQuery = z

@@ -60,6 +60,7 @@ describe('Button loading accessibility', () => {
     const button = getButtonByName(container, 'Save');
     expect(button.disabled).toBe(true);
     expect(button.getAttribute('aria-busy')).toBe('true');
+    expect(button.hasAttribute('data-loading')).toBe(true);
     // The label is hidden visually (opacity) but not with visibility:hidden, so
     // it stays in the accessibility tree and still sizes the button.
     const label = [...button.querySelectorAll('span')].filter((span) => span.textContent === 'Save').at(-1);

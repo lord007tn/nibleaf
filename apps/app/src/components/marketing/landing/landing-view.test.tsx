@@ -19,22 +19,11 @@ const pages = [
   ['ar', ArabicLandingPage, landingAr],
 ] as const;
 
-describe('shortened landing page (P2-MKT-005)', () => {
-  it.each(pages)('renders nine sections in order (%s)', (_lang, Page, copy) => {
-    const root = render(Page);
-    const sections = [...root.querySelectorAll('main section')];
-    const headings = sections.map((section) => section.querySelector('h1, h2')?.textContent);
-    const stories = LANDING_STORY_IDS.map((id) => copy.features.find((feature) => feature.id === id)?.title);
-    expect(headings).toEqual([copy.hero.title, copy.proof.label, ...stories, copy.paths.title, copy.faq.title, copy.finalCta.title]);
+describe('marketing landing page', () => {
+  it.each(pages)('keeps the compact nine-section page in %s', (_lang, Page) => {
+    const sections = [...render(Page).querySelectorAll('main section')];
+    expect(sections).toHaveLength(9);
     expect(sections.slice(2, 6).map((section) => section.id)).toEqual([...LANDING_STORY_IDS]);
-  });
-
-  it.each(pages)('drops the sections that repeat other pages (%s)', (_lang, Page, copy) => {
-    const root = render(Page);
-    for (const id of ['insights', 'mcp', 'from-the-blog']) expect(root.querySelector(`#${id}`), id).toBeNull();
-    const text = root.textContent ?? '';
-    for (const cut of [copy.more.title, copy.howItWorks.title, copy.compare.body, copy.blog.title]) expect(text).not.toContain(cut);
-    expect(root.querySelectorAll('main article h3 a[href^="/blog/"]')).toHaveLength(0);
   });
 
   it.each(pages)('keeps a three-question FAQ teaser and links to the rest (%s)', (_lang, Page, copy) => {

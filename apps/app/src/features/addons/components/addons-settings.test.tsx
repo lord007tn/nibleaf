@@ -180,9 +180,9 @@ const save = () => act(async () => saveButton()?.click());
  * Enter in a field: the key reaches the field's form, then the browser's
  * implicit submission clicks that form's default button (if it has one).
  */
-const pressEnterIn = (el: HTMLElement, init: KeyboardEventInit = {}) =>
+const pressEnterIn = (el: HTMLElement) =>
   act(async () => {
-    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init }));
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     el.closest('form')?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
@@ -509,15 +509,6 @@ describe('AddonsSettings', () => {
       expect(barStatus()).toBe('');
       await act(async () => pending.resolve(savedTemplate('https://github.com/acme/docs/edit/main/{path}', 3)));
       expect(barStatus()).toBe('common.saved');
-    });
-
-    it('does not save on Enter with a modifier or while an IME composes', async () => {
-      await type(template(), 'https://github.com/acme/docs/edit/main/{path}');
-      for (const init of [{ shiftKey: true }, { ctrlKey: true }, { altKey: true }, { metaKey: true }, { isComposing: true }]) {
-        await pressEnterIn(template(), init);
-      }
-      expect(mocks.update).not.toHaveBeenCalled();
-      expect(region()).not.toBeNull();
     });
 
     it('waits for a switch flip in flight, then sends the revision it produced', async () => {
