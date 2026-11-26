@@ -3,6 +3,7 @@ import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
 import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
+import { SkeletonCard } from '@nibleaf/design-system/components/ui/skeleton';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { useT } from '@nibleaf/i18n/react';
@@ -10,7 +11,6 @@ import { ArrowUpRight, Check, Copy, Eye, EyeOff, GitBranch, RefreshCw } from 'lu
 import { type ReactNode, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon } from '@/components/icons/brand';
-import { SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import { SecretInput } from '@/components/secret-input';
 import { useWriteGitSettings } from '@/features/site-git/api/git-connection';
@@ -287,8 +287,26 @@ export function GitTab({ projectId }: { projectId?: string }) {
       failed: (_error) => toast.error(t('settings.git.import.error')),
     });
 
-  if (settings.isPending) return <SettingsFormSkeleton />;
-  if (settings.isError && !data) return <QueryErrorState onRetry={() => void settings.refetch()} retrying={settings.isFetching} />;
+  const header = <PageHeader description={t('settings.git.workflow.connectDescription')} title={t('settings.git')} />;
+  if (settings.isPending || (settings.isError && !data)) {
+    return (
+      <div className="flex flex-col gap-8">
+        {header}
+        {settings.isPending ? (
+          // The page's own heading is already shown above: the placeholder is its body only.
+          <div aria-busy="true" className="flex flex-col gap-6">
+            <p className="sr-only" role="status">
+              {t('common.loading')}
+            </p>
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+        ) : (
+          <QueryErrorState onRetry={() => void settings.refetch()} retrying={settings.isFetching} />
+        )}
+      </div>
+    );
+  }
 
   const webUrl = repoWebUrl(git);
   const ProviderGlyph = git.provider === 'github' ? GithubIcon : GitBranch;
@@ -419,7 +437,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader description={t('settings.git.workflow.connectDescription')} title={t('settings.git')} />
+      {header}
       {/* The one place to connect, sync and disconnect Git for this site. */}
       {projectId ? (
         <div className="scroll-mt-6" id="git-connection">

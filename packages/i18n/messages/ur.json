@@ -1853,9 +1853,9 @@
   "settings_exports_workflow_onetime": "ایک بار برآمد",
   "settings_exports_workflow_onetimedesc": "تازہ ترین شائع شدہ نظرثانی ڈاؤن لوڈ کریں",
   "settings_exports_workflow_schedules": "شیڈولز",
-  "settings_exports_workflow_schedulesdesc": "محفوظ شدہ دستاویزات کے اسنیپ شاٹس اور برقرار رکھنے کو خودکار بنائیں",
+  "settings_exports_workflow_schedulesdesc": "شیڈول کے مطابق خودکار طور پر ایکسپورٹ کریں۔",
   "settings_exports_workflow_history": "تاریخ چلائیں",
-  "settings_exports_workflow_historydesc": "نمونے کی نگرانی، بازیافت اور ڈاؤن لوڈ کریں",
+  "settings_exports_workflow_historydesc": "پچھلی ایکسپورٹس دیکھیں اور ڈاؤن لوڈ کریں۔",
   "settings_exports_workflow_loaderror": "ایکسپورٹ ڈیٹا لوڈ نہیں ہو سکا۔ کنکشن چیک کریں اور اس صفحہ کو دوبارہ آزمائیں۔",
   "settings_exports_workflow_create": "ایکسپورٹ بنائیں",
   "settings_exports_workflow_format_markdown": "Markdown ZIP",
@@ -3091,7 +3091,7 @@
   "settings_integrations_googleanalytics_description": "اپنی شائع شدہ دستاویزات پر دوروں اور مصروفیت کی پیمائش کریں ۔",
   "settings_integrations_plausible_description": "اپنی شائع شدہ دستاویزات پر رازداری کے موافق تجزیات استعمال کریں ۔",
   "settings_integrations_status_notsendingyet": "ابھی نہیں بھیج رہا",
-  "settings_integrations_comingsoon_description": "آپ کی سائٹ شائع ہونے پر پوسٹ کرے گا، جلد آ رہا ہے۔",
+  "settings_integrations_comingsoon_description": "آپ کی سائٹ شائع ہونے پر پوسٹ کرتا ہے۔",
   "settings_integrations_comingsoon_saved": "یہ کنکشن محفوظ ہے، لیکن Nibleaf ابھی اس پر کچھ نہیں بھیجتا۔ آپ اسے ہٹا سکتے ہیں۔",
   "settings_integrations_remove": "ہٹائیں",
   "settings_integrations_removetitle": "{name} ہٹائیں؟",
@@ -5078,5 +5078,6 @@
   "dashboard_ai_notsavingyet": "نئے سوالات ابھی محفوظ نہیں کیے جا رہے۔ پہلے محفوظ کیے گئے سوالات یہاں دکھائی دیتے رہیں گے۔",
   "dashboard_ai_emptytitle": "ابھی کوئی سوال نہیں",
   "dashboard_ai_emptybody": "قارئین آپ کی شائع شدہ دستاویزات سے AI معاون سے پوچھ سکتے ہیں۔ لمبی مدت یا مختلف فلٹرز آزمائیں۔",
-  "overview_viewsemptylive": "ابھی کوئی وزٹ نہیں۔ اپنے پہلے قارئین تک پہنچنے کے لیے اپنی سائٹ کا پتا شیئر کریں۔"
+  "overview_viewsemptylive": "ابھی کوئی وزٹ نہیں۔ اپنے پہلے قارئین تک پہنچنے کے لیے اپنی سائٹ کا پتا شیئر کریں۔",
+  "settings_git_connect_pastefirst": "پہلے پورا ٹوکن پیسٹ کریں۔"
 }

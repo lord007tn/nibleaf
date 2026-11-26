@@ -1876,9 +1876,9 @@
   "settings_exports_workflow_onetime": "Одноразовый экспорт",
   "settings_exports_workflow_onetimedesc": "Загрузите последнюю опубликованную версию",
   "settings_exports_workflow_schedules": "Расписания",
-  "settings_exports_workflow_schedulesdesc": "Автоматизируйте архивные снимки и хранение",
+  "settings_exports_workflow_schedulesdesc": "Экспортируйте автоматически по расписанию.",
   "settings_exports_workflow_history": "История запуска",
-  "settings_exports_workflow_historydesc": "Мониторинг, восстановление и загрузка артефактов",
+  "settings_exports_workflow_historydesc": "Просматривайте прошлые экспорты и скачивайте их.",
   "settings_exports_workflow_loaderror": "Не удалось загрузить данные экспорта. Проверьте соединение и попробуйте открыть эту страницу еще раз.",
   "settings_exports_workflow_create": "Создать экспорт",
   "settings_exports_workflow_format_markdown": "Markdown Почтовый индекс",
@@ -3123,7 +3123,7 @@
   "settings_integrations_googleanalytics_description": "Измеряйте посещения и вовлечённость в опубликованной документации.",
   "settings_integrations_plausible_description": "Используйте аналитику с защитой конфиденциальности в опубликованной документации.",
   "settings_integrations_status_notsendingyet": "Пока не отправляет",
-  "settings_integrations_comingsoon_description": "Будет сообщать о публикации вашего сайта. Скоро.",
+  "settings_integrations_comingsoon_description": "Публикует сообщение, когда сайт опубликован.",
   "settings_integrations_comingsoon_saved": "Это подключение сохранено, но Nibleaf пока ничего в него не отправляет. Его можно удалить.",
   "settings_integrations_remove": "Удалить",
   "settings_integrations_removetitle": "Удалить {name}?",
@@ -5120,5 +5120,6 @@
   "dashboard_ai_notsavingyet": "Новые вопросы пока не сохраняются. Ранее сохранённые вопросы по-прежнему видны здесь.",
   "dashboard_ai_emptytitle": "Вопросов пока нет",
   "dashboard_ai_emptybody": "Читатели могут задавать вопросы ИИ-ассистенту в опубликованной документации. Попробуйте расширить период или изменить фильтры.",
-  "overview_viewsemptylive": "Посещений пока нет. Поделитесь адресом сайта, чтобы привлечь первых читателей."
+  "overview_viewsemptylive": "Посещений пока нет. Поделитесь адресом сайта, чтобы привлечь первых читателей.",
+  "settings_git_connect_pastefirst": "Сначала вставьте токен целиком."
 }

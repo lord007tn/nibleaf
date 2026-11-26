@@ -1862,9 +1862,9 @@
   "settings_exports_workflow_onetime": "Exportação única",
   "settings_exports_workflow_onetimedesc": "Baixe a última revisão publicada",
   "settings_exports_workflow_schedules": "Horários",
-  "settings_exports_workflow_schedulesdesc": "Automatize snapshots e retenção de arquivamento",
+  "settings_exports_workflow_schedulesdesc": "Exporte automaticamente em uma programação.",
   "settings_exports_workflow_history": "Histórico de execução",
-  "settings_exports_workflow_historydesc": "Monitore, recupere e baixe artefatos",
+  "settings_exports_workflow_historydesc": "Veja exportações anteriores e baixe-as.",
   "settings_exports_workflow_loaderror": "Não foi possível carregar os dados de exportação. Verifique a conexão e tente esta página novamente.",
   "settings_exports_workflow_create": "Criar exportação",
   "settings_exports_workflow_format_markdown": "Markdown CEP",
@@ -3101,7 +3101,7 @@
   "settings_integrations_googleanalytics_description": "Meça visitas e engajamento em sua documentação publicada.",
   "settings_integrations_plausible_description": "Use análises amigáveis à privacidade em sua documentação publicada.",
   "settings_integrations_status_notsendingyet": "Ainda não envia",
-  "settings_integrations_comingsoon_description": "Vai postar quando seu site for publicado. Em breve.",
+  "settings_integrations_comingsoon_description": "Avisa quando seu site é publicado.",
   "settings_integrations_comingsoon_saved": "Esta conexão está salva, mas o Nibleaf ainda não envia nada para ela. Você pode removê-la.",
   "settings_integrations_remove": "Remover",
   "settings_integrations_removetitle": "Remover {name}?",
@@ -5088,5 +5088,6 @@
   "dashboard_ai_notsavingyet": "As novas perguntas ainda não estão sendo salvas. As perguntas salvas antes continuam aparecendo aqui.",
   "dashboard_ai_emptytitle": "Ainda não há perguntas",
   "dashboard_ai_emptybody": "Os leitores podem perguntar ao assistente de IA na sua documentação publicada. Tente um intervalo de datas maior ou outros filtros.",
-  "overview_viewsemptylive": "Ainda não há visitas. Compartilhe o endereço do seu site para atrair os primeiros leitores."
+  "overview_viewsemptylive": "Ainda não há visitas. Compartilhe o endereço do seu site para atrair os primeiros leitores.",
+  "settings_git_connect_pastefirst": "Cole o token completo primeiro."
 }

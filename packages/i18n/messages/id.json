@@ -1807,9 +1807,9 @@
   "settings_exports_workflow_onetime": "Ekspor satu kali",
   "settings_exports_workflow_onetimedesc": "Unduh revisi terbaru yang diterbitkan",
   "settings_exports_workflow_schedules": "Jadwal",
-  "settings_exports_workflow_schedulesdesc": "Otomatiskan snapshot dan retensi arsip",
+  "settings_exports_workflow_schedulesdesc": "Ekspor otomatis sesuai jadwal.",
   "settings_exports_workflow_history": "Jalankan sejarah",
-  "settings_exports_workflow_historydesc": "Pantau, pulihkan, dan unduh artefak",
+  "settings_exports_workflow_historydesc": "Lihat ekspor sebelumnya dan unduh.",
   "settings_exports_workflow_loaderror": "Data ekspor tidak dapat dimuat. Periksa koneksi dan coba halaman ini lagi.",
   "settings_exports_workflow_create": "Buat ekspor",
   "settings_exports_workflow_format_markdown": "Markdown ZIP",
@@ -3034,7 +3034,7 @@
   "settings_integrations_googleanalytics_description": "Mengukur kunjungan dan keterlibatan pada dokumentasi yang diterbitkan.",
   "settings_integrations_plausible_description": "Gunakan analitik ramah privasi pada dokumentasi yang diterbitkan.",
   "settings_integrations_status_notsendingyet": "Belum mengirim",
-  "settings_integrations_comingsoon_description": "Mengirim kabar saat situs Anda diterbitkan, segera hadir.",
+  "settings_integrations_comingsoon_description": "Memposting saat situs Anda dipublikasikan.",
   "settings_integrations_comingsoon_saved": "Koneksi ini tersimpan, tetapi Nibleaf belum mengirim apa pun ke sana. Anda dapat menghapusnya.",
   "settings_integrations_remove": "Hapus",
   "settings_integrations_removetitle": "Hapus {name}?",
@@ -5016,5 +5016,6 @@
   "dashboard_ai_notsavingyet": "Pertanyaan baru belum disimpan. Pertanyaan yang tersimpan sebelumnya tetap tampil di sini.",
   "dashboard_ai_emptytitle": "Belum ada pertanyaan",
   "dashboard_ai_emptybody": "Pembaca dapat bertanya ke asisten AI dari dokumentasi yang sudah diterbitkan. Coba rentang tanggal yang lebih luas atau filter lain.",
-  "overview_viewsemptylive": "Belum ada kunjungan. Bagikan alamat situs Anda untuk menarik pembaca pertama."
+  "overview_viewsemptylive": "Belum ada kunjungan. Bagikan alamat situs Anda untuk menarik pembaca pertama.",
+  "settings_git_connect_pastefirst": "Tempel token lengkap terlebih dahulu."
 }

@@ -1951,9 +1951,9 @@
   "settings_exports_workflow_onetime": "تصدير لمرة واحدة",
   "settings_exports_workflow_onetimedesc": "نزّل أحدث مراجعة منشورة",
   "settings_exports_workflow_schedules": "الجداول الزمنية",
-  "settings_exports_workflow_schedulesdesc": "أتمت لقطات الأرشفة وسياسة الاحتفاظ",
+  "settings_exports_workflow_schedulesdesc": "صدّر تلقائيًا وفق جدول.",
   "settings_exports_workflow_history": "سجل التشغيل",
-  "settings_exports_workflow_historydesc": "راقب العناصر واستعدها ونزّلها",
+  "settings_exports_workflow_historydesc": "اطّلع على عمليات التصدير السابقة ونزّلها.",
   "settings_exports_workflow_loaderror": "تعذّر تحميل بيانات التصدير. تحقّق من الاتصال وأعد فتح الصفحة.",
   "settings_exports_workflow_create": "إنشاء تصدير",
   "settings_exports_workflow_format_markdown": "ملف Markdown ZIP",
@@ -3139,7 +3139,7 @@
   "settings_integrations_googleanalytics_description": "قس الزيارات والتفاعل في التوثيق المنشور.",
   "settings_integrations_plausible_description": "استخدم تحليلات تراعي الخصوصية في التوثيق المنشور.",
   "settings_integrations_status_notsendingyet": "لا يُرسل بعد",
-  "settings_integrations_comingsoon_description": "سينشر رسالة عند نشر موقعك، قريبًا.",
+  "settings_integrations_comingsoon_description": "ينشر عند نشر موقعك.",
   "settings_integrations_comingsoon_saved": "هذا الاتصال محفوظ، لكن Nibleaf لا يرسل إليه أي شيء بعد. يمكنك إزالته.",
   "settings_integrations_remove": "إزالة",
   "settings_integrations_removetitle": "إزالة {name}؟",
@@ -5156,5 +5156,6 @@
   "dashboard_ai_notsavingyet": "لا يتم حفظ الأسئلة الجديدة بعد. لا تزال الأسئلة المحفوظة سابقًا تظهر هنا.",
   "dashboard_ai_emptytitle": "لا توجد أسئلة بعد",
   "dashboard_ai_emptybody": "يمكن للقرّاء سؤال مساعد الذكاء الاصطناعي من صفحات التوثيق المنشورة. جرّب فترة زمنية أطول أو غيّر عوامل التصفية.",
-  "overview_viewsemptylive": "لا توجد زيارات بعد. شارك عنوان موقعك لتصل إلى أول قرّائك."
+  "overview_viewsemptylive": "لا توجد زيارات بعد. شارك عنوان موقعك لتصل إلى أول قرّائك.",
+  "settings_git_connect_pastefirst": "الصق الرمز كاملًا أولًا."
 }

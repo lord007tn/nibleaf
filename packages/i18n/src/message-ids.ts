@@ -1,5 +1,6 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'settings.git.connect.pasteFirst': 'settings_git_connect_pastefirst',
   'settings.apiKeys.rotating': 'settings_apikeys_rotating',
   'settings.integrations.group.sync': 'settings_integrations_group_sync',
   'settings.integrations.group.analytics': 'settings_integrations_group_analytics',
