@@ -72,10 +72,22 @@ const LIST_OPEN = new Set(['bullet_list_open', 'ordered_list_open']);
 const LIST_CLOSE = new Set(['bullet_list_close', 'ordered_list_close']);
 const TASK_ITEM = /^\[[ xX]\][ \t]/;
 const QUOTE_PREFIX = /^(?:>[ \t]?)*/;
-const quoteCount = (prefix: string): number => prefix.replace(/[ \t]/g, '').length;
+const quoteCount = (prefix: string): number => prefix.split('>').length - 1;
+const listQuotePrefix = (prefix: string, first: boolean): boolean => /^[ >]*$/.test(first ? prefix.replace(/(?:[-+*]|\d{1,9}[.)]) +/g, '') : prefix);
+
+/** Where the quotes after the last list marker or its continuation indent start. */
+function trailingQuoteStart(prefix: string): number {
+  let start = prefix.length;
+  while (start > 0) {
+    const marker = prefix[start - 1] === ' ' ? start - 2 : start - 1;
+    if (prefix[marker] !== '>') break;
+    start = marker;
+  }
+  return start;
+}
 
 /** Read the quote markers on each line when a continuation omits some. */
-function lazyQuotePrefixes(raw: readonly string[], token: MarkdownToken, content: string, depth: number): string[] | null {
+function lazyQuotePrefixes(raw: readonly string[], token: MarkdownToken, content: string, depth: number, inList: boolean): string[] | null {
   // MDX preprocessing can put newlines inside generated HTML attributes. Only
   // Markdown lines with stable offsets in the prepared source carry these prefixes.
   if (!token.map || /<\/?[a-z]/i.test(content)) return null;
@@ -85,9 +97,13 @@ function lazyQuotePrefixes(raw: readonly string[], token: MarkdownToken, content
   const prefixes: string[] = [];
   for (const [index, line] of lines.entries()) {
     const original = raw[start + index] ?? '';
-    const prefix = QUOTE_PREFIX.exec(original)?.[0] ?? '';
+    // A lazy continuation may retain some of its list indent in the inline token.
+    // Only the exact raw prefix removed by markdown-it belongs alongside it.
+    if (!original.endsWith(line)) return null;
+    const prefix = original.slice(0, original.length - line.length);
+    const valid = inList ? listQuotePrefix(prefix, index === 0) : QUOTE_PREFIX.exec(original)?.[0] === prefix;
     const count = quoteCount(prefix);
-    if (count > depth || (index === 0 && count !== depth) || original.slice(prefix.length) !== line) return null;
+    if (!valid || count > depth || (index === 0 && count !== depth)) return null;
     prefixes.push(prefix);
   }
   return prefixes.some((prefix) => quoteCount(prefix) < depth) ? prefixes : null;
@@ -135,7 +151,7 @@ function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>
     let quotePrefixes: string[] | null = null;
     if (quoteDepth > 0 && inline.content.includes('\n')) {
       rawLines ??= state.src.split('\n');
-      quotePrefixes = lazyQuotePrefixes(rawLines, token, inline.content, quoteDepth);
+      quotePrefixes = lazyQuotePrefixes(rawLines, token, inline.content, quoteDepth, Boolean(list));
     }
     if (joinedSourceLines(inline.content) === null && !quotePrefixes) continue;
     if (token.hidden) {
@@ -207,15 +223,20 @@ const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: n
   parent.child(1).type.name === 'paragraph';
 
 /** Keep a lazy quote's source only while it is still in the original quote depth. */
-function lazyQuoteSource(source: string, prefixes: string, delim: string): { canonical: string; authored: string } | null {
-  if (!/^(?:> )+$/.test(delim)) return null;
+function lazyQuoteSource(source: string, prefixes: string, delim: string): { canonical: string; authored: string; listPrefix?: string } | null {
+  if (!delim.endsWith('> ') || !/^[ >]+$/.test(delim)) return null;
+  const inList = !/^(?:> )+$/.test(delim);
   const lines = source.split('\n');
   const markers = prefixes.split('\n');
-  const depth = delim.length / 2;
+  const first = markers[0] ?? '';
+  const depth = quoteCount(delim);
   if (
-    quoteCount(markers[0] ?? '') !== depth ||
+    quoteCount(first) !== depth ||
     markers.length !== lines.length ||
-    markers.some((prefix) => QUOTE_PREFIX.exec(prefix)?.[0] !== prefix || quoteCount(prefix) > depth)
+    markers.some((prefix, index) => {
+      const valid = inList ? listQuotePrefix(prefix, index === 0) : QUOTE_PREFIX.exec(prefix)?.[0] === prefix;
+      return !valid || quoteCount(prefix) > depth;
+    })
   )
     return null;
   const canonical =
@@ -230,7 +251,7 @@ function lazyQuoteSource(source: string, prefixes: string, delim: string): { can
       })
       .join('');
   const authored = lines.map((line, index) => `${markers[index] ?? ''}${line}`).join('\n');
-  return { canonical, authored };
+  return inList ? { canonical, authored, listPrefix: first } : { canonical, authored };
 }
 
 /**
@@ -257,14 +278,19 @@ function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: P
   state.write();
   const { output } = state;
   const start = output.length;
-  const quoteStart = start - state.delim.length;
-  const canRestoreQuote = lazyQuote && output.lineStart() === quoteStart && output.sliceFrom(quoteStart) === state.delim;
+  const listPrefix = lazyQuote?.listPrefix;
+  const lineStart = lazyQuote ? output.lineStart() : start;
+  const listsEnd = listPrefix === undefined ? 0 : trailingQuoteStart(listPrefix);
+  const canonicalPrefix =
+    listPrefix === undefined ? state.delim : listPrefix.slice(0, listsEnd) + '> '.repeat(quoteCount(listPrefix.slice(listsEnd)));
+  const canRestoreQuote = lazyQuote && output.sliceFrom(lineStart) === canonicalPrefix;
   state.renderInline(node);
   if (output.length - start === joined.length && output.sliceFrom(start) === joined) {
     // Unescaped: these lines are the source, already valid Markdown here.
     if (lazyQuote && canRestoreQuote) {
-      output.truncate(quoteStart);
-      output.append(lazyQuote.authored);
+      // Leave the serializer's list marker and its line ownership in place.
+      output.truncate(lineStart + listsEnd);
+      output.append(lazyQuote.authored.slice(listsEnd));
     } else if (!lazyQuote) {
       output.truncate(start);
       state.text(source, false);
