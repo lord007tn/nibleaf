@@ -89,8 +89,9 @@ export function AppearancePage({ project, host, initialGroup }: { project: Proje
               preview stay one tap away while scrolling, in a bar that sticks under the dashboard header. */}
           <div
             className={cn(
-              'sticky z-10 -mt-4 flex min-w-0 items-center gap-2 rounded-xl border border-border bg-background/95 p-1.5 shadow-sm backdrop-blur @3xl/appearance:hidden',
-              plain ? 'top-2' : 'top-14',
+              'sticky z-10 -mt-4 flex min-w-0 items-center gap-2 rounded-b-xl border border-border border-t-0 bg-background/95 p-1.5 shadow-sm backdrop-blur @3xl/appearance:hidden',
+              // Flush under the header, so nothing scrolls into a gap above it.
+              plain ? 'top-0' : 'top-12',
             )}
             data-appearance-jump=""
           >
