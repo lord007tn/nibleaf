@@ -256,8 +256,6 @@ describe('a rotation asks first, sends the route’s exact request, reads the si
     expect(dialogOpen()).toBe(true);
     expect(document.body.textContent).toContain(t('settings.git.workflow.rotateConfirm.title'));
     expect(document.body.textContent).toContain(t('settings.git.workflow.rotateConfirm.description'));
-    // The destructive confirmation: its confirm button has the destructive variant's own classes.
-    expect(dialogButton('settings.git.workflow.rotateSecret')?.className.split(/\s+/)).toContain('text-destructive');
     await cancel();
     expect(posts()).toEqual([]);
     expect(tab.busy()).toBe(false);

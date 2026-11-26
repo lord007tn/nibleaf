@@ -19,11 +19,7 @@ describe('reader inline code direction', () => {
     expect(rtl).toContain('max-width: 100%;');
     expect(rtl).toContain('overflow-wrap: anywhere;');
     expect(rule('&:where(pre)')).not.toContain('inline-block');
-  });
-
-  // dir="auto" blocks carry no explicit dir="rtl" ancestor, and an LTR block inside an
-  // RTL page has one it must ignore, so the rule keys on the parent's resolved direction.
-  it('matches on the resolved direction of the parent, not an ancestor attribute', () => {
-    expect(css).not.toContain('[dir="rtl"] :not(pre) > code');
+    // An ancestor attribute also matches LTR prose nested in an RTL page.
+    expect(css).not.toMatch(/\[dir\s*=\s*["']?rtl["']?\]\s+:not\(pre\)\s*>\s*code/);
   });
 });

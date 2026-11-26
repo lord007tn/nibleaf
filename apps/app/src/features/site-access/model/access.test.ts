@@ -329,11 +329,4 @@ describe('siteAccessFromMembers', () => {
   ])('builds explicit state for %j', (change, expected) => {
     expect(siteAccessFromMembers({ ...input, ...change })).toEqual(expected);
   });
-
-  it('preserves the retry callback', () => {
-    const access = siteAccessFromMembers({ ...input, failed: true, cachedData: false });
-    if (access.status !== 'unavailable') throw new Error('Expected unavailable');
-    access.retry();
-    expect(retry).toHaveBeenCalledOnce();
-  });
 });

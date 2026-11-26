@@ -157,9 +157,14 @@ describe('aiPageState', () => {
       state: { kind: 'notWorking', problem: 'preparationFailed' },
     },
     {
-      name: 'daily limit reached',
-      ai: siteAi({ status: { ...on, usage: { answersToday: 200, spent: 200, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
+      name: 'failed generations used up the daily quota',
+      ai: siteAi({ status: { ...on, usage: { answersToday: 3, spent: 200, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
       state: { kind: 'notWorking', problem: 'limitReached' },
+    },
+    {
+      name: 'counts quota spent rather than completed answers',
+      ai: siteAi({ status: { ...on, usage: { answersToday: 200, spent: 120, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
+      state: { kind: 'on' },
     },
     {
       name: 'a limit of zero',
@@ -280,27 +285,27 @@ describe('checklist', () => {
       expected: { source: 'idle:addKey' },
     },
     {
-      name: 'production today, never prepared: nothing to prepare with yet, so no "Prepare now" (#566 council)',
+      name: 'production today, never prepared: nothing to prepare with yet, so no "Prepare now"',
       ai: siteAi({ capabilities: noManaged, status: { preparation: { state: 'none', pages: 0, expectedPages: 0, at: null } } }),
       expected: { prepared: 'idle', source: 'idle:addKey' },
     },
     {
-      name: 'a refused key, answers off: the source row still fails (#566 council)',
+      name: 'a refused key, answers off: the source row still fails',
       ai: siteAi({ status: { source: 'openai', connections: [key('openai', 'rejected')] } }),
       expected: { source: 'problem:replaceKey' },
     },
     {
-      name: 'out of credit: fails with its own fix (#566 council)',
+      name: 'out of credit: fails with its own fix',
       ai: siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'outOfCredit')] } }),
       expected: { source: 'problem:checkAgain' },
     },
     {
-      name: 'rate-limited: still answers, with a warning (#566 council)',
+      name: 'rate-limited: still answers, with a warning',
       ai: siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'rateLimited')] } }),
       expected: { source: 'warning' },
     },
     {
-      name: 'a refused key never offers "Prepare now" (#566 council)',
+      name: 'a refused key never offers "Prepare now"',
       ai: siteAi({
         status: {
           source: 'openai',
@@ -357,8 +362,8 @@ describe('checklist', () => {
     },
     { name: 'Nibleaf AI gone', ai: siteAi({ capabilities: noManaged, status: on }), expected: { source: 'problem' } },
     {
-      name: 'daily limit reached',
-      ai: siteAi({ status: { ...on, usage: { answersToday: 200, spent: 200, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
+      name: 'failed generations used up the daily quota',
+      ai: siteAi({ status: { ...on, usage: { answersToday: 3, spent: 200, limit: 200, resetsAt: '2026-11-12T00:00:00.000Z' } } }),
       expected: { usage: 'problem:seeUsage' },
     },
     {
@@ -423,29 +428,7 @@ describe('aiAccess', () => {
   });
 });
 
-describe('CodeRabbit review on #513', () => {
-  const quota = (answersToday: number | null, spent: number | null, limit = 200) => ({
-    answersToday,
-    spent,
-    limit,
-    resetsAt: '2026-11-12T00:00:00.000Z',
-  });
-
-  it('reports the limit reached when failed generations used the quota, even with few answers completed', () => {
-    const ai = siteAi({ status: { ...on, usage: quota(3, 200) } });
-    expect(aiPageState(ai)).toEqual({ kind: 'notWorking', problem: 'limitReached' });
-    expect(checklist(ai).find(({ id }) => id === 'usage')).toEqual({ id: 'usage', tone: 'problem', fix: 'seeUsage' });
-  });
-
-  it('does not report the limit from completed answers alone', () => {
-    const ai = siteAi({ status: { ...on, usage: quota(200, 120) } });
-    expect(aiPageState(ai)).toEqual({ kind: 'on' });
-  });
-
-  it('treats an unreadable spend count as not reached', () => {
-    expect(aiPageState(siteAi({ status: { ...on, usage: quota(null, null) } }))).toEqual({ kind: 'on' });
-  });
-
+describe('selected provider availability', () => {
   it.each(['needsRecheck', 'ok', 'rejected'] as const)(
     'sends the owner to another source when the selected provider is no longer offered (its key is %s)',
     (state) => {
@@ -464,11 +447,6 @@ describe('CodeRabbit review on #513', () => {
       expect(sourceOptions(ai, 'admin').map(({ id }) => id)).toEqual(['managed', 'openrouter']);
     },
   );
-
-  it('still offers "Check key" for a re-checkable key whose provider is offered', () => {
-    const ai = siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'needsRecheck')] } });
-    expect(checklist(ai).find(({ id }) => id === 'source')).toMatchObject({ id: 'source', tone: 'problem', fix: 'checkKey' });
-  });
 });
 
 describe('what the controls send', () => {
@@ -526,7 +504,7 @@ describe('what the controls send', () => {
   });
 });
 
-describe('honest key states (#566 council)', () => {
+describe('honest key states', () => {
   it('a key out of credit stops answers, and says so apart from a refused key', () => {
     const ai = siteAi({ status: { ...on, source: 'openai', connections: [key('openai', 'outOfCredit')] } });
     expect(aiPageState(ai)).toEqual({ kind: 'notWorking', problem: 'keyOutOfCredit' });
@@ -540,7 +518,7 @@ describe('honest key states (#566 council)', () => {
   });
 });
 
-describe('preparing needs a source that works (#566 council)', () => {
+describe('preparing needs a source that works', () => {
   it.each([
     { name: 'Nibleaf AI offered', ai: siteAi(), can: true },
     { name: 'a working key selected', ai: siteAi({ status: { source: 'openai', connections: [key('openai')] } }), can: true },

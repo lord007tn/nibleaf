@@ -45,7 +45,7 @@ async function mount(organizationId: string | undefined) {
 }
 const status = (code: number) => Object.assign(new Error(`HTTP ${code}`), { status: code });
 
-describe('deleting a website when the answer is unclear (council #479)', () => {
+describe('deleting a website when the outcome is unclear', () => {
   it('counts a lost response as done once the organization no longer lists the website, and forgets it', async () => {
     mocks.mutateAsync.mockRejectedValueOnce(new TypeError('Failed to fetch'));
     mocks.list.mockResolvedValueOnce([{ id: 'site-2' }]);

@@ -181,7 +181,7 @@ describe('FooterSettings over the project query: a save sends only what changed'
     expect(region()).toBeNull();
   });
 
-  it("finding 1: another writer's link that a read brings during the save survives a LinkedIn-only save after the refetch failed", async () => {
+  it('preserves a link read during a failed refetch when the next save changes only LinkedIn', async () => {
     await open({ copyright: '© Old' });
     const patch = gate();
     server.holdPatch = patch.promise;
@@ -250,7 +250,7 @@ describe('FooterSettings over the project query: a save sends only what changed'
     expect(queryClient.getQueryData<Project>(projectQueryOptions('site-1').queryKey)?.config?.footer).toStrictEqual({});
   });
 
-  it('P2a: a scope round trip after a failed refetch reads the project again, so the stored text shows and clearing it sends ""', async () => {
+  it('refreshes stored text when returning to the scope after a failed refetch and clears it with ""', async () => {
     await open();
     server.failReads.add('site-1');
     await type('copyright', 'Stored');
@@ -294,7 +294,7 @@ describe('FooterSettings over the project query: a save sends only what changed'
     await vi.waitFor(() => expect(input('copyright').value).toBe('Stored'));
   });
 
-  it('P2b: a fresh read without a text the form saved before is the truth: another field’s save leaves the key out', async () => {
+  it('omits previously saved text from an update to another field when the latest read omits it', async () => {
     await open();
     await type('copyright', 'Stored');
     await save();
