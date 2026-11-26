@@ -96,18 +96,20 @@ export function focusBodyStart(container: HTMLElement | null) {
 }
 
 /**
- * Put the caret at the start of the page body and type `text` there (`\n` makes
- * a new paragraph), once the page's editor holds its content.
+ * Once the page's editor holds its content, put the caret at the start of the
+ * body and type there what `take` returns then (`\n` makes a new paragraph).
  */
-export function moveTypedToBody(canvas: HTMLElement | null, text: string, frames = 30): void {
+export function moveTypedToBody(canvas: HTMLElement | null, take: () => string, frames = 30): void {
   const editor = editorIn(canvas);
   // Markdown source mode edits the body in a plain text field.
   const source = canvas?.querySelector<HTMLTextAreaElement>('textarea:not([data-page-title])');
   if (!editor && !source) {
-    if (frames > 0) requestAnimationFrame(() => moveTypedToBody(canvas, text, frames - 1));
+    if (frames > 0) requestAnimationFrame(() => moveTypedToBody(canvas, take, frames - 1));
+    else take();
     return;
   }
   focusBodyStart(canvas);
+  const text = take();
   if (!text) return;
   if (!editor) {
     source?.setRangeText(text, 0, 0, 'end');

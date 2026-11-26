@@ -1171,7 +1171,16 @@ function EditorPage() {
   // itself (Back, Forward, a link, a Fix) already names its page and is left as
   // is. It replaces the entry, so Back still leaves the editor, and drops what
   // belonged to the page before: its section, its scroll position, and a Fix.
+  const addressFor = useRef<string | null>(null);
   const nameInAddress = (id: string) => {
+    addressFor.current = id;
+  };
+  // Written once that page or group is on screen: writing it earlier, while the
+  // new page loads, took focus away from its title as the writer typed.
+  useEffect(() => {
+    const id = addressFor.current;
+    if (!id || switching || (page?.id !== id && selectedGroup?.id !== id)) return;
+    addressFor.current = null;
     if (id === pageParam) return;
     handledPageParam.current = id;
     void navigate({
@@ -1183,7 +1192,7 @@ function EditorPage() {
       ignoreBlocker: true,
       hashScrollIntoView: false,
     });
-  };
+  });
   const beginSwitch = (next: PendingSwitch, action: () => void) => {
     if (transitionInFlight.current) return;
     setPendingSwitch(next);
@@ -1606,7 +1615,9 @@ function EditorPage() {
   // keystrokes and hand them to the title instead of dropping them. Enter is kept
   // too: as in the title, it moves on to the body, which gets what follows it.
   const typedWhileCreating = useRef('');
-  const awaitingTitle = pendingSwitch?.kind === 'create' || focusTitleFor !== null;
+  // After a kept Enter, keys are still kept until the body can take them.
+  const [bodyPending, setBodyPending] = useState(false);
+  const awaitingTitle = pendingSwitch?.kind === 'create' || focusTitleFor !== null || bodyPending;
   useEffect(() => {
     if (!awaitingTitle) return;
     typedWhileCreating.current = '';
@@ -1632,23 +1643,36 @@ function EditorPage() {
     if (!focusTitleFor || switching || page?.id !== focusTitleFor) return;
     const element = titleRef.current;
     if (!element) return;
-    element.focus();
     const buffered = typedWhileCreating.current.trimStart();
-    typedWhileCreating.current = '';
     const enter = buffered.indexOf('\n');
     const typed = enter < 0 ? buffered : buffered.slice(0, enter);
+    setFocusTitleFor(null);
+    if (enter >= 0) {
+      // Enter was pressed: the title is done, and the body takes what follows,
+      // including keys typed until it is ready (as Enter in the title does).
+      element.value = typed;
+      setTitle(typed);
+      typedWhileCreating.current = buffered.slice(enter + 1);
+      setBodyPending(true);
+      moveTypedToBody(canvasRef.current, () => {
+        const rest = typedWhileCreating.current;
+        typedWhileCreating.current = '';
+        setBodyPending(false);
+        return rest;
+      });
+      return;
+    }
+    element.focus();
+    typedWhileCreating.current = '';
     if (typed) {
       // Write the DOM value and caret synchronously so keys typed from now on land
       // after the buffered text; React then renders the same value.
       element.value = typed;
       element.setSelectionRange(typed.length, typed.length);
       setTitle(typed);
-    } else if (enter < 0) {
+    } else {
       element.select();
     }
-    setFocusTitleFor(null);
-    // Enter was pressed: on to the body, as Enter in the title does, with what was typed after it.
-    if (enter >= 0) moveTypedToBody(canvasRef.current, buffered.slice(enter + 1));
   }, [focusTitleFor, switching, page?.id]);
 
   const openRail = () => {
