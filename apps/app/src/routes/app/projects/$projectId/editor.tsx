@@ -75,7 +75,6 @@ import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
 import { createEditorSaveQueue, isSupersededWrite, type PageDraft, type QueuedWrite, samePageDraft } from '@/components/editor/editor-save-queue';
 import { useSaveThrottle } from '@/components/editor/editor-save-throttle';
-import { editorIn } from '@/components/editor/editor-sections';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { useLinkedPageHistory } from '@/components/editor/linked-page-history';
@@ -83,7 +82,7 @@ import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor
 import { MovePageDialog } from '@/components/editor/move-page-dialog';
 import { pagePublicLink } from '@/components/editor/page-public-link';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
-import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
+import { focusBodyStart, moveTypedToBody, PageTitleField } from '@/components/editor/page-title-field';
 import { PageTrashButton } from '@/components/editor/page-trash-button';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
 import { type PublishFixArrival, PublishFixBar } from '@/components/editor/publish-fix-bar';
@@ -2621,33 +2620,6 @@ type PendingChangesData = ReturnType<typeof usePendingChanges>['data'];
 
 /** Whether a page's address may still follow its title, from the freshest cached
  *  publish state (see addressMayFollowTitle). */
-/**
- * Put the caret at the start of the page body and type `text` there (`\n` makes
- * a new paragraph), once the page's editor holds its content.
- */
-function moveTypedToBody(canvas: HTMLElement | null, text: string, frames = 30): void {
-  const editor = editorIn(canvas);
-  // Markdown source mode edits the body in a plain text field.
-  const source = canvas?.querySelector<HTMLTextAreaElement>('textarea:not([data-page-title])');
-  if (!editor && !source) {
-    if (frames > 0) requestAnimationFrame(() => moveTypedToBody(canvas, text, frames - 1));
-    return;
-  }
-  focusBodyStart(canvas);
-  if (!text) return;
-  if (!editor) {
-    source?.setRangeText(text, 0, 0, 'end');
-    source?.dispatchEvent(new Event('input', { bubbles: true }));
-    return;
-  }
-  const chain = editor.chain().focus('start');
-  text.split('\n').forEach((line, index) => {
-    if (index > 0) chain.splitBlock();
-    if (line) chain.insertContent({ type: 'text', text: line });
-  });
-  chain.run();
-}
-
 function addressFollowsTitle(queryClient: QueryClient, projectId: string, pageId: string): boolean {
   return addressMayFollowTitle(
     pageId,

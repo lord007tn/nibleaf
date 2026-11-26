@@ -1,5 +1,6 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
 import { type CSSProperties, type RefObject, useLayoutEffect } from 'react';
+import { editorIn } from './editor-sections';
 
 /**
  * The big page title above the body. A one-line textarea rather than an input
@@ -92,4 +93,31 @@ export function focusBodyStart(container: HTMLElement | null) {
     source.focus();
     source.setSelectionRange(0, 0);
   }
+}
+
+/**
+ * Put the caret at the start of the page body and type `text` there (`\n` makes
+ * a new paragraph), once the page's editor holds its content.
+ */
+export function moveTypedToBody(canvas: HTMLElement | null, text: string, frames = 30): void {
+  const editor = editorIn(canvas);
+  // Markdown source mode edits the body in a plain text field.
+  const source = canvas?.querySelector<HTMLTextAreaElement>('textarea:not([data-page-title])');
+  if (!editor && !source) {
+    if (frames > 0) requestAnimationFrame(() => moveTypedToBody(canvas, text, frames - 1));
+    return;
+  }
+  focusBodyStart(canvas);
+  if (!text) return;
+  if (!editor) {
+    source?.setRangeText(text, 0, 0, 'end');
+    source?.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+  const chain = editor.chain().focus('start');
+  text.split('\n').forEach((line, index) => {
+    if (index > 0) chain.splitBlock();
+    if (line) chain.insertContent({ type: 'text', text: line });
+  });
+  chain.run();
 }
