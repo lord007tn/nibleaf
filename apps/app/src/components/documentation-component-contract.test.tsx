@@ -1,4 +1,6 @@
 // @vitest-environment jsdom
+
+import { READER_TAGS_WITHOUT_MARKDOWN_CHILDREN } from '@nibleaf/shared/documentation-component-contract';
 import {
   DOCUMENTATION_COMPONENTS,
   type DocumentationComponentAttribute,
@@ -132,6 +134,16 @@ const editorNodeFor = (component: MdxComponent) => {
   return mdxNodes.find((node) => parseRules(node).some((rule) => rule.tag === `${wrapper}[data-mdx="${component.tag}"]`));
 };
 const renderRich = (content: string, site?: SiteLinkContext) => renderToStaticMarkup(createElement(RichMarkdown, { content, site }));
+
+it('keeps the export child-rendering contract aligned with the React reader map', () => {
+  const note = '1. >~~~md\n   > CODEMARK\n   > ~~~\n\n<Note>ReviewText</Note>';
+  const file = `<File name="file.txt">\n\n${note}\n\n</File>`;
+  const folder = `<Folder name="folder">\n\n${note}\n\n</Folder>`;
+  const fileHtml = renderRich(file);
+  expect(fileHtml).toContain('file.txt');
+  expect(fileHtml.includes('ReviewText')).toBe(!READER_TAGS_WITHOUT_MARKDOWN_CHILDREN.includes('file'));
+  expect(renderRich(folder)).toContain('ReviewText');
+});
 
 const editors: Editor[] = [];
 afterEach(() => {
