@@ -406,6 +406,8 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
   const options = useMemo<BubbleMenuProps['options']>(
     () => ({
       placement: 'bottom',
+      // Never flush against the edge of a phone screen.
+      shift: { padding: 8 },
       onShow: () => setVisible(true),
       onHide: () => {
         setVisible(false);

@@ -3,6 +3,8 @@ import { useT } from '@nibleaf/i18n/react';
 import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
+import { useMemo } from 'react';
+import { blockAnchor, MENU_EDGE_PADDING } from './menu-anchor';
 
 /** Curated fence languages (lowlight `common` grammars + mermaid). The value is
  *  what lands after the ``` fence in Markdown, so it must stay highlightable on
@@ -42,6 +44,7 @@ const CODE_BLOCK_LANGUAGES = [
  */
 export function CodeBlockMenu({ editor }: { editor: Editor }) {
   const t = useT();
+  const anchor = useMemo(() => blockAnchor(editor, 'pre'), [editor]);
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) => ({
@@ -63,7 +66,9 @@ export function CodeBlockMenu({ editor }: { editor: Editor }) {
       data-editor-bubble-menu=""
       editor={editor}
       pluginKey="nibleaf-code-block-menu"
-      options={{ placement: 'top-end' }}
+      // At the block's top corner, beside its language label, not over the line being typed.
+      getReferencedVirtualElement={anchor}
+      options={{ placement: 'top-end', offset: 6, flip: { padding: MENU_EDGE_PADDING }, shift: { padding: MENU_EDGE_PADDING } }}
       shouldShow={({ editor: current }) => current.isEditable && current.isActive('codeBlock')}
       className="rounded-lg border border-border bg-card p-1 shadow-lg"
     >
