@@ -85,11 +85,11 @@ export function AppearancePage({ project, host, initialGroup }: { project: Proje
       <SaveRegionProvider>
         <div className="@container/appearance flex min-w-0 flex-col gap-8" data-appearance-host={host} ref={rootRef}>
           <PageHeader
-            actions={<PreviewSheet className="@4xl/appearance:hidden" config={project.config} />}
+            actions={<PreviewSheet className="@3xl/appearance:hidden" config={project.config} />}
             description={t('settings.appearance.summary')}
             title={t('settings.tab.appearance')}
           />
-          <div className="grid min-w-0 gap-8 @4xl/appearance:grid-cols-[minmax(0,1fr)_minmax(18rem,24rem)]">
+          <div className="grid min-w-0 gap-8 @3xl/appearance:grid-cols-[minmax(0,1fr)_20rem] @5xl/appearance:grid-cols-[minmax(0,1fr)_24rem] @6xl/appearance:grid-cols-[minmax(0,1fr)_28rem]">
             <div className="flex min-w-0 max-w-[47.5rem] flex-col gap-10">
               <Group id="brand">
                 <SectionScopeProvider value={{ headingLevel: 2, chrome }}>
@@ -115,7 +115,7 @@ export function AppearancePage({ project, host, initialGroup }: { project: Proje
                 </SectionScopeProvider>
               </Group>
             </div>
-            <aside aria-label={t('settings.appearance.preview.title')} className="hidden min-w-0 @4xl/appearance:block">
+            <aside aria-label={t('settings.appearance.preview.title')} className="hidden min-w-0 @3xl/appearance:block">
               {/* Sticks below the dashboard's 3rem header on the settings page; the editor's canvas scrolls on its own. */}
               <div
                 className={cn(
