@@ -1,5 +1,6 @@
 import { ActionDialog } from '@nibleaf/design-system/components/ui/action-dialog';
 import { Button, buttonVariants } from '@nibleaf/design-system/components/ui/button';
+import { RadioField, RadioGroup } from '@nibleaf/design-system/components/ui/radio-group';
 import { SettingsSection, SettingsSectionBody } from '@nibleaf/design-system/components/ui/settings-section';
 import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { useT } from '@nibleaf/i18n/react';
@@ -20,7 +21,8 @@ const ICONS = { globe: Globe, users: Users, mail: Mail } as const;
 
 /**
  * Who can read the published site: Public, Team only, or Invited readers, as
- * native radio buttons (arrow keys and RTL come with them). Choosing only
+ * the design-system RadioGroup (Tab enters once, arrow keys follow the reading
+ * direction, the whole row is the target). Choosing only
  * previews, so arrowing through the choices never changes anything; "Save
  * visibility" asks for a confirmation that says what changes for readers and
  * applies it from that dialog.
@@ -38,7 +40,6 @@ export function VisibilitySection({ projectId, current, status }: { projectId: s
   // Saved while React kept the dialog hidden: its draft reports the submit as failed, but the change went through.
   const savedAway = useRef(false);
   const [confirming, setConfirming] = useState(false);
-  const name = useId();
   const reasonId = useId();
 
   const source = useMemo(() => ({ mode: current }), [current]);
@@ -89,29 +90,23 @@ export function VisibilitySection({ projectId, current, status }: { projectId: s
         title={t('settings.visibility.title')}
       >
         <DraftConflicts conflicts={draft.conflicts} resolve={draft.resolveConflict} />
-        <fieldset aria-describedby={reason ? reasonId : undefined} className="m-0 min-w-0 divide-y divide-border border-0 p-0" disabled={disabled}>
-          <legend className="sr-only">{t('settings.visibility.title')}</legend>
+        <RadioGroup
+          aria-describedby={reason ? reasonId : undefined}
+          aria-label={t('settings.visibility.title')}
+          className="gap-0 divide-y divide-border"
+          disabled={disabled}
+          onValueChange={(next) => form.setFieldValue('mode', next as AccessMode)}
+          value={chosen}
+        >
           {ACCESS_MODES.map((option) => {
             const Icon = ICONS[option.icon];
-            const id = `${name}-${option.mode}`;
             return (
-              <label
-                className="flex cursor-pointer items-start gap-3 px-4 py-4 has-checked:bg-primary/5 has-disabled:cursor-not-allowed sm:px-5"
-                htmlFor={id}
+              <RadioField
+                className="min-w-0 px-4 py-4 transition-colors has-data-checked:bg-primary/5 not-has-data-checked:not-has-data-disabled:hover:bg-muted/40 sm:px-5"
+                description={t(option.body)}
                 key={option.mode}
-              >
-                <input
-                  aria-describedby={`${id}-body`}
-                  checked={chosen === option.mode}
-                  className="mt-0.5 size-4 shrink-0 accent-primary"
-                  id={id}
-                  name={name}
-                  onChange={() => form.setFieldValue('mode', option.mode)}
-                  type="radio"
-                  value={option.mode}
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium text-sm">
+                label={
+                  <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
                     <Icon aria-hidden className="size-4 text-muted-foreground" />
                     {t(option.title)}
                     {option.mode === saved ? (
@@ -120,14 +115,12 @@ export function VisibilitySection({ projectId, current, status }: { projectId: s
                       </StatusBadge>
                     ) : null}
                   </span>
-                  <span className="mt-1 block text-muted-foreground text-sm" id={`${id}-body`}>
-                    {t(option.body)}
-                  </span>
-                </span>
-              </label>
+                }
+                value={option.mode}
+              />
             );
           })}
-        </fieldset>
+        </RadioGroup>
         {reason ? (
           <p className="px-4 py-3 text-muted-foreground text-sm sm:px-5" id={reasonId}>
             {t(reason)}
