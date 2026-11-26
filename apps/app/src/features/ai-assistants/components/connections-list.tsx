@@ -1,7 +1,8 @@
 import { Badge } from '@nibleaf/design-system/components/ui/badge';
-import { Button } from '@nibleaf/design-system/components/ui/button';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { DataList, DataListEmpty, DataListItem, DataListSkeleton, RowActions, RowActionsItem } from '@nibleaf/design-system/components/ui/data-list';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
+import { StatusBadge } from '@nibleaf/design-system/components/ui/status-badge';
 import { useLocale } from '@nibleaf/i18n/react';
 import { MCP_SCOPES, type McpScope, mcpScopesForRole } from '@nibleaf/shared/mcp';
 import { KeyRound, Plug, RefreshCw, Trash2, Unplug } from 'lucide-react';
@@ -21,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './alert-dialog';
-import { CredentialRowsSkeleton, formattedDate, McpActivityLine, RefreshFailedNotice, relativeMinutes, TechnicalDetails } from './credential-parts';
+import { formattedDate, McpActivityLine, RefreshFailedNotice, relativeMinutes, TechnicalDetails } from './credential-parts';
 import type { IssuedKey } from './key-dialog';
 
 type Row = ConnectionRow<ApiKey, ConnectedApp>;
@@ -92,7 +93,7 @@ export function ConnectionsList({
       />
     );
   const loading = (source: ConnectionSource<unknown>) => !source.data && !source.isError;
-  if (loading(keys) && loading(apps)) return <CredentialRowsSkeleton actions={2} label={t('settings.aiAssistants.connectionsLoading')} />;
+  if (loading(keys) && loading(apps)) return <DataListSkeleton loadingLabel={t('settings.aiAssistants.connectionsLoading')} rows={2} />;
 
   const { live, inactive, people } = connectionRows(keys.data ?? [], apps.data ?? [], {
     now: Date.now(),
@@ -112,7 +113,7 @@ export function ConnectionsList({
         retrying={source.isFetching}
       />
     ) : loading(source) ? (
-      <CredentialRowsSkeleton key={message} label={t('settings.aiAssistants.connectionsLoading')} rows={1} />
+      <DataListSkeleton key={message} loadingLabel={t('settings.aiAssistants.connectionsLoading')} rows={1} />
     ) : null,
   );
   const personOptions = [
@@ -175,37 +176,41 @@ export function ConnectionsList({
     />
   );
 
+  // Every child is its own band of the section's panel, divided by its hairlines.
+  const notices = sourceNotices.filter(Boolean);
   return (
-    <div className="flex min-w-0 flex-col gap-3">
-      {sourceNotices}
+    <>
+      {notices.length > 0 ? <div className="flex flex-col gap-2 px-4 py-3 sm:px-5">{notices}</div> : null}
       {manageAll && people.length > 1 ? (
-        <Select items={personOptions} onValueChange={(value) => setPerson(typeof value === 'string' ? value : EVERYONE)} value={person}>
-          <SelectTrigger aria-label={t('settings.aiAssistants.filterLabel')} className="w-full sm:w-56">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {personOptions.map((option) => (
-              <SelectItem key={option.value} value={option.value}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="px-4 py-3 sm:px-5">
+          <Select items={personOptions} onValueChange={(value) => setPerson(typeof value === 'string' ? value : EVERYONE)} value={person}>
+            <SelectTrigger aria-label={t('settings.aiAssistants.filterLabel')} className="w-full sm:w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {personOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       ) : null}
       {live.length === 0 ? (
-        <p className="py-3 text-center text-muted-foreground text-sm">
+        <DataListEmpty className="py-6 text-center text-muted-foreground text-sm">
           {enabled ? t('settings.aiAssistants.empty') : t('settings.aiAssistants.emptyOff')}
-        </p>
+        </DataListEmpty>
       ) : (
-        <ul className="flex flex-col divide-y divide-border">{live.map(renderRow)}</ul>
+        <DataList aria-label={t('settings.aiAssistants.connectionsTitle')}>{live.map(renderRow)}</DataList>
       )}
       {inactive.length > 0 ? (
-        <details className="rounded-lg border border-border px-3 py-2" data-slot="inactive-connections">
+        <details className="px-4 py-3 sm:px-5" data-slot="inactive-connections">
           <summary className="flex cursor-pointer items-center gap-2 text-muted-foreground text-sm hover:text-foreground">
             {t('settings.aiAssistants.inactive')}
             <Badge variant="secondary">{inactive.length}</Badge>
           </summary>
-          <ul className="mt-3 flex flex-col divide-y divide-border">{inactive.map(renderRow)}</ul>
+          <DataList className="-mx-4 mt-3 border-border border-t sm:-mx-5">{inactive.map(renderRow)}</DataList>
         </details>
       ) : null}
 
@@ -232,7 +237,7 @@ export function ConnectionsList({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }
 
@@ -254,106 +259,102 @@ function ConnectionItem({
   const { locale, t } = useLocale();
   const item = row.kind === 'key' ? row.key : row.app;
   const owner = row.kind === 'key' ? row.key.createdBy : row.app.connectedBy;
+  const canRotate = row.kind === 'key' && row.key.ownedByViewer !== false && row.status !== 'revoked';
+  const canRemove = row.kind === 'app' || row.status !== 'revoked';
+  const rotating = row.kind === 'key' && rotateBusy === row.key.id;
   return (
-    <li className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center">
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          {row.kind === 'app' ? (
-            <Plug aria-hidden className="size-4 shrink-0 text-primary" />
-          ) : (
-            <KeyRound aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-          )}
-          <bdi className="min-w-0 truncate font-medium text-sm">{item.name}</bdi>
+    <DataListItem
+      badges={
+        <>
           <Badge variant="secondary">{row.kind === 'app' ? t('settings.aiAssistants.signedIn') : t('settings.aiAssistants.personalKey')}</Badge>
           <Badge variant="outline">{t(`settings.apiKeys.${item.preset}`)}</Badge>
           {row.kind === 'key' && row.status === 'expiringSoon' && row.key.expiresAt ? (
-            <Badge className="border-warning/40 text-warning" variant="outline">
-              {t('settings.aiAssistants.expiresSoon', { when: relativeFuture(row.key.expiresAt, locale) })}
-            </Badge>
+            <StatusBadge tone="warning">{t('settings.aiAssistants.expiresSoon', { when: relativeFuture(row.key.expiresAt, locale) })}</StatusBadge>
           ) : null}
-          {row.kind === 'key' && row.status === 'expired' ? <Badge variant="destructive">{t('settings.apiKeys.expired')}</Badge> : null}
-          {row.kind === 'key' && row.status === 'revoked' ? <Badge variant="destructive">{t('settings.apiKeys.revoked')}</Badge> : null}
+          {row.kind === 'key' && row.status === 'expired' ? <StatusBadge tone="danger">{t('settings.apiKeys.expired')}</StatusBadge> : null}
+          {row.kind === 'key' && row.status === 'revoked' ? <StatusBadge tone="danger">{t('settings.apiKeys.revoked')}</StatusBadge> : null}
           {row.kind === 'key' && row.status === 'rotationRequired' ? (
-            <Badge variant="outline">{row.key.legacy ? t('settings.apiKeys.legacy') : t('settings.apiKeys.rotationRequired')}</Badge>
+            <StatusBadge tone="warning">{row.key.legacy ? t('settings.apiKeys.legacy') : t('settings.apiKeys.rotationRequired')}</StatusBadge>
           ) : null}
-        </div>
-        <p className="mt-1 text-muted-foreground text-sm">
-          {item.preset === 'custom' ? t('settings.apiKeys.customDescription') : t(`settings.apiKeys.${item.preset}Description`)}
-        </p>
-        <dl className="mt-2 grid gap-1 text-muted-foreground text-xs sm:grid-cols-2">
-          <div className="flex gap-1.5">
-            <dt>{t('settings.apiKeys.lastUsed')}</dt>
-            <dd className="font-medium text-foreground">
+        </>
+      }
+      description={item.preset === 'custom' ? t('settings.apiKeys.customDescription') : t(`settings.apiKeys.${item.preset}Description`)}
+      leading={
+        row.kind === 'app' ? <Plug aria-hidden className="size-4 text-primary" /> : <KeyRound aria-hidden className="size-4 text-muted-foreground" />
+      }
+      meta={
+        <>
+          <span>
+            {t('settings.apiKeys.lastUsed')}{' '}
+            <span className="font-medium text-foreground">
               {item.lastUsedAt ? relativeMinutes(item.lastUsedAt, locale) : t('settings.apiKeys.neverUsed')}
-            </dd>
-          </div>
+            </span>
+          </span>
           {row.kind === 'key' ? (
-            <div className="flex gap-1.5">
-              <dt>{t('settings.apiKeys.expires')}</dt>
-              <dd className="text-foreground">{row.key.expiresAt ? formattedDate(row.key.expiresAt, locale) : t('settings.apiKeys.noExpiry')}</dd>
-            </div>
+            <span>
+              {t('settings.apiKeys.expires')}{' '}
+              <span className="text-foreground">{row.key.expiresAt ? formattedDate(row.key.expiresAt, locale) : t('settings.apiKeys.noExpiry')}</span>
+            </span>
           ) : (
-            <div className="flex gap-1.5">
-              <dt>{t('settings.connectedApps.connectedAt')}</dt>
-              <dd className="text-foreground">{formattedDate(row.app.createdAt, locale)}</dd>
-            </div>
+            <span>
+              {t('settings.connectedApps.connectedAt')} <span className="text-foreground">{formattedDate(row.app.createdAt, locale)}</span>
+            </span>
           )}
           {manageAll && owner ? (
-            <div className="flex gap-1.5">
-              <dt>{row.kind === 'key' ? t('settings.apiKeys.createdBy') : t('settings.connectedApps.connectedBy')}:</dt>
-              <dd>
-                <bdi className="text-foreground">{owner.name.trim() || owner.email}</bdi>
-              </dd>
-            </div>
+            <span>
+              {row.kind === 'key' ? t('settings.apiKeys.createdBy') : t('settings.connectedApps.connectedBy')}:{' '}
+              <bdi className="text-foreground">{owner.name.trim() || owner.email}</bdi>
+            </span>
           ) : null}
-        </dl>
-        {item.lastActivity ? <McpActivityLine activity={item.lastActivity} subject={row.kind} /> : null}
-        <TechnicalDetails activity={item.lastActivity} scopes={item.scopes}>
-          {row.kind === 'key' ? (
-            <>
-              <div>
-                <dt>{t('settings.apiKeys.keyEnding')}</dt>
-                <dd className="mt-1 text-foreground">
-                  <code dir="ltr">{row.key.lastFour}</code>
-                </dd>
-              </div>
-              <div>
-                <dt>{t('settings.apiKeys.createdAt')}</dt>
-                <dd className="mt-1 text-foreground">{formattedDate(row.key.createdAt, locale)}</dd>
-              </div>
-            </>
-          ) : row.app.uri ? (
+        </>
+      }
+      title={<bdi>{item.name}</bdi>}
+      trailing={
+        canRotate || canRemove ? (
+          <RowActions label={t('settings.aiAssistants.actionsFor', { name: item.name })}>
+            {canRotate && row.kind === 'key' ? (
+              <RowActionsItem
+                disabled={rotateBusy !== null}
+                disabledReason={enabled ? undefined : t('settings.aiAssistants.off.reason')}
+                icon={<RefreshCw aria-hidden className={rotating ? 'motion-safe:animate-spin' : undefined} />}
+                onSelect={() => onRotate(row.key)}
+              >
+                {t('settings.apiKeys.rotate')}
+              </RowActionsItem>
+            ) : null}
+            {canRemove ? (
+              <RowActionsItem destructive icon={row.kind === 'app' ? <Unplug aria-hidden /> : <Trash2 aria-hidden />} onSelect={onRemove}>
+                {row.kind === 'app' ? t('settings.connectedApps.disconnect') : t('settings.apiKeys.revoke')}
+              </RowActionsItem>
+            ) : null}
+          </RowActions>
+        ) : null
+      }
+    >
+      {item.lastActivity ? <McpActivityLine activity={item.lastActivity} subject={row.kind} /> : null}
+      <TechnicalDetails activity={item.lastActivity} scopes={item.scopes}>
+        {row.kind === 'key' ? (
+          <>
             <div>
-              <dt>{t('settings.connectedApps.website')}</dt>
-              <dd className="mt-1 break-all text-foreground" dir="ltr">
-                {row.app.uri}
+              <dt>{t('settings.apiKeys.keyEnding')}</dt>
+              <dd className="mt-1 text-foreground">
+                <code dir="ltr">{row.key.lastFour}</code>
               </dd>
             </div>
-          ) : null}
-        </TechnicalDetails>
-      </div>
-      <div className="flex gap-2 self-start sm:self-center">
-        {row.kind === 'key' && row.key.ownedByViewer !== false && row.status !== 'revoked' ? (
-          <Button
-            className="h-9"
-            disabled={rotateBusy !== null && rotateBusy !== row.key.id}
-            disabledReason={enabled ? undefined : t('settings.aiAssistants.off.reason')}
-            loading={rotateBusy === row.key.id}
-            onClick={() => onRotate(row.key)}
-            type="button"
-            variant="outline"
-          >
-            <RefreshCw aria-hidden />
-            {t('settings.apiKeys.rotate')}
-          </Button>
+            <div>
+              <dt>{t('settings.apiKeys.createdAt')}</dt>
+              <dd className="mt-1 text-foreground">{formattedDate(row.key.createdAt, locale)}</dd>
+            </div>
+          </>
+        ) : row.app.uri ? (
+          <div>
+            <dt>{t('settings.connectedApps.website')}</dt>
+            <dd className="mt-1 break-all text-foreground" dir="ltr">
+              {row.app.uri}
+            </dd>
+          </div>
         ) : null}
-        {row.kind === 'app' || row.status !== 'revoked' ? (
-          <Button className="h-9" onClick={onRemove} type="button" variant="destructive">
-            {row.kind === 'app' ? <Unplug aria-hidden /> : <Trash2 aria-hidden />}
-            {row.kind === 'app' ? t('settings.connectedApps.disconnect') : t('settings.apiKeys.revoke')}
-          </Button>
-        ) : null}
-      </div>
-    </li>
+      </TechnicalDetails>
+    </DataListItem>
   );
 }

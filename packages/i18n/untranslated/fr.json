@@ -79,13 +79,6 @@
     "admin_site_version",
     "settings_integrations_provider_publicgit",
     "settings_integrations_provider_plausible",
-    "settings_integrations_provider_qdrant",
-    "settings_integrations_provider_postmark",
-    "settings_integrations_provider_maxio",
-    "settings_integrations_provider_minio",
-    "settings_integrations_provider_amazons3",
-    "settings_integrations_provider_cloudflarer2",
-    "settings_integrations_provider_backblazeb2",
     "settings_integrations_placeholder_slack",
     "settings_integrations_placeholder_discord",
     "settings_integrations_placeholder_zapier",
@@ -122,7 +115,9 @@
     "people_admission_invitationtitle",
     "newsite_starter_guides_title",
     "editor_history_version",
-    "nav_site"
+    "nav_site",
+    "settings_integrations_group_notifications",
+    "settings_exports_formats"
   ],
   "pending": []
 }

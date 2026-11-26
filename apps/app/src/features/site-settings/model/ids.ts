@@ -13,6 +13,7 @@ export const SECTION_IDS = [
   'domain',
   'authentication',
   'addons',
+  'integrations',
   'seo',
   'redirects',
   'variables',
@@ -23,7 +24,6 @@ export const SECTION_IDS = [
   'exports',
   'ai',
   'apiKeys',
-  'integrations',
   'members',
   'usage',
   'danger',
@@ -48,14 +48,28 @@ const PROMOTED_APPEARANCE_SECTIONS = { seo: 'seo', redirects: 'redirects', varia
 >;
 
 /** Sections that were renamed or folded into another. */
-const RENAMED_SECTIONS: Readonly<Record<string, SectionId>> = { analytics: 'integrations', smartAi: 'ai' };
+const RENAMED_SECTIONS: Readonly<Record<string, SectionId>> = { smartAi: 'ai' };
+
+/**
+ * The integrations that open a page of their own inside Integrations
+ * (`?section=integrations&integration=…`), so Back closes it and a link can
+ * point at it. Git sources open the Git page instead.
+ */
+export const INTEGRATION_DETAIL_IDS = ['analytics', 'slack', 'discord', 'zapier'] as const;
+export type IntegrationDetailId = (typeof INTEGRATION_DETAIL_IDS)[number];
 
 const includes = <T extends string>(list: readonly T[], value: unknown): value is T => (list as readonly unknown[]).includes(value);
 export const isSectionId = (value: unknown): value is SectionId => includes(SECTION_IDS, value);
 export const isMovedSectionId = (value: unknown): value is MovedSectionId => includes(MOVED_SECTION_IDS, value);
 const isAppearanceSectionId = (value: unknown): value is AppearanceSectionId => includes(APPEARANCE_SECTION_IDS, value);
 
-export type SettingsSearch = { section?: SectionId | MovedSectionId; appearanceSection?: AppearanceSectionId };
+const isIntegrationDetailId = (value: unknown): value is IntegrationDetailId => includes(INTEGRATION_DETAIL_IDS, value);
+
+export type SettingsSearch = {
+  section?: SectionId | MovedSectionId;
+  appearanceSection?: AppearanceSectionId;
+  integration?: IntegrationDetailId;
+};
 
 /**
  * The route's search params. An absent section stays absent (the default
@@ -63,7 +77,9 @@ export type SettingsSearch = { section?: SectionId | MovedSectionId; appearanceS
  * unknown is dropped.
  */
 export function parseSettingsSearch(search: Record<string, unknown>): SettingsSearch {
-  const { section, appearanceSection } = search;
+  const { section, appearanceSection, integration } = search;
+  // The old Analytics page is Integrations → Analytics now.
+  if (section === 'analytics') return { section: 'integrations', integration: 'analytics' };
   if (section === 'appearance' && typeof appearanceSection === 'string' && Object.hasOwn(PROMOTED_APPEARANCE_SECTIONS, appearanceSection)) {
     return { section: PROMOTED_APPEARANCE_SECTIONS[appearanceSection as keyof typeof PROMOTED_APPEARANCE_SECTIONS] };
   }
@@ -73,5 +89,6 @@ export function parseSettingsSearch(search: Record<string, unknown>): SettingsSe
   return {
     section: parsed,
     ...(parsed === 'appearance' && isAppearanceSectionId(appearanceSection) ? { appearanceSection } : {}),
+    ...(parsed === 'integrations' && isIntegrationDetailId(integration) ? { integration } : {}),
   };
 }

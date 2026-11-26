@@ -122,7 +122,6 @@ describe('export schedule permissions', () => {
       },
     ];
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
-    await act(async () => findButton('settings.exports.workflow.history')?.click());
     expect(container.textContent).toContain('failures.connection');
     expect(container.querySelector('details')?.open).toBe(false);
     expect(container.querySelector('pre')?.textContent).toContain('ProviderError');
@@ -132,7 +131,6 @@ describe('export schedule permissions', () => {
   it('explains a schedule with no published version and retains its details', async () => {
     mocks.lastError = 'No published revision is available.';
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
-    await act(async () => findButton('settings.exports.workflow.schedules')?.click());
     expect(container.textContent).toContain('failures.unpublished');
     expect(container.querySelector('details')?.open).toBe(false);
     expect(container.querySelector('pre')?.textContent).toBe(mocks.lastError);
@@ -229,7 +227,6 @@ describe('export schedule permissions', () => {
     mocks.runs = [running('run-1'), running('run-2')];
     mocks.pending.cancel = [{ projectId: 'project-1', runId: 'run-2' }];
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
-    await act(async () => findButton('settings.exports.workflow.history')?.click());
 
     const cancels = [...container.querySelectorAll('button')].filter((button) => button.textContent?.includes('common.cancel'));
     expect(cancels.map((button) => button.hasAttribute('data-loading'))).toEqual([false, true]);
@@ -237,7 +234,6 @@ describe('export schedule permissions', () => {
 
   it('lets an editor read schedules while hiding every administrator mutation control', async () => {
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
-    await act(async () => findButton('settings.exports.workflow.schedules')?.click());
 
     expect(container.textContent).toContain('Daily backup');
     expect(findButton('settings.exports.workflow.newSchedule')).toBeUndefined();
@@ -248,7 +244,6 @@ describe('export schedule permissions', () => {
 
   it('offers schedule management to administrators without executing a mutation on render', async () => {
     await act(async () => root.render(<ExportsSection canManageSchedules projectId="project-1" />));
-    await act(async () => findButton('settings.exports.workflow.schedules')?.click());
 
     expect(findButton('settings.exports.workflow.newSchedule')).toBeDefined();
     expect(findButton('settings.exports.workflow.runNow')).toBeDefined();
@@ -279,12 +274,16 @@ describe('export schedule permissions', () => {
     });
     const originalLocation = window.location.href;
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
-    await act(async () => findButton('settings.exports.workflow.history')?.click());
     await act(async () => findButton('settings.exports.workflow.format.pdf')?.click());
     expect(mocks.download).toHaveBeenCalledExactlyOnceWith({ projectId: 'project-1', runId: 'run-2', artifactId: 'pdf' });
     expect(clicks).toEqual([{ href: new URL(fileUrl, window.location.href).href, download: 'دليل-v4.pdf', target: '', connected: true }]);
     expect(window.location.href).toBe(originalLocation);
-    expect(container.querySelector('a')).toBeNull();
+    // The download's own anchor is gone again; only the page's links remain.
+    expect(document.querySelector(`a[download="دليل-v4.pdf"]`)).toBeNull();
+    expect([...container.querySelectorAll('a')].map((link) => link.getAttribute('href'))).toEqual([
+      '/api/app/projects/project-1/export',
+      '/api/app/projects/project-1/theme-repository',
+    ]);
     anchorClick.mockRestore();
   });
 
@@ -305,7 +304,6 @@ describe('export schedule permissions', () => {
       },
     ];
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
-    await act(async () => findButton('settings.exports.workflow.history')?.click());
     expect(findButton('settings.exports.workflow.format.markdown')?.textContent).toContain(expected);
   });
 
@@ -325,7 +323,6 @@ describe('export schedule permissions', () => {
     const anchorClick = vi.spyOn(HTMLAnchorElement.prototype, 'click');
     const originalLocation = window.location.href;
     await act(async () => root.render(<ExportsSection canManageSchedules={false} projectId="project-1" />));
-    await act(async () => findButton('settings.exports.workflow.history')?.click());
     await act(async () => findButton('settings.exports.workflow.format.pdf')?.click());
     expect(mocks.error).toHaveBeenCalledExactlyOnceWith('settings.exports.workflow.downloadError');
     expect(anchorClick).not.toHaveBeenCalled();

@@ -13,6 +13,11 @@ describe('settings sections', () => {
     expect(SETTINGS_GROUPS.flatMap((group) => group.sections)).toEqual([...SECTION_IDS]);
   });
 
+  it('puts Integrations in the Website group, after Add-ons, and keeps the AI group to the two AI pages (D4)', () => {
+    expect(SETTINGS_GROUPS.find((group) => group.id === 'website')?.sections.at(-1)).toBe('integrations');
+    expect(SETTINGS_GROUPS.find((group) => group.id === 'ai')?.sections).toEqual(['ai', 'apiKeys']);
+  });
+
   it('orders the groups as §5.7 does, with the Danger zone last and unlabelled', () => {
     expect(SETTINGS_GROUPS.map((group) => group.id)).toEqual(['website', 'content', 'publishing', 'ai', 'team', 'usage', 'danger']);
     expect(SETTINGS_GROUPS.at(-1)).toMatchObject({ labelKey: null, sections: ['danger'] });
@@ -81,7 +86,18 @@ describe('parseSettingsSearch', () => {
     expect(parseSettingsSearch({ section: 'appearance', appearanceSection: name })).toEqual({ section: 'appearance' });
   });
 
-  it('sends the old Analytics section to Integrations', () => {
-    expect(parseSettingsSearch({ section: 'analytics' })).toEqual({ section: 'integrations' });
+  it('sends the old Analytics section to Integrations → Analytics', () => {
+    expect(parseSettingsSearch({ section: 'analytics' })).toEqual({ section: 'integrations', integration: 'analytics' });
+  });
+
+  it('keeps an open integration only under Integrations, and only a known one', () => {
+    for (const integration of ['analytics', 'slack', 'discord', 'zapier']) {
+      expect(parseSettingsSearch({ section: 'integrations', integration })).toEqual({ section: 'integrations', integration });
+    }
+    // Unknown ids, infrastructure and AI providers fall back to the hub.
+    for (const integration of ['qdrant', 'openai', 'github', 'toString', 42]) {
+      expect(parseSettingsSearch({ section: 'integrations', integration })).toEqual({ section: 'integrations' });
+    }
+    expect(parseSettingsSearch({ section: 'general', integration: 'slack' })).toEqual({ section: 'general' });
   });
 });
