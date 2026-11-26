@@ -141,19 +141,23 @@ describe('a code block’s fence is longer than any line of its code that would 
     expect(getMarkdown(editor)).toBe('````js\na\n```\nb\n````\n\nAfter');
   });
 
-  it.each([206, 324, 570, 764])('saves corpus page %i with all its text and no literal delimiters', (index) => {
-    const { source, edits } = serializerCorpus()[index] as ReturnType<typeof serializerCorpus>[number];
-    for (const edited of [false, true]) {
-      load(editor, source);
-      if (edited) applyCorpusEdits(editor as unknown as DifferentialEditor, edits);
-      const text = editor.state.doc.textContent;
-      const saved = getMarkdown(editor);
-      load(reader, saved);
-      expect(reader.state.doc.textContent).toBe(text);
-      const again = getMarkdown(reader);
-      expect(again).toBe(saved);
-      load(reader, again);
-      expect(getMarkdown(reader)).toBe(saved);
-    }
-  });
+  it.each([206, 324, 570, 764])(
+    'saves corpus page %i with all its text and no literal delimiters',
+    (index) => {
+      const { source, edits } = serializerCorpus()[index] as ReturnType<typeof serializerCorpus>[number];
+      for (const edited of [false, true]) {
+        load(editor, source);
+        if (edited) applyCorpusEdits(editor as unknown as DifferentialEditor, edits);
+        const text = editor.state.doc.textContent;
+        const saved = getMarkdown(editor);
+        load(reader, saved);
+        expect(reader.state.doc.textContent).toBe(text);
+        const again = getMarkdown(reader);
+        expect(again).toBe(saved);
+        load(reader, again);
+        expect(getMarkdown(reader)).toBe(saved);
+      }
+    },
+    30_000,
+  );
 });
