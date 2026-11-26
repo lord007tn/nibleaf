@@ -258,40 +258,50 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           text={readerText}
         />
       ) : null}
-      {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
-      {ancestors.length > 0 ? (
-        <nav className="mb-3" aria-label={tReader('breadcrumb')} {...chromeLanguage}>
-          <ol className="flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
-            {ancestors.map((crumb, index) => (
-              <li key={crumb.path} className="flex items-center gap-1.5">
-                {index > 0 ? (
-                  <span className="text-muted-foreground/60" aria-hidden>
-                    /
-                  </span>
-                ) : null}
-                {crumb.section ? (
-                  // A group or category is a heading in the navigation, not a page:
-                  // linking it would only open whichever page comes first under it.
-                  <span dir={blockDirection(crumb.title)} lang={contentLanguage.lang}>
-                    {crumb.title}
-                  </span>
-                ) : (
-                  <a
-                    href={siteHref(projectId, crumb.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
-                    className="underline-offset-4 hover:underline"
-                    dir={blockDirection(crumb.title)}
-                    lang={contentLanguage.lang}
-                  >
-                    {crumb.title}
-                  </a>
-                )}
-              </li>
-            ))}
-          </ol>
-        </nav>
-      ) : null}
-      <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <h1 tabIndex={-1} className="min-w-0 outline-none font-semibold text-3xl tracking-tight md:text-4xl" dir={blockDirection(page.title)}>
+      {/* The page header: the section trail, the title and the page actions. On
+          phones the actions sit on the trail's row and the title takes the whole
+          width, so whether they fit beside it never depends on the font: a
+          wider web font (Arabic in particular) used to wrap them under the
+          title once it loaded, pushing the article down. From `sm` they sit
+          beside the title. */}
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4" data-reader-page-header="">
+        {/* Eyebrow: the page's section trail, accent-colored (Mintlify-style). */}
+        {ancestors.length > 0 ? (
+          <nav className="col-start-1 row-start-1 mb-3 self-center" aria-label={tReader('breadcrumb')} {...chromeLanguage}>
+            <ol className="flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
+              {ancestors.map((crumb, index) => (
+                <li key={crumb.path} className="flex items-center gap-1.5">
+                  {index > 0 ? (
+                    <span className="text-muted-foreground/60" aria-hidden>
+                      /
+                    </span>
+                  ) : null}
+                  {crumb.section ? (
+                    // A group or category is a heading in the navigation, not a page:
+                    // linking it would only open whichever page comes first under it.
+                    <span dir={blockDirection(crumb.title)} lang={contentLanguage.lang}>
+                      {crumb.title}
+                    </span>
+                  ) : (
+                    <a
+                      href={siteHref(projectId, crumb.path, { lang: readerNavigationLanguage, version: versionPrefix, languages: data.languages })}
+                      className="underline-offset-4 hover:underline"
+                      dir={blockDirection(crumb.title)}
+                      lang={contentLanguage.lang}
+                    >
+                      {crumb.title}
+                    </a>
+                  )}
+                </li>
+              ))}
+            </ol>
+          </nav>
+        ) : null}
+        <h1
+          tabIndex={-1}
+          className="col-span-2 row-start-2 min-w-0 outline-none font-semibold text-3xl tracking-tight sm:col-span-1 md:text-4xl"
+          dir={blockDirection(page.title)}
+        >
           {page.title}
         </h1>
         {/* Only on a page with a public Markdown twin (the rule the server's
@@ -306,7 +316,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
             pageHref={siteHref(projectId, page.path, { lang: navigationLanguage, version: versionPrefix, languages: data.languages })}
             lang={readerLanguage}
             attributes={chromeLanguage}
-            className="md:mt-1.5"
+            className="col-start-2 row-start-1 mb-3 self-center sm:row-start-2 sm:mb-0 sm:self-start md:mt-1.5"
           />
         ) : null}
       </div>

@@ -59,23 +59,25 @@
       "Noto Naskh Arabic", "Sakkal Majalla", "Traditional Arabic", serif;
   }
 
-  /* Article title + lede live outside .typeset (site-page-view); give them the
-   * same optical tuning as the prose headings. */
-  .nibleaf-site-chrome [data-theme-region="article"] > h1 {
+  /* The article title lives outside .typeset, in the page header
+   * (site-page-view); give it the same optical tuning as the prose headings.
+   * Scoped to that header: since the page actions joined the title (#634) it is
+   * no longer a direct child of the article. */
+  .nibleaf-site-chrome [data-reader-page-header] > h1 {
     line-height: 1.15;
     letter-spacing: -0.02em;
     text-wrap: balance;
   }
 
   .nibleaf-site-chrome[data-theme-id="manuscript"]
-    [data-theme-region="article"]
+    [data-reader-page-header]
     > h1 {
     font-family: var(--font-heading);
     font-weight: 600;
     letter-spacing: -0.01em;
   }
 
-  .nibleaf-site-chrome[dir="rtl"] [data-theme-region="article"] > h1 {
+  .nibleaf-site-chrome[dir="rtl"] [data-reader-page-header] > h1 {
     letter-spacing: 0;
     line-height: 1.3;
   }
@@ -984,6 +986,13 @@
   }
   [data-theme-surface="ai"][data-docked] {
     border-inline-start: 1px solid var(--border);
+  }
+  /* From here the header has its own Ask AI entry (ai-chat/chat-ui.tsx
+     HeaderAction), so the floating launcher and the room it keeps at the end
+     of the page give way: one entry, not two identical buttons on screen. */
+  body:has([data-theme-region="ask-ai-trigger"]) [data-chat-launcher],
+  body:has([data-theme-region="ask-ai-trigger"]) [data-chat-launcher-space] {
+    display: none;
   }
 }
 @media (min-width: 80rem) and (prefers-reduced-motion: no-preference) {
