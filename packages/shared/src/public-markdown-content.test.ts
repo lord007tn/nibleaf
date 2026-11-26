@@ -179,8 +179,8 @@ describe('public Markdown projection safety (#341)', () => {
     ['nested callouts', `<Note>\n<Note>\n\n${fence}\n\n</Note>\n</Note>`],
     ['a Folder inside a callout', `<Note>\n<Folder name="a">\n\n${fence}\n\n</Folder>\n</Note>`],
   ])('removes a script after %s around a fenced block and keeps the code literal', (_label, around) => {
-    const source = `${around}\n\n<script>alert(1)</script>\n\nAfter`;
-    const output = md(source);
+    const source = `${around}\n\n<script>alert(1)</script>`;
+    const output = md(`${source}\n\nAfter`);
     expect(unprefixed(portablePublicMdxMarkdown(source))).toContain(fence);
     expect(withoutCode(output, fence)).not.toMatch(/<\/?script/i);
     expect(unprefixed(output)).toContain(fence);

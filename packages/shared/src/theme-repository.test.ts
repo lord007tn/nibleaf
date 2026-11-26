@@ -123,7 +123,7 @@ describe('Git-native repository contract v2', () => {
     const arabic = JSON.parse(byPath.get('messages/ar.json')?.content ?? '{}');
     const english = JSON.parse(byPath.get('messages/en.json')?.content ?? '{}');
     expect(arabic.search).toMatch(/\p{Script=Arabic}/u);
-    expect(english.noSearchResults).toMatch(/\S/);
+    expect(english.noSearchResults).toMatch(/\p{Script=Latin}/u);
 
     const readme = byPath.get('README.md');
     expect(readme?.ownership).toBe('CUSTOMER');

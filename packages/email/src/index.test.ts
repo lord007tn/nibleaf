@@ -12,12 +12,15 @@ describe('localized transactional email rendering', () => {
   it('sends a private site sign-in code in the site name, in Arabic too', async () => {
     const english = await renderSiteSignInCodeEmail({ code: '482913', projectName: 'Acme Docs' });
     expect(english.subject).toMatch(/\bsign[ -]in\b/i);
+    expect(english.subject).toMatch(/\bcode\b/i);
     expect(english.subject).toContain('Acme Docs');
     expect(english.text).toContain('482913');
     expect(english.text).toContain('Acme Docs');
     const arabic = await renderSiteSignInCodeEmail({ code: '482913', projectName: 'Acme Docs', language: 'ar' });
     expect(arabic.subject).toMatch(/تسجيل.*الدخول/u);
+    expect(arabic.subject).toMatch(/رمز|كود/u);
     expect(arabic.subject).toContain('Acme Docs');
+    expect(arabic.text).toContain('482913');
     expect(arabic.html).toContain('dir="rtl"');
   });
 
