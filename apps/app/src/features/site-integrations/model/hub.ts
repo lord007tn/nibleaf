@@ -11,7 +11,7 @@ import type { IntegrationDetailId } from '@/features/site-settings/model/ids';
  */
 export type HubGroupId = 'sync' | 'analytics' | 'notifications' | 'automation';
 
-export const HUB_GROUPS: ReadonlyArray<{ id: HubGroupId; providers: readonly IntegrationProviderId[] }> = [
+const HUB_GROUPS: ReadonlyArray<{ id: HubGroupId; providers: readonly IntegrationProviderId[] }> = [
   { id: 'sync', providers: ['github', 'gitlab', 'public-git'] },
   { id: 'analytics', providers: ['google-analytics', 'plausible'] },
   { id: 'notifications', providers: ['slack', 'discord'] },
@@ -41,7 +41,7 @@ export type CardState =
   | { kind: 'notSendingYet'; line: CardLine };
 
 /** Where a card leads: the Git page, an integration page inside the hub, or nowhere. */
-export type CardTarget = { kind: 'git' } | { kind: 'detail'; id: IntegrationDetailId } | null;
+type CardTarget = { kind: 'git' } | { kind: 'detail'; id: IntegrationDetailId } | null;
 
 export interface HubCard {
   entry: IntegrationCatalogEntry;

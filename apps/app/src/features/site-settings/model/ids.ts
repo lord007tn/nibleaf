@@ -55,7 +55,7 @@ const RENAMED_SECTIONS: Readonly<Record<string, SectionId>> = { smartAi: 'ai' };
  * (`?section=integrations&integration=…`), so Back closes it and a link can
  * point at it. Git sources open the Git page instead.
  */
-export const INTEGRATION_DETAIL_IDS = ['analytics', 'slack', 'discord', 'zapier'] as const;
+const INTEGRATION_DETAIL_IDS = ['analytics', 'slack', 'discord', 'zapier'] as const;
 export type IntegrationDetailId = (typeof INTEGRATION_DETAIL_IDS)[number];
 
 const includes = <T extends string>(list: readonly T[], value: unknown): value is T => (list as readonly unknown[]).includes(value);
