@@ -18,6 +18,7 @@ export function ViewsAreaChart({
   onRangeChange,
   loading,
   unavailable,
+  empty,
 }: {
   title: string;
   description: string;
@@ -27,6 +28,8 @@ export function ViewsAreaChart({
   loading?: boolean;
   /** The views couldn't be loaded or aren't known: say so instead of "no traffic yet". */
   unavailable?: boolean;
+  /** What an empty plot says, when the page knows better than "no traffic yet" (e.g. a site that is already live). */
+  empty?: string;
 }) {
   return (
     <Card className="@container/chart">
@@ -38,7 +41,7 @@ export function ViewsAreaChart({
         </CardAction>
       </CardHeader>
       <div className="px-2 pb-4 sm:px-6">
-        <ViewsTimeseriesChart data={data} loading={loading} unknown={unavailable} />
+        <ViewsTimeseriesChart data={data} empty={empty} loading={loading} unknown={unavailable} />
       </div>
     </Card>
   );

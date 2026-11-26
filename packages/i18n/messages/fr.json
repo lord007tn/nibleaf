@@ -5133,5 +5133,6 @@
   "dashboard_ai_learnmore": "Comment fonctionne l’assistant IA",
   "dashboard_ai_notsavingyet": "Les nouvelles questions ne sont pas encore enregistrées. Les questions enregistrées auparavant s’affichent toujours ici.",
   "dashboard_ai_emptytitle": "Aucune question pour l’instant",
-  "dashboard_ai_emptybody": "Les lecteurs peuvent interroger l’assistant IA depuis votre documentation publiée. Essayez une période plus large ou d’autres filtres."
+  "dashboard_ai_emptybody": "Les lecteurs peuvent interroger l’assistant IA depuis votre documentation publiée. Essayez une période plus large ou d’autres filtres.",
+  "overview_viewsemptylive": "Aucune visite pour l’instant. Partagez l’adresse de votre site pour attirer vos premiers lecteurs."
 }

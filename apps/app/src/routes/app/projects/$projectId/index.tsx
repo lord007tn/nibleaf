@@ -218,8 +218,15 @@ function SiteOverviewPage() {
               <div className="font-semibold text-sm">{t('overview.live.title')}</div>
               {overview.liveCard === 'live' ? (
                 <>
-                  <a className="block truncate font-mono text-primary text-sm hover:underline" href={liveHref} target="_blank" rel="noreferrer">
-                    <bdi dir="ltr">{liveDomain ?? liveHref}</bdi>
+                  {/* An address reads left to right and loses its end, not its "https://", when it is too long, in an RTL page too. */}
+                  <a
+                    className="block truncate text-left font-mono text-primary text-sm hover:underline rtl:text-right"
+                    dir="ltr"
+                    href={liveHref}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {liveDomain ?? liveHref}
                   </a>
                   {connectingDomain ? (
                     <p className="mt-1 break-words text-muted-foreground text-xs">
@@ -412,6 +419,8 @@ function SiteOverviewPage() {
           onRangeChange={setRange}
           loading={analyticsPending}
           unavailable={analyticsUnknown}
+          // "Publish a site and share it" reads wrong once the site is live.
+          empty={overview.publishing === 'live' ? t('overview.viewsEmptyLive') : undefined}
         />
       </div>
 

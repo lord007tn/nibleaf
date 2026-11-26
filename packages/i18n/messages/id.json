@@ -5062,5 +5062,6 @@
   "dashboard_ai_learnmore": "Cara kerja asisten AI",
   "dashboard_ai_notsavingyet": "Pertanyaan baru belum disimpan. Pertanyaan yang tersimpan sebelumnya tetap tampil di sini.",
   "dashboard_ai_emptytitle": "Belum ada pertanyaan",
-  "dashboard_ai_emptybody": "Pembaca dapat bertanya ke asisten AI dari dokumentasi yang sudah diterbitkan. Coba rentang tanggal yang lebih luas atau filter lain."
+  "dashboard_ai_emptybody": "Pembaca dapat bertanya ke asisten AI dari dokumentasi yang sudah diterbitkan. Coba rentang tanggal yang lebih luas atau filter lain.",
+  "overview_viewsemptylive": "Belum ada kunjungan. Bagikan alamat situs Anda untuk menarik pembaca pertama."
 }

@@ -5046,5 +5046,6 @@
   "dashboard_ai_learnmore": "AI 助手的工作原理",
   "dashboard_ai_notsavingyet": "新的问题暂未保存。之前保存的问题仍会显示在这里。",
   "dashboard_ai_emptytitle": "还没有问题",
-  "dashboard_ai_emptybody": "读者可以在你已发布的文档中向 AI 助手提问。试试更宽的日期范围或其他筛选条件。"
+  "dashboard_ai_emptybody": "读者可以在你已发布的文档中向 AI 助手提问。试试更宽的日期范围或其他筛选条件。",
+  "overview_viewsemptylive": "还没有访问。分享你的网站地址，迎来第一批读者。"
 }

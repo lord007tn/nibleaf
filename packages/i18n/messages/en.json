@@ -5133,5 +5133,6 @@
   "dashboard_ai_learnmore": "How the AI assistant works",
   "dashboard_ai_notsavingyet": "New questions aren't being saved yet. Questions saved earlier still show here.",
   "dashboard_ai_emptytitle": "No questions yet",
-  "dashboard_ai_emptybody": "Readers can ask the AI assistant from your published docs. Try a wider date range or other filters."
+  "dashboard_ai_emptybody": "Readers can ask the AI assistant from your published docs. Try a wider date range or other filters.",
+  "overview_viewsemptylive": "No visits yet. Share your site's address to bring in your first readers."
 }

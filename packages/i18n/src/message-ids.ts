@@ -4969,6 +4969,7 @@ export const MESSAGE_IDS = {
   'dashboard.ai.notSavingYet': 'dashboard_ai_notsavingyet',
   'dashboard.ai.emptyTitle': 'dashboard_ai_emptytitle',
   'dashboard.ai.emptyBody': 'dashboard_ai_emptybody',
+  'overview.viewsEmptyLive': 'overview_viewsemptylive',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

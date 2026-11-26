@@ -527,6 +527,20 @@ describe('site overview when something fails or is still connecting', () => {
       expect(tile('overview.stats.deploys')).toBe('4');
     });
 
+    it('tells a live site with no visits to share its address, not to publish', async () => {
+      queries.project = loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 1 });
+      queries.deployments = loaded([{ ...readyDeployment, version: 1 }]);
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(analytics.chart).toHaveBeenLastCalledWith(expect.objectContaining({ empty: 'overview.viewsEmptyLive' }));
+    });
+
+    it('keeps the generic empty message before the first publish', async () => {
+      queries.project = loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 0 });
+      queries.deployments = loaded([]);
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(analytics.chart).toHaveBeenLastCalledWith(expect.objectContaining({ empty: undefined }));
+    });
+
     it('never labels a failed attempt "Published docs" in the activity list', async () => {
       Object.assign(queries, {
         project: loaded({ id: 'project-1', name: 'Docs', slug: 'docs', readyPublishes: 1 }),

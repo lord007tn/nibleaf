@@ -5133,5 +5133,6 @@
   "dashboard_ai_learnmore": "Cómo funciona el asistente de IA",
   "dashboard_ai_notsavingyet": "Las preguntas nuevas aún no se guardan. Las preguntas guardadas antes siguen apareciendo aquí.",
   "dashboard_ai_emptytitle": "Aún no hay preguntas",
-  "dashboard_ai_emptybody": "Los lectores pueden preguntar al asistente de IA desde tu documentación publicada. Prueba con un intervalo de fechas más amplio u otros filtros."
+  "dashboard_ai_emptybody": "Los lectores pueden preguntar al asistente de IA desde tu documentación publicada. Prueba con un intervalo de fechas más amplio u otros filtros.",
+  "overview_viewsemptylive": "Aún no hay visitas. Comparte la dirección de tu sitio para atraer a tus primeros lectores."
 }

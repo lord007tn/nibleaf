@@ -5133,5 +5133,6 @@
   "dashboard_ai_learnmore": "So funktioniert der KI-Assistent",
   "dashboard_ai_notsavingyet": "Neue Fragen werden noch nicht gespeichert. Früher gespeicherte Fragen werden hier weiterhin angezeigt.",
   "dashboard_ai_emptytitle": "Noch keine Fragen",
-  "dashboard_ai_emptybody": "Leser können den KI-Assistenten aus Ihrer veröffentlichten Dokumentation heraus fragen. Versuchen Sie einen längeren Zeitraum oder andere Filter."
+  "dashboard_ai_emptybody": "Leser können den KI-Assistenten aus Ihrer veröffentlichten Dokumentation heraus fragen. Versuchen Sie einen längeren Zeitraum oder andere Filter.",
+  "overview_viewsemptylive": "Noch keine Besuche. Teilen Sie die Adresse Ihrer Website, um die ersten Leser zu gewinnen."
 }

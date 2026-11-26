@@ -17,12 +17,15 @@ export function ViewsTimeseriesChart({
   data,
   loading,
   unknown,
+  empty,
   className,
 }: {
   data: ViewsPoint[];
   loading?: boolean;
   /** The views couldn't be loaded or aren't known: say so instead of "no traffic yet". */
   unknown?: boolean;
+  /** What an empty plot says; defaults to the generic "no traffic yet". */
+  empty?: string;
   className?: string;
 }) {
   const t = useT();
@@ -38,7 +41,7 @@ export function ViewsTimeseriesChart({
   return (
     <TrendChart
       className={className}
-      empty={t('analytics.empty.traffic')}
+      empty={empty ?? t('analytics.empty.traffic')}
       granularity={granularity}
       loading={loading}
       rows={data}
