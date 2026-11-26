@@ -86,7 +86,12 @@ describe('a language chosen in another tab (AUTH-20)', () => {
   it('lets another tab supersede a switch still downloading here, even back to the language on screen', async () => {
     const { getLocale, registerLanguagePreparation, setLanguage } = await import('@nibleaf/i18n/locale-state');
     let finishArabic: (ready: boolean) => void = () => undefined;
-    registerLanguagePreparation((locale) => (locale === 'ar' ? new Promise<boolean>((done) => (finishArabic = done)) : Promise.resolve(true)));
+    registerLanguagePreparation((locale) => {
+      if (locale !== 'ar') return Promise.resolve(true);
+      return new Promise<boolean>((done) => {
+        finishArabic = done;
+      });
+    });
     (await import('./interface-language-sync')).startInterfaceLanguageSync();
     const other = otherTab();
     const switching = setLanguage('ar'); // still downloading
