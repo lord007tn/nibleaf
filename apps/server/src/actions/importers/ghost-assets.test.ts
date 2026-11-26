@@ -9,7 +9,7 @@ import { RemoteAssetMigrator, remoteImageSources } from './ghost-assets';
 beforeEach(() => vi.clearAllMocks());
 
 describe('remoteImageSources', () => {
-  it.each(['gitbook', 'mintlify'])('full-review 6: %s never migrates an image in an MDX component fence', async (namespace) => {
+  it.each(['gitbook', 'mintlify'])('%s never migrates an image in an MDX component fence', async (namespace) => {
     vi.mocked(findImportedAsset).mockResolvedValue({ url: 'https://storage.test/rewritten.png' } as never);
     const source = '<CodeGroup>\n  ```md\n  ![Example](https://cdn.test/example.png)\n  ```\n</CodeGroup>';
     const assets = new RemoteAssetMigrator('synthetic', namespace);
@@ -17,7 +17,7 @@ describe('remoteImageSources', () => {
     expect(findImportedAsset).not.toHaveBeenCalled();
     expect(assets.failures.size).toBe(0);
   });
-  it.each(['gitbook', 'mintlify'])('council P1: %s leaves indented image code out of remote migration', async (namespace) => {
+  it.each(['gitbook', 'mintlify'])('%s leaves indented image code out of remote migration', async (namespace) => {
     vi.mocked(findImportedAsset).mockResolvedValue({ url: 'https://storage.test/rewritten.png' } as never);
     const source = 'Example:\n\n    ![Example](https://cdn.test/example.png)';
     const assets = new RemoteAssetMigrator('synthetic', namespace);

@@ -11,11 +11,11 @@ const translate = (key: string) =>
 
 describe('authDocumentTitle', () => {
   it.each([
-    ['/sign-in', 'لاگ ان کریں۔ — Nibleaf'],
-    ['/sign-up', 'اکاؤنٹ بنائیں — Nibleaf'],
-    ['/verify-email', 'اپنے ای میل کی تصدیق کریں — Nibleaf'],
-    ['/forgot-password', 'Nibleaf پاس ورڈ کے بغیر ہے۔ — Nibleaf'],
-    ['/reset-password', 'Nibleaf پاس ورڈ کے بغیر ہے۔ — Nibleaf'],
+    ['/sign-in', 'لاگ ان کریں۔ · Nibleaf'],
+    ['/sign-up', 'اکاؤنٹ بنائیں · Nibleaf'],
+    ['/verify-email', 'اپنے ای میل کی تصدیق کریں · Nibleaf'],
+    ['/forgot-password', 'Nibleaf پاس ورڈ کے بغیر ہے۔ · Nibleaf'],
+    ['/reset-password', 'Nibleaf پاس ورڈ کے بغیر ہے۔ · Nibleaf'],
   ])('localizes %s', (pathname, expected) => {
     expect(authDocumentTitle(pathname, translate)).toBe(expected);
   });

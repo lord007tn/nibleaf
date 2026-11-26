@@ -4,7 +4,7 @@ import { rewritePageLinks } from './rewrite-page-links';
 describe('rewritePageLinks', () => {
   const rewrite = (href: string) => (href.startsWith('/old') ? href.replace('/old', '/new') : href);
 
-  it('council: expressions, multiline JSX props and HTML stay byte-identical', () => {
+  it('expressions, multiline JSX props and HTML stay byte-identical', () => {
     const source = '{true && "[expression](/old)"}\n\n<Card\n  title="[prop](/old)"\n>\n\n[real](/old)\n\n</Card>\n\n<div>[html](/old)</div>';
     expect(rewritePageLinks(source, rewrite).content).toBe(source.replace('[real](/old)', '[real](/new)'));
   });

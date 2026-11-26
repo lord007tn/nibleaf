@@ -92,7 +92,8 @@ export function markTightLists<T extends MarkdownToken>(state: MarkdownCoreState
         list.tight &&=
           // A list after a list of its own type is written after blank lines (markdown-output.ts).
           (isList(block) && list.previous !== 'other' && list.previous !== block) ||
-          (block === 'fence' && list.previous === 'paragraph' && tokens[index - 2]?.content === '');
+          (block === 'fence' && list.previous === 'paragraph') ||
+          (block === 'paragraph' && list.previous === 'fence');
       list.previous = block;
       if (block === 'paragraph' && (tokens[index + 1]?.content ?? '') !== '') {
         list.paragraphs = true;
@@ -145,13 +146,24 @@ function interruptsParagraph(list: PMNode): boolean {
   return !!first && !(first.childCount === 1 && first.firstChild?.content.size === 0);
 }
 
+/** Whether an authored fence and its neighboring paragraph can share a tight item. */
+export function authoredFenceBoundary(previous: PMNode, next: PMNode): boolean {
+  if (previous.type.name === 'paragraph' && next.type.name === 'codeBlock') {
+    const opener = String(next.attrs.sourceFenceOpen ?? '');
+    // Keep the legacy spacing for indented openers recovered inside a list.
+    return previous.content.size > 0 && opener !== '' && !/^[ \t]/.test(opener);
+  }
+  // An empty fence can gain a lead during loading even when the authored item
+  // has a blank line before its paragraph. Preserve the legacy spacing there.
+  return previous.type.name === 'codeBlock' && previous.content.size > 0 && Boolean(previous.attrs.sourceFenceOpen) && next.type.name === 'paragraph';
+}
+
 /**
  * Whether the serializer writes the blocks of `item` on consecutive lines, as a tight
  * list needs: its first block (an empty paragraph is left out before the paragraph,
- * fence or block that then opens the item's line), then only nested lists, each where
- * the line before lets a list start (`ENDS_ON_ITS_LINE`, `ENDS_WITH_TEXT`), and not
- * after a list of its own type (two such lists are written with blank lines between
- * them). Anything else is written after a blank line inside the item.
+ * fence or block that then opens the item's line), then authored fences beside
+ * paragraphs or nested lists where the line before lets a list start. A pair of
+ * lists of the same type still needs blank lines.
  */
 function itemWritesTight(item: PMNode): boolean {
   let index = 1;
@@ -171,6 +183,10 @@ function itemWritesTight(item: PMNode): boolean {
   }
   for (; index < item.childCount; index++) {
     const child = item.child(index);
+    if (item.type.name === 'listItem' && authoredFenceBoundary(previous, child)) {
+      previous = child;
+      continue;
+    }
     if (!LIST_NODES.has(child.type.name)) return false;
     const name = previous.type.name;
     if (previous.type === child.type || (ENDS_WITH_TEXT.has(name) ? !interruptsParagraph(child) : !ENDS_ON_ITS_LINE.has(name))) return false;

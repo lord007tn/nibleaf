@@ -13,6 +13,7 @@ export const SECTION_IDS = [
   'domain',
   'authentication',
   'addons',
+  'integrations',
   'seo',
   'redirects',
   'variables',
@@ -23,7 +24,6 @@ export const SECTION_IDS = [
   'exports',
   'ai',
   'apiKeys',
-  'integrations',
   'members',
   'usage',
   'danger',
@@ -58,15 +58,21 @@ const PROMOTED_APPEARANCE_SECTIONS = { seo: 'seo', redirects: 'redirects', varia
   SectionId
 >;
 
-/** Sections that were renamed or folded into another. */
-const RENAMED_SECTIONS: Readonly<Record<string, SectionId>> = { analytics: 'integrations', smartAi: 'ai' };
-
 const includes = <T extends string>(list: readonly T[], value: unknown): value is T => (list as readonly unknown[]).includes(value);
 export const isSectionId = (value: unknown): value is SectionId => includes(SECTION_IDS, value);
 export const isMovedSectionId = (value: unknown): value is MovedSectionId => includes(MOVED_SECTION_IDS, value);
 const isAppearanceLink = (value: unknown): value is AppearanceLink => includes(APPEARANCE_LINKS, value);
 
-export type SettingsSearch = { section?: SectionId | MovedSectionId; appearanceSection?: AppearanceLink };
+export type SettingsSearch = {
+  section?: SectionId | MovedSectionId;
+  appearanceSection?: AppearanceLink;
+  /**
+   * The integration open inside Integrations (`?integration=…`), kept as the link gave it: Integrations
+   * itself knows which ones exist (features/site-integrations/model/hub.ts), so the list stays out of this
+   * eager chunk, and an unknown one shows the hub.
+   */
+  integration?: string;
+};
 
 /**
  * The route's search params. An absent section stays absent (the default
@@ -74,15 +80,18 @@ export type SettingsSearch = { section?: SectionId | MovedSectionId; appearanceS
  * unknown is dropped.
  */
 export function parseSettingsSearch(search: Record<string, unknown>): SettingsSearch {
-  const { section, appearanceSection } = search;
+  const { section, appearanceSection, integration } = search;
+  // The old Analytics page is Integrations → Analytics now.
+  if (section === 'analytics') return { section: 'integrations', integration: 'analytics' };
   if (section === 'appearance' && typeof appearanceSection === 'string' && Object.hasOwn(PROMOTED_APPEARANCE_SECTIONS, appearanceSection)) {
     return { section: PROMOTED_APPEARANCE_SECTIONS[appearanceSection as keyof typeof PROMOTED_APPEARANCE_SECTIONS] };
   }
-  // Own keys only: `toString`, `constructor` or `__proto__` must not resolve to something inherited.
-  const renamed = typeof section === 'string' && Object.hasOwn(RENAMED_SECTIONS, section) ? RENAMED_SECTIONS[section] : undefined;
-  const parsed: SettingsSearch['section'] = isSectionId(section) || isMovedSectionId(section) ? section : renamed;
+  // Smart AI was renamed; Analytics folded into Integrations (above). This file is in the public reader's
+  // eager chunk, so the one rename is a comparison, not a lookup table.
+  const parsed: SettingsSearch['section'] = isSectionId(section) || isMovedSectionId(section) ? section : section === 'smartAi' ? 'ai' : undefined;
   return {
     section: parsed,
     ...(parsed === 'appearance' && isAppearanceLink(appearanceSection) ? { appearanceSection } : {}),
+    ...(parsed === 'integrations' && typeof integration === 'string' ? { integration } : {}),
   };
 }

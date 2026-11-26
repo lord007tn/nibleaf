@@ -3,6 +3,7 @@ import { readerSections } from '@nibleaf/shared/reader-headings';
 import { normalizeMdxBlocks } from '@nibleaf/shared/reader-markdown';
 import { describe, expect, it, vi } from 'vitest';
 import { convertGitBookMarkdown } from './gitbook-markdown';
+import { importCodeLines } from './import-markdown-code';
 import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
@@ -45,5 +46,69 @@ describe.each([
       ),
     );
     expect(rewritten).toEqual([true, true, true]);
+  });
+
+  it.each([
+    ['quote tab', '>\t', '>\t', 4],
+    ['quote tab inside ordered list', '1. >\t', '   >\t', 5],
+  ])('protects literal provider links and source bytes in %s', (_form, opener, body, length) => {
+    const literal = `${opener}\`\`\`md\n${body}[Tour](https://youtu.be/abcdefghijk)\n${body}${'`'.repeat(length)}`;
+    const source = `<CodeGroup>\n${literal}\n</CodeGroup>\n\n[After](/next)`;
+    const lines = importCodeLines(source);
+    expect(lines.slice(1, 4)).toEqual([true, true, true]);
+    expect(lines.at(-1)).toBe(false);
+    const content = rewriteMintlifyInternalLinks(convert(source), 'intro', new Map([['next', '/guide/next']]));
+    expect(content).toContain(literal);
+    expect(content).not.toContain('<iframe');
+    expect(content).toContain('[After](/guide/next)');
+  });
+
+  it.each([
+    ['unindented quote', '> ```md\n> [Literal](/literal)'],
+    ['indented list with a blank line', '    - ```md\n      [Literal](/literal)\n\n      [Still literal](/literal)'],
+  ])('ends an unclosed %s fence at the component closer', (_name, example) => {
+    const source = `<CodeGroup>\n${example}\n</CodeGroup>\n\n[After](/next)`;
+    const content = rewriteMintlifyInternalLinks(
+      convert(source),
+      'intro',
+      new Map([
+        ['next', '/rewritten'],
+        ['literal', '/changed'],
+      ]),
+    );
+    expect(content).toContain('[Literal](/literal)');
+    if (example.includes('Still literal')) expect(content).toContain('[Still literal](/literal)');
+    expect(content).not.toContain('/changed');
+    expect(content).toContain('[After](/rewritten)');
+    expect(normalizeMintlifyMdx(content)).not.toContain('</CodeGroup>');
+  });
+
+  it.each([
+    ['multiline', '<Image\n  src="/cover.png"\n/>'],
+    ['quoted delimiters', '<Image\n  alt="Literal /> and >"\n/>'],
+    ['expression delimiters', '<Image\n  alt={{ label: "/> and >", nested: { value: ">" } }}\n/>'],
+    ['expression comparison', '<Image\n  size={3 > 2 ? "large />" : "small"}\n/>'],
+    ['escaped quote', '<Image\n  alt="An \\"escaped\\" /> value"\n/>'],
+    [
+      'nested components',
+      '<Outer>\n<Inner\n  label="Literal />"\n/>\n<CodeGroup>\n  ```md\n  [Nested](https://help.test/next)\n  ```\n</CodeGroup>\n</Outer>',
+    ],
+    [
+      'multiline nested components',
+      '<Outer\n  size={3 > 2 ? "/>" : ">"}\n>\n<Inner\n  label="Literal />"\n/>\n<CodeGroup>\n  ```md\n  [Nested](https://help.test/next)\n  ```\n</CodeGroup>\n</Outer>',
+    ],
+  ])('preserves indented code after a %s component while rewriting prose', (_form, component) => {
+    const code = '    ```md\n    [Literal](https://help.test/next)';
+    const source = `${component}\n\n${code}\n\n[Next](https://help.test/next)\n\n[Tour](https://youtu.be/abcdefghijk)`;
+    const issues: string[] = [];
+    const content = rewriteMintlifyInternalLinks(convert(source), 'intro', new Map([['next', '/guide/next']]), {
+      sourceUrl: 'https://help.test',
+      onUnresolved: (value) => issues.push(value),
+    });
+    expect(content).toContain(code);
+    if (_form.includes('nested components')) expect(content).toContain('[Nested](https://help.test/next)');
+    expect(content).toContain('[Next](/guide/next)');
+    expect(content).toContain('<iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title="Tour"></iframe>');
+    expect(issues).toEqual([]);
   });
 });

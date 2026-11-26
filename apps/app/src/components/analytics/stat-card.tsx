@@ -1,4 +1,4 @@
-import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { ReactNode } from 'react';
@@ -20,6 +20,8 @@ export function StatCard({
   delta,
   hint,
   loading,
+  link,
+  refreshing,
 }: {
   label: string;
   value: number | null;
@@ -30,10 +32,25 @@ export function StatCard({
   delta?: Delta | null;
   hint?: string;
   loading?: boolean;
+  /**
+   * Where the number leads (the pages, the team, the publish history, the
+   * analytics): a link stretched over the whole tile, named after it. The
+   * tile itself stays a plain card for assistive tech.
+   */
+  link?: ReactNode;
+  /** The figure is the previous range's while a new range loads: dimmed and marked busy. */
+  refreshing?: boolean;
 }) {
   const { number } = useFormatters();
   return (
-    <Card className="@container/card min-w-0 gap-3">
+    <Card
+      aria-busy={refreshing || undefined}
+      className={cn(
+        '@container/card min-w-0 gap-3 transition-opacity',
+        refreshing && 'opacity-60',
+        link && 'relative transition-colors focus-within:ring-3 focus-within:ring-ring/50 hover:bg-muted/40 [&_a]:outline-none',
+      )}
+    >
       <CardHeader>
         <CardDescription className="flex min-w-0 items-start gap-1.5">
           {icon ? <span className="mt-0.5 shrink-0 [&_svg]:size-4">{icon}</span> : null}
@@ -47,13 +64,22 @@ export function StatCard({
             {value === null ? '—' : (display ?? number(value))}
           </CardTitle>
         )}
-        {delta && !loading ? (
-          <CardAction>
-            <DeltaBadge delta={delta} polarity="higher_is_better" />
-          </CardAction>
-        ) : null}
       </CardHeader>
-      {hint && !loading ? <CardFooter className={cn('text-muted-foreground text-xs')}>{hint}</CardFooter> : null}
+      {/* The change sits on the footer line with its "vs. previous period", not in the header's
+          corner, where a narrow tile (two per row on a phone) laid it over the label (WORKSPACE-23). */}
+      {(delta || hint) && !loading ? (
+        <CardFooter className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+          {/* Only the badge sits above the tile's stretched link (its spoken text shows on hover);
+              the rest of the footer still opens the tile's page. */}
+          {delta ? (
+            <span className="relative z-10">
+              <DeltaBadge delta={delta} polarity="higher_is_better" />
+            </span>
+          ) : null}
+          {hint ? <span>{hint}</span> : null}
+        </CardFooter>
+      ) : null}
+      {link}
     </Card>
   );
 }

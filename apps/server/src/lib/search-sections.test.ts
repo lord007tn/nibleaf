@@ -126,7 +126,7 @@ ${filler}يمكنك إِلْغَاءُ الاشتراك في أي وقت ${fille
     expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
   });
 
-  it.each(CODERABBIT_REPROS)('finds the section after %s (#590 CodeRabbit review)', (_name, example) => {
+  it.each(CODERABBIT_REPROS)('finds the section after %s', (_name, example) => {
     const page = { title: 'Guide', content: `${example}\n\nThe after section mentions zebras.` };
     expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
   });
@@ -178,12 +178,12 @@ The after section mentions zebras.`,
     expect(matchedSearchSection(inCode, 'literal')).toBeUndefined();
   });
 
-  it.each(CONTINUATION_FENCE_REPROS)('finds the section after %s (#590 CodeRabbit)', (_name, example) => {
+  it.each(CONTINUATION_FENCE_REPROS)('finds the section after %s', (_name, example) => {
     const page = { title: 'Guide', content: `${example}\n\nThe after section mentions zebras.` };
     expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
   });
 
-  it('finds the section after indented code that looks like a fence, once a quote has ended (#590 council)', () => {
+  it('finds the section after indented code that looks like a fence, once a quote has ended', () => {
     const page = { title: 'Guide', content: `${INDENTED_FENCE_AFTER_QUOTE}\n\nThe after section mentions zebras.` };
     expect(matchedSearchSection(page, 'zebras')?.section).toEqual({ id: 'after', title: 'After' });
   });

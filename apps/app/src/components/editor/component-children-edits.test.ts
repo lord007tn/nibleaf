@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 /*
@@ -17,16 +17,21 @@ import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
  * The cases come from the reviewer's differential (421 pages × 5 edits).
  */
 
-const editors: Editor[] = [];
-const open = (markdown: string) => {
+function createPageLoader() {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
-  editors.push(editor);
-  editor.commands.setContent(markdown, { emitUpdate: false });
-  return editor;
-};
-afterEach(() => {
-  for (const editor of editors.splice(0)) editor.destroy();
-});
+  const initialState = editor.state;
+  afterAll(() => editor.destroy());
+
+  return (markdown: string) => {
+    // Restore the empty document, selection, and plugin state before each load.
+    editor.view.updateState(initialState);
+    editor.commands.setContent(markdown, { emitUpdate: false });
+    return editor;
+  };
+}
+
+const open = createPageLoader();
+const reload = createPageLoader();
 
 type Edit = 'deleteFirst' | 'deleteLast' | 'blankFirst';
 
@@ -58,7 +63,7 @@ function edited(page: string, edit: Edit): { saved: string; again: string; text:
     editor.commands.splitBlock();
   }
   const saved = getMarkdown(editor);
-  const reloaded = open(saved);
+  const reloaded = reload(saved);
   return { saved, again: getMarkdown(reloaded), text: editor.state.doc.textContent, againText: reloaded.state.doc.textContent };
 }
 

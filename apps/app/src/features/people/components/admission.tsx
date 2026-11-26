@@ -32,6 +32,7 @@ import {
   setPendingInvitation,
   takeAcceptIntent,
 } from '@/lib/invitations';
+import { pageTitle } from '@/lib/page-title';
 import { useSession } from '@/services/auth-client';
 import { signOutDashboard } from '@/services/dashboard-session';
 import { rememberActiveProject } from '@/stores/active-project';
@@ -43,7 +44,7 @@ import { siteRoleLabel } from '../model/roles';
 /** The tab title follows the state the page shows (PUBLIC-09: no generic title). */
 function useDocumentTitle(title: string) {
   useEffect(() => {
-    if (title) document.title = `${title} — Nibleaf`;
+    if (title) document.title = pageTitle(title);
   }, [title]);
 }
 

@@ -552,6 +552,15 @@
   display: block;
   margin-block: 0;
 }
+/* With a mouse the section link appears on hover right after the heading's
+ * text, as readers expect from other docs sites, instead of at the far edge
+ * of the column. Touch screens keep it at the edge, always shown (below). */
+@media (pointer: fine) {
+  .reader-heading {
+    grid-template-columns: minmax(0, max-content) auto;
+    justify-content: start;
+  }
+}
 /* A block that overflows its column (scroll-region.tsx marks it only while it
  * does): a fade on each edge where content waits, mirrored for right-to-left
  * blocks, and the reader's 2px focus outline drawn inside the box so the

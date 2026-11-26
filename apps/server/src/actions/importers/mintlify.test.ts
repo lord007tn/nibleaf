@@ -303,7 +303,7 @@ describe('mintlify importNodes slug collisions', () => {
       reads.mockRestore();
     }
   });
-  it.each(['> ', '- ', '1. '])('re-review 3: stores literal %s fence markers without migrating the example image', async (prefix) => {
+  it.each(['> ', '- ', '1. '])('stores literal %s fence markers without migrating the example image', async (prefix) => {
     setNavigation([{ group: 'Docs', pages: ['intro'] }]);
     const hosted = 'https://storage.example.com/imported.png';
     vi.mocked(findImportedAsset).mockResolvedValue({ url: hosted } as never);
@@ -319,7 +319,7 @@ describe('mintlify importNodes slug collisions', () => {
     expect(findImportedAsset).toHaveBeenCalledTimes(1);
     expect(summary.fidelityIssues ?? []).toEqual([]);
   });
-  it('re-review 2: discovers an English id/generate folder using its frontmatter', async () => {
+  it('discovers an English id/generate folder using its frontmatter', async () => {
     setNavigation([{ group: 'Docs', pages: ['intro'] }]);
     mem.repoFiles.set('intro.mdx', '[Generate](https://help.test/id/generate)');
     mem.repoFiles.set('id/generate.mdx', '---\nlang: en\n---\nGenerated identifier guide.');
@@ -328,7 +328,7 @@ describe('mintlify importNodes slug collisions', () => {
     expect(mem.rows.find((row) => row.slug === 'intro')?.content).toBe('[Generate](/additional-pages/generate)');
     expect(summary.fidelityIssues ?? []).toEqual([]);
   });
-  it.each(['?lang=ar', ''])('re-review 2: unconfigured folders respect query and frontmatter language (%s)', async (suffix) => {
+  it.each(['?lang=ar', ''])('unconfigured folders respect query and frontmatter language (%s)', async (suffix) => {
     setNavigation([{ group: 'Docs', pages: ['intro'] }]);
     const foreign = `https://help.test/custom/hidden${suffix}`;
     mem.repoFiles.set('intro.mdx', `[Arabic](${foreign})`);
@@ -337,7 +337,7 @@ describe('mintlify importNodes slug collisions', () => {
     expect(mem.rows.some((row) => row.languageId === 'lang-en' && row.content === 'Arabic hidden content.')).toBe(false);
     expect(summary.fidelityIssues).toContainEqual({ kind: 'link', page: 'intro', reference: foreign });
   });
-  it.each(['?lang=ar', ''])('full-review 1: never imports foreign hidden content into English without frontmatter (%s)', async (suffix) => {
+  it.each(['?lang=ar', ''])('never imports foreign hidden content into English without frontmatter (%s)', async (suffix) => {
     setNavigation({
       languages: [
         { language: 'en', pages: ['intro'] },
@@ -354,7 +354,7 @@ describe('mintlify importNodes slug collisions', () => {
     expect(mem.rows.some((row) => row.languageId === 'lang-en' && row.content === 'English hidden content.')).toBe(true);
     expect(summary.fidelityIssues).toContainEqual({ kind: 'link', page: 'intro', reference: foreign });
   });
-  it('CodeRabbit: configured APP_URL discovers and rewrites a hidden page in the full import', async () => {
+  it('configured APP_URL discovers and rewrites a hidden page in the full import', async () => {
     vi.stubEnv('APP_URL', 'https://app.example.test');
     try {
       setNavigation([{ group: 'Docs', pages: ['intro'] }]);

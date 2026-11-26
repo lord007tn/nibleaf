@@ -63,7 +63,7 @@ it('closes every generated fence in quotes and lists before the sentinel, and ke
   expect(overrunHash(mainOverruns)).toBe('6c8f4844c08ba09312743ce66e36ff5986603630ff723a66d5b87f78e3232422');
 }, 20_000);
 
-it('never opens a fence on indented code that looks like one, in quotes and lists (#590 council)', ({ task }) => {
+it('never opens a fence on indented code that looks like one, in quotes and lists', ({ task }) => {
   const cases = indentedLookalikeCases();
   const failures: Array<{ index: number; reason: string; source: string }> = [];
   let mainOverruns = 0;
@@ -79,7 +79,7 @@ it('never opens a fence on indented code that looks like one, in quotes and list
   expect(failures.slice(0, 12), `${failures.length} failures`).toEqual([]);
 });
 
-it('ends a fence opened on a container continuation line where its containers end (#590 CodeRabbit)', ({ task }) => {
+it('ends a fence opened on a container continuation line where its containers end', ({ task }) => {
   const cases = continuationFenceCases();
   const failures: Array<{ index: number; reason: string; source: string }> = [];
   let mainOverruns = 0;

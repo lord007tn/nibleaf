@@ -1,7 +1,6 @@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@nibleaf/design-system/components/ui/command';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { INTERFACE_LOCALES, type InterfaceLocale, type Locale } from '@nibleaf/i18n/locales';
-import { Check } from 'lucide-react';
 import { useAuthLocale } from '@/lib/auth-messages';
 
 /** Two-line locale option: the language's own name (in its own script and
@@ -32,25 +31,32 @@ export function InterfaceLanguageDialog({ open, onOpenChange }: { open: boolean;
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden p-0 sm:max-w-md">
-        <DialogHeader className="px-4 pt-4">
+        {/* End padding keeps a long title or description clear of the close button. */}
+        <DialogHeader className="ps-4 pe-12 pt-4">
           <DialogTitle>{t('account.language')}</DialogTitle>
           <DialogDescription>{t('account.language.description')}</DialogDescription>
         </DialogHeader>
-        <Command className="rounded-none bg-transparent">
+        {/* cmdk names its search box and list from `label`; a placeholder alone names nothing. */}
+        <Command className="rounded-none bg-transparent" label={t('account.language.search')}>
           <CommandInput placeholder={t('account.language.search')} />
-          <CommandList className="max-h-[min(24rem,60vh)] pb-1">
+          {/* Its own name: without one, cmdk names the list with its English fallback "Suggestions". */}
+          <CommandList className="max-h-[min(24rem,60vh)] pb-1" label={t('account.language')}>
             <CommandEmpty>{t('account.language.noResults')}</CommandEmpty>
             <CommandGroup>
               {INTERFACE_LOCALES.map((option) => (
                 <CommandItem
-                  key={option.code}
-                  value={`${option.native} ${option.label} ${option.code}`}
-                  onSelect={() => choose(option.code)}
+                  // The language in use is announced as checked; the item draws its own check mark from it.
+                  aria-checked={option.code === locale}
                   className="min-h-11"
+                  data-checked={option.code === locale}
+                  key={option.code}
+                  onSelect={() => choose(option.code)}
+                  value={`${option.native} ${option.label} ${option.code}`}
                 >
                   <InterfaceLocaleLabel option={option} />
-                  <span className="font-mono text-[11px] text-muted-foreground">{option.code}</span>
-                  {option.code === locale ? <Check aria-hidden className="size-4 text-primary" /> : <span className="size-4" />}
+                  <span className="font-mono text-muted-foreground text-xs" dir="ltr">
+                    {option.code}
+                  </span>
                 </CommandItem>
               ))}
             </CommandGroup>

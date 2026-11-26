@@ -10,7 +10,7 @@ export const Route = createFileRoute('/oauth/consent')({
   loader: async ({ preload }) => {
     await loadRouteDashboardLocale(preload);
   },
-  head: () => ({ meta: [{ title: 'Allow access — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
+  head: () => ({ meta: [{ title: 'Allow access · Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: () => (
     <AuthProviders>
       <McpOAuthConsentStep />

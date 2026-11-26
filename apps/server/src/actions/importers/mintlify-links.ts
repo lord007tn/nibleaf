@@ -240,8 +240,8 @@ export const rewriteMintlifyInternalLinks = (
   };
   const references = markdownReferences(protectedCode.content).filter((reference) => !reference.image);
   const definitions = markdownLinkDefinitions(protectedCode.content);
-  // The legacy inline scan can see link-shaped text inside an angle destination.
-  // Prefer the parser's complete definition span so patches never overlap.
+  // Leave a valid definition's title and surrounding syntax literal, including
+  // link- or attribute-shaped text the legacy passes would otherwise rewrite.
   let index = 0;
   const inline = definitions.length
     ? references.filter((reference) => {
@@ -250,20 +250,42 @@ export const rewriteMintlifyInternalLinks = (
         return !definition || reference.end <= definition.start;
       })
     : references;
-  const destinations = definitions.length ? [...inline, ...definitions].sort((a, b) => a.start - b.start) : inline;
-  const markdown = replaceImportReferences(protectedCode.content, destinations, (reference) => rewrite(reference.value));
-  return protectedCode.restore(
-    markdown.replace(HREF_ATTRIBUTE, (match, before: string, reference: string, after: string) => {
-      const decoded = decodeImportEntities(reference);
-      const rewritten = rewrite(decoded);
-      if (rewritten === decoded) return match;
-      const escaped = rewritten
-        .replaceAll('&', '&amp;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-      return `${before}${escaped}${after}`;
-    }),
-  );
+  const definitionReferences = definitions.flatMap(({ destination }) => (destination ? [destination] : []));
+  const destinations = definitions.length ? [...inline, ...definitionReferences].sort((a, b) => a.start - b.start) : inline;
+  const shifts: Array<{ end: number; difference: number }> = [];
+  const markdown = replaceImportReferences(protectedCode.content, destinations, (reference) => {
+    const value = rewrite(reference.value);
+    const difference = value.length - (reference.end - reference.start);
+    if (definitions.length && difference) shifts.push({ end: reference.end, difference });
+    return value;
+  });
+  let shiftIndex = 0;
+  let difference = 0;
+  // Both edits and definition boundaries arrive in source order.
+  const rewrittenOffset = (offset: number) => {
+    let shift = shifts[shiftIndex];
+    while (shift && shift.end <= offset) {
+      difference += shift.difference;
+      shift = shifts[++shiftIndex];
+    }
+    return offset + difference;
+  };
+  const protectedDefinitions = definitions.map(({ start, end }) => ({ start: rewrittenOffset(start), end: rewrittenOffset(end) }));
+  let definitionIndex = 0;
+  const html = markdown.replace(HREF_ATTRIBUTE, (match, before: string, reference: string, after: string, offset: number) => {
+    let definition = protectedDefinitions[definitionIndex];
+    while (definition && definition.end <= offset) definition = protectedDefinitions[++definitionIndex];
+    if (definition && definition.start < offset + match.length) return match;
+    const decoded = decodeImportEntities(reference);
+    const rewritten = rewrite(decoded);
+    if (rewritten === decoded) return match;
+    const escaped = rewritten
+      .replaceAll('&', '&amp;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+    return `${before}${escaped}${after}`;
+  });
+  return protectedCode.restore(html);
 };

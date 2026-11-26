@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 import { fencedMarkdownLines } from './markdown-code';
 import { readerSections } from './reader-headings';
 import { normalizeMdxBlocks } from './reader-markdown';
@@ -14,58 +14,24 @@ import {
   LAZY_TEXT_AFTER_INLINE_HTML,
 } from './testing/fence-cases';
 
-describe('a fence in a quote or list item ends where CommonMark ends it (#587)', () => {
-  it.each(FENCE_CONTAINER_REPROS)('the reader keeps the heading, section and embed after %s', (_name, example) => {
-    const source = `${example}${AFTER_FENCE}`;
-    const exampleLines = example.split('\n').length;
-    expect(fencedMarkdownLines(source.split('\n'))).toEqual(source.split('\n').map((_line, index) => index < exampleLines));
-    expect(extractHeadings(source).map(({ text }) => text)).toEqual(['After']);
-    expect(readerSections(source).map(({ text }) => text)).toEqual(['After']);
-    expect(normalizeMdxBlocks(source)).toContain('<mdxembed provider="youtube" videoid="M7lc1UVf-VE"');
-  });
+const continuationCases = [
+  ...CONTINUATION_FENCE_REPROS,
+  ...CODERABBIT_REPROS,
+  ...LAZY_INLINE_HTML_REPROS,
+  ['a list paragraph with lazy text following inline HTML', LAZY_TEXT_AFTER_INLINE_HTML.source, LAZY_TEXT_AFTER_INLINE_HTML.code],
+] as const;
 
-  it.each(CONTINUATION_FENCE_REPROS)('the reader keeps the heading, section and embed after %s (#590 CodeRabbit)', (_name, example, code) => {
-    const source = `${example}${AFTER_CONTINUATION}`;
-    expect(fencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe(`${code}00`);
-    expect(extractHeadings(source).map(({ text }) => text)).toEqual(['After']);
-    expect(readerSections(source).map(({ text }) => text)).toEqual(['After']);
-    expect(normalizeMdxBlocks(source)).toContain('<mdxembed provider="youtube" videoid="M7lc1UVf-VE"');
-  });
+const cases = [
+  ...FENCE_CONTAINER_REPROS.map(([name, example]) => [name, `${example}${AFTER_FENCE}`, `${'1'.repeat(example.split('\n').length)}0000`] as const),
+  ...continuationCases.map(([name, example, code]) => [name, `${example}${AFTER_CONTINUATION}`, `${code}00`] as const),
+  ['indented code resembling a new fence after a quote', INDENTED_FENCE_AFTER_QUOTE, '1000000'],
+] as const;
 
-  it.each(CODERABBIT_REPROS)('the reader keeps the heading, section and embed after %s (#590 CodeRabbit review)', (_name, example, code) => {
-    const source = `${example}${AFTER_CONTINUATION}`;
-    expect(fencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe(`${code}00`);
-    expect(extractHeadings(source).map(({ text }) => text)).toEqual(['After']);
-    expect(readerSections(source).map(({ text }) => text)).toEqual(['After']);
-    expect(normalizeMdxBlocks(source)).toContain('<mdxembed provider="youtube" videoid="M7lc1UVf-VE"');
-  });
-
-  it.each(LAZY_INLINE_HTML_REPROS)(
-    'the reader keeps the code, heading, section and embed after %s (#590 lazy inline HTML)',
-    (_name, example, code) => {
-      const source = `${example}${AFTER_CONTINUATION}`;
-      expect(fencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe(`${code}00`);
-      expect(extractHeadings(source).map(({ text }) => text)).toEqual(['After']);
-      expect(readerSections(source).map(({ text }) => text)).toEqual(['After']);
-      expect(normalizeMdxBlocks(source)).toContain('<mdxembed provider="youtube" videoid="M7lc1UVf-VE"');
-    },
-  );
-
-  it('keeps the heading, section and embed after lazy text that follows inline HTML in a list item (#590 CodeRabbit)', () => {
-    const source = `${LAZY_TEXT_AFTER_INLINE_HTML.source}${AFTER_CONTINUATION}`;
-    expect(fencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe(`${LAZY_TEXT_AFTER_INLINE_HTML.code}00`);
-    expect(extractHeadings(source).map(({ text }) => text)).toEqual(['After']);
-    expect(readerSections(source).map(({ text }) => text)).toEqual(['After']);
-    expect(normalizeMdxBlocks(source)).toContain('<mdxembed provider="youtube" videoid="M7lc1UVf-VE"');
-  });
-
-  it('keeps the heading, section and embed after indented code that looks like a fence, once a quote has ended (#590 council)', () => {
-    const source = INDENTED_FENCE_AFTER_QUOTE;
-    expect(fencedMarkdownLines(source.split('\n'))).toEqual([true, false, false, false, false, false, false]);
-    expect(extractHeadings(source).map(({ text }) => text)).toEqual(['After']);
-    expect(readerSections(source).map(({ text }) => text)).toEqual(['After']);
-    expect(normalizeMdxBlocks(source)).toContain('<mdxembed provider="youtube" videoid="M7lc1UVf-VE"');
-  });
+it.each(cases)('keeps the heading, section and embed following %s', (_name, source, code) => {
+  expect(fencedMarkdownLines(source.split('\n')).map(Number).join('')).toBe(code);
+  expect(extractHeadings(source).map(({ text }) => text)).toEqual(['After']);
+  expect(readerSections(source).map(({ text }) => text)).toEqual(['After']);
+  expect(normalizeMdxBlocks(source)).toContain('<mdxembed provider="youtube" videoid="M7lc1UVf-VE"');
 });
 
 const examples = [
@@ -80,17 +46,18 @@ const examples = [
 const article = (example: string) =>
   `${example}\n\n# After\n\n<iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title="Tour"></iframe>`;
 
-describe('reader container fence compatibility with main 93408093', () => {
-  it('ends code before the following heading across optional quote spacing, nesting, tabs and lists', () => {
-    expect(examples.map((example) => fencedMarkdownLines(article(example).split('\n'))[4])).toEqual(examples.map(() => false));
-  });
-  it('extractHeadings retains headings following valid container fences', () => {
-    expect(examples.map((example) => extractHeadings(article(example)).map(({ text }) => text))).toEqual(examples.map(() => ['After']));
-  });
-  it('readerSections retains sections following valid container fences', () => {
-    expect(examples.map((example) => readerSections(article(example)).map(({ text }) => text))).toEqual(examples.map(() => ['After']));
-  });
-  it('normalizes the following iframe into mdxembed after valid container fences', () => {
-    expect(examples.map((example) => normalizeMdxBlocks(article(example)).includes('<mdxembed'))).toEqual(examples.map(() => true));
-  });
+it('reads headings and embeds after closed fences with optional quote spacing, nesting, tabs and lists', () => {
+  for (const example of examples) {
+    const source = article(example);
+    expect(fencedMarkdownLines(source.split('\n'))[4], example).toBe(false);
+    expect(
+      extractHeadings(source).map(({ text }) => text),
+      example,
+    ).toEqual(['After']);
+    expect(
+      readerSections(source).map(({ text }) => text),
+      example,
+    ).toEqual(['After']);
+    expect(normalizeMdxBlocks(source), example).toContain('<mdxembed');
+  }
 });

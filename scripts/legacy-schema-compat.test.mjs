@@ -16,7 +16,7 @@ test('legacy suite inventory includes all eight requested gates', () => {
   assert.equal(legacySuites.length, 8);
   assert.equal(new Set(legacySuites.map(([, , gate]) => gate)).size, 8);
 });
-test('rollback scenario covers every council case and runs between the new-release phases', async () => {
+test('rollback exercises demotion and website changes between the two new-release phases', async () => {
   const { readFileSync } = await import('node:fs');
   const fixture = readFileSync(new URL('./legacy-rollback-scenario.fixture', import.meta.url), 'utf8');
   for (const name of [

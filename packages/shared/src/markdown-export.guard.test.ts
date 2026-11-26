@@ -6,7 +6,7 @@ import { EXPORT_GUARD_SEED, htmlExportBoundaryCases, seededExportCases } from '.
 
 const projectors = [normalizePublicMarkdownContent, portablePublicMdxMarkdown] as const;
 const matrices = [
-  { label: 'review 2640', count: 2640, cases: htmlExportBoundaryCases(), seed: undefined },
+  { label: 'HTML boundary combinations', count: 2640, cases: htmlExportBoundaryCases(), seed: undefined },
   { label: 'seed 0xc611babe', count: 4096, cases: seededExportCases(), seed: EXPORT_GUARD_SEED },
 ] as const;
 // The 4096 baseline was recorded on main, except for the public export of cases
@@ -117,7 +117,7 @@ it('retains CRLF and literal quote characters when removing one uniform revealed
 it.each([
   ['<script>ACTIVE</script>\n\nKeep *emphasis* here.', '&lt;script>ACTIVE&lt;/script>\n\nKeep &#42;emphasis&#42; here.'],
   ['<script>ACTIVE</script>\n\nTEXT', '***\n&lt;script>ACTIVE&lt;/script>\n\nTEXT'],
-])('rejects round-11 forbidden edits in the full guard: %s', (source, output) => {
+])('rejects emphasis edits or an inserted thematic break outside the HTML run: %s', (source, output) => {
   const cases = [{ index: 0, source, markers: [] }];
   const baseline = { revision: EXPORT_BASELINE_REVISION, ...recordExportBaseline(cases, [(s) => s, (s) => s]) };
   const report = checkExportBaseline(cases, baseline, [() => output, () => output]);

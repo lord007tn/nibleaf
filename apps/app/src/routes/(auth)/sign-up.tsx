@@ -33,7 +33,7 @@ export const Route = createFileRoute('/(auth)/sign-up')({
   // final form, not a placeholder that the Google button later pushes down.
   loader: ({ context: { queryClient } }) => loadRouteData(queryClient, getPublicMetaQueryOptions()),
   // The same words the localized title uses in English (lib/auth-document-title).
-  head: () => ({ meta: [{ title: 'Create account — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
+  head: () => ({ meta: [{ title: 'Create account · Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: SignUpPage,
 });
 

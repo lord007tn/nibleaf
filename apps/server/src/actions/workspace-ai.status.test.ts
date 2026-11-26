@@ -464,7 +464,7 @@ describe('a key whose last check failed', () => {
     expect(JSON.stringify(overview)).not.toContain('leaked');
   });
 
-  it('a key the provider says is out of credit stops serving, and says so apart from a refused key (#566 council)', async () => {
+  it('a key the provider says is out of credit stops serving, and says so apart from a refused key', async () => {
     state.config = { search: { aiProvider: 'openai', aiAnswers: true } };
     state.connections = [storedKey('openai', { lastVerificationStatus: 'UNHEALTHY', lastVerificationCode: 'integration:quota_exhausted' })];
     const overview = await getWorkspaceAi(ctx, 'site');
@@ -472,7 +472,7 @@ describe('a key whose last check failed', () => {
     expect(overview.status.sourceReady).toBe(false);
   });
 
-  it('a rate-limited key still serves, with the limit on record (#566 council)', async () => {
+  it('a rate-limited key still serves, with the limit on record', async () => {
     state.config = { search: { aiProvider: 'openai', aiAnswers: true } };
     state.connections = [storedKey('openai', { lastVerificationCode: 'integration:rate_limited' })];
     const overview = await getWorkspaceAi(ctx, 'site');
@@ -557,7 +557,7 @@ describe('who may read and who may change', () => {
   });
 });
 
-describe('CodeRabbit review on #513', () => {
+describe('legacy keys and quota status', () => {
   it.each([
     { served: 'empty', name: 'a new server before its first index job' },
     { served: 'unreadable', name: 'a search alias that could not be read just now' },

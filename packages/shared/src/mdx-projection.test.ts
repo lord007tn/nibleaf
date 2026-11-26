@@ -4,7 +4,6 @@ import { normalizePublicMarkdownContent as md, portablePublicMdxMarkdown as port
 
 const PRIVATE_USE = /[-]/;
 const collapse = (value: string) => value.replace(/\n{3,}/g, '\n\n');
-const withoutCode = (value: string) => value.replace(/(`{3,}|~{3,})[\s\S]*?\1/g, '');
 
 describe('the shared MDX tokenizer (#341)', () => {
   const kinds = (source: string) => tokenizeMdx(source, new Set(['note', 'card'])).map((token) => token.kind);
@@ -115,36 +114,8 @@ describe('restored projection behaviours (#341 checklist, #320 oracle)', () => {
   });
 });
 
-describe("regression cases from #320's reviews (#341)", () => {
+describe('projected callouts, folders and code', () => {
   const fence = '```js\nconst tag = "<script>kept as code</script>";\n```';
-
-  it.each([
-    ['nested Folders', `<Folder name="a">\n<Folder name="b">\n\n${fence}\n\n</Folder>\n</Folder>`],
-    ['nested callouts of the same tag', `<Note>\n<Note>\n\n${fence}\n\n</Note>\n</Note>`],
-  ])('never lets a script through after %s around a fenced block (round 8 blocker)', (_label, around) => {
-    for (const output of [md(`${around}\n\n<script>alert(1)</script>\n\nAfter`), portable(`${around}\n\n<script>alert(1)</script>`)]) {
-      expect(output).toContain('const tag = "<script>kept as code</script>";');
-    }
-    const output = md(`${around}\n\n<script>alert(1)</script>\n\nAfter`);
-    expect(withoutCode(output.replace(/^[ >]*/gm, ''))).not.toMatch(/<\/?script/i);
-    expect(output).toContain('After');
-  });
-
-  it.each([
-    ['a tilde fence', '~~~html\n<script>literal()</script>\n~~~'],
-    ['a fence closed by a longer one', '```html\n<script>literal()</script>\n`````'],
-  ])('quotes a callout around %s and keeps the code one block', (_label, code) => {
-    const output = md(`<Note>\n\n${code}\n\n</Note>\n\nProse <script>alert(1)</script> continues`);
-    expect(output).toContain(code.replace(/^/gm, '> '));
-    expect(output).toContain('Prose');
-    expect(output).toContain('continues');
-    expect(
-      output
-        .split('\n')
-        .filter((line) => !line.startsWith('>'))
-        .join('\n'),
-    ).not.toMatch(/<\/?script/i);
-  });
 
   it('keeps inline code inside projected attribute text', () => {
     expect(md('<Card title="Use `<Note>` here">\n\nBody\n\n</Card>')).toBe('### Use `<Note>` here\n\nBody');

@@ -70,7 +70,7 @@ export function ChatRoot({ request, openChat, ask, ...options }: ChatRootOptions
                   const target = request.trigger;
                   // A deep link opens from no control at all (focus is on <body>).
                   if (target && target !== document.body && target.isConnected && target.getClientRects().length) target.focus();
-                  else launcher.current?.focus();
+                  else returnFocusToEntry(launcher.current);
                 });
               }
             }}
@@ -81,6 +81,16 @@ export function ChatRoot({ request, openChat, ask, ...options }: ChatRootOptions
       )}
     </>
   );
+}
+
+/** Where focus goes when the panel closes without a control to return to (a
+ * deep link, the keyboard shortcut, search's hand-off): the floating launcher,
+ * or from 80rem, where the launcher gives way to the header's Ask AI entry
+ * (styles.css), that entry. */
+function returnFocusToEntry(launcher: HTMLButtonElement | null) {
+  const header = document.querySelector<HTMLElement>('[data-theme-region="ask-ai-trigger"]');
+  if (!launcher?.getClientRects().length && header?.getClientRects().length) header.focus();
+  else launcher?.focus();
 }
 
 /** Reader controls the launcher must never sit on: links, buttons (a
