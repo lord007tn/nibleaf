@@ -5060,5 +5060,13 @@
   "editor_fix_explain_blogrootgroup": "Pembaca melihat nama ini di bagian atas bilah samping. Ganti nama bagian sesuai isi halamannya, misalnya Panduan.",
   "editor_fix_placed": "{placed} dari {total} disorot",
   "editor_fix_previous": "Sebelumnya",
-  "editor_fix_insideblock": "Di dalam blok yang dipertahankan seperti yang ditulis. Perbaiki di Markdown."
+  "editor_fix_insideblock": "Di dalam blok yang dipertahankan seperti yang ditulis. Perbaiki di Markdown.",
+  "settings_appearance_group_theme": "Tema",
+  "settings_appearance_group_themehint": "Warna aksen, sudut, tata letak, dan komponen, seperti yang dilihat pembaca.",
+  "settings_appearance_group_chrome": "Header, footer, dan banner",
+  "settings_appearance_group_chromehint": "Yang mengelilingi setiap halaman: bilah navigasi, footer, dan banner pengumuman.",
+  "settings_appearance_onthispage": "Di halaman ini",
+  "settings_appearance_preview_title": "Pratinjau langsung",
+  "settings_appearance_preview_hint": "Menampilkan perubahan yang belum disimpan saat Anda membuatnya.",
+  "settings_appearance_preview_mode": "Mode warna pratinjau"
 }

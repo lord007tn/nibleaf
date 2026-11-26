@@ -64,15 +64,27 @@ describe('parseSettingsSearch', () => {
     }
   });
 
-  it("keeps Appearance's own subsections, only under Appearance", () => {
-    expect(parseSettingsSearch({ section: 'appearance', appearanceSection: 'navbar' })).toEqual({
-      section: 'appearance',
-      appearanceSection: 'navbar',
-    });
+  it("keeps Appearance's parts, only under Appearance", () => {
+    for (const part of ['brand', 'theme', 'typography', 'chrome']) {
+      expect(parseSettingsSearch({ section: 'appearance', appearanceSection: part })).toEqual({ section: 'appearance', appearanceSection: part });
+    }
     expect(parseSettingsSearch({ section: 'appearance', appearanceSection: 'arbitrary' })).toEqual({ section: 'appearance' });
     expect(parseSettingsSearch({ section: 'appearance', appearanceSection: 'toString' })).toEqual({ section: 'appearance' });
     expect(parseSettingsSearch({ section: 'general', appearanceSection: 'navbar' })).toEqual({ section: 'general' });
     expect(parseSettingsSearch({ section: 'general', appearanceSection: 'redirects' })).toEqual({ section: 'general' });
+  });
+
+  // B5: Appearance was seven tabs; a link to one opens the one page at the part that holds it now.
+  it.each([
+    ['branding', 'brand'],
+    ['themes', 'theme'],
+    ['styling', 'theme'],
+    ['typography', 'typography'],
+    ['navbar', 'chrome'],
+    ['footer', 'chrome'],
+    ['banner', 'chrome'],
+  ])('opens an old %s tab link at the %s part', (tab, part) => {
+    expect(parseSettingsSearch({ section: 'appearance', appearanceSection: tab })).toEqual({ section: 'appearance', appearanceSection: part });
   });
 
   // Council #456: an inherited property passed as a section left a blank page.

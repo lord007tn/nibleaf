@@ -80,19 +80,36 @@ export function useSettingsDirtyGuard() {
  * label + helper-text field wrapper, segmented controls and toggle rows).
  */
 
-/** True inside a page whose tabs already name each section (Settings →
- *  Appearance): the section keeps its heading for screen readers and outline
- *  navigation, but doesn't repeat the tab's name on screen. */
-export const SectionNamedByTabs = createContext(false);
+/**
+ * How a settings section renders where it is embedded (operations/ui-overhaul.md
+ * §5.1): its heading level, and whether its panel draws a border. On its own a
+ * section is a page's h2 in a bordered panel; on the Appearance page, sections
+ * grouped under a heading (Theme, Site chrome) are h3s; in the editor's
+ * Configuration tab the panels are plain.
+ */
+export type SectionScope = { headingLevel: 2 | 3; chrome: 'panel' | 'plain' };
+const SectionScopeContext = createContext<SectionScope>({ headingLevel: 2, chrome: 'panel' });
+
+export function SectionScopeProvider({ value, children }: { value: SectionScope; children: ReactNode }) {
+  return <SectionScopeContext.Provider value={value}>{children}</SectionScopeContext.Provider>;
+}
+
+/** The props a `SettingsSection` takes from where it is embedded. */
+export const useSectionScope = () => useContext(SectionScopeContext);
 
 /** The header at the top of every section pane: a muted glyph + the title, with
- *  an optional one-line description under it. */
+ *  an optional one-line description under it. Nested under a group heading it
+ *  is an h3 with no rule under it. */
 export function SectionHeader({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
-  if (useContext(SectionNamedByTabs))
+  const { headingLevel } = useSectionScope();
+  if (headingLevel === 3)
     return (
-      <div className="mb-6">
-        <h2 className="sr-only">{title}</h2>
-        {description ? <p className="text-muted-foreground text-sm">{description}</p> : null}
+      <div className="mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">{icon}</span>
+          <h3 className="font-semibold text-sm">{title}</h3>
+        </div>
+        {description ? <p className="mt-1 text-muted-foreground text-sm">{description}</p> : null}
       </div>
     );
   return (
@@ -101,7 +118,7 @@ export function SectionHeader({ icon, title, description }: { icon: ReactNode; t
         <span className="text-base text-muted-foreground">{icon}</span>
         <h2 className="font-semibold text-lg tracking-tight">{title}</h2>
       </div>
-      {description ? <p className="mt-1.5 text-[13px] text-muted-foreground leading-snug">{description}</p> : null}
+      {description ? <p className="mt-1.5 text-muted-foreground text-sm leading-snug">{description}</p> : null}
     </div>
   );
 }

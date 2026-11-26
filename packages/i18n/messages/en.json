@@ -5131,5 +5131,13 @@
   "editor_fix_explain_blogrootgroup": "Readers see this name at the top of the sidebar. Rename the section to what its pages are, such as Guides.",
   "editor_fix_placed": "Highlighted {placed} of {total}",
   "editor_fix_previous": "Previous",
-  "editor_fix_insideblock": "Inside a block kept as written. Fix it in Markdown."
+  "editor_fix_insideblock": "Inside a block kept as written. Fix it in Markdown.",
+  "settings_appearance_group_theme": "Theme",
+  "settings_appearance_group_themehint": "Accent color, corners, layout and components, as readers see them.",
+  "settings_appearance_group_chrome": "Header, footer and banner",
+  "settings_appearance_group_chromehint": "What surrounds every page: the navigation bar, the footer and an announcement banner.",
+  "settings_appearance_onthispage": "On this page",
+  "settings_appearance_preview_title": "Live preview",
+  "settings_appearance_preview_hint": "Shows your unsaved changes as you make them.",
+  "settings_appearance_preview_mode": "Preview color mode"
 }

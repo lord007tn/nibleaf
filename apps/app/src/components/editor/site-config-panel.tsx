@@ -3,67 +3,30 @@ import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link } from '@tanstack/react-router';
-import {
-  Badge,
-  Braces,
-  LayoutTemplate,
-  type LucideIcon,
-  Megaphone,
-  Paintbrush,
-  PanelBottom,
-  PanelTop,
-  Route,
-  Search,
-  SearchCheck,
-  Type,
-} from 'lucide-react';
-import { BannerSection } from '@/components/project-settings/banner-section';
-import { BrandingSection } from '@/components/project-settings/branding-section';
-import { FooterSection } from '@/components/project-settings/footer-section';
-import { NavbarSection } from '@/components/project-settings/navbar-section';
+import { Braces, type LucideIcon, Palette, Route, Search, SearchCheck } from 'lucide-react';
 import { RedirectsSection } from '@/components/project-settings/redirects-section';
 import { SeoSection } from '@/components/project-settings/seo-section';
-import { StylingSection } from '@/components/project-settings/styling-section';
-import { ThemeSection } from '@/components/project-settings/theme-section';
-import { TypographySection } from '@/components/project-settings/typography-section';
 import { VariablesSection } from '@/components/project-settings/variables-section';
+import { AppearancePage } from '@/features/site-appearance/components/appearance-page';
 import type { Project } from '@/hooks/api';
 
 /**
  * The authoring/appearance slice of a site's configuration, embedded in the
- * full-page editor (brand, theme, navigation, SEO, behaviour). Administration —
- * domain, members, billing, integrations, danger — stays in the Settings hub.
+ * full-page editor: the one Appearance page (brand, theme, type, header,
+ * footer and banner) and the Content pages. Administration (domain, members,
+ * billing, integrations, danger) stays in the Settings hub.
  */
 export const EDITOR_CONFIG_SECTIONS = [
-  { id: 'branding', labelKey: 'settings.branding', icon: Badge },
-  { id: 'themes', labelKey: 'settings.themes', icon: LayoutTemplate },
-  { id: 'styling', labelKey: 'settings.styling', icon: Paintbrush },
-  { id: 'typography', labelKey: 'settings.typography', icon: Type },
-  { id: 'navbar', labelKey: 'settings.navbar', icon: PanelTop },
-  { id: 'footer', labelKey: 'settings.footer', icon: PanelBottom },
-  { id: 'banner', labelKey: 'settings.banner', icon: Megaphone },
+  { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
   { id: 'seo', labelKey: 'settings.seo', icon: SearchCheck },
   { id: 'search', labelKey: 'settings.search', icon: Search },
   { id: 'variables', labelKey: 'settings.variables', icon: Braces },
   { id: 'redirects', labelKey: 'settings.redirects', icon: Route },
 ] as const satisfies ReadonlyArray<{ id: string; labelKey: MessageKey; icon: LucideIcon }>;
 
-export type ConfigSectionId =
-  | 'branding'
-  | 'themes'
-  | 'styling'
-  | 'typography'
-  | 'navbar'
-  | 'footer'
-  | 'banner'
-  | 'seo'
-  | 'search'
-  | 'variables'
-  | 'redirects';
+export type ConfigSectionId = (typeof EDITOR_CONFIG_SECTIONS)[number]['id'];
 
-/** The config section list rendered inside the editor's left rail. */
-/** The editor's Configuration panel list. Site settings shows Appearance's
- *  sections as tabs instead (`EDITOR_CONFIG_SECTIONS`, settings route). */
+/** The editor's Configuration panel list, in its left rail. */
 export function ConfigSectionList({ active, onSelect }: { active: ConfigSectionId; onSelect: (id: ConfigSectionId) => void }) {
   const t = useT();
   return (
@@ -93,20 +56,8 @@ export function ConfigSectionList({ active, onSelect }: { active: ConfigSectionI
  *  fresh form instance (correct defaults) per project/section. */
 export function ConfigSection({ project, section }: { project: Project; section: ConfigSectionId }) {
   switch (section) {
-    case 'branding':
-      return <BrandingSection key={`branding-${project.id}`} project={project} />;
-    case 'styling':
-      return <StylingSection key={`styling-${project.id}`} project={project} />;
-    case 'themes':
-      return <ThemeSection key={`themes-${project.id}`} project={project} />;
-    case 'typography':
-      return <TypographySection key={`typography-${project.id}`} project={project} />;
-    case 'navbar':
-      return <NavbarSection key={`navbar-${project.id}`} project={project} />;
-    case 'footer':
-      return <FooterSection key={`footer-${project.id}`} project={project} />;
-    case 'banner':
-      return <BannerSection key={`banner-${project.id}`} project={project} />;
+    case 'appearance':
+      return <AppearancePage host="editor" key={`appearance-${project.id}`} project={project} />;
     case 'seo':
       return <SeoSection key={`seo-${project.id}`} project={project} />;
     case 'search':

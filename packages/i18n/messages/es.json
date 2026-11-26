@@ -5131,5 +5131,13 @@
   "editor_fix_explain_blogrootgroup": "Los lectores ven este nombre en la parte superior de la barra lateral. Cambia el nombre de la sección por lo que contienen sus páginas, como Guías.",
   "editor_fix_placed": "Resaltados {placed} de {total}",
   "editor_fix_previous": "Anterior",
-  "editor_fix_insideblock": "Dentro de un bloque que se conserva tal como se escribió. Corrígelo en Markdown."
+  "editor_fix_insideblock": "Dentro de un bloque que se conserva tal como se escribió. Corrígelo en Markdown.",
+  "settings_appearance_group_theme": "Tema",
+  "settings_appearance_group_themehint": "Color de acento, esquinas, diseño y componentes, tal como los ven los lectores.",
+  "settings_appearance_group_chrome": "Encabezado, pie de página y banner",
+  "settings_appearance_group_chromehint": "Lo que rodea cada página: la barra de navegación, el pie de página y un banner de aviso.",
+  "settings_appearance_onthispage": "En esta página",
+  "settings_appearance_preview_title": "Vista previa en vivo",
+  "settings_appearance_preview_hint": "Muestra tus cambios sin guardar a medida que los haces.",
+  "settings_appearance_preview_mode": "Modo de color de la vista previa"
 }

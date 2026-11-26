@@ -44,7 +44,14 @@ describe('editor canvas states', () => {
   it('shows the configuration section once the site is loaded, a skeleton before', async () => {
     await act(async () =>
       root.render(
-        <ConfigCanvas canManage permissionsPending={false} onBackToWriting={vi.fn()} project={undefined} reportDirty={vi.fn()} section="branding" />,
+        <ConfigCanvas
+          canManage
+          permissionsPending={false}
+          onBackToWriting={vi.fn()}
+          project={undefined}
+          reportDirty={vi.fn()}
+          section="appearance"
+        />,
       ),
     );
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
@@ -56,7 +63,7 @@ describe('editor canvas states', () => {
           onBackToWriting={vi.fn()}
           project={{ id: 'p1' } as never}
           reportDirty={vi.fn()}
-          section="branding"
+          section="appearance"
         />,
       ),
     );

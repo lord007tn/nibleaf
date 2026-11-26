@@ -16,11 +16,30 @@ import { Activity, act, type ComponentProps, type ReactNode, StrictMode, useCall
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ThemeSection } from '@/components/project-settings/theme-section';
+import { AppearanceDraftsProvider, useAppearanceDrafts } from '@/features/site-appearance/components/preview-drafts';
+import { previewWithDrafts } from '@/features/site-appearance/model/preview-config';
 import type { Project } from '@/hooks/api';
 import { projectQueryOptions } from '@/hooks/api/query-options';
 import { useSaveRegionForm } from '@/lib/forms/save-region';
+import { ThemePreview } from './theme-preview';
+import { ThemeSettings } from './theme-settings';
 import { writeFor } from './theme-writes';
+
+/** The Appearance page's live preview, reading the drafts the form publishes. */
+function DraftPreview({ config }: { config: Project['config'] }) {
+  const drafts = useAppearanceDrafts();
+  return <ThemePreview arabic={false} config={previewWithDrafts(config, drafts)} mode="light" />;
+}
+
+/** Theme as the Appearance page renders it: the form, with the page's preview showing its draft. */
+function ThemeSection({ project }: { project: Project }) {
+  return (
+    <AppearanceDraftsProvider>
+      <ThemeSettings project={project} />
+      <DraftPreview config={project.config} />
+    </AppearanceDraftsProvider>
+  );
+}
 
 const { statuses } = vi.hoisted(() => ({ statuses: [] as string[] }));
 // Every status the page's save bar renders, frame by frame, so a "Saved" that
@@ -412,97 +431,37 @@ const template = (preset: string, extra: Config = {}) =>
     config: { theme: { preset }, ...extra },
   });
 
-describe('Theme radius and the Styling override (#763)', () => {
-  const radiusField = () => field('settings.styling.radius.label');
-  const shownRadius = () => radiusField().querySelector('[data-slot="select-value"]')?.textContent;
+// B5: Theme and Styling both edited the corner radius (#763 disclosed the clash). Corners are now one
+// control, Styling's, beside the theme on the Appearance page; the theme keeps the radius its preset or
+// template gives, which applies while Styling stores none.
+describe('corners are one control, not the theme’s (B5)', () => {
   const previewRadius = () => container.querySelector<HTMLElement>('[data-testid="preview"]')?.dataset.radius;
-  const chooseRadius = async (radius: string) => {
-    await click(radiusField().querySelector<HTMLElement>('[role="combobox"]') as HTMLElement);
-    const option = [...document.querySelectorAll<HTMLElement>('[role="option"]')].find(
-      (item) => item.textContent === `settings.theme.option.${radius}`,
-    );
-    if (!option) throw new Error(`No radius option ${radius}`);
-    await click(option);
-  };
-  const override = () => container.querySelector('[data-radius-override]');
+  const radiusLabel = () => [...container.querySelectorAll('label')].find((el) => el.textContent === 'settings.styling.radius.label');
 
-  it('shows and saves the Theme choice while disclosing the effective Styling radius, then refetches and discards honestly', async () => {
+  it('has no radius control and no override note of its own', async () => {
     await open();
-    // Signal's own radius is Sharp; the reader uses Styling's Pill.
-    expect(shownRadius()).toBe('settings.theme.option.sharp');
-    expect(previewRadius()).toBe('pill');
-    expect(override()?.textContent).toContain('settings.styling.title: settings.styling.radius.pill');
-    expect(override()?.textContent).toContain('settings.styling.radius.override');
-    expect(radiusField().closest('fieldset')?.getAttribute('aria-describedby')).toBe(override()?.id);
-    expect(server.patches).toStrictEqual([]);
-    expect(region()).toBeNull();
-
-    await chooseRadius('rounded');
-    expect(shownRadius()).toBe('settings.theme.option.rounded');
-    expect(previewRadius()).toBe('pill');
-    await save();
-    expect(lastPatch()).toStrictEqual({ theme: { ...AUTHORED, layout: { radius: 'rounded' } } });
-    expect(storedStyling()).toStrictEqual(STYLING);
-    expect(server.config['site-1'].seo).toStrictEqual(SIBLINGS.seo);
-    await elsewhere((config) => config);
-    expect(shownRadius()).toBe('settings.theme.option.rounded');
-    expect(region()).toBeNull();
-    await chooseRadius('sharp');
-    await discard();
-    expect(shownRadius()).toBe('settings.theme.option.rounded');
-    expect(previewRadius()).toBe('pill');
-    expect(server.patches).toHaveLength(1);
+    expect(radiusLabel()).toBeUndefined();
+    expect(container.querySelector('[data-radius-override]')).toBeNull();
   });
 
   it.each([
-    ['unset theme', undefined, 'rounded'],
-    ['preset radius', { version: 1, preset: 'signal' }, 'sharp'],
-    ['stored theme radius', { version: 1, preset: 'signal', layout: { radius: 'pill' } }, 'pill'],
-  ] as const)('%s without a Styling override follows the theme and creates no default writes', async (_name, theme, expected) => {
-    await open({ ...SIBLINGS, theme });
-    expect(shownRadius()).toBe(`settings.theme.option.${expected}`);
+    ['a Styling radius wins over the theme', { ...SIBLINGS, styling: { ...STYLING }, theme: structuredClone(AUTHORED) }, 'pill'],
+    ['an unset theme', { ...SIBLINGS }, 'rounded'],
+    ['the preset radius', { ...SIBLINGS, theme: { version: 1, preset: 'signal' } }, 'sharp'],
+    ['a stored theme radius', { ...SIBLINGS, theme: { version: 1, preset: 'signal', layout: { radius: 'pill' } } }, 'pill'],
+  ] as const)('the preview shows the radius readers get: %s', async (_name, config, expected) => {
+    await open(structuredClone(config) as Config);
     expect(previewRadius()).toBe(expected);
-    expect(override()).toBeNull();
-    await elsewhere((config) => config);
-    expect(region()).toBeNull();
-    expect(server.patches).toStrictEqual([]);
-    await chooseRadius(expected === 'pill' ? 'rounded' : 'pill');
+  });
+
+  it('a preset change previews its radius only while Styling stores none, and a theme save never writes Styling', async () => {
+    await open({ ...SIBLINGS, theme: { version: 1, preset: 'signal' } });
+    expect(previewRadius()).toBe('sharp');
+    await preset('harbor');
+    expect(previewRadius()).toBe(resolveTheme({ theme: { version: 1, preset: 'harbor' } }).layout.radius);
     await save();
     expect(Object.keys(lastPatch() ?? {})).toStrictEqual(['theme']);
     expect(storedStyling()).toBeUndefined();
-    expect(previewRadius()).toBe(expected === 'pill' ? 'rounded' : 'pill');
-  });
-
-  it('takes a refetched Styling radius without replacing a dirty Theme radius or writing Styling back', async () => {
-    await open();
-    await chooseRadius('rounded');
-    await elsewhere((config) => ({ ...config, styling: { ...STYLING, radius: 'sharp' } }));
-    expect(shownRadius()).toBe('settings.theme.option.rounded');
-    expect(previewRadius()).toBe('sharp');
-    expect(override()?.textContent).toContain('settings.styling.radius.sharp');
-    expect(conflict()).toBe(false);
-    await save();
-    expect(lastPatch()).toStrictEqual({ theme: { ...AUTHORED, layout: { radius: 'rounded' } } });
-    expect(storedStyling()).toStrictEqual({ ...STYLING, radius: 'sharp' });
-    expect(shownRadius()).toBe('settings.theme.option.rounded');
-    expect(previewRadius()).toBe('sharp');
-  });
-
-  it.each(['theirs', 'mine'] as const)('keeps Theme conflict resolution (%s) separate from Styling', async (choice) => {
-    await open();
-    await chooseRadius('rounded');
-    await elsewhere((config) => ({ ...config, theme: { ...AUTHORED, layout: { radius: 'pill' } } }));
-    expect(conflict()).toBe(true);
-    expect(shownRadius()).toBe('settings.theme.option.rounded');
-    await click(buttonNamed(choice === 'theirs' ? 'forms.useTheirs' : 'forms.keepMine'));
-    expect(conflict()).toBe(false);
-    expect(shownRadius()).toBe(`settings.theme.option.${choice === 'theirs' ? 'pill' : 'rounded'}`);
-    expect(previewRadius()).toBe('pill');
-    if (choice === 'mine') {
-      await save();
-      expect(lastPatch()).toStrictEqual({ theme: { ...AUTHORED, layout: { radius: 'rounded' } } });
-    } else expect(server.patches).toStrictEqual([]);
-    expect(storedStyling()).toStrictEqual(STYLING);
   });
 });
 

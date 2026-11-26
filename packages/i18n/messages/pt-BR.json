@@ -5132,5 +5132,13 @@
   "editor_fix_explain_blogrootgroup": "Os leitores veem este nome no topo da barra lateral. Renomeie a seção de acordo com o que suas páginas tratam, como Guias.",
   "editor_fix_placed": "{placed} de {total} destacados",
   "editor_fix_previous": "Anterior",
-  "editor_fix_insideblock": "Dentro de um bloco mantido como foi escrito. Corrija em Markdown."
+  "editor_fix_insideblock": "Dentro de um bloco mantido como foi escrito. Corrija em Markdown.",
+  "settings_appearance_group_theme": "Tema",
+  "settings_appearance_group_themehint": "Cor de destaque, cantos, layout e componentes, como os leitores os veem.",
+  "settings_appearance_group_chrome": "Cabeçalho, rodapé e banner",
+  "settings_appearance_group_chromehint": "O que envolve cada página: a barra de navegação, o rodapé e um banner de aviso.",
+  "settings_appearance_onthispage": "Nesta página",
+  "settings_appearance_preview_title": "Prévia ao vivo",
+  "settings_appearance_preview_hint": "Mostra suas alterações não salvas enquanto você as faz.",
+  "settings_appearance_preview_mode": "Modo de cor da prévia"
 }

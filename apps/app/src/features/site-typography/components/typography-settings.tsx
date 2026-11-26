@@ -9,7 +9,9 @@ import { useT } from '@nibleaf/i18n/react';
 import { useStore } from '@tanstack/react-form';
 import { type CSSProperties, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
+import { useSectionScope } from '@/components/project-settings/shared';
 import { FormField, type FormFieldControl } from '@/components/ui/form-field';
+import { usePublishAppearanceDraft } from '@/features/site-appearance/components/preview-drafts';
 import type { Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
@@ -85,6 +87,10 @@ function TypographyForm({ project }: { project: Project }) {
     },
   });
   const values = useStore(form.store, (state) => state.values);
+  // The Appearance page's live preview shows this draft (body font and size) with the page's other drafts.
+  const published = useMemo(() => ({ values, baseline: draft.baseline }), [values, draft.baseline]);
+  usePublishAppearanceDraft('typography', published);
+  const scope = useSectionScope();
   const preset = activePreset(values);
 
   const { submit: submitDraft } = draft;
@@ -136,7 +142,7 @@ function TypographyForm({ project }: { project: Project }) {
         </Callout>
       ) : null}
 
-      <SettingsSection title={t('settings.typography.title')}>
+      <SettingsSection {...scope} title={t('settings.typography.title')}>
         {FONT_ROWS.map(({ field: name, label, hint }) => (
           <form.Field key={name} name={name}>
             {(field) => (
@@ -225,7 +231,8 @@ function TypographyPreview({ values }: { values: TypographyValues }) {
   const t = useT();
   return (
     <div className="typeset rounded-lg bg-muted/40 p-4 sm:p-5" style={previewStyle(values) as CSSProperties}>
-      <h2>{t('settings.typography.preview.heading')}</h2>
+      {/* A sample, not part of the page's outline (§5.5): styled as the reader's h2, without its role. */}
+      <h2 role="presentation">{t('settings.typography.preview.heading')}</h2>
       <p>{t('settings.typography.preview.body')}</p>
       <ul>
         <li>{t('settings.typography.preview.item1')}</li>

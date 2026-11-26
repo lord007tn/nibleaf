@@ -37,9 +37,23 @@ export type SectionId = (typeof SECTION_IDS)[number];
 export const MOVED_SECTION_IDS = ['plan', 'notifications'] as const;
 export type MovedSectionId = (typeof MOVED_SECTION_IDS)[number];
 
-/** Appearance's own sections. SEO, Redirects, Variables and Search are pages of their own now. */
-export const APPEARANCE_SECTION_IDS = ['branding', 'themes', 'styling', 'typography', 'navbar', 'footer', 'banner'] as const;
+/**
+ * The parts of the one Appearance page (§5.7): Brand, Theme (accent colour,
+ * corners and the theme), Typography, and the header, footer and banner.
+ * SEO, Redirects, Variables and Search are pages of their own.
+ */
+export const APPEARANCE_SECTION_IDS = ['brand', 'theme', 'typography', 'chrome'] as const;
 export type AppearanceSectionId = (typeof APPEARANCE_SECTION_IDS)[number];
+
+/** Appearance's former tabs: an old `appearanceSection=…` link opens the page at the part that holds it now. */
+const FORMER_APPEARANCE_TABS: Readonly<Record<string, AppearanceSectionId>> = {
+  branding: 'brand',
+  themes: 'theme',
+  styling: 'theme',
+  navbar: 'chrome',
+  footer: 'chrome',
+  banner: 'chrome',
+};
 
 /** Appearance subsections that became pages: old `?section=appearance&appearanceSection=…` links open the page. */
 const PROMOTED_APPEARANCE_SECTIONS = { seo: 'seo', redirects: 'redirects', variables: 'variables', search: 'search' } as const satisfies Record<
@@ -54,6 +68,12 @@ const includes = <T extends string>(list: readonly T[], value: unknown): value i
 export const isSectionId = (value: unknown): value is SectionId => includes(SECTION_IDS, value);
 export const isMovedSectionId = (value: unknown): value is MovedSectionId => includes(MOVED_SECTION_IDS, value);
 const isAppearanceSectionId = (value: unknown): value is AppearanceSectionId => includes(APPEARANCE_SECTION_IDS, value);
+const appearancePart = (value: unknown): AppearanceSectionId | undefined =>
+  isAppearanceSectionId(value)
+    ? value
+    : typeof value === 'string' && Object.hasOwn(FORMER_APPEARANCE_TABS, value)
+      ? FORMER_APPEARANCE_TABS[value]
+      : undefined;
 
 export type SettingsSearch = { section?: SectionId | MovedSectionId; appearanceSection?: AppearanceSectionId };
 
@@ -70,8 +90,6 @@ export function parseSettingsSearch(search: Record<string, unknown>): SettingsSe
   // Own keys only: `toString`, `constructor` or `__proto__` must not resolve to something inherited.
   const renamed = typeof section === 'string' && Object.hasOwn(RENAMED_SECTIONS, section) ? RENAMED_SECTIONS[section] : undefined;
   const parsed: SettingsSearch['section'] = isSectionId(section) || isMovedSectionId(section) ? section : renamed;
-  return {
-    section: parsed,
-    ...(parsed === 'appearance' && isAppearanceSectionId(appearanceSection) ? { appearanceSection } : {}),
-  };
+  const part = parsed === 'appearance' ? appearancePart(appearanceSection) : undefined;
+  return { section: parsed, ...(part ? { appearanceSection: part } : {}) };
 }

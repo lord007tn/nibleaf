@@ -5122,5 +5122,13 @@
   "editor_fix_explain_blogrootgroup": "قارئین سائیڈبار کے سب سے اوپر یہ نام دیکھتے ہیں۔ حصے کا نام اس کے صفحات کے مطابق رکھیں، جیسے گائیڈز۔",
   "editor_fix_placed": "{total} میں سے {placed} نمایاں کیے گئے",
   "editor_fix_previous": "پچھلا",
-  "editor_fix_insideblock": "ایسے بلاک کے اندر جو جیسا لکھا گیا ویسا ہی رکھا گیا ہے۔ اسے Markdown میں ٹھیک کریں۔"
+  "editor_fix_insideblock": "ایسے بلاک کے اندر جو جیسا لکھا گیا ویسا ہی رکھا گیا ہے۔ اسے Markdown میں ٹھیک کریں۔",
+  "settings_appearance_group_theme": "تھیم",
+  "settings_appearance_group_themehint": "نمایاں رنگ، کونے، لے آؤٹ اور اجزاء، جیسے قارئین انہیں دیکھتے ہیں۔",
+  "settings_appearance_group_chrome": "ہیڈر، فوٹر اور بینر",
+  "settings_appearance_group_chromehint": "جو ہر صفحے کے گرد ہوتا ہے: نیویگیشن بار، فوٹر اور اعلان کا بینر۔",
+  "settings_appearance_onthispage": "اس صفحے پر",
+  "settings_appearance_preview_title": "براہ راست پیش منظر",
+  "settings_appearance_preview_hint": "آپ کی غیر محفوظ تبدیلیاں کرتے ہی دکھاتا ہے۔",
+  "settings_appearance_preview_mode": "پیش منظر کا رنگ موڈ"
 }

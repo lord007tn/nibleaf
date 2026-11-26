@@ -229,7 +229,7 @@ function EditorPage() {
 
   // Top-level editor view: writing content vs. configuring the whole site.
   const [view, setView] = useState<'content' | 'config'>('content');
-  const [configSection, setConfigSection] = useState<ConfigSectionId>('branding');
+  const [configSection, setConfigSection] = useState<ConfigSectionId>('appearance');
 
   // ─── Branches: the editor works on one branch at a time (default 'main') ─────
   const { data: branches } = useBranches(projectId);

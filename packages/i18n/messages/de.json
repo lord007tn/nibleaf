@@ -5131,5 +5131,13 @@
   "editor_fix_explain_blogrootgroup": "Leser sehen diesen Namen oben in der Seitenleiste. Benennen Sie den Bereich nach dem Inhalt seiner Seiten um, zum Beispiel Anleitungen.",
   "editor_fix_placed": "{placed} von {total} hervorgehoben",
   "editor_fix_previous": "Vorherige",
-  "editor_fix_insideblock": "In einem Block, der wie geschrieben bleibt. In Markdown beheben."
+  "editor_fix_insideblock": "In einem Block, der wie geschrieben bleibt. In Markdown beheben.",
+  "settings_appearance_group_theme": "Theme",
+  "settings_appearance_group_themehint": "Akzentfarbe, Ecken, Layout und Komponenten, so wie Leser sie sehen.",
+  "settings_appearance_group_chrome": "Kopfzeile, Fußzeile und Banner",
+  "settings_appearance_group_chromehint": "Was jede Seite umgibt: die Navigationsleiste, die Fußzeile und ein Hinweisbanner.",
+  "settings_appearance_onthispage": "Auf dieser Seite",
+  "settings_appearance_preview_title": "Live-Vorschau",
+  "settings_appearance_preview_hint": "Zeigt Ihre ungespeicherten Änderungen, während Sie sie vornehmen.",
+  "settings_appearance_preview_mode": "Farbmodus der Vorschau"
 }

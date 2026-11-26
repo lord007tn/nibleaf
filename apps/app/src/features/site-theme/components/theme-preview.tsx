@@ -49,7 +49,9 @@ export function ThemePreview({ config, mode, arabic }: { config: ProjectConfig; 
         content={
           <article className="min-w-0 p-5" data-theme-region="article" id="preview-content">
             <p className="font-medium text-primary text-xs">{t('settings.theme.preview.guide')}</p>
-            <h3 className="mt-1 font-semibold text-xl">{t('settings.theme.preview.title')}</h3>
+            <h3 className="mt-1 font-semibold text-xl" role="presentation">
+              {t('settings.theme.preview.title')}
+            </h3>
             <p className="mt-2 text-muted-foreground leading-relaxed">{t('settings.theme.preview.body')}</p>
             <div
               className="mt-4 rounded-lg border p-3"
