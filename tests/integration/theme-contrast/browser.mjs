@@ -22,9 +22,9 @@ const origin = 'http://localhost:4310';
 await mkdir(out, { recursive: true });
 const harness = await mkdtemp(resolve(appDir, '.theme-capture-'));
 const mainFiles = {
-  'apps/app/src/components/project-settings/theme-section.tsx': execFileSync(
+  'apps/app/src/features/site-theme/components/theme-settings.tsx': execFileSync(
     'git',
-    ['show', `${baseline}:apps/app/src/components/project-settings/theme-section.tsx`],
+    ['show', `${baseline}:apps/app/src/features/site-theme/components/theme-settings.tsx`],
     { cwd: root, encoding: 'utf8' },
   ),
   'packages/shared/src/themes.ts': execFileSync('git', ['show', `${baseline}:packages/shared/src/themes.ts`], { cwd: root, encoding: 'utf8' }),

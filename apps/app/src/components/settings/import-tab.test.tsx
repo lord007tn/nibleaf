@@ -22,7 +22,14 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 vi.mock('sonner', () => ({ toast: { error: mocks.error, success: mocks.success } }));
-vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }));
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  Link: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <a className={className} href="#settings">
+      {children}
+    </a>
+  ),
+}));
 vi.mock('@nibleaf/i18n/react', async () => {
   const { translateFn: translate } = await vi.importActual<typeof import('@nibleaf/i18n')>('@nibleaf/i18n');
   return {
@@ -141,7 +148,13 @@ const render = async (node: ReactNode) => {
 const tab = (projectId: string | undefined, key?: string) => render(<ImportTab key={key} projectId={projectId} />);
 
 const buttons = () => [...container.querySelectorAll('button')];
-const chip = (label: string) => buttons().find((item) => item.hasAttribute('aria-pressed') && item.textContent?.trim() === label);
+/** A source in the picker, found by its label. */
+const chip = (label: string) =>
+  [...container.querySelectorAll<HTMLElement>('[role="radio"]')].find(
+    (item) => document.getElementById(item.getAttribute('aria-labelledby') ?? '')?.textContent?.trim() === label,
+  );
+/** The error shown under a field, by the field's id. */
+const fieldError = (id: string) => container.querySelector(`#${id}-error`)?.textContent ?? '';
 /** The Import button: its running text is always in the markup (hidden while idle). */
 const importButton = () => buttons().find((item) => item.textContent?.includes(t('settings.import.running')));
 const press = async (element: HTMLElement | undefined) => {
@@ -201,6 +214,67 @@ afterEach(async () => {
   container.remove();
 });
 
+describe('the Import page asks where the content lives first', () => {
+  it('leads with the source picker, and shows no form or Import button until a source is chosen', async () => {
+    await tab('site-a');
+    expect(container.querySelector('h1')?.textContent).toBe(t('settings.import.title'));
+    expect(container.querySelectorAll('[role="radio"]')).toHaveLength(4);
+    expect(container.querySelector('#import-repo')).toBeNull();
+    expect(importButton()).toBeUndefined();
+    await chooseSource('Mintlify');
+    expect(chip('Mintlify')?.getAttribute('aria-checked')).toBe('true');
+    expect(container.querySelector('#import-repo')).not.toBeNull();
+    expect(importButton()).toBeDefined();
+  });
+
+  it('sends a Git repository to the Git page, with no import form here', async () => {
+    await tab('site-a');
+    await chooseSource(t('settings.import.git.title'));
+    expect([...container.querySelectorAll('a')].some((link) => link.textContent?.includes(t('settings.import.git.open')))).toBe(true);
+    expect(importButton()).toBeUndefined();
+  });
+
+  it('asks for the Ghost export file under the file field instead of reading or sending', async () => {
+    await tab('site-a');
+    await chooseSource('Ghost');
+    await type('#import-ghost-url', 'https://blog.example.com');
+    await press(importButton());
+    expect(fieldError('import-ghost-file')).toBe(t('settings.import.ghost.fileRequired'));
+    expect(document.activeElement?.id).toBe('import-ghost-file-button');
+    expect(HeldReader.reads).toHaveLength(0);
+    expect(posts()).toHaveLength(0);
+    expect(errors()).toEqual([]);
+    await chooseFile(exportFile());
+    expect(fieldError('import-ghost-file')).toBe('');
+  });
+});
+
+describe('after an import', () => {
+  it('starts at the result after Import, and back at the source picker after Import another, with old errors gone', async () => {
+    await tab('site-a');
+    await readyGhost();
+    mocks.ghost.mockImplementationOnce(async () => json(400, { error: { code: 'import:invalid_document', message: 'Not a Ghost export' } }));
+    await press(importButton());
+    await read().finish(JSON.stringify(EXPORT));
+    expect(fieldError('import-ghost-file')).toBe(t('settings.import.ghost.invalidJson'));
+    // The error is in the field's description when focus lands there.
+    expect(document.activeElement?.getAttribute('aria-describedby')).toContain('import-ghost-file-error');
+    await press(importButton());
+    await read().finish(JSON.stringify(EXPORT));
+    expect(showsResult()).toBe(true);
+    expect(document.activeElement?.textContent).toBe(t('settings.import.success'));
+    await press(buttons().find((item) => item.textContent?.trim() === t('settings.import.again')));
+    expect(document.activeElement?.textContent).toBe(t('settings.import.workspace.emptyTitle'));
+    expect(fieldError('import-ghost-file')).toBe('');
+  });
+
+  it('keeps the import note under every source form, Ghost included', async () => {
+    await tab('site-a');
+    await chooseSource('Ghost');
+    expect(container.textContent).toContain(t('settings.import.summaryHint'));
+  });
+});
+
 describe('one owner from reading a Ghost file to sending the import', () => {
   it('sends the export as read, with its site, the trimmed URL and the import metadata', async () => {
     await tab('site-a');
@@ -250,7 +324,9 @@ describe('one owner from reading a Ghost file to sending the import', () => {
     await readyGhost(file);
     await press(importButton());
     expect(HeldReader.reads).toHaveLength(0);
-    expect(errors()).toEqual([t('settings.import.ghost.tooLarge')]);
+    // Said under the file, not as a toast.
+    expect(errors()).toEqual([]);
+    expect(fieldError('import-ghost-file')).toBe(t('settings.import.ghost.tooLarge'));
     expect(isBusy()).toBe(false);
   });
 
@@ -258,10 +334,15 @@ describe('one owner from reading a Ghost file to sending the import', () => {
     await tab('site-a');
     await readyGhost(exportFile(), 'https://user:secret@blog.example.com');
     await press(importButton());
+    expect(fieldError('import-ghost-url')).toBe(t('settings.import.ghost.invalidUrl'));
+    expect(document.activeElement?.id).toBe('import-ghost-url');
     await type('#import-ghost-url', 'ftp://blog.example.com');
+    // Typing clears the error until the next press.
+    expect(fieldError('import-ghost-url')).toBe('');
     await press(importButton());
     expect(HeldReader.reads).toHaveLength(0);
-    expect(errors()).toEqual([t('settings.import.ghost.invalidUrl'), t('settings.import.ghost.invalidUrl')]);
+    expect(fieldError('import-ghost-url')).toBe(t('settings.import.ghost.invalidUrl'));
+    expect(errors()).toEqual([]);
   });
 
   it.each([
@@ -293,7 +374,8 @@ describe('one owner from reading a Ghost file to sending the import', () => {
     await readyGhost();
     await press(importButton());
     await read().finish(text);
-    expect(errors()).toEqual([t('settings.import.ghost.invalidJson')]);
+    expect(fieldError('import-ghost-file')).toBe(t('settings.import.ghost.invalidJson'));
+    expect(errors()).toEqual([]);
     expect(posts()).toHaveLength(0);
     expect(isBusy()).toBe(false);
     expect(isDisabled()).toBe(false);
@@ -461,7 +543,8 @@ describe('one owner from reading a Ghost file to sending the import', () => {
     mocks.ghost.mockImplementationOnce(async () => json(400, { error: { code: 'import:invalid_document', message: 'Not a Ghost export' } }));
     await press(importButton());
     await read().finish(JSON.stringify(EXPORT));
-    expect(errors()).toEqual([t('settings.import.ghost.invalidJson')]);
+    expect(fieldError('import-ghost-file')).toBe(t('settings.import.ghost.invalidJson'));
+    expect(errors()).toEqual([]);
     expect(isBusy()).toBe(false);
     expect(isDisabled()).toBe(false);
     await press(importButton());

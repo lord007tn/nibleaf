@@ -37,6 +37,21 @@
     font-family: var(--theme-font-arabic);
   }
 
+  /* Code keeps its monospace face on Arabic (and other RTL) pages. The rule
+   * above matches every element, so inline code, keyboard keys and each
+   * highlighted token inside a code block took the proportional Arabic face,
+   * and code columns no longer lined up. Arabic letters inside code still fall
+   * back to an Arabic face, glyph by glyph. */
+  .nibleaf-site-chrome
+  :is(pre, code, kbd, samp):is(:lang(ar), :lang(fa), :lang(ur)) {
+    font-family: var(--font-mono, ui-monospace, monospace);
+  }
+  .nibleaf-site-chrome
+    :is(pre, code, kbd, samp)
+    :is(:lang(ar), :lang(fa), :lang(ur)) {
+    font-family: inherit;
+  }
+
   .nibleaf-site-chrome[dir="rtl"] .typeset {
     line-height: calc(var(--typeset-leading) * 1.08);
   }
@@ -59,25 +74,21 @@
       "Noto Naskh Arabic", "Sakkal Majalla", "Traditional Arabic", serif;
   }
 
-  /* Article title + lede live outside .typeset (site-page-view); give them the
-   * same optical tuning as the prose headings. */
-  .nibleaf-site-chrome [data-theme-region="article"] > h1 {
-    line-height: 1.15;
-    letter-spacing: -0.02em;
+  /* The article title lives outside .typeset, in the page header
+   * (site-page-view): it wraps in balanced lines, and Manuscript sets it in
+   * its display face. Scoped to that header: since the page actions joined the
+   * title (#634) it is no longer a direct child of the article. Its leading and
+   * tracking (tighter in Latin, taller and untracked in Arabic) are utilities
+   * on the title itself, which a components-layer rule here couldn't override. */
+  .nibleaf-site-chrome [data-reader-page-header] > h1 {
     text-wrap: balance;
   }
 
   .nibleaf-site-chrome[data-theme-id="manuscript"]
-    [data-theme-region="article"]
+    [data-reader-page-header]
     > h1 {
     font-family: var(--font-heading);
     font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-
-  .nibleaf-site-chrome[dir="rtl"] [data-theme-region="article"] > h1 {
-    letter-spacing: 0;
-    line-height: 1.3;
   }
 }
 
@@ -984,6 +995,13 @@
   }
   [data-theme-surface="ai"][data-docked] {
     border-inline-start: 1px solid var(--border);
+  }
+  /* From here the header has its own Ask AI entry (ai-chat/chat-ui.tsx
+     HeaderAction), so the floating launcher and the room it keeps at the end
+     of the page give way: one entry, not two identical buttons on screen. */
+  body:has([data-theme-region="ask-ai-trigger"]) [data-chat-launcher],
+  body:has([data-theme-region="ask-ai-trigger"]) [data-chat-launcher-space] {
+    display: none;
   }
 }
 @media (min-width: 80rem) and (prefers-reduced-motion: no-preference) {
