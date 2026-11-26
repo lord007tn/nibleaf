@@ -191,23 +191,23 @@ function page() {
       );
       await settle();
     },
-    /** The wizard step shown (1–3), or null while the wizard is not shown. */
+    /** The connect page's progress: null while it is not shown, 1 until the token is checked, 2 once its account shows. */
     step: () => {
-      const index = [...host.querySelectorAll('ol > li')].findIndex((item) => item.getAttribute('aria-current') === 'step');
-      return index === -1 ? null : index + 1;
+      if (!host.querySelector('[data-slot="git-connect"]')) return null;
+      const checked = [...host.querySelectorAll('span')].some((span) => span.textContent?.startsWith(t('settings.git.workflow.authorizedAs')));
+      return checked ? 2 : 1;
     },
     connected: () => host.querySelector('nav') !== null,
     connectButton,
     busy: () => connectButton()?.getAttribute('aria-busy') === 'true',
     type: (id: string, value: string) => setValue(host.querySelector<HTMLInputElement>(`#${id}`), value),
     field: (id: string) => host.querySelector<HTMLInputElement>(`#${id}`)?.value ?? null,
-    /** Steps 1 and 2 as a person does them, up to the review: authorize `token`, then fill the repository. */
+    /** The page as a person fills it, up to Connect: check `token`, then fill in the repository. */
     review: async (token = TOKEN_A, repository = 'acme-fixture/handbook') => {
       await tab.type('git2-token', token);
       await tab.authorize();
       await tab.type('git2-repo', repository);
-      await press(button('settings.git.workflow.review'));
-      expect(tab.step()).toBe(3);
+      expect(tab.step()).toBe(2);
     },
     connect: async (times = 1) => {
       await act(async () => {
@@ -216,9 +216,7 @@ function page() {
       await settle();
     },
     authorize: () => press(button('settings.git.workflow.authorize')),
-    back: () => press(button('common.back')),
     retryLoad: () => press(button('common.retry')),
-    next: () => press(button('settings.git.workflow.review')),
     /** The one-time webhook secret the Connection panel shows, or null. */
     secret: async () => {
       if (tab.connected())
@@ -358,7 +356,7 @@ describe('a Connect sends the wizard’s values as pressed and shows the new con
     await tab.connect();
     const read = holdNextRead('site-a');
     await answer(0, stored());
-    expect(tab.step()).toBe(3);
+    expect(tab.step()).toBe(2);
     expect(tab.busy()).toBe(true);
     expect([toasts().success, tab.onConnected.mock.calls.length]).toEqual([[], 0]);
     await read.answer();
@@ -427,12 +425,11 @@ describe('a press belongs to the wizard that made it', () => {
     expect(tab.onConnected).toHaveBeenCalledTimes(1);
   });
 
-  it('Back and edits while Connect runs: the body pressed is sent, and its success still shows the connection', async () => {
+  it('edits while Connect runs: the body pressed is sent, and its success still shows the connection', async () => {
     const tab = page();
     await tab.open('site-a');
     await tab.review();
     await tab.connect();
-    await tab.back();
     await tab.type('git2-repo', 'acme-fixture/other');
     expect(puts().map((request) => request.json.repository)).toEqual(['acme-fixture/handbook']);
     await answer(0, stored());
@@ -446,8 +443,6 @@ describe('a press belongs to the wizard that made it', () => {
     await tab.open('site-a');
     await tab.review();
     await tab.connect();
-    await tab.back();
-    await tab.back();
     await tab.type('git2-token', TOKEN_B);
     // The PUT succeeds, but the status read after it still says not connected (another person disconnected).
     await answer(0, (request) => json(200, { data: { connection: status(request.param.projectId), webhookSecret: SECRET_A } }));
@@ -462,24 +457,21 @@ describe('a press belongs to the wizard that made it', () => {
     await tab.review();
     await tab.connect();
     await answer(0, (request) => json(200, { data: { connection: status(request.param.projectId), webhookSecret: SECRET_A } }));
-    expect(tab.step()).toBe(3);
+    // The token and its check are cleared, so Connect waits for a new check.
+    expect(tab.step()).toBe(1);
     expect(tab.connectButton()?.disabled).toBe(true);
-    await tab.back();
-    await tab.back();
     expect(tab.field('git2-token')).toBe('');
   });
 
-  it('a refusal after Back and edits reports once and keeps every value typed; a retry sends the values now', async () => {
+  it('a refusal after edits reports once and keeps every value typed; a retry sends the values now', async () => {
     const tab = page();
     await tab.open('site-a');
     await tab.review();
     await tab.connect();
-    await tab.back();
     await tab.type('git2-path', 'guides');
     await answer(0, refused());
     expect(toasts()).toEqual({ success: [], error: [t('settings.git.workflow.connectError')] });
     expect([tab.step(), tab.field('git2-repo'), tab.field('git2-path')]).toEqual([2, 'acme-fixture/handbook', 'guides']);
-    await tab.next();
     expect(tab.busy()).toBe(false);
     await tab.connect();
     expect(puts().map((request) => request.json.contentPath)).toEqual(['docs', 'guides']);
@@ -573,7 +565,7 @@ describe('a session that ends gets nothing from a Connect', () => {
     await answer(0, stored());
     expect(mocks.statusGet.mock.calls.length).toBe(reads);
     expect(refreshed()).toHaveLength(refreshes);
-    expect([toasts(), tab.onConnected.mock.calls.length, tab.step()]).toEqual([{ success: [], error: [] }, 0, 3]);
+    expect([toasts(), tab.onConnected.mock.calls.length, tab.step()]).toEqual([{ success: [], error: [] }, 0, 2]);
     expectNothingKept();
   });
 
@@ -655,7 +647,7 @@ describe('failures', () => {
     await tab.connect();
     await answer(0, refused());
     expect(toasts()).toEqual({ success: [], error: [t('settings.git.workflow.connectError')] });
-    expect([tab.step(), tab.busy(), tab.connectButton()?.disabled]).toEqual([3, false, false]);
+    expect([tab.step(), tab.busy(), tab.connectButton()?.disabled]).toEqual([2, false, false]);
     expect(refreshed()).toEqual([detail('site-a')]);
     await tab.connect();
     expect(puts().map((request) => request.json)).toEqual([puts()[0]?.json, puts()[0]?.json]);
@@ -734,12 +726,9 @@ describe('neither the token nor the one-time secret is kept by the QueryClient, 
     expect(error).toMatchObject({ status: 400, code: undefined, retryAfter: undefined, details: undefined, path: undefined });
     expect(tab.host.textContent).not.toContain(TOKEN_A);
     expectNothingKept();
-    await tab.back();
-    await tab.back();
     await tab.type('git2-token', TOKEN_B);
     expectNothingKept();
     await tab.authorize();
-    await tab.next();
     await tab.connect();
     expect(puts()[1]?.json.token).toBe(TOKEN_B);
     expectNothingKept();

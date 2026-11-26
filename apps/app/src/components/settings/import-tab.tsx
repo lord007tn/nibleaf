@@ -1,11 +1,17 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@nibleaf/design-system/components/ui/collapsible';
+import { FieldError } from '@nibleaf/design-system/components/ui/form-field';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
+import { RadioField, RadioGroup } from '@nibleaf/design-system/components/ui/radio-group';
+import { SettingsSection, SettingsSectionBody } from '@nibleaf/design-system/components/ui/settings-section';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { cn } from '@nibleaf/design-system/lib/utils';
+import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import { useNavigate } from '@tanstack/react-router';
+import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, BookOpen, ChevronDown, DownloadCloud, Ghost, GitBranch, Leaf, Upload } from 'lucide-react';
 import { type ReactNode, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -15,21 +21,36 @@ import { isRepositoryImportProvider, type RepositoryImportProvider } from '@/fea
 import type { ContentImportSummary } from '@/hooks/api';
 import { ApiResponseError } from '@/hooks/api/client-helpers';
 import { importMayStillRun } from './import-errors';
-import { SettingsSection } from './section';
 
-type ImportSource = RepositoryImportProvider | 'ghost';
+type ImportSource = RepositoryImportProvider | 'ghost' | 'git';
 const isRepoSource = (source: ImportSource | null): source is RepositoryImportProvider => isRepositoryImportProvider(source);
 
-const IMPORT_SOURCE_TABS = [
-  { id: 'mintlify', icon: Leaf, label: 'settings.import.mintlify.title' },
-  { id: 'gitbook', icon: BookOpen, label: 'settings.import.gitbook.title' },
-  { id: 'ghost', icon: Ghost, label: 'settings.import.ghost.title' },
-  { id: 'git', icon: GitBranch, label: 'settings.import.git.title' },
-] as const;
+/** Where the content lives now: the first thing the page asks (AUTH-24). */
+const IMPORT_SOURCES = [
+  { id: 'mintlify', icon: Leaf, label: 'settings.import.mintlify.title', description: 'settings.import.source.mintlify' },
+  { id: 'gitbook', icon: BookOpen, label: 'settings.import.gitbook.title', description: 'settings.import.source.gitbook' },
+  { id: 'ghost', icon: Ghost, label: 'settings.import.ghost.title', description: 'settings.import.source.ghost' },
+  { id: 'git', icon: GitBranch, label: 'settings.import.git.title', description: 'settings.import.source.git' },
+] as const satisfies ReadonlyArray<{ id: ImportSource; icon: typeof Leaf; label: MessageKey; description: MessageKey }>;
 
-function ImportResult({ summary, projectId }: { summary: ContentImportSummary; projectId?: string }) {
+type FieldName = 'repo' | 'sourceUrl' | 'ghostUrl' | 'ghostFile';
+/** Refusals that belong to one field: shown under it, never as a toast. */
+const REFUSAL_FIELDS: Partial<Record<MessageKey, { field: FieldName; message: MessageKey }>> = {
+  'settings.import.mintlify.invalidRepo': { field: 'repo', message: 'settings.import.mintlify.invalidRepo' },
+  'settings.import.sourceUrl': { field: 'sourceUrl', message: 'settings.import.invalidSourceUrl' },
+  'settings.import.ghost.invalidUrl': { field: 'ghostUrl', message: 'settings.import.ghost.invalidUrl' },
+  'settings.import.ghost.tooLarge': { field: 'ghostFile', message: 'settings.import.ghost.tooLarge' },
+  'settings.import.ghost.invalidJson': { field: 'ghostFile', message: 'settings.import.ghost.invalidJson' },
+};
+const FIELD_IDS: Record<FieldName, string> = {
+  repo: 'import-repo',
+  sourceUrl: 'import-source-url',
+  ghostUrl: 'import-ghost-url',
+  ghostFile: 'import-ghost-file-button',
+};
+
+function ImportResult({ summary, projectId, onAgain }: { summary: ContentImportSummary; projectId?: string; onAgain: () => void }) {
   const t = useT();
-  const navigate = useNavigate();
   const [showWarnings, setShowWarnings] = useState(false);
   const warnings = [
     ...new Set(summary.warnings),
@@ -47,21 +68,21 @@ function ImportResult({ summary, projectId }: { summary: ContentImportSummary; p
     return { text, key: `${text}-${occurrence}` };
   });
   return (
-    <div className="flex min-h-[220px] flex-col justify-center rounded-2xl bg-muted/25 p-5 text-sm">
-      <div className="mx-auto w-full max-w-md rounded-xl border border-border bg-background p-4 shadow-sm">
+    <SettingsSection title={t('settings.import.success')}>
+      <SettingsSectionBody className="flex flex-col gap-3 text-sm" role="status">
         <p className="font-medium">
           {t('settings.import.result', { imported: summary.imported, updated: summary.updated, skipped: summary.skipped })}
         </p>
         {summary.assetsImported !== undefined ? (
-          <p className="mt-1.5 text-muted-foreground text-xs">
+          <p className="text-muted-foreground">
             {t('settings.import.assetsResult', { imported: summary.assetsImported, skipped: summary.assetsSkipped ?? 0 })}
           </p>
         ) : null}
         {warnings.length > 0 ? (
-          <>
+          <div>
             <Button
               aria-expanded={showWarnings}
-              className="mt-3 h-auto gap-1 p-0 text-muted-foreground text-xs hover:text-foreground"
+              className="h-auto gap-1 p-0 text-muted-foreground hover:text-foreground"
               onClick={() => setShowWarnings((value) => !value)}
               size="sm"
               type="button"
@@ -79,44 +100,61 @@ function ImportResult({ summary, projectId }: { summary: ContentImportSummary; p
                 ))}
               </ul>
             ) : null}
-          </>
+          </div>
         ) : null}
-        <p className="mt-3 text-muted-foreground text-xs leading-relaxed">{t('settings.import.publishHint')}</p>
-        {projectId ? (
-          <Button
-            className="mt-3"
-            onClick={() => navigate({ to: '/app/projects/$projectId/editor', params: { projectId } })}
-            size="sm"
-            type="button"
-            variant="outline"
-          >
-            {t('settings.import.openEditor')} <ArrowUpRight className="size-3.5 rtl:-scale-x-100" />
+        <Callout tone="info">{t('settings.import.publishHint')}</Callout>
+        <div className="flex flex-wrap gap-2">
+          {projectId ? (
+            <Button nativeButton={false} render={<Link params={{ projectId }} to="/app/projects/$projectId/editor" />} type="button">
+              {t('settings.import.openEditor')} <ArrowUpRight className="size-3.5 rtl:-scale-x-100" />
+            </Button>
+          ) : null}
+          <Button onClick={onAgain} type="button" variant="outline">
+            {t('settings.import.again')}
           </Button>
-        ) : null}
-      </div>
+        </div>
+      </SettingsSectionBody>
+    </SettingsSection>
+  );
+}
+
+/** A labelled field with its hint and, after a refused press, its error. */
+function Field({
+  id,
+  label,
+  hint,
+  error,
+  children,
+  className,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  error?: string;
+  children: (describedBy: string | undefined) => ReactNode;
+  className?: string;
+}) {
+  const describedBy = [hint ? `${id}-hint` : null, error ? `${id}-error` : null].filter(Boolean).join(' ') || undefined;
+  return (
+    <div className={cn('flex min-w-0 flex-col gap-1.5', className)}>
+      <Label htmlFor={id}>{label}</Label>
+      {children(describedBy)}
+      {hint ? (
+        <p className="text-muted-foreground text-xs" id={`${id}-hint`}>
+          {hint}
+        </p>
+      ) : null}
+      <FieldError errors={error ? [error] : []} id={`${id}-error`} />
     </div>
   );
 }
 
-function SourceChip({ active, icon, label, onClick }: { active?: boolean; icon: ReactNode; label: string; onClick: () => void }) {
-  return (
-    <Button
-      aria-pressed={active}
-      className={cn('rounded-lg text-xs', active ? 'shadow-sm' : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground')}
-      onClick={onClick}
-      size="sm"
-      type="button"
-      variant={active ? 'default' : 'secondary'}
-    >
-      {icon}
-      {label}
-    </Button>
-  );
-}
-
+/**
+ * Settings → Import (AUTH-24): the page first asks where the content lives
+ * now, then shows only that source's fields, with Import at the end of them.
+ */
 export function ImportTab({ projectId }: { projectId?: string }) {
   const t = useT();
-  const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [source, setSource] = useState<ImportSource | null>(null);
   const [repo, setRepo] = useState('');
@@ -127,16 +165,27 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   const [ghostUrl, setGhostUrl] = useState('');
   const [ghostFile, setGhostFile] = useState<File | null>(null);
   const [result, setResult] = useState<ContentImportSummary | null>(null);
+  const [errors, setErrors] = useState<Partial<Record<FieldName, MessageKey>>>({});
   const repository = useRepositoryImportCommand({ projectId: projectId ?? '', provider: isRepoSource(source) ? source : null });
   const ghost = useGhostImportCommand({ projectId: projectId ?? '', open: source === 'ghost', file: ghostFile, ghostUrl });
 
   const pending = repository.busy || ghost.busy;
+  const clearError = (field: FieldName) => setErrors((current) => (current[field] ? { ...current, [field]: undefined } : current));
   const chooseSource = (next: ImportSource) => {
     setSource(next);
     setResult(null);
+    setErrors({});
   };
-  const openGitSettings = () =>
-    navigate({ to: '/app/projects/$projectId/settings', params: { projectId: projectId ?? '' }, search: { section: 'git' } });
+  /** A refusal tied to a field shows under it and takes focus there; anything else is a toast. */
+  const refused = (message: MessageKey) => {
+    const target = REFUSAL_FIELDS[message];
+    if (!target) {
+      toast.error(t(message));
+      return;
+    }
+    setErrors((current) => ({ ...current, [target.field]: target.message }));
+    document.getElementById(FIELD_IDS[target.field])?.focus();
+  };
   const handleSuccess = (summary: ContentImportSummary) => {
     setResult(summary);
     toast.success(t('settings.import.success'));
@@ -169,158 +218,224 @@ export function ImportTab({ projectId }: { projectId?: string }) {
       return;
     }
     if (error instanceof ApiResponseError && error.code === 'import:invalid_document') {
-      toast.error(source === 'ghost' ? t('settings.import.ghost.invalidJson') : t('settings.import.error'));
+      if (source === 'ghost') refused('settings.import.ghost.invalidJson');
+      else toast.error(t('settings.import.error'));
       return;
     }
     toast.error(t('settings.import.error'));
   };
 
   const runImport = () => {
+    if (!projectId) return;
     if (isRepoSource(source)) {
       // One owner sends what the form holds now (replaceExisting included), and reports only into the panel it started in.
-      repository.start(
-        { repo, branch, sourceUrl, path: spacePath, replaceExisting },
-        { refused: (message) => toast.error(t(message)), succeeded: handleSuccess, failed: handleError },
-      );
+      repository.start({ repo, branch, sourceUrl, path: spacePath, replaceExisting }, { refused, succeeded: handleSuccess, failed: handleError });
       return;
     }
     if (source !== 'ghost') return;
+    if (!ghostFile) {
+      setErrors((current) => ({ ...current, ghostFile: 'settings.import.ghost.fileRequired' }));
+      document.getElementById(FIELD_IDS.ghostFile)?.focus();
+      return;
+    }
     // One owner reads, checks and sends the file, and reports only into the panel it started in.
-    ghost.start({ refused: (message) => toast.error(t(message)), succeeded: handleSuccess, failed: handleError });
+    ghost.start({ refused, succeeded: handleSuccess, failed: handleError });
   };
+  const errorOf = (field: FieldName) => (errors[field] ? t(errors[field]) : undefined);
 
-  const canImport =
-    Boolean(projectId) &&
-    !pending &&
-    ((isRepoSource(source) && Boolean(repo.trim())) || (source === 'ghost' && Boolean(ghostFile && ghostUrl.trim())));
+  const importButton = (
+    <Button
+      // Busy keeps focus on the button, so a keyboard press doesn't drop it to the page.
+      focusableWhenDisabled={pending}
+      loading={pending}
+      loadingText={t('settings.import.running')}
+      onClick={runImport}
+      type="button"
+    >
+      <DownloadCloud className="size-4" />
+      {t('settings.import.run')}
+    </Button>
+  );
 
   return (
-    <SettingsSection description={t('settings.import.description')} title={t('settings.import.title')}>
-      <div className="w-full py-2">
-        <div className="mb-5 text-center">
-          <h3 className="font-semibold text-base tracking-tight">{t('settings.import.workspace.title')}</h3>
-          <p className="mx-auto mt-1 max-w-lg text-muted-foreground text-sm">{t('settings.import.workspace.description')}</p>
-        </div>
-
-        <div className="rounded-[20px] border border-border bg-card p-2 shadow-sm">
-          {result ? (
-            <ImportResult projectId={projectId} summary={result} />
-          ) : (
-            <div className="min-h-[220px] rounded-2xl bg-muted/20 p-4 sm:p-5">
-              {!source ? (
-                <div className="flex min-h-[180px] flex-col items-center justify-center text-center">
-                  <DownloadCloud className="mb-3 size-7 text-muted-foreground" />
-                  <p className="font-medium text-sm">{t('settings.import.workspace.emptyTitle')}</p>
-                  <p className="mt-1 max-w-sm text-muted-foreground text-xs leading-relaxed">{t('settings.import.workspace.emptyDescription')}</p>
-                </div>
-              ) : null}
-
-              {isRepoSource(source) ? (
-                <div className="flex flex-col gap-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
-                        {source === 'gitbook' ? <BookOpen className="size-4" /> : <Leaf className="size-4" />}
+    <div className="flex min-w-0 flex-col gap-8">
+      <PageHeader description={t('settings.import.description')} title={t('settings.import.title')} />
+      {result ? (
+        <ImportResult onAgain={() => setResult(null)} projectId={projectId} summary={result} />
+      ) : (
+        <>
+          <SettingsSection title={t('settings.import.workspace.emptyTitle')}>
+            <SettingsSectionBody>
+              <RadioGroup
+                aria-label={t('settings.import.workspace.emptyTitle')}
+                className="grid gap-3 sm:grid-cols-2"
+                onValueChange={(value) => chooseSource(value as ImportSource)}
+                value={source ?? ''}
+              >
+                {IMPORT_SOURCES.map((option) => (
+                  <RadioField
+                    className={cn(
+                      'min-w-0 rounded-lg border border-border px-3 py-3 transition-colors',
+                      'has-data-checked:border-primary/60 has-data-checked:bg-primary/5 not-has-data-checked:hover:bg-muted/50',
+                    )}
+                    description={t(option.description)}
+                    key={option.id}
+                    label={
+                      <span className="inline-flex items-center gap-2">
+                        <option.icon aria-hidden className="size-4 text-muted-foreground" />
+                        {t(option.label)}
                       </span>
-                      <div>
-                        <p className="font-medium text-sm">{t(`settings.import.${source}.title`)}</p>
-                        <p className="text-muted-foreground text-xs">{t(`settings.import.${source}.description`)}</p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="import-repo">{t('settings.import.mintlify.repo')}</Label>
+                    }
+                    value={option.id}
+                  />
+                ))}
+              </RadioGroup>
+            </SettingsSectionBody>
+          </SettingsSection>
+
+          {source === 'git' ? (
+            <SettingsSection description={t('settings.import.git.description')} title={t('settings.import.git.title')}>
+              <SettingsSectionBody>
+                {projectId ? (
+                  <Button
+                    nativeButton={false}
+                    render={<Link params={{ projectId }} search={{ section: 'git' }} to="/app/projects/$projectId/settings" />}
+                  >
+                    <GitBranch className="size-4" />
+                    {t('settings.import.git.open')}
+                  </Button>
+                ) : null}
+              </SettingsSectionBody>
+            </SettingsSection>
+          ) : null}
+
+          {isRepoSource(source) ? (
+            <SettingsSection
+              description={t(`settings.import.${source}.description`)}
+              footer={<p className="text-xs leading-relaxed">{t('settings.import.summaryHint')}</p>}
+              title={t(`settings.import.${source}.title`)}
+            >
+              <SettingsSectionBody className="flex flex-col gap-4">
+                <Field error={errorOf('repo')} id="import-repo" label={t('settings.import.mintlify.repo')}>
+                  {(describedBy) => (
+                    <Input
+                      aria-describedby={describedBy}
+                      aria-invalid={errors.repo ? true : undefined}
+                      className="font-mono"
+                      dir="ltr"
+                      id="import-repo"
+                      onChange={(event) => {
+                        setRepo(event.target.value);
+                        clearError('repo');
+                      }}
+                      placeholder="github.com/acme/docs"
+                      value={repo}
+                    />
+                  )}
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field id="import-branch" label={t('settings.import.mintlify.branch')}>
+                    {(describedBy) => (
                       <Input
-                        className="bg-background font-mono"
-                        dir="ltr"
-                        id="import-repo"
-                        onChange={(event) => setRepo(event.target.value)}
-                        placeholder="github.com/acme/docs"
-                        value={repo}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="import-source-url">{t('settings.import.sourceUrl')}</Label>
-                      <Input
-                        id="import-source-url"
-                        type="url"
-                        placeholder="https://help.example.com"
-                        value={sourceUrl}
-                        onChange={(event) => setSourceUrl(event.target.value)}
-                        disabled={pending}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="import-branch">{t('settings.import.mintlify.branch')}</Label>
-                      <Input
-                        className="bg-background font-mono"
+                        aria-describedby={describedBy}
+                        className="font-mono"
                         dir="ltr"
                         id="import-branch"
                         onChange={(event) => setBranch(event.target.value)}
                         placeholder="main"
                         value={branch}
                       />
-                    </div>
-                  </div>
-                  {source === 'gitbook' ? (
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="import-gitbook-path">{t('settings.import.gitbook.path')}</Label>
+                    )}
+                  </Field>
+                  <Field error={errorOf('sourceUrl')} id="import-source-url" label={t('settings.import.sourceUrl')}>
+                    {(describedBy) => (
                       <Input
-                        className="bg-background font-mono"
+                        aria-describedby={describedBy}
+                        aria-invalid={errors.sourceUrl ? true : undefined}
+                        dir="ltr"
+                        disabled={pending}
+                        id="import-source-url"
+                        onChange={(event) => {
+                          setSourceUrl(event.target.value);
+                          clearError('sourceUrl');
+                        }}
+                        placeholder="https://help.example.com"
+                        type="url"
+                        value={sourceUrl}
+                      />
+                    )}
+                  </Field>
+                </div>
+                {source === 'gitbook' ? (
+                  <Field hint={t('settings.import.gitbook.pathHint')} id="import-gitbook-path" label={t('settings.import.gitbook.path')}>
+                    {(describedBy) => (
+                      <Input
+                        aria-describedby={describedBy}
+                        className="font-mono"
                         dir="ltr"
                         id="import-gitbook-path"
                         onChange={(event) => setSpacePath(event.target.value)}
                         placeholder="docs"
                         value={spacePath}
                       />
-                      <p className="text-muted-foreground text-xs">{t('settings.import.gitbook.pathHint')}</p>
-                    </div>
-                  ) : null}
-                  <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-background px-3 py-2.5">
-                    <Label className="leading-snug" htmlFor="import-replace">
-                      {t('settings.import.mintlify.replaceExisting')}
-                    </Label>
-                    <Switch checked={replaceExisting} id="import-replace" onCheckedChange={setReplaceExisting} />
-                  </div>
+                    )}
+                  </Field>
+                ) : null}
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-border px-3 py-2.5">
+                  <Label className="leading-snug" htmlFor="import-replace">
+                    {t('settings.import.mintlify.replaceExisting')}
+                  </Label>
+                  <Switch checked={replaceExisting} id="import-replace" onCheckedChange={setReplaceExisting} />
                 </div>
-              ) : null}
+                <div className="flex justify-end">{importButton}</div>
+              </SettingsSectionBody>
+            </SettingsSection>
+          ) : null}
 
-              {source === 'ghost' ? (
-                <div className="flex flex-col gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="grid size-8 place-items-center rounded-lg bg-primary/10 text-primary">
-                      <Ghost className="size-4" />
-                    </span>
-                    <div>
-                      <p className="font-medium text-sm">{t('settings.import.ghost.title')}</p>
-                      <p className="text-muted-foreground text-xs">{t('settings.import.ghost.description')}</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="import-ghost-url">{t('settings.import.ghost.url')}</Label>
+          {source === 'ghost' ? (
+            <SettingsSection description={t('settings.import.ghost.description')} title={t('settings.import.ghost.title')}>
+              <SettingsSectionBody className="flex flex-col gap-4">
+                <Field
+                  error={errorOf('ghostUrl')}
+                  hint={t('settings.import.ghost.urlHint')}
+                  id="import-ghost-url"
+                  label={t('settings.import.ghost.url')}
+                >
+                  {(describedBy) => (
                     <Input
-                      className="bg-background"
+                      aria-describedby={describedBy}
+                      aria-invalid={errors.ghostUrl ? true : undefined}
                       dir="ltr"
                       id="import-ghost-url"
-                      onChange={(event) => setGhostUrl(event.target.value)}
+                      onChange={(event) => {
+                        setGhostUrl(event.target.value);
+                        clearError('ghostUrl');
+                      }}
                       placeholder="https://ghost.example.com"
                       type="url"
                       value={ghostUrl}
                     />
-                    <p className="text-muted-foreground text-xs">{t('settings.import.ghost.urlHint')}</p>
-                  </div>
+                  )}
+                </Field>
+                <div className="flex min-w-0 flex-col gap-1.5">
                   <input
                     accept=".json,application/json"
                     aria-label={t('settings.import.ghost.file')}
                     className="sr-only"
                     id="import-ghost-file"
-                    onChange={(event) => setGhostFile(event.target.files?.[0] ?? null)}
+                    onChange={(event) => {
+                      setGhostFile(event.target.files?.[0] ?? null);
+                      clearError('ghostFile');
+                    }}
                     ref={fileInputRef}
+                    tabIndex={-1}
                     type="file"
                   />
                   <Button
-                    className="h-auto min-h-14 w-full justify-start gap-3 whitespace-normal rounded-xl px-3 py-2.5 text-start font-normal"
+                    aria-describedby={errors.ghostFile ? 'import-ghost-file-error' : undefined}
+                    aria-invalid={errors.ghostFile ? true : undefined}
+                    className="h-auto min-h-14 w-full justify-start gap-3 whitespace-normal px-3 py-2.5 text-start font-normal"
+                    id="import-ghost-file-button"
                     onClick={() => fileInputRef.current?.click()}
                     type="button"
                     variant="outline"
@@ -329,57 +444,28 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                       <Upload className="size-4" />
                     </span>
                     <span className="min-w-0">
-                      <span className="block truncate font-medium text-sm">{ghostFile?.name ?? t('settings.import.ghost.file')}</span>
+                      <span className="block break-words font-medium text-sm" dir="auto">
+                        {ghostFile?.name ?? t('settings.import.ghost.file')}
+                      </span>
                       <span className="block text-muted-foreground text-xs">{t('settings.import.ghost.fileHint')}</span>
                     </span>
                   </Button>
-                  <Collapsible className="rounded-xl border border-border bg-background px-3 py-2.5 text-xs leading-relaxed">
-                    <CollapsibleTrigger className="cursor-pointer font-medium text-foreground">
-                      {t('settings.import.ghost.languageTitle')}
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <p className="mt-2 text-muted-foreground">{t('settings.import.ghost.languageTutorial')}</p>
-                    </CollapsibleContent>
-                  </Collapsible>
+                  <FieldError errors={errors.ghostFile ? [t(errors.ghostFile)] : []} id="import-ghost-file-error" />
                 </div>
-              ) : null}
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2 px-1 pt-2">
-            {IMPORT_SOURCE_TABS.map((tab) => (
-              <SourceChip
-                active={tab.id !== 'git' && source === tab.id && !result}
-                icon={<tab.icon className="size-3.5" />}
-                key={tab.id}
-                label={t(tab.label)}
-                onClick={() => (tab.id === 'git' ? openGitSettings() : chooseSource(tab.id))}
-              />
-            ))}
-            {result ? (
-              <Button className="ms-auto" onClick={() => setResult(null)} size="sm" type="button" variant="outline">
-                {t('settings.import.again')}
-              </Button>
-            ) : source ? (
-              <Button
-                className="ms-auto"
-                disabled={!canImport}
-                // Busy keeps focus on the button, so a keyboard press doesn't drop it to the page.
-                focusableWhenDisabled={pending}
-                loading={pending}
-                loadingText={t('settings.import.running')}
-                onClick={runImport}
-                size="sm"
-                type="button"
-              >
-                <DownloadCloud className="size-3.5" />
-                {t('settings.import.run')}
-              </Button>
-            ) : null}
-          </div>
-        </div>
-        <p className="mx-auto mt-3 max-w-lg text-center text-muted-foreground text-xs leading-relaxed">{t('settings.import.summaryHint')}</p>
-      </div>
-    </SettingsSection>
+                <Collapsible className="rounded-lg border border-border px-3 py-2.5 text-sm leading-relaxed">
+                  <CollapsibleTrigger className="cursor-pointer font-medium text-foreground">
+                    {t('settings.import.ghost.languageTitle')}
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <p className="mt-2 text-muted-foreground">{t('settings.import.ghost.languageTutorial')}</p>
+                  </CollapsibleContent>
+                </Collapsible>
+                <div className="flex justify-end">{importButton}</div>
+              </SettingsSectionBody>
+            </SettingsSection>
+          ) : null}
+        </>
+      )}
+    </div>
   );
 }
