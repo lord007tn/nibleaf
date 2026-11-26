@@ -15,7 +15,7 @@ const mocks = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn(), locale: 'en'
 vi.mock('sonner', () => ({ toast: { success: mocks.success, error: mocks.error } }));
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => `${mocks.locale}:${key}` }));
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }));
-vi.mock('@/components/project-settings/analytics-section', () => ({ AnalyticsSection: () => null }));
+vi.mock('@/features/site-analytics-settings/components/analytics-settings', () => ({ AnalyticsSettings: () => null }));
 // `services/api` as the browser runs it: Vitest has no Start compiler, so take its client branch.
 vi.mock('@tanstack/react-start', () => ({ createIsomorphicFn: () => ({ server: () => ({ client: (client: () => string) => client }) }) }));
 vi.mock('@/env.server', () => ({ serverEnv: {} }));

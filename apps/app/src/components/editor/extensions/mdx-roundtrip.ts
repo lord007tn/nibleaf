@@ -159,7 +159,7 @@ export const writeChildrenCloser = (state: SerializeState, node: PMNode, tag: st
   state.closeBlock(node);
 };
 
-export type SupportedDefinition = {
+type SupportedDefinition = {
   canonical: string;
   attrs: string[];
   defaults?: Record<string, string | boolean>;

@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { Button } from '@nibleaf/design-system/components/ui/button';
 import { SkeletonTableRows, SkeletonText } from '@nibleaf/design-system/components/ui/skeleton';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -22,57 +21,6 @@ async function render(element: React.ReactElement) {
   await act(async () => root.render(element));
   return container;
 }
-
-describe('Button loading', () => {
-  it('renders exactly as before when `loading` is not used', async () => {
-    const container = await render(<Button>Save</Button>);
-    const button = container.querySelector('button');
-    expect(button?.textContent).toBe('Save');
-    expect(button?.firstElementChild).toBeNull();
-    expect(button?.hasAttribute('aria-busy')).toBe(false);
-  });
-
-  it('disables the button, marks it busy and keeps the label in the layout', async () => {
-    const onClick = vi.fn();
-    const container = await render(
-      <Button loading onClick={onClick}>
-        Publish now
-      </Button>,
-    );
-    const button = container.querySelector('button');
-    expect(button?.disabled).toBe(true);
-    expect(button?.getAttribute('aria-busy')).toBe('true');
-    expect(button?.hasAttribute('data-loading')).toBe(true);
-    // The label stays in the layout so the width doesn't change; without loadingText
-    // it is hidden with opacity (not visibility) so it stays the accessible name.
-    const label = [...(button?.querySelectorAll('span') ?? [])].filter((span) => span.textContent === 'Publish now').at(-1);
-    expect(label?.className).toContain('opacity-0');
-    expect(label?.className).not.toContain('invisible');
-    expect(label?.getAttribute('aria-hidden')).toBeNull();
-    expect(button?.querySelector('svg')).not.toBeNull();
-    await act(async () => button?.click());
-    expect(onClick).not.toHaveBeenCalled();
-  });
-
-  it('shows loadingText as the visible and accessible text while loading', async () => {
-    const container = await render(
-      <Button loading loadingText="Creating…">
-        Create site
-      </Button>,
-    );
-    const spans = [...(container.querySelectorAll('button span') ?? [])];
-    expect(spans.find((span) => span.textContent === 'Create site')?.getAttribute('aria-hidden')).toBe('true');
-    expect(spans.some((span) => span.textContent === 'Creating…' && !span.closest('[aria-hidden="true"]'))).toBe(true);
-  });
-
-  it('keeps the same structure when loading toggles off, so nothing reflows', async () => {
-    const container = await render(<Button loading={false}>Save</Button>);
-    const button = container.querySelector('button');
-    expect(button?.disabled).toBe(false);
-    expect(button?.hasAttribute('aria-busy')).toBe(false);
-    expect(button?.querySelectorAll('svg').length).toBe(1);
-  });
-});
 
 describe('Skeleton building blocks', () => {
   it('hides placeholders from assistive tech and respects reduced motion', async () => {

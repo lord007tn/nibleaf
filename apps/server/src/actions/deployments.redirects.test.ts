@@ -433,8 +433,6 @@ describe('pending and overview starter content contract', () => {
     expect(pending.hasRealContent).toBe(false);
     expect(pending).not.toHaveProperty('baselines');
     expect(pending).not.toHaveProperty('rawBodies');
-    // These are application-call counts, not SQL statement counts. The real
-    // Prisma compiler's separate baseline SELECT is covered in deployments.sql.test.ts.
     expect(mocks.projectFindUnique).toHaveBeenCalledTimes(1);
     expect(mocks.projectFindUnique).toHaveBeenCalledWith(
       expect.objectContaining({ include: expect.objectContaining({ starterBaselines: { select: { bodyHash: true } } }) }),

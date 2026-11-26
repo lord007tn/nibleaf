@@ -94,12 +94,12 @@ vi.mock('@/hooks/api/query-options', () =>
 );
 vi.mock('@/integrations/tanstack-query/query-client', () => ({ prefetchRouteData: mocks.prefetch }));
 vi.mock('@/services/auth-client', () => ({ useSession: () => ({ data: { user: { id: 'user-1' } }, isPending: false }) }));
-vi.mock('@/components/project-settings/addons-section', () => ({ AddonsSection: () => null }));
-vi.mock('@/components/project-settings/authentication-section', () => ({ AuthenticationSection: () => null }));
-vi.mock('@/components/project-settings/danger-section', () => ({ DangerSection: () => <div data-testid="danger-settings" /> }));
-vi.mock('@/components/project-settings/domain-section', () => ({
+vi.mock('@/features/addons/components/addons-settings', () => ({ AddonsSettings: () => null }));
+vi.mock('@/features/reader-access/components/reader-access-settings', () => ({ ReaderAccessSettings: () => null }));
+vi.mock('@/features/site-danger/components/danger-zone', () => ({ DangerZone: () => <div data-testid="danger-settings" /> }));
+vi.mock('@/features/site-domains/components/domain-settings', () => ({
   // Its heading mounts only after its data "loads", as real sections do.
-  DomainSection: () => {
+  DomainSettings: () => {
     const [ready, setReady] = useState(false);
     useEffect(() => {
       const id = setTimeout(() => setReady(true), 20);
@@ -109,11 +109,11 @@ vi.mock('@/components/project-settings/domain-section', () => ({
   },
 }));
 vi.mock('@/components/project-settings/exports-section', () => ({ ExportsSection: () => null }));
-vi.mock('@/components/project-settings/general-section', async () => {
+vi.mock('@/features/site-general/components/general-settings', async () => {
   const { DirtyStateReporter } = await import('@/components/project-settings/shared');
   return {
     // Holds its own draft, as the real form does: a remount starts it afresh.
-    GeneralSection: () => {
+    GeneralSettings: () => {
       const [edited, setEdited] = useState(false);
       return (
         <div data-edited={String(edited)} data-testid="general-settings">
@@ -127,22 +127,22 @@ vi.mock('@/components/project-settings/general-section', async () => {
     },
   };
 });
-vi.mock('@/components/project-settings/languages-section', () => ({
-  LanguagesSection: () => (
+vi.mock('@/features/site-languages/components/languages-settings', () => ({
+  LanguagesSettings: () => (
     <div data-testid="language-settings">
       <h1>Languages</h1>
     </div>
   ),
 }));
 vi.mock('@/features/people/components/site-team-page', () => ({ SiteTeamPage: () => null }));
-vi.mock('@/components/project-settings/openapi-section', () => ({ OpenApiSection: () => null }));
-vi.mock('@/components/project-settings/search-section', () => ({ SearchSection: () => null }));
+vi.mock('@/features/site-openapi/components/openapi-settings', () => ({ OpenApiSettings: () => null }));
+vi.mock('@/features/site-search/components/search-settings', () => ({ SearchSettings: () => null }));
 vi.mock('@/features/site-ai/components/ai-answers-page', () => ({ AiAnswersPage: () => <div data-testid="ai-answers-settings" /> }));
 vi.mock('@/features/ai-assistants/components/ai-assistants-page', () => ({ AiAssistantsPage: () => null }));
 vi.mock('@/components/settings/integrations-tab', () => ({ IntegrationsTab: () => <div data-testid="integrations-settings" /> }));
 vi.mock('@/components/settings/git-tab', () => ({ GitTab: () => null }));
 vi.mock('@/components/settings/import-tab', () => ({ ImportTab: () => null }));
-vi.mock('@/components/settings/usage-tab', () => ({
+vi.mock('@/features/usage/components/usage-overview', () => ({
   UsageTab: ({ organization }: { organization?: { canManage: boolean } }) => (
     <div data-can-manage={String(organization?.canManage)} data-testid="usage-settings" />
   ),
