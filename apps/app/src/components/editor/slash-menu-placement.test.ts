@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { slashMenuPlacement, visibleArea } from './extensions/slash-command';
+import { slashMenuHeight, slashMenuPlacement, visibleArea } from './extensions/slash-command';
 
 /*
  * The "/" menu is placed in the part of the page the writer can see. On a phone
@@ -46,6 +46,24 @@ describe('placing the "/" menu', () => {
     const placed = slashMenuPlacement({ left: 20, right: 30, top: 700, bottom: 720 }, menu, scrolled, false);
     expect(placed.top).toBeGreaterThanOrEqual(312);
     expect(placed.top + Math.min(menu.height, placed.maxHeight)).toBeLessThanOrEqual(700);
+  });
+
+  it('counts a long list at its drawn cap, so above the "/" the menu stays next to it (desktop, empty query)', () => {
+    // An empty query lists every block: ~2000 px of content, drawn at most 26rem (416 px) tall.
+    const height = slashMenuHeight({ chrome: 2, content: 2000, remPx: 16 });
+    expect(height).toBe(418);
+    const placed = slashMenuPlacement(
+      { left: 400, right: 410, top: 800, bottom: 820 },
+      { width: 300, height },
+      { left: 0, top: 0, width: 1440, height: 900 },
+      false,
+    );
+    // Right above the "/", not pushed to the top of the screen.
+    expect(placed.top).toBe(800 - 6 - 418);
+  });
+
+  it('counts a short list at its full height', () => {
+    expect(slashMenuHeight({ chrome: 2, content: 120, remPx: 16 })).toBe(122);
   });
 
   it('reads the visible area from the visual viewport where there is one', () => {
