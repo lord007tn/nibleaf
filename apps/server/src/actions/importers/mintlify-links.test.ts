@@ -57,7 +57,7 @@ describe('rewriteMintlifyInternalLinks', () => {
     expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source);
   });
 
-  it('retains inline and HTML rewrites above the reference-definition parse limit', () => {
+  it('rewrites inline, HTML and reference links on both sides of the small-page parse limit', () => {
     const links = '[Inline](/topic/next) <Card href="/topic/next" /> [Reference][r]';
     const definition = '\n\n[r]: /topic/next "Title"\n\n';
     const routes = new Map([['topic/next', '/topic-2/next']]);
@@ -67,7 +67,9 @@ describe('rewriteMintlifyInternalLinks', () => {
       rewrittenLinks + definition.replace('/topic/next', '/topic-2/next') + withinLimit,
     );
     const overLimit = `${withinLimit}a`;
-    expect(rewriteMintlifyInternalLinks(links + definition + overLimit, 'intro', routes)).toBe(rewrittenLinks + definition + overLimit);
+    expect(rewriteMintlifyInternalLinks(links + definition + overLimit, 'intro', routes)).toBe(
+      rewrittenLinks + definition.replace('/topic/next', '/topic-2/next') + overLimit,
+    );
   });
 
   it('keeps footnotes, empty destinations and definitions shared with images unchanged', () => {

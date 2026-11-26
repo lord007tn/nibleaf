@@ -3,7 +3,7 @@ import MarkdownIt, { type Env, type StateBlock, type Token } from 'markdown-it';
 import { type CompileContext, type Extension, fromMarkdown } from 'mdast-util-from-markdown';
 import { mdxFromMarkdown } from 'mdast-util-mdx';
 import { mdxjs } from 'micromark-extension-mdxjs';
-import { readImportComponentTag } from './import-markdown-code';
+import { importBlockContentStart, importContainerContinuation, readImportComponentTag } from './import-markdown-code';
 export interface ImportReference {
   value: string;
   start: number;
@@ -166,43 +166,86 @@ const definitionEdits = (definitions: Definition[], { links, images }: Reference
 };
 
 const reader = new MarkdownIt('commonmark', { html: true });
+// This parser discovers source spans. Even a destination the route resolver
+// leaves alone must shadow later definitions with the same label.
+reader.validateLink = () => true;
 const parseReferenceBlock = reader.block.ruler.getRules('').find((rule) => rule.name === 'reference');
 
 interface ReferenceScanEnv extends Env {
-  captureDefinition?: (state: StateBlock, from: number, to: number) => void;
+  captureDefinition?: (state: StateBlock, from: number, to: number, firstLabel?: string) => void;
+  definedLabel?: string;
 }
 
 if (parseReferenceBlock) {
   reader.block.ruler.at('reference', (state, from, end, silent) => {
+    const env = state.env as ReferenceScanEnv;
+    if (!silent) env.definedLabel = undefined;
     const accepted = parseReferenceBlock(state, from, end, silent);
-    if (accepted && !silent) (state.env as ReferenceScanEnv).captureDefinition?.(state, from, state.line);
+    if (accepted && !silent) env.captureDefinition?.(state, from, state.line, env.definedLabel);
     return accepted;
   });
 }
 
 const COMPONENT_START = /^ {0,3}<\/?[A-Z]/;
 const COMPONENT_NAME = /^ {0,3}<(\/?)([A-Z][\w.]*)(?=[ \t/>])/;
+const BLANK = /^[ \t]*$/;
+
+/** Code has already been masked by protectImportCode. Blank only complete
+ * MDX comments, keeping every offset and newline in place. */
+const maskMdxComments = (source: string): string | undefined => {
+  const opener = /\{\s*\/\*/g;
+  const closer = /\*\/\s*\}/y;
+  const pieces: string[] = [];
+  let copied = 0;
+  for (let match = opener.exec(source); match; match = opener.exec(source)) {
+    if (escaped(source, match.index)) continue;
+    closer.lastIndex = source.indexOf('*/', opener.lastIndex);
+    if (closer.lastIndex < 0 || !closer.test(source)) return undefined;
+    pieces.push(source.slice(copied, match.index), source.slice(match.index, closer.lastIndex).replace(/[^\n]/g, ' '));
+    copied = closer.lastIndex;
+    opener.lastIndex = copied;
+  }
+  if (!pieces.length) return source;
+  return pieces.join('') + source.slice(copied);
+};
 
 /** Match the Markdown blocks inside standalone MDX components while keeping
  * offsets stable. Use CommonMark on mixed or unbalanced component syntax. */
 const maskComponentLines = (source: string): string => {
   if (!/<[A-Z]/.test(source)) return source;
-  const lines = source.split('\n');
-  const components: string[] = [];
-  const masked: number[] = [];
+  const commentsMasked = maskMdxComments(source);
+  if (commentsMasked === undefined) return source;
+  const lines = commentsMasked.split('\n');
+  const components: Array<{ name: string; continues: (prefix: string) => boolean }> = [];
+  const masked: Array<{ index: number; start: number }> = [];
   for (const [index, line] of lines.entries()) {
-    if (!COMPONENT_START.test(line)) continue;
-    const match = COMPONENT_NAME.exec(line);
+    const content = importBlockContentStart(line);
+    const body = line.slice(content);
+    if (!COMPONENT_START.test(body)) continue;
+    const match = COMPONENT_NAME.exec(body);
     if (!match?.[2]) return source;
     const [, closing, name] = match;
-    const tag = readImportComponentTag(line, line.indexOf('<'));
-    if (!tag.complete || line.slice(tag.end).trim()) return source;
-    if (closing && components.pop() !== name) return source;
-    if (!closing && !tag.selfClosing) components.push(name);
-    masked.push(index);
+    const start = content + body.indexOf('<');
+    const tag = readImportComponentTag(line, start);
+    if (!tag.complete) return source;
+    if (!BLANK.test(line.slice(tag.end))) {
+      // A complete inline component need not change the surrounding block
+      // scan. A partial opener instead requires the CommonMark fallback.
+      if (!closing && (tag.selfClosing || line.trimEnd().endsWith(`</${name}>`))) continue;
+      return source;
+    }
+    const prefix = line.slice(0, start);
+    if (closing) {
+      const open = components.pop();
+      if (open?.name !== name || !open.continues(prefix)) return source;
+    } else if (!tag.selfClosing) components.push({ name, continues: importContainerContinuation(prefix) });
+    masked.push({ index, start });
   }
   if (components.length) return source;
-  for (const index of masked) lines[index] = ' '.repeat(lines[index]?.length ?? 0);
+  for (const { index, start } of masked) {
+    const line = lines[index] ?? '';
+    lines[index] = line.slice(0, start) + ' '.repeat(line.length - start);
+  }
   return lines.join('\n');
 };
 
@@ -217,14 +260,21 @@ const longPageDefinitionEdits = (source: string): DefinitionEdit[] => {
     removedCr.push(removed);
     return '\n';
   });
-  const captureDefinition: NonNullable<ReferenceScanEnv['captureDefinition']> = (state, from, to) => {
+  const captureDefinition: NonNullable<ReferenceScanEnv['captureDefinition']> = (state, from, to, firstLabel) => {
     const parts: string[] = [];
     const offsets: Array<{ relative: number; absolute: number }> = [];
     let length = 0;
     for (let line = from; line < to; line++) {
       const start = (state.bMarks[line] ?? 0) + (state.tShift[line] ?? 0);
       const end = state.eMarks[line] ?? start;
-      if (length + end - start > MAX_DEFINITION_PARSE_LENGTH) return;
+      if (length + end - start > MAX_DEFINITION_PARSE_LENGTH) {
+        // Its title is still literal, and the block parser has already
+        // recorded the label for duplicate detection.
+        const first = (state.bMarks[from] ?? 0) + (state.tShift[from] ?? 0) + (removedCr[from] ?? 0);
+        const last = (state.eMarks[to - 1] ?? end) + (removedCr[to - 1] ?? 0);
+        definitions.push({ label: firstLabel ?? '', start: first, end: last });
+        return;
+      }
       offsets.push({ relative: length, absolute: start + (removedCr[line] ?? 0) });
       parts.push(state.src.slice(start, end));
       length += end - start + 1;
@@ -237,14 +287,15 @@ const longPageDefinitionEdits = (source: string): DefinitionEdit[] => {
       return line ? position + line.absolute - line.relative : position;
     };
     for (const { label, start, end, destination } of collectDefinitions(fragment, false).definitions) {
+      const normalizedLabel = reader.utils.normalizeReference(label);
       let mappedDestination: ImportReference | undefined;
-      if (destination) {
+      if (destination && normalizedLabel === firstLabel) {
         const from = absolute(destination.start);
         const to = absolute(destination.end);
         mappedDestination = { value: source.slice(from, to), start: from, end: to, image: false };
       }
       definitions.push({
-        label: reader.utils.normalizeReference(label),
+        label: normalizedLabel,
         start: absolute(start),
         end: absolute(end),
         destination: mappedDestination,
@@ -252,7 +303,13 @@ const longPageDefinitionEdits = (source: string): DefinitionEdit[] => {
     }
   };
   const blocks: Token[] = [];
-  const env: ReferenceScanEnv = { references: Object.create(null), captureDefinition };
+  const env: ReferenceScanEnv = { captureDefinition };
+  env.references = new Proxy(Object.create(null) as NonNullable<Env['references']>, {
+    set(target, property, value) {
+      if (typeof property === 'string') env.definedLabel = property;
+      return Reflect.set(target, property, value);
+    },
+  });
   reader.block.parse(maskComponentLines(normalized), reader, env, blocks);
   if (!definitions.length) return [];
   for (const block of blocks) {

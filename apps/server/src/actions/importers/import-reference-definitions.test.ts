@@ -11,6 +11,8 @@ describe('reference definitions in imports (#686)', () => {
     ['a quote with a multiline title', '> [Go][r]\r\n>\r\n> [r]: </topic/next>\r\n>   "First line\r\n>    second line"'],
     ['a list item', '- [Go][r]\n\n  [r]: /topic/next (Title)'],
     ['a balanced MDX component', '<Note>\n[Go][r]\n\n[r]: /topic/next\n</Note>'],
+    ['a component inside a quote', '> <Note>\n> [Go][r]\n>\n> [r]: /topic/next\n> </Note>'],
+    ['a component beside valid inline MDX', '<Note>\n[Go][r]\n\n[r]: /topic/next\n</Note>\n\n<Badge>new</Badge>'],
     ['CommonMark after an incomplete MDX component', '[Go][r]\n\n[r]: /topic/next\n\n<Note>'],
   ])('rewrites %s on a page longer than the former cap', (_reason, page) => {
     const source = page + longTail;
@@ -29,5 +31,22 @@ describe('reference definitions in imports (#686)', () => {
   it.each(['', longTail])('preserves link-shaped text inside a title on both source sizes', (tail) => {
     const source = `[Go][r]\n\n[r]: /topic/next '[Literal](/topic/next) <a href="/topic/next">'${tail}`;
     expect(rewrite(source)).toBe(source.replace('[r]: /topic/next', '[r]: /topic-2/next'));
+  });
+
+  it('keeps a later duplicate shadowed even when the first definition exceeds the block cap', () => {
+    const source = `[Go][r]\n\n[r]: /topic/next "${'x'.repeat(4200)}"\n[r]: /topic/next "Duplicate"`;
+    expect(rewrite(source)).toBe(source);
+  });
+
+  it('keeps a duplicate shadowed by a syntactically valid definition with a non-rewritten protocol', () => {
+    const source = `[Go][r]\n\n[r]: custom:payload\n\n[r]: /topic/next${longTail}`;
+    expect(rewrite(source)).toBe(source);
+    const rejectedByHtmlDefault = source.replace('custom:payload', 'data:text/plain,example');
+    expect(rewrite(rejectedByHtmlDefault)).toBe(rejectedByHtmlDefault);
+  });
+
+  it('does not rewrite a definition inside an MDX comment', () => {
+    const source = `<Note>\n\n{/*\n\n[Go][r]\n\n[r]: /topic/next "Hidden"\n\n*/}\n\n</Note>${longTail}`;
+    expect(rewrite(source)).toBe(source);
   });
 });
