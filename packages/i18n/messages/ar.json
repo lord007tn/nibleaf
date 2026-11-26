@@ -5131,5 +5131,6 @@
   "settings_integrations_aipointer": "تبحث عن OpenAI أو OpenRouter؟ مفاتيح الذكاء الاصطناعي موجودة في {page}.",
   "settings_integrations_openaipage": "فتح {page}",
   "settings_aiassistants_actionsfor": "إجراءات {name}",
-  "settings_exports_formats": "الصيغ"
+  "settings_exports_formats": "الصيغ",
+  "settings_apikeys_rotating": "جارٍ استبدال المفتاح…"
 }

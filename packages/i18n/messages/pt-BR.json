@@ -5063,5 +5063,6 @@
   "settings_integrations_aipointer": "Procurando OpenAI ou OpenRouter? As chaves de IA ficam em {page}.",
   "settings_integrations_openaipage": "Abrir {page}",
   "settings_aiassistants_actionsfor": "Ações para {name}",
-  "settings_exports_formats": "Formatos"
+  "settings_exports_formats": "Formatos",
+  "settings_apikeys_rotating": "Substituindo a chave…"
 }

@@ -4996,5 +4996,6 @@
   "settings_integrations_aipointer": "OpenAI বা OpenRouter খুঁজছেন? AI কী আছে {page}-এ।",
   "settings_integrations_openaipage": "{page} খুলুন",
   "settings_aiassistants_actionsfor": "{name}-এর জন্য অ্যাকশন",
-  "settings_exports_formats": "ফরম্যাট"
+  "settings_exports_formats": "ফরম্যাট",
+  "settings_apikeys_rotating": "কী বদলানো হচ্ছে…"
 }

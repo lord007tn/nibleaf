@@ -84,6 +84,8 @@ export function hubCard(entry: IntegrationCatalogEntry): HubCard | null {
         ? { entry, state: { kind: 'notSendingYet', line: line ?? { kind: 'posts', label: null } }, target: { kind: 'detail', id } }
         : { entry, state: { kind: 'comingSoon' }, target: null };
     }
+    // Nothing to connect to on this server: no card, rather than a form that can't save.
+    if (!connection && entry.availability !== 'available') return null;
     if (!connection) return { entry, state: { kind: 'setUp', action: 'connect' }, target: { kind: 'detail', id } };
     const posts = line ?? { kind: 'posts' as const, label: null };
     const state: CardState =
@@ -102,7 +104,9 @@ export function hubCard(entry: IntegrationCatalogEntry): HubCard | null {
       ? { kind: 'setUp', action: 'setUp' }
       : connection.status === 'error' || !line
         ? { kind: 'notWorking' }
-        : { kind: 'connected', line };
+        : connection.status === 'inactive'
+          ? { kind: 'paused', line }
+          : { kind: 'connected', line };
     return { entry, state, target: { kind: 'git' } };
   }
   if (entry.id === 'google-analytics' || entry.id === 'plausible') {

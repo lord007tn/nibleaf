@@ -4997,5 +4997,6 @@
   "settings_integrations_aipointer": "OpenAI या OpenRouter ढूँढ रहे हैं? AI कुंजियाँ {page} में हैं।",
   "settings_integrations_openaipage": "{page} खोलें",
   "settings_aiassistants_actionsfor": "{name} के लिए कार्रवाइयाँ",
-  "settings_exports_formats": "फ़ॉर्मैट"
+  "settings_exports_formats": "फ़ॉर्मैट",
+  "settings_apikeys_rotating": "कुंजी बदली जा रही है…"
 }

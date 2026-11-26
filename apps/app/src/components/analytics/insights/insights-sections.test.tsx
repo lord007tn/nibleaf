@@ -306,7 +306,7 @@ describe('Overview', () => {
     expect(text(card)).toContain("Search terms are off for this project, so what readers typed isn't stored.");
     expect(text(card)).not.toContain('No failed searches');
     const settings = card.querySelector<HTMLAnchorElement>('a[data-to="/app/projects/$projectId/settings"]');
-    expect(JSON.parse(settings?.dataset.search ?? '{}')).toEqual({ section: 'integrations' });
+    expect(JSON.parse(settings?.dataset.search ?? '{}')).toEqual({ section: 'integrations', integration: 'analytics' });
   });
 
   it('says rare terms are hidden instead of "no failed searches" when searches did fail', async () => {
@@ -444,7 +444,7 @@ describe('Search', () => {
     expect(text(view)).toContain('at least 2 different visits');
     expect(text(view)).toContain('7 terms across 9 searches');
     const settings = view.querySelector<HTMLAnchorElement>('a[data-to="/app/projects/$projectId/settings"]');
-    expect(JSON.parse(settings?.dataset.search ?? '{}')).toEqual({ section: 'integrations' });
+    expect(JSON.parse(settings?.dataset.search ?? '{}')).toEqual({ section: 'integrations', integration: 'analytics' });
     expect(view.querySelector('button[aria-label^="Write an article"]')).toBeNull();
   });
 

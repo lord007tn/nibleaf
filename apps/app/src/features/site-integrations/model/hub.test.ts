@@ -97,6 +97,22 @@ describe('hubCard', () => {
     expect(hubCard(live('error'))?.state).toEqual({ kind: 'notWorking' });
   });
 
+  it('draws no Connect card for a notification provider this server can’t connect', () => {
+    for (const availability of ['not_configured', 'unavailable'] as const) {
+      expect(hubCard(entry('discord', { availability, comingSoon: false }))).toBeNull();
+    }
+  });
+
+  it('shows a paused GitHub sync as Paused', () => {
+    const paused = entry('github', {
+      connection: connection(
+        { providerId: 'github', repository: 'acme/docs', baseBranch: 'main', headBranch: 'nibleaf/docs', contentPath: 'docs' },
+        { status: 'inactive' },
+      ),
+    });
+    expect(hubCard(paused)?.state).toEqual({ kind: 'paused', line: { kind: 'syncing', repository: 'acme/docs', branch: 'main' } });
+  });
+
   it.each([
     'openai',
     'openrouter',

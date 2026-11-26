@@ -5062,5 +5062,6 @@
   "settings_integrations_aipointer": "Suchen Sie OpenAI oder OpenRouter? KI-Schlüssel finden Sie unter {page}.",
   "settings_integrations_openaipage": "{page} öffnen",
   "settings_aiassistants_actionsfor": "Aktionen für {name}",
-  "settings_exports_formats": "Formate"
+  "settings_exports_formats": "Formate",
+  "settings_apikeys_rotating": "Schlüssel wird ersetzt…"
 }

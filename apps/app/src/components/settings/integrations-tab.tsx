@@ -420,6 +420,11 @@ function WebhookDetail({ projectId, entry }: { projectId: string; entry: Integra
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const pending = saveCommand.pending || activate.isPending || deactivate.isPending || verify.isPending || remove.isPending;
+  const pageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Opened by a link before the list loaded: the hub's title had focus and is gone now.
+    if (document.activeElement === document.body) pageRef.current?.querySelector<HTMLElement>('h1')?.focus();
+  }, []);
   const backToHub = () => navigate({ to: '/app/projects/$projectId/settings', params: { projectId }, search: { section: 'integrations' } });
 
   async function deleteConnection() {
@@ -437,14 +442,16 @@ function WebhookDetail({ projectId, entry }: { projectId: string; entry: Integra
 
   if (isComingSoon(entry)) {
     return (
-      <ComingSoonDetail
-        entry={entry}
-        onRemove={deleteConnection}
-        pending={remove.isPending}
-        projectId={projectId}
-        removeOpen={deleteOpen}
-        setRemoveOpen={setDeleteOpen}
-      />
+      <div ref={pageRef}>
+        <ComingSoonDetail
+          entry={entry}
+          onRemove={deleteConnection}
+          pending={remove.isPending}
+          projectId={projectId}
+          removeOpen={deleteOpen}
+          setRemoveOpen={setDeleteOpen}
+        />
+      </div>
     );
   }
 
@@ -497,7 +504,7 @@ function WebhookDetail({ projectId, entry }: { projectId: string; entry: Integra
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8" ref={pageRef}>
       <DetailHeader entry={entry} projectId={projectId} />
       <SettingsSection title={t('settings.integrations.configuration')} description={t('settings.integrations.webhookDescription')}>
         <form className="flex flex-col gap-4" onSubmit={save}>

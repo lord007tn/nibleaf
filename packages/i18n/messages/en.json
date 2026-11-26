@@ -5062,5 +5062,6 @@
   "settings_integrations_aipointer": "Looking for OpenAI or OpenRouter? AI keys live in {page}.",
   "settings_integrations_openaipage": "Open {page}",
   "settings_aiassistants_actionsfor": "Actions for {name}",
-  "settings_exports_formats": "Formats"
+  "settings_exports_formats": "Formats",
+  "settings_apikeys_rotating": "Replacing key…"
 }

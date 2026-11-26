@@ -4991,5 +4991,6 @@
   "settings_integrations_aipointer": "Mencari OpenAI atau OpenRouter? Kunci AI ada di {page}.",
   "settings_integrations_openaipage": "Buka {page}",
   "settings_aiassistants_actionsfor": "Tindakan untuk {name}",
-  "settings_exports_formats": "Format"
+  "settings_exports_formats": "Format",
+  "settings_apikeys_rotating": "Mengganti kunci…"
 }

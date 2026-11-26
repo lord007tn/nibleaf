@@ -190,6 +190,23 @@ describe('moving between the hub and an integration', () => {
   });
 });
 
+describe('a link straight to an integration', () => {
+  it('takes focus from the page when the integration appears after the list loads', async () => {
+    hooks.integrations.mockReturnValue({ isPending: true, isSuccess: false, isError: false });
+    const container = document.createElement('div');
+    document.body.append(container);
+    const root = createRoot(container);
+    roots.push(root);
+    const show = () => act(async () => root.render(<IntegrationsTab integration="slack" project={project} projectId="project-1" />));
+    await show();
+    expect(container.querySelector('h1')?.textContent).toBe('settings.integrations.title');
+    catalogOf(entry('slack', { connection: storedSlack }));
+    await show();
+    expect(document.activeElement?.tagName).toBe('H1');
+    expect(document.activeElement?.textContent).toBe('settings.integrations.provider.slack');
+  });
+});
+
 describe('the Analytics page', () => {
   it('is its own page with a way back to the hub', async () => {
     catalogOf(entry('google-analytics'));

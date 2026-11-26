@@ -5053,5 +5053,6 @@
   "settings_integrations_aipointer": "OpenAI یا OpenRouter تلاش کر رہے ہیں؟ AI کیز {page} میں ہیں۔",
   "settings_integrations_openaipage": "{page} کھولیں",
   "settings_aiassistants_actionsfor": "{name} کے لیے کارروائیاں",
-  "settings_exports_formats": "فارمیٹس"
+  "settings_exports_formats": "فارمیٹس",
+  "settings_apikeys_rotating": "کلید تبدیل کی جا رہی ہے…"
 }

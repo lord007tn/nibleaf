@@ -5095,5 +5095,6 @@
   "settings_integrations_aipointer": "Ищете OpenAI или OpenRouter? Ключи ИИ находятся в разделе «{page}».",
   "settings_integrations_openaipage": "Открыть «{page}»",
   "settings_aiassistants_actionsfor": "Действия для {name}",
-  "settings_exports_formats": "Форматы"
+  "settings_exports_formats": "Форматы",
+  "settings_apikeys_rotating": "Замена ключа…"
 }

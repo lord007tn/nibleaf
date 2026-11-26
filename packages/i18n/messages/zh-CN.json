@@ -4975,5 +4975,6 @@
   "settings_integrations_aipointer": "在找 OpenAI 或 OpenRouter？AI 密钥在“{page}”中。",
   "settings_integrations_openaipage": "打开“{page}”",
   "settings_aiassistants_actionsfor": "{name} 的操作",
-  "settings_exports_formats": "格式"
+  "settings_exports_formats": "格式",
+  "settings_apikeys_rotating": "正在替换密钥…"
 }

@@ -271,6 +271,7 @@ function ConnectionItem({
           {row.kind === 'key' && row.status === 'expiringSoon' && row.key.expiresAt ? (
             <StatusBadge tone="warning">{t('settings.aiAssistants.expiresSoon', { when: relativeFuture(row.key.expiresAt, locale) })}</StatusBadge>
           ) : null}
+          {rotating ? <StatusBadge tone="pending">{t('settings.apiKeys.rotating')}</StatusBadge> : null}
           {row.kind === 'key' && row.status === 'expired' ? <StatusBadge tone="danger">{t('settings.apiKeys.expired')}</StatusBadge> : null}
           {row.kind === 'key' && row.status === 'revoked' ? <StatusBadge tone="danger">{t('settings.apiKeys.revoked')}</StatusBadge> : null}
           {row.kind === 'key' && row.status === 'rotationRequired' ? (
@@ -316,7 +317,7 @@ function ConnectionItem({
               <RowActionsItem
                 disabled={rotateBusy !== null}
                 disabledReason={enabled ? undefined : t('settings.aiAssistants.off.reason')}
-                icon={<RefreshCw aria-hidden className={rotating ? 'motion-safe:animate-spin' : undefined} />}
+                icon={<RefreshCw aria-hidden />}
                 onSelect={() => onRotate(row.key)}
               >
                 {t('settings.apiKeys.rotate')}
