@@ -3,6 +3,7 @@
 import { computeAccessibleName } from 'dom-accessibility-api';
 import { act, type ComponentType, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const pending = { data: undefined, isPending: true };
@@ -375,6 +376,18 @@ describe('first-publish checklist and reserved address', () => {
     expect(clipboard.success).toHaveBeenCalledWith('URL copied');
   });
 
+  it('draws the checklist in the first paint, so it never pops in and pushes the page down', () => {
+    // The server render (and the first client render) used to omit it until an effect read the dismissal.
+    const html = renderToString(<SiteOverviewPage />);
+    expect(html).toContain('Your docs are not live yet');
+  });
+
+  it('keeps a dismissed checklist hidden', async () => {
+    window.localStorage.setItem('nibleaf.publishNudge.project-1', '1');
+    await act(async () => root.render(<SiteOverviewPage />));
+    expect(container.textContent).not.toContain('overview.nudge.title');
+  });
+
   it('reports a failed copy without a success toast', async () => {
     clipboard.copy.mockResolvedValue(false);
     await act(async () => root.render(<SiteOverviewPage />));
@@ -584,6 +597,13 @@ describe('site overview when something fails or is still connecting', () => {
       await act(async () => root.render(<SiteOverviewPage />));
       const statuses = [...container.querySelectorAll('[data-page-status]')].map((badge) => badge.getAttribute('data-page-status'));
       expect(statuses).toEqual(['changed', 'draft', 'live']);
+    });
+
+    it('lets each page title cell take its own direction, so an Arabic title aligns right in an English table (AUTH-39)', async () => {
+      await act(async () => root.render(<SiteOverviewPage />));
+      const cells = [...container.querySelectorAll('tbody tr')].map((row) => row.querySelector('td'));
+      expect(cells).toHaveLength(3);
+      for (const cell of cells) expect(cell?.getAttribute('dir')).toBe('auto');
     });
 
     it('offers Viewers the state without a publish action', async () => {

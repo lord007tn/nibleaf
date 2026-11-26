@@ -25,7 +25,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { compareDelta } from '@/components/analytics/insights/metrics';
@@ -463,7 +463,8 @@ function SiteOverviewPage() {
                   const status = pageLiveStatus(page.id, pendingChanges);
                   return (
                     <TableRow key={page.id} className="relative">
-                      <TableCell>
+                      {/* The title's own direction sets its alignment: an Arabic title sits right in an English table (AUTH-39). */}
+                      <TableCell dir="auto">
                         {/* A real link to this page in the editor: keyboard, middle-click and
                           screen readers all work, and the whole row stays clickable. */}
                         <Link
@@ -695,6 +696,36 @@ function PublishFailureCard({
 }
 
 const nudgeDismissKey = (projectId: string) => `nibleaf.publishNudge.${projectId}`;
+const nudgeListeners = new Set<() => void>();
+const subscribeNudge = (listener: () => void) => {
+  nudgeListeners.add(listener);
+  window.addEventListener('storage', listener);
+  return () => {
+    nudgeListeners.delete(listener);
+    window.removeEventListener('storage', listener);
+  };
+};
+const readNudgeDismissed = (projectId: string) => {
+  try {
+    return window.localStorage.getItem(nudgeDismissKey(projectId)) === '1';
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Whether this site's checklist was dismissed, read during render. It used to
+ * start hidden and appear after an effect, which pushed the whole page down on
+ * every visit. The server render shows it (most new sites haven't dismissed it);
+ * a dismissed one is hidden at hydration. A dismissal in another tab applies here too.
+ */
+function useNudgeDismissed(projectId: string) {
+  return useSyncExternalStore(
+    subscribeNudge,
+    () => readNudgeDismissed(projectId),
+    () => false,
+  );
+}
 
 /** First-publish checklist: shown until the site has a READY deployment. */
 function PublishNudge({
@@ -707,7 +738,7 @@ function PublishNudge({
   permissionError?: React.ReactNode;
 }) {
   const t = useT();
-  const [dismissed, setDismissed] = useState(true);
+  const dismissed = useNudgeDismissed(projectId);
   const { count } = useFormatters();
   const content = usePendingChanges(projectId, { enabled: !dismissed });
   const domains = useDomains(projectId);
@@ -716,23 +747,16 @@ function PublishNudge({
   const domainConnecting = domainDone && !pickLiveDomain(domains.data ?? []);
   const progressKnown = content.data?.hasRealContent !== undefined && domains.data !== undefined;
   const doneCount = Number(editDone) + Number(domainDone);
-  useEffect(() => {
-    try {
-      setDismissed(window.localStorage.getItem(nudgeDismissKey(projectId)) === '1');
-    } catch {
-      setDismissed(false);
-    }
-  }, [projectId]);
   if (dismissed) {
     return null;
   }
   const dismiss = () => {
-    setDismissed(true);
     try {
       window.localStorage.setItem(nudgeDismissKey(projectId), '1');
     } catch {
       // ignore storage failures (private mode etc.)
     }
+    for (const listener of nudgeListeners) listener();
   };
 
   return (
