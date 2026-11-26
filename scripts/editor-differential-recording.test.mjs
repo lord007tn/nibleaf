@@ -70,6 +70,7 @@ function harness(env = {}, differing = 14) {
       isNamed: () => false,
       QUOTED_MARK_CHANGES: 0,
       LOOSENED_LIST_PAGES: {},
+      priorFenceLayoutDigest: (_suite, _index, actual) => actual,
       saveRecord: () => '',
       digest: (page) => `main-${page}`,
       SERIALIZER_CORPUS_SEED: 1,
