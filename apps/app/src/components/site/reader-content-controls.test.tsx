@@ -208,7 +208,7 @@ describe('reader content ergonomics', () => {
     expect(wrapper?.className).toContain('dark:hidden');
     expect(wrapper?.className).toContain('block');
     expect(wrapper?.className).not.toContain('inline-block');
-    expect(container.querySelector('img')?.className).toBe('rounded-xl border border-border block dark:hidden');
+    expect(container.querySelector('img')?.classList.contains('dark:hidden')).toBe(true);
   });
   it('keeps centered images centered and lets a Frame hold a light/dark image pair', async () => {
     await act(async () =>

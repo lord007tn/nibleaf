@@ -486,6 +486,24 @@ describe('a press belongs to the wizard that made it', () => {
     expect(puts()[1]?.json.token).toBe(TOKEN_A);
   });
 
+  it('a conflict (someone else connected meanwhile) refreshes the status and says their save is shown (#915)', async () => {
+    const tab = page();
+    await tab.open('site-a');
+    await tab.review();
+    await tab.connect();
+    expect(puts()[0]?.json).toMatchObject({ expectedRevision: null });
+    const reads = mocks.statusGet.mock.calls.length;
+    // Another person's first Connect committed while this one was in flight: the server refuses this one (409).
+    connected['site-a'] = true;
+    await answer(0, json(409, { error: { code: 'http:conflict', message: 'The connection settings changed.' } }));
+    expect(mocks.statusGet.mock.calls.length).toBeGreaterThan(reads);
+    expect(toasts()).toEqual({ success: [], error: [t('settings.git.workflow.savedElsewhere')] });
+    // The refreshed status shows the other connection in place of the wizard, without a reload.
+    expect([tab.step(), tab.connected()]).toEqual([null, true]);
+    expect(tab.onConnected).not.toHaveBeenCalled();
+    expect(await tab.secret()).toBeNull();
+  });
+
   it('keyed A → B → A while A connects: B is independent; A comes back busy, then reads A back and reports nowhere', async () => {
     const tab = page();
     await tab.open('site-a');

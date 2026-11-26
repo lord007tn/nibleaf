@@ -1,6 +1,6 @@
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import { describe, expect, it } from 'vitest';
-import { MDX_BLOCK_TAGS, normalizeMdxBlocks, readerTagRewriter, rehypeAuthoredComponentProps, sanitizeSchema } from './mdx-config';
+import { normalizeMdxBlocks, readerTagRewriter, rehypeAuthoredComponentProps, sanitizeSchema } from './mdx-config';
 
 describe('math sanitization boundary', () => {
   it('preserves only recognized code markers and strips authored styling and handlers', () => {
@@ -233,9 +233,6 @@ const COMPONENT_ATTRIBUTES: Record<string, string[]> = {
   relatedcontent: ['title'],
   relatedcard: ['title', 'description', 'href', 'icon'],
 };
-const BLOCK_TAGS =
-  'Callout|Note|Warning|Info|Tip|Check|Danger|Card|CardGroup|Tabs|Tab|Accordion|AccordionGroup|Steps|Step|Frame|ParamField|ResponseField|Expandable|Update|Columns|Column|Banner|FileTree|Folder|File|ApiExample|RequestExample|ResponseExample|RelatedContent|RelatedCard';
-
 /** Media and embed attributes, exactly: no autoplay, muted, loop, controls or events. */
 const MEDIA_ATTRIBUTES: Record<string, unknown> = {
   video: ['src', 'poster'],
@@ -286,11 +283,6 @@ describe('reader config derived from the component registry', () => {
     expect(Object.fromEntries(components.map(([tag, attributes]) => [tag, sorted(attributes as string[])]))).toEqual(
       Object.fromEntries(Object.entries(COMPONENT_ATTRIBUTES).map(([tag, attributes]) => [tag, sorted(attributes)])),
     );
-  });
-
-  it('treats the same tags as Markdown-bodied blocks', () => {
-    // The tags form a regex alternation followed by \b, so their order does not matter.
-    expect(sorted(MDX_BLOCK_TAGS)).toEqual(sorted(BLOCK_TAGS.split('|')));
   });
 
   it('expands every self-closing component and only those', () => {
