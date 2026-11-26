@@ -49,6 +49,7 @@ import {
   type ComponentType,
   type CSSProperties,
   type MutableRefObject,
+  type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
   useCallback,
   useEffect,
@@ -77,6 +78,7 @@ import { InternalLinkClicks } from './extensions/internal-link-clicks';
 import { LinkableCode } from './extensions/linkable-code';
 import { mdxNodes } from './extensions/mdx';
 import { decodeMdxSource, indentedComponentCodeText, opaqueMdxNodes } from './extensions/mdx-roundtrip';
+import { MoveBlock } from './extensions/move-block';
 import { MarkdownBlockquote } from './extensions/quote';
 import { SectionTarget } from './extensions/section-target';
 import { SelectionShortcuts } from './extensions/selection-shortcuts';
@@ -86,6 +88,7 @@ import { annotateFences, type FenceSerializeState, writeFence } from './fence-so
 import { LinearMarkdown } from './markdown-output';
 import { pageLanguageText } from './page-language-messages';
 import { SourceParagraph } from './paragraph-source';
+import { withShortcut } from './shortcut-label';
 import { TableBubbleMenu } from './table-menu';
 import './tiptap.css';
 import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
@@ -94,13 +97,6 @@ import { MOD_K_OWNER_ATTRIBUTE } from '@/lib/mod-k-owner';
 const lowlight = createLowlight(common);
 
 const fenceParsers = new WeakSet<object>();
-
-/** A quoted indented code block can contain literal fence markers (#607). */
-function quotedCodeFenceLength(code: string): number {
-  let length = 3;
-  for (const [closer] of code.matchAll(/^ {0,3}`{3,}(?=[ \t]*$)/gm)) length = Math.max(length, closer.trimStart().length + 1);
-  return length;
-}
 
 const replaceFenceLanguage = (opening: string, language: string): string => {
   const match = /^(\s*(?:`{3,}|~{3,}))(\s*)(\S*)?(.*)$/.exec(opening);
@@ -237,10 +233,7 @@ const CodeBlock = CodeBlockLowlight.extend({
             return;
           }
           const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
-          const length = node.attrs.sourceFenceQuoteTab === 'indented' ? quotedCodeFenceLength(node.textContent) : 3;
-          let open = `${'`'.repeat(length)}${language}`;
-          if (sourceOpen) open = language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language);
-          // `output`, `delim` and `closed`: see LinearMarkdownSerializerState (markdown-output.ts).
+          const open = sourceOpen ? (language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language)) : `\`\`\`${language}`;
           writeFence(fenceState, node, parent, index, open);
         },
         parse: {
@@ -459,6 +452,7 @@ export function buildEditorExtensions({
     }),
     CommentDecorations.configure({ getComments: getComments ?? (() => []), getActiveId: getActiveId ?? (() => null) }),
     SelectionShortcuts,
+    MoveBlock,
     InternalLinkClicks.configure({ getLinks }),
     FixHighlight,
     SectionTarget,
@@ -511,7 +505,7 @@ function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
           <Plus className="size-4" />
         </button>
         <span
-          title={t('editor.dragToMove')}
+          title={withShortcut(t('editor.dragToMove'), 'Shift+↑/↓')}
           className="grid size-6 cursor-grab place-items-center rounded hover:bg-muted hover:text-foreground active:cursor-grabbing"
         >
           <GripVertical className="size-4" />
@@ -563,6 +557,8 @@ interface ToolbarAction {
   separatorBefore?: boolean;
   /** Marks the link button so the popover anchors under it. */
   expanded?: boolean;
+  /** What follows Ctrl/⌘ in its shortcut, shown in the label (TipTap's bindings). */
+  shortcut?: string;
   run: () => void;
 }
 
@@ -618,12 +614,13 @@ function DocumentToolbar({ editor }: { editor: Editor }) {
     }),
   });
   const actions: ToolbarAction[] = [
-    { labelKey: 'editor.toolbar.undo', icon: Undo2, run: () => editor.chain().focus().undo().run(), disabled: !state.canUndo },
-    { labelKey: 'editor.toolbar.redo', icon: Redo2, run: () => editor.chain().focus().redo().run(), disabled: !state.canRedo },
+    { labelKey: 'editor.toolbar.undo', icon: Undo2, shortcut: 'Z', run: () => editor.chain().focus().undo().run(), disabled: !state.canUndo },
+    { labelKey: 'editor.toolbar.redo', icon: Redo2, shortcut: 'Shift+Z', run: () => editor.chain().focus().redo().run(), disabled: !state.canRedo },
     {
       labelKey: 'editor.slash.h1.title',
       icon: Heading1,
       active: state.heading1,
+      shortcut: 'Alt+1',
       run: () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
       separatorBefore: true,
     },
@@ -631,36 +628,66 @@ function DocumentToolbar({ editor }: { editor: Editor }) {
       labelKey: 'editor.slash.h2.title',
       icon: Heading2,
       active: state.heading2,
+      shortcut: 'Alt+2',
       run: () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
     },
     {
       labelKey: 'editor.slash.h3.title',
       icon: Heading3,
       active: state.heading3,
+      shortcut: 'Alt+3',
       run: () => editor.chain().focus().toggleHeading({ level: 3 }).run(),
     },
-    { labelKey: 'editor.format.bold', icon: Bold, active: state.bold, run: () => editor.chain().focus().toggleBold().run(), separatorBefore: true },
-    { labelKey: 'editor.format.italic', icon: Italic, active: state.italic, run: () => editor.chain().focus().toggleItalic().run() },
-    { labelKey: 'editor.format.underline', icon: UnderlineIcon, active: state.underline, run: () => editor.chain().focus().toggleUnderline().run() },
-    { labelKey: 'editor.format.strikethrough', icon: Strikethrough, active: state.strike, run: () => editor.chain().focus().toggleStrike().run() },
-    { labelKey: 'editor.format.code', icon: Code, active: state.code, run: () => editor.chain().focus().toggleCode().run() },
-    { labelKey: 'editor.format.highlight', icon: Highlighter, active: state.highlight, run: () => editor.chain().focus().toggleHighlight().run() },
+    {
+      labelKey: 'editor.format.bold',
+      icon: Bold,
+      active: state.bold,
+      shortcut: 'B',
+      run: () => editor.chain().focus().toggleBold().run(),
+      separatorBefore: true,
+    },
+    { labelKey: 'editor.format.italic', icon: Italic, active: state.italic, shortcut: 'I', run: () => editor.chain().focus().toggleItalic().run() },
+    {
+      labelKey: 'editor.format.underline',
+      icon: UnderlineIcon,
+      active: state.underline,
+      shortcut: 'U',
+      run: () => editor.chain().focus().toggleUnderline().run(),
+    },
+    {
+      labelKey: 'editor.format.strikethrough',
+      icon: Strikethrough,
+      active: state.strike,
+      shortcut: 'Shift+S',
+      run: () => editor.chain().focus().toggleStrike().run(),
+    },
+    { labelKey: 'editor.format.code', icon: Code, active: state.code, shortcut: 'E', run: () => editor.chain().focus().toggleCode().run() },
+    {
+      labelKey: 'editor.format.highlight',
+      icon: Highlighter,
+      active: state.highlight,
+      shortcut: 'Shift+H',
+      run: () => editor.chain().focus().toggleHighlight().run(),
+    },
     {
       labelKey: 'editor.format.subscript',
       icon: SubscriptIcon,
       active: state.subscript,
+      shortcut: ',',
       run: () => editor.chain().focus().toggleSubscript().run(),
     },
     {
       labelKey: 'editor.format.superscript',
       icon: SuperscriptIcon,
       active: state.superscript,
+      shortcut: '.',
       run: () => editor.chain().focus().toggleSuperscript().run(),
     },
     {
       labelKey: 'editor.slash.bulletList.title',
       icon: List,
       active: state.bulletList,
+      shortcut: 'Shift+8',
       run: () => editor.chain().focus().toggleBulletList().run(),
       separatorBefore: true,
     },
@@ -668,14 +695,28 @@ function DocumentToolbar({ editor }: { editor: Editor }) {
       labelKey: 'editor.slash.numberedList.title',
       icon: ListOrdered,
       active: state.orderedList,
+      shortcut: 'Shift+7',
       run: () => editor.chain().focus().toggleOrderedList().run(),
     },
-    { labelKey: 'editor.slash.todo.title', icon: ListTodo, active: state.taskList, run: () => editor.chain().focus().toggleTaskList().run() },
-    { labelKey: 'editor.slash.quote.title', icon: Quote, active: state.blockquote, run: () => editor.chain().focus().toggleBlockquote().run() },
+    {
+      labelKey: 'editor.slash.todo.title',
+      icon: ListTodo,
+      active: state.taskList,
+      shortcut: 'Shift+9',
+      run: () => editor.chain().focus().toggleTaskList().run(),
+    },
+    {
+      labelKey: 'editor.slash.quote.title',
+      icon: Quote,
+      active: state.blockquote,
+      shortcut: 'Shift+B',
+      run: () => editor.chain().focus().toggleBlockquote().run(),
+    },
     {
       labelKey: 'editor.format.link',
       icon: LinkIcon,
       active: state.link,
+      shortcut: 'K',
       run: () => setLinkOpen((open) => !open),
       expanded: linkOpen,
       separatorBefore: true,
@@ -691,26 +732,63 @@ function DocumentToolbar({ editor }: { editor: Editor }) {
       labelKey: 'editor.slash.codeBlock.title',
       icon: SquareCode,
       active: state.codeBlock,
+      shortcut: 'Alt+C',
       run: () => editor.chain().focus().toggleCodeBlock().run(),
     },
   ];
+  // Roving tabindex, as in the selection menu: the toolbar is one Tab stop, on the
+  // button last focused (a disabled one is skipped), and the arrow keys move along it.
+  const [rovingKey, setRovingKey] = useState<MessageKey | null>(null);
+  const tabStop = actions.find((action) => action.labelKey === rovingKey && !action.disabled) ?? actions.find((action) => !action.disabled);
+  const onToolbarKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.nativeEvent.isComposing) return;
+    const items = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button[data-toolbar-item]:not(:disabled)'));
+    const index = items.indexOf(event.target as HTMLButtonElement);
+    if (index < 0) return;
+    const rtl = event.currentTarget.closest('[dir]')?.getAttribute('dir') === 'rtl';
+    const forward = rtl ? 'ArrowLeft' : 'ArrowRight';
+    const backward = rtl ? 'ArrowRight' : 'ArrowLeft';
+    let next: number;
+    if (event.key === forward) next = (index + 1) % items.length;
+    else if (event.key === backward) next = (index - 1 + items.length) % items.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = items.length - 1;
+    else if (event.key === 'Escape') {
+      // Back to the text, where the writer was, closing the link field if open.
+      event.preventDefault();
+      setLinkOpen(false);
+      editor.commands.focus();
+      return;
+    } else return;
+    event.preventDefault();
+    items[next]?.focus();
+    items[next]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  };
   return (
     <div ref={containerRef} className="relative z-20 shrink-0 border-border border-b bg-background/95 px-2 py-1.5 backdrop-blur">
-      <div aria-label={t('editor.mode.wysiwyg')} className="flex min-h-10 items-center gap-0.5 overflow-x-auto [scrollbar-width:thin]" role="toolbar">
-        {actions.map(({ labelKey, icon: Icon, active = false, run, disabled, separatorBefore, expanded }) => {
-          const label = t(labelKey);
+      <div
+        aria-label={t('editor.mode.wysiwyg')}
+        className="flex min-h-10 items-center gap-0.5 overflow-x-auto [scrollbar-width:thin]"
+        onKeyDownCapture={onToolbarKeyDown}
+        role="toolbar"
+      >
+        {actions.map(({ labelKey, icon: Icon, active = false, run, disabled, separatorBefore, expanded, shortcut }) => {
+          const label = withShortcut(t(labelKey), shortcut);
           return (
             <span key={labelKey} className="flex shrink-0 items-center gap-0.5">
-              {separatorBefore ? <span className="ms-1 me-0.5 h-5 w-px bg-border" /> : null}
+              {separatorBefore ? <span aria-hidden className="ms-1 me-0.5 h-5 w-px bg-border" /> : null}
               <Button
                 aria-expanded={expanded}
                 aria-label={label}
                 aria-pressed={active}
                 className="shrink-0"
+                data-toolbar-item=""
                 disabled={disabled}
+                onFocus={() => setRovingKey(labelKey)}
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={run}
                 size="icon-sm"
+                tabIndex={labelKey === tabStop?.labelKey ? 0 : -1}
                 title={label}
                 type="button"
                 variant={active ? 'secondary' : 'ghost'}

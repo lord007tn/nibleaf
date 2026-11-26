@@ -2,16 +2,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
+import { needsRichMarkdown } from '@nibleaf/shared/reader-rich';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import {
-  articleRendererModules,
-  loadArticleRenderer,
-  mathMarkdownModule,
-  needsRichMarkdown,
-  richMarkdownModule,
-} from '@/lib/reader-hydration-modules';
+import { articleRendererModules, loadArticleRenderer, mathMarkdownModule, richMarkdownModule } from '@/lib/reader-hydration-modules';
 import { mathPlugins } from './markdown-math';
 import RichMarkdown from './markdown-rich';
 
@@ -38,8 +33,9 @@ describe('conditional Markdown renderer', () => {
   it('loads what the renderer decides before a navigation, even where the line scan guessed no math', async () => {
     // Normalization joins the class into math-inline; past the parser bounds the
     // renderer gives this rich page KaTeX, while the line scan sees no math.
-    const content = `<code class="ma{/* note */}th-inline">x^2</code>\n\n${'word '.repeat(80_001)}`;
-    expect(articleRendererModules(content)).toEqual([richMarkdownModule]);
+    const largeProse = `${'word '.repeat(2010)}\n\n`.repeat(40);
+    const content = `<code class="ma{/* note */}th-inline">x^2</code>\n\n${largeProse}`;
+    expect(await articleRendererModules(content)).toEqual([richMarkdownModule]);
     expect(readerRenderMode(content)).toMatchObject({ rich: true, math: true });
     expect(mathMarkdownModule.status()).toBe('idle');
     await loadArticleRenderer(content);
@@ -48,10 +44,10 @@ describe('conditional Markdown renderer', () => {
     expect(richMarkdownModule.status()).toBe('loaded');
   });
 
-  it('preloads KaTeX only with the rich renderer, never for a code-only page', () => {
-    expect(articleRendererModules('Run `echo $HOME and $PATH`.\n\nUse `math-inline` in CSS.')).toEqual([]);
-    expect(articleRendererModules('<Note>Hi</Note>\n\n$`x$`')).toEqual([richMarkdownModule, mathMarkdownModule]);
-    expect(articleRendererModules('<Note>Hi</Note>')).toEqual([richMarkdownModule]);
+  it('preloads KaTeX only with the rich renderer, never for a code-only page', async () => {
+    expect(await articleRendererModules('Run `echo $HOME and $PATH`.\n\nUse `math-inline` in CSS.')).toEqual([]);
+    expect(await articleRendererModules('<Note>Hi</Note>\n\n$`x$`')).toEqual([richMarkdownModule, mathMarkdownModule]);
+    expect(await articleRendererModules('<Note>Hi</Note>')).toEqual([richMarkdownModule]);
   });
 
   it('does not mistake escaped dollar signs for math', () => {

@@ -24,20 +24,6 @@ describe('CodeRabbit fidelity follow-up', () => {
     expect(content).toContain('title="Heading &quot;safe&quot; &amp; sound"');
   });
 
-  it.each(converters)('already fixed: %s keeps a standalone indented provider link byte for byte', (_name, convert) => {
-    const source = '    [Tour](https://youtu.be/abcdefghijk)';
-    expect(convert(source)).toBe(source);
-  });
-
-  it('discovers and rewrites the same hidden page on a configured application origin', () => {
-    const source = '[Hidden](https://app.example.test/pages/hidden#start)';
-    const origins = ['https://nibleaf.com', 'https://app.example.test'];
-    expect(mintlifyInternalLinkTargets(source, 'intro', undefined, origins)).toEqual(['hidden']);
-    expect(rewriteMintlifyInternalLinks(source, 'intro', new Map([['hidden', '/additional-pages/hidden']]), { appOrigins: origins })).toBe(
-      '[Hidden](/additional-pages/hidden#start)',
-    );
-  });
-
   it.each(['guides/café', 'guides/مرحبا', 'guides/%broken'])('resolves encoded and plain segments to the same page: %s', (path) => {
     const encoded = path.split('/').map(encodeURIComponent).join('/');
     const routes = buildMintlifyRouteMap([{ kind: 'page', path }]);

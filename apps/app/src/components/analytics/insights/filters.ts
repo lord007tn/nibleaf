@@ -1,5 +1,3 @@
-import type { AnalyticsInsightsQuery } from '@nibleaf/validators';
-
 const INSIGHTS_PRESETS = ['24h', '7d', '30d', '90d'] as const;
 type InsightsPreset = (typeof INSIGHTS_PRESETS)[number];
 type InsightsRange = InsightsPreset | 'custom';
@@ -13,11 +11,11 @@ export interface InsightsSearch {
   compare?: 'none';
 }
 
-const DEFAULT_INSIGHTS_RANGE: InsightsPreset = '30d';
+export const DEFAULT_INSIGHTS_RANGE: InsightsPreset = '30d';
 const MAX_CUSTOM_DAYS = 366;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
-const isPreset = (value: unknown): value is InsightsPreset => INSIGHTS_PRESETS.includes(value as InsightsPreset);
+export const isPreset = (value: unknown): value is InsightsPreset => INSIGHTS_PRESETS.includes(value as InsightsPreset);
 
 const isIsoDay = (value: unknown): value is string => typeof value === 'string' && ISO_DAY.test(value) && !Number.isNaN(Date.parse(value));
 
@@ -39,32 +37,6 @@ export function validateInsightsSearch(search: Record<string, unknown>): Insight
   }
   if (isPreset(search.range) && search.range !== DEFAULT_INSIGHTS_RANGE) return { range: search.range, ...compare };
   return compare;
-}
-
-/** The API query for the current URL filters, in the viewer's timezone. */
-export function toInsightsQuery(search: InsightsSearch, timezone: string): AnalyticsInsightsQuery {
-  const compare = search.compare === 'none' ? 'none' : 'previous';
-  if (search.range === 'custom' && search.from && search.to) return { range: 'custom', from: search.from, to: search.to, timezone, compare };
-  return { range: isPreset(search.range) ? search.range : DEFAULT_INSIGHTS_RANGE, timezone, compare };
-}
-
-/** The viewer's IANA timezone; every insights query is bucketed in it. */
-export function browserTimezone(): string {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
-  } catch {
-    return 'UTC';
-  }
-}
-
-/**
- * The API query for a route's raw search params: the same validation and
- * mapping `useInsightsFilters` applies, so an analytics route loader prefetches
- * exactly the entry its section then reads. Prefetching is browser-only, so the
- * browser timezone is the one the section uses too.
- */
-export function insightsQueryForSearch(search: Record<string, unknown>): AnalyticsInsightsQuery {
-  return toInsightsQuery(validateInsightsSearch(search), browserTimezone());
 }
 
 /** `YYYY-MM-DD` for a local calendar day (date inputs speak local days, not UTC). */

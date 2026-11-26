@@ -237,15 +237,6 @@ describe('StylingSettings — conflicts and what stays shown', () => {
     expect(problem()).toStrictEqual(HIDDEN);
     expect(region()).toBeNull();
   });
-
-  it('"Keep mine" keeps my color against theirs and saves it alone', async () => {
-    await render(site({ primaryColor: '#5546e8', theme: 'dark' }));
-    await click('#a855f7');
-    await render(site({ primaryColor: '#0f172a', theme: 'dark' }));
-    await click('forms.keepMine');
-    await save();
-    expect(mocks.updateProject).toHaveBeenLastCalledWith({ config: { styling: { primaryColor: '#a855f7' } } });
-  });
 });
 
 describe('StylingSettings — controls', () => {

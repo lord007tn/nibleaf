@@ -1,10 +1,12 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
-import { useT } from '@nibleaf/i18n/react';
+import { useLocale, useT } from '@nibleaf/i18n/react';
+import { type MarkdownParseOverflow, markdownParseBudget } from '@nibleaf/shared/page-limits';
 import { isLocatablePublishCheck, type PublishCheckCode } from '@nibleaf/shared/publish-check-codes';
 import type { Editor } from '@tiptap/core';
 import { NodeSelection, TextSelection } from '@tiptap/pm/state';
 import { ChevronLeft, ChevronRight, TriangleAlert, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { markdownLimitMessage } from '@/lib/markdown-limit-message';
 import { editorIn, prefersReducedMotion } from './editor-sections';
 import { setFixHighlight } from './extensions/fix-highlight';
 import { requestLinkField } from './extensions/selection-shortcuts';
@@ -32,7 +34,9 @@ type BarState =
   /** The evidence isn't on the page (any more): most likely already fixed. */
   | { phase: 'notFound' }
   /** A page-level check, or one whose evidence couldn't be sent: the bar explains. */
-  | { phase: 'page' };
+  | { phase: 'page' }
+  /** The page's first Markdown parse-limit overflow, read from its current Markdown. */
+  | { phase: 'limit'; overflow: MarkdownParseOverflow };
 
 /**
  * Go to match `index`: mark every match, scroll it into view, and select it
@@ -86,6 +90,25 @@ function revealIn(scroller: HTMLElement | null, element: Element | null, offset:
   if (!(scroller && element)) return;
   const top = element.getBoundingClientRect().top - scroller.getBoundingClientRect().top + scroller.scrollTop - offset;
   scroller.scrollTo?.({ top: Math.max(0, Math.round(top)), behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+}
+
+/** The page's Markdown source in the canvas (Edit as Markdown), once it is open. */
+const sourceIn = (container: HTMLElement | null) => container?.querySelector<HTMLTextAreaElement>('textarea:not([data-page-title])') ?? null;
+
+/** Select line `line` (from 1) of the Markdown source, caret at its start, and scroll it a third of the way down. Selection only, never an edit. */
+function revealSourceLine(source: HTMLTextAreaElement, line: number): void {
+  const { value } = source;
+  let start = 0;
+  for (let at = 1; at < line && start < value.length; at++) {
+    const next = value.indexOf('\n', start);
+    start = next === -1 ? value.length : next + 1;
+  }
+  const end = value.indexOf('\n', start);
+  source.focus({ preventScroll: true });
+  source.setSelectionRange(start, end === -1 ? value.length : end, 'backward');
+  const height = Number.parseFloat(getComputedStyle(source).lineHeight) || 24;
+  source.scrollTop = Math.max(0, Math.round((line - 1) * height - source.clientHeight / 3));
+  source.scrollLeft = 0;
 }
 
 const clearHighlight = (editor: Editor | null) => {
@@ -150,14 +173,15 @@ export function PublishFixBar({
   onDismiss: () => void;
 }) {
   const t = useT();
+  const { locale } = useLocale();
   const { code, target } = arrival;
   const [state, setState] = useState<BarState>({ phase: 'pending' });
   const barRef = useRef<HTMLElement>(null);
   const indexRef = useRef(0);
   // The latest callbacks, so arrival runs once per bar, whatever the route re-renders.
-  const callbacks = useRef({ canvas, markdown, onFocusTitle, onOpenSettings, onHandled, onDismiss });
+  const callbacks = useRef({ canvas, markdown, onEditSource, onFocusTitle, onOpenSettings, onHandled, onDismiss });
   useEffect(() => {
-    callbacks.current = { canvas, markdown, onFocusTitle, onOpenSettings, onHandled, onDismiss };
+    callbacks.current = { canvas, markdown, onEditSource, onFocusTitle, onOpenSettings, onHandled, onDismiss };
   });
   const mounted = useRef(true);
   useEffect(() => {
@@ -231,6 +255,40 @@ export function PublishFixBar({
         cancelAnimationFrame(frame);
       };
     }
+    if (code === 'markdown-parse-limit') {
+      // The check's own reading of the page as it is now: the line may have moved, or been fixed.
+      const overflow = markdownParseBudget(callbacks.current.markdown()).overflow;
+      if (!overflow) {
+        setState({ phase: 'notFound' });
+        handled();
+        return;
+      }
+      setState({ phase: 'limit', overflow });
+      if (group) {
+        handled();
+        return;
+      }
+      // The line is in the page's Markdown, so it opens there (Edit as Markdown) at that line.
+      const edit = callbacks.current.onEditSource;
+      if (overflow.line > 0 && edit) {
+        edit();
+        const look = () => {
+          const source = sourceIn(callbacks.current.canvas());
+          if (source) {
+            revealSourceLine(source, overflow.line);
+            handled();
+          } else if (frames++ >= ARRIVAL_WAIT_FRAMES) handled();
+          else frame = requestAnimationFrame(look);
+        };
+        look();
+        return () => cancelAnimationFrame(frame);
+      }
+      whenEditor((editor) => {
+        editor?.commands.focus('start');
+        handled();
+      });
+      return () => cancelAnimationFrame(frame);
+    }
     setState({ phase: 'page' });
     const field = pageLevelFixTarget(code);
     if (field === 'title') {
@@ -281,6 +339,16 @@ export function PublishFixBar({
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [dismiss]);
 
+  // Edit as Markdown; from a parse-limit overflow, at its line again.
+  const openSource = (current: BarState) => {
+    onEditSource?.();
+    if (current.phase !== 'limit') return;
+    requestAnimationFrame(() => {
+      const source = sourceIn(callbacks.current.canvas());
+      if (source) revealSourceLine(source, current.overflow.line);
+    });
+  };
+
   const explanation = FIX_EXPLANATIONS[code];
   const evidence = state.phase === 'pending' ? null : target;
   return (
@@ -320,6 +388,7 @@ export function PublishFixBar({
               </span>
             ) : null}
             {state.phase === 'notFound' ? <span className="text-muted-foreground"> · {t('editor.fix.notFound')}</span> : null}
+            {state.phase === 'limit' ? <span> · {markdownLimitMessage(t, locale, state.overflow)}</span> : null}
             {state.phase === 'page' ? (
               <span className="text-muted-foreground"> · {explanation ? t(explanation) : t('editor.fix.findOnPage')}</span>
             ) : null}
@@ -329,8 +398,8 @@ export function PublishFixBar({
       <div className="ms-auto flex max-w-full flex-wrap items-center justify-end gap-1" data-testid="publish-fix-actions">
         {/* On a narrow bar (under 36rem, a phone) the buttons stay on one row (#668): Edit as Markdown shows its short
             name, and Previous and Next their arrows. The full names are what assistive technology reads, at every width. */}
-        {state.phase === 'found' && state.inside && onEditSource ? (
-          <Button ref={editSourceRef} className="cursor-pointer" onClick={onEditSource} size="sm" variant="secondary">
+        {((state.phase === 'found' && state.inside) || (state.phase === 'limit' && state.overflow.line > 0)) && onEditSource ? (
+          <Button ref={editSourceRef} className="cursor-pointer" onClick={() => openSource(state)} size="sm" variant="secondary">
             <span aria-hidden className="@xl/fix:hidden" data-testid="publish-fix-short">
               {t('editor.mode.markdown')}
             </span>

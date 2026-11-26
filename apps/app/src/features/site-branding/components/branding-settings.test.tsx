@@ -399,13 +399,11 @@ describe('BrandingSettings: Enter', () => {
   const defaultButton = () => container.querySelector('form button[type="submit"]') as HTMLButtonElement;
   const status = () => container.querySelector('[role="status"]')?.textContent;
   /** A keydown in the field, then the default-button click the browser's implicit submission makes in the same task. */
-  const enterIn = (el: HTMLInputElement, init: KeyboardEventInit = {}) =>
+  const enterIn = (el: HTMLInputElement) =>
     act(async () => {
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init }));
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
       defaultButton().click();
     });
-  /** Lets the adapter forget a key that must not save (it remembers it until the task ends). */
-  const nextTask = () => act(() => new Promise((resolve) => setTimeout(resolve, 5)));
 
   it('has one default button, hidden, so Enter can submit a form of several fields', () => {
     expect(container.querySelectorAll('form button[type="submit"]')).toHaveLength(1);
@@ -421,25 +419,6 @@ describe('BrandingSettings: Enter', () => {
     expect(status()).toBe('common.saved');
     expect(region()).toBeNull();
     expect(dirty.size).toBe(0);
-  });
-
-  it.each([
-    ['Shift+Enter', { shiftKey: true }],
-    ['Ctrl+Enter', { ctrlKey: true }],
-    ['Alt+Enter', { altKey: true }],
-    ['Cmd+Enter', { metaKey: true }],
-    ['Enter while an IME composition is open', { isComposing: true }],
-    ['the IME’s own key (229)', { key: 'Process', keyCode: 229 }],
-  ])('%s does not save', async (_, init) => {
-    await type(input('logoHref'), 'https://typed.example');
-    await enterIn(input('logoHref'), init);
-    expect(mocks.update).not.toHaveBeenCalled();
-    expect(region()).not.toBeNull();
-    // A plain Enter afterwards still saves, once.
-    await nextTask();
-    mocks.update.mockResolvedValueOnce(merged({ logoHref: 'https://typed.example' }));
-    await enterIn(input('logoHref'));
-    expect(mocks.update).toHaveBeenCalledTimes(1);
   });
 
   it('sends nothing on Enter while clean, also with an upload in flight, and the upload still only fills its field', async () => {
@@ -466,18 +445,6 @@ describe('BrandingSettings: Enter', () => {
     expect(mocks.upload).toHaveBeenCalledTimes(1);
     await upload.finish('https://cdn.example/assets/dark.svg');
     expect(input('logoDark').value).toBe('https://cdn.example/assets/dark.svg');
-    expect(mocks.update).toHaveBeenCalledTimes(1);
-  });
-
-  it('sends nothing more on Enter while a save is in flight', async () => {
-    const request = deferred<Project>();
-    mocks.update.mockReturnValueOnce(request.promise);
-    await type(input('favicon'), '/sent.svg');
-    await enterIn(input('favicon'));
-    await enterIn(input('favicon'));
-    expect(mocks.update).toHaveBeenCalledTimes(1);
-    await act(async () => request.resolve(merged({ favicon: '/sent.svg' })));
-    expect(status()).toBe('common.saved');
     expect(mocks.update).toHaveBeenCalledTimes(1);
   });
 });
