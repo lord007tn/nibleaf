@@ -3213,9 +3213,6 @@
   "analytics_projectsummary_loadfailed": "इस साइट के पेज व्यू अभी लोड नहीं हो सके। इस पेज का बाकी हिस्सा काम कर रहा है।",
   "analytics_status_partial_title": "कुछ आँकड़े अधूरे हैं",
   "analytics_status_partial_body": "जो हमारे पास है वह दिखा रहे हैं; जिन मेट्रिक्स की गणना नहीं हो सकी, वे “—” दिखते हैं।",
-  "analytics_status_notconfigured_title": "इस सर्वर पर विस्तृत एनालिटिक्स सेट नहीं है",
-  "analytics_status_notconfigured_body": "इन जानकारियों के लिए ClickHouse एनालिटिक्स चाहिए। आपके सर्वर व्यवस्थापक सेल्फ़-होस्टिंग गाइड से इसे चालू कर सकते हैं।",
-  "analytics_status_notconfigured_action": "सेटअप गाइड पढ़ें",
   "analytics_freshness_lastreceived": "डेटा आख़िरी बार {time} को मिला",
   "analytics_freshness_stale_title": "पिछले 24 घंटों में कोई नई विज़िट नहीं",
   "analytics_freshness_stale_body": "आख़िरी विज़िट {time} को दर्ज हुई थी। अगर आप पाठकों की उम्मीद कर रहे थे, तो जाँचें कि आपकी साइट प्रकाशित है और खुल रही है — नई विज़िट आम तौर पर एक मिनट में दिखने लगती हैं।",
@@ -4253,8 +4250,6 @@
   "gitpreview_invalidbody": "लिंक अधूरा हो सकता है, या पुल रिक्वेस्ट अपडेट या बंद कर दी गई है। पुल रिक्वेस्ट से नवीनतम प्रीव्यू लिंक खोलें।",
   "gitpreview_retry": "फिर से कोशिश करें",
   "gitpreview_close": "बंद करें",
-  "analytics_status_readsdisabled_title": "इस सर्वर पर रिपोर्ट अभी चालू नहीं हैं",
-  "analytics_status_readsdisabled_body": "इस सर्वर को चलाने वाला व्यक्ति सेटअप गाइड से इन्हें चालू कर सकता है।",
   "publish_reviewchanged": "समीक्षा के बाद आपकी साइट बदल गई है। प्रकाशित करने से पहले बदलावों की फिर से समीक्षा करें।",
   "publish_busy": "एक और बदलाव सहेजा जा रहा है। कुछ देर में फिर से प्रकाशित करने की कोशिश करें।",
   "admin_pagination_first": "पहला पेज",
@@ -5066,5 +5061,9 @@
   "editor_fix_explain_blogrootgroup": "पाठक साइडबार के सबसे ऊपर यह नाम देखते हैं। अनुभाग का नाम उसके पेजों के अनुसार रखें, जैसे गाइड।",
   "editor_fix_placed": "{total} में से {placed} हाइलाइट किए गए",
   "editor_fix_previous": "पिछला",
-  "editor_fix_insideblock": "जैसा लिखा है वैसा ही रखे गए ब्लॉक के अंदर। इसे Markdown में ठीक करें।"
+  "editor_fix_insideblock": "जैसा लिखा है वैसा ही रखे गए ब्लॉक के अंदर। इसे Markdown में ठीक करें।",
+  "analytics_setup_title": "विस्तृत एनालिटिक्स अभी चालू नहीं है",
+  "analytics_setup_body": "पेज व्यू अब भी गिने जाते हैं और आपकी साइट के अवलोकन में दिखते हैं। विस्तृत एनालिटिक्स चालू होने पर पेज, खोज, फ़ीडबैक, AI और परफ़ॉर्मेंस की जानकारी यहाँ दिखेगी।",
+  "analytics_setup_overview": "अवलोकन पर जाएँ",
+  "analytics_setup_learnmore": "एनालिटिक्स कैसे काम करता है"
 }

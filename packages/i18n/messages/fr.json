@@ -3278,9 +3278,6 @@
   "analytics_projectsummary_loadfailed": "Impossible de charger les pages vues de ce site pour le moment. Le reste de cette page fonctionne toujours.",
   "analytics_status_partial_title": "Certains chiffres sont incomplets",
   "analytics_status_partial_body": "Nous affichons ce dont nous disposons ; les indicateurs qui n’ont pas pu être calculés apparaissent sous la forme « — ».",
-  "analytics_status_notconfigured_title": "Les statistiques détaillées ne sont pas configurées sur ce serveur",
-  "analytics_status_notconfigured_body": "Ces analyses nécessitent les statistiques ClickHouse. L’administrateur de votre serveur peut les activer grâce au guide d’auto-hébergement.",
-  "analytics_status_notconfigured_action": "Lire le guide de configuration",
   "analytics_freshness_lastreceived": "Dernières données reçues {time}",
   "analytics_freshness_stale_title": "Aucune nouvelle visite ces dernières 24 heures",
   "analytics_freshness_stale_body": "La dernière visite a été enregistrée le {time}. Si vous attendiez des lecteurs, vérifiez que votre site est publié et accessible : les nouvelles visites apparaissent généralement en moins d’une minute.",
@@ -4318,8 +4315,6 @@
   "gitpreview_invalidbody": "Le lien est peut-être incomplet, ou la pull request a été mise à jour ou fermée. Ouvrez le lien d’aperçu le plus récent depuis la pull request.",
   "gitpreview_retry": "Réessayer",
   "gitpreview_close": "Fermer",
-  "analytics_status_readsdisabled_title": "Les rapports ne sont pas encore activés sur ce serveur",
-  "analytics_status_readsdisabled_body": "La personne qui gère ce serveur peut les activer avec le guide d’installation.",
   "publish_reviewchanged": "Votre site a changé depuis votre vérification. Vérifiez à nouveau les modifications avant de publier.",
   "publish_busy": "Une autre modification est en cours d’enregistrement. Réessayez de publier dans un instant.",
   "admin_pagination_first": "Première page",
@@ -5131,5 +5126,9 @@
   "editor_fix_explain_blogrootgroup": "Les lecteurs voient ce nom en haut de la barre latérale. Renommez la section d’après le contenu de ses pages, par exemple Guides.",
   "editor_fix_placed": "{placed} sur {total} mis en évidence",
   "editor_fix_previous": "Précédent",
-  "editor_fix_insideblock": "Dans un bloc conservé tel qu’il a été écrit. Corrigez-le en Markdown."
+  "editor_fix_insideblock": "Dans un bloc conservé tel qu’il a été écrit. Corrigez-le en Markdown.",
+  "analytics_setup_title": "Les statistiques détaillées ne sont pas encore activées",
+  "analytics_setup_body": "Les pages vues sont toujours comptées et s’affichent dans l’aperçu de votre site. Les statistiques sur les pages, la recherche, les avis, l’IA et les performances apparaîtront ici dès que les statistiques détaillées seront activées.",
+  "analytics_setup_overview": "Aller à l’aperçu",
+  "analytics_setup_learnmore": "Comment fonctionnent les statistiques"
 }

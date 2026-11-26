@@ -3269,9 +3269,6 @@
   "analytics_projectsummary_loadfailed": "ابھی اس سائٹ کے صفحہ ملاحظات لوڈ نہیں ہو سکے۔ اس صفحے کا باقی حصہ کام کر رہا ہے۔",
   "analytics_status_partial_title": "کچھ اعداد نامکمل ہیں",
   "analytics_status_partial_body": "جو موجود ہے وہ دکھا رہے ہیں؛ جن پیمانوں کا حساب نہیں ہو سکا وہ “—” دکھاتے ہیں۔",
-  "analytics_status_notconfigured_title": "اس سرور پر تفصیلی تجزیات سیٹ اپ نہیں ہیں",
-  "analytics_status_notconfigured_body": "ان معلومات کے لیے ClickHouse تجزیات درکار ہیں۔ آپ کے سرور ایڈمنسٹریٹر سیلف ہوسٹنگ گائیڈ سے اسے آن کر سکتے ہیں۔",
-  "analytics_status_notconfigured_action": "سیٹ اپ گائیڈ پڑھیں",
   "analytics_freshness_lastreceived": "آخری ڈیٹا موصول ہوا {time}",
   "analytics_freshness_stale_title": "پچھلے 24 گھنٹوں میں کوئی نیا وزٹ نہیں",
   "analytics_freshness_stale_body": "آخری وزٹ {time} کو ریکارڈ ہوا۔ اگر آپ کو قارئین کی توقع تھی تو دیکھیں کہ آپ کی سائٹ شائع اور قابل رسائی ہے — نئے وزٹس عموماً ایک منٹ میں ظاہر ہو جاتے ہیں۔",
@@ -4309,8 +4306,6 @@
   "gitpreview_invalidbody": "ہو سکتا ہے لنک نامکمل ہو، یا پل ریکویسٹ اپ ڈیٹ یا بند کر دی گئی ہو۔ پل ریکویسٹ سے پیش منظر کا تازہ ترین لنک کھولیں۔",
   "gitpreview_retry": "دوبارہ کوشش کریں",
   "gitpreview_close": "بند کریں",
-  "analytics_status_readsdisabled_title": "اس سرور پر رپورٹس ابھی آن نہیں ہیں",
-  "analytics_status_readsdisabled_body": "جو یہ سرور چلاتا ہے وہ سیٹ اپ گائیڈ سے انہیں آن کر سکتا ہے۔",
   "publish_reviewchanged": "جائزے کے بعد آپ کی سائٹ بدل گئی ہے۔ شائع کرنے سے پہلے تبدیلیوں کا دوبارہ جائزہ لیں۔",
   "publish_busy": "ایک اور تبدیلی محفوظ کی جا رہی ہے۔ کچھ دیر بعد دوبارہ شائع کرنے کی کوشش کریں۔",
   "admin_pagination_first": "پہلا صفحہ",
@@ -5122,5 +5117,9 @@
   "editor_fix_explain_blogrootgroup": "قارئین سائیڈبار کے سب سے اوپر یہ نام دیکھتے ہیں۔ حصے کا نام اس کے صفحات کے مطابق رکھیں، جیسے گائیڈز۔",
   "editor_fix_placed": "{total} میں سے {placed} نمایاں کیے گئے",
   "editor_fix_previous": "پچھلا",
-  "editor_fix_insideblock": "ایسے بلاک کے اندر جو جیسا لکھا گیا ویسا ہی رکھا گیا ہے۔ اسے Markdown میں ٹھیک کریں۔"
+  "editor_fix_insideblock": "ایسے بلاک کے اندر جو جیسا لکھا گیا ویسا ہی رکھا گیا ہے۔ اسے Markdown میں ٹھیک کریں۔",
+  "analytics_setup_title": "تفصیلی تجزیات ابھی فعال نہیں ہیں",
+  "analytics_setup_body": "صفحہ ملاحظات اب بھی گنے جاتے ہیں اور آپ کی سائٹ کے جائزے میں دکھائی دیتے ہیں۔ تفصیلی تجزیات فعال ہونے پر صفحات، تلاش، رائے، AI اور کارکردگی کی معلومات یہاں دکھائی دیں گی۔",
+  "analytics_setup_overview": "جائزے پر جائیں",
+  "analytics_setup_learnmore": "تجزیات کیسے کام کرتے ہیں"
 }

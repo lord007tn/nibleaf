@@ -367,8 +367,6 @@ export const MESSAGE_IDS = {
   'analytics.drafting.events': 'analytics_drafting_events',
   'analytics.drafting.share': 'analytics_drafting_share',
   'analytics.drafting.empty': 'analytics_drafting_empty',
-  'analytics.status.readsDisabled.title': 'analytics_status_readsdisabled_title',
-  'analytics.status.readsDisabled.body': 'analytics_status_readsdisabled_body',
   'publish.reviewChanged': 'publish_reviewchanged',
   'publish.busy': 'publish_busy',
   'admin.pagination.first': 'admin_pagination_first',
@@ -3609,9 +3607,6 @@ export const MESSAGE_IDS = {
   'analytics.projectSummary.loadFailed': 'analytics_projectsummary_loadfailed',
   'analytics.status.partial.title': 'analytics_status_partial_title',
   'analytics.status.partial.body': 'analytics_status_partial_body',
-  'analytics.status.notConfigured.title': 'analytics_status_notconfigured_title',
-  'analytics.status.notConfigured.body': 'analytics_status_notconfigured_body',
-  'analytics.status.notConfigured.action': 'analytics_status_notconfigured_action',
   'analytics.freshness.lastReceived': 'analytics_freshness_lastreceived',
   'analytics.freshness.stale.title': 'analytics_freshness_stale_title',
   'analytics.freshness.stale.body': 'analytics_freshness_stale_body',
@@ -4967,6 +4962,10 @@ export const MESSAGE_IDS = {
   'editor.fix.placed': 'editor_fix_placed',
   'editor.fix.previous': 'editor_fix_previous',
   'editor.fix.insideBlock': 'editor_fix_insideblock',
+  'analytics.setup.title': 'analytics_setup_title',
+  'analytics.setup.body': 'analytics_setup_body',
+  'analytics.setup.overview': 'analytics_setup_overview',
+  'analytics.setup.learnMore': 'analytics_setup_learnmore',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

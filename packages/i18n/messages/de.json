@@ -3278,9 +3278,6 @@
   "analytics_projectsummary_loadfailed": "Die Seitenaufrufe dieser Website konnten gerade nicht geladen werden. Der Rest dieser Seite funktioniert weiterhin.",
   "analytics_status_partial_title": "Einige Zahlen sind unvollständig",
   "analytics_status_partial_body": "Wir zeigen, was vorliegt; Kennzahlen, die nicht berechnet werden konnten, erscheinen als „—“.",
-  "analytics_status_notconfigured_title": "Detaillierte Analysen sind auf diesem Server nicht eingerichtet",
-  "analytics_status_notconfigured_body": "Diese Auswertungen benötigen ClickHouse-Analysen. Ihr Serveradministrator kann sie mit der Anleitung zum Selbsthosten aktivieren.",
-  "analytics_status_notconfigured_action": "Einrichtungsanleitung lesen",
   "analytics_freshness_lastreceived": "Zuletzt Daten empfangen {time}",
   "analytics_freshness_stale_title": "Keine neuen Besuche in den letzten 24 Stunden",
   "analytics_freshness_stale_body": "Der letzte Besuch wurde am {time} erfasst. Wenn Sie Leser erwartet haben, prüfen Sie, ob Ihre Website veröffentlicht und erreichbar ist – neue Besuche erscheinen normalerweise innerhalb einer Minute.",
@@ -4318,8 +4315,6 @@
   "gitpreview_invalidbody": "Der Link ist möglicherweise unvollständig, oder der Pull-Request wurde aktualisiert oder geschlossen. Öffnen Sie den neuesten Vorschaulink im Pull-Request.",
   "gitpreview_retry": "Erneut versuchen",
   "gitpreview_close": "Schließen",
-  "analytics_status_readsdisabled_title": "Berichte sind auf diesem Server noch nicht eingeschaltet",
-  "analytics_status_readsdisabled_body": "Wer diesen Server betreibt, kann sie mit der Einrichtungsanleitung einschalten.",
   "publish_reviewchanged": "Ihre Website hat sich seit der Prüfung geändert. Prüfen Sie die Änderungen vor dem Veröffentlichen erneut.",
   "publish_busy": "Gerade wird eine andere Änderung gespeichert. Versuchen Sie es gleich noch einmal mit dem Veröffentlichen.",
   "admin_pagination_first": "Erste Seite",
@@ -5131,5 +5126,9 @@
   "editor_fix_explain_blogrootgroup": "Leser sehen diesen Namen oben in der Seitenleiste. Benennen Sie den Bereich nach dem Inhalt seiner Seiten um, zum Beispiel Anleitungen.",
   "editor_fix_placed": "{placed} von {total} hervorgehoben",
   "editor_fix_previous": "Vorherige",
-  "editor_fix_insideblock": "In einem Block, der wie geschrieben bleibt. In Markdown beheben."
+  "editor_fix_insideblock": "In einem Block, der wie geschrieben bleibt. In Markdown beheben.",
+  "analytics_setup_title": "Detaillierte Analysen sind noch nicht aktiviert",
+  "analytics_setup_body": "Seitenaufrufe werden weiterhin gezählt und in der Übersicht Ihrer Website angezeigt. Auswertungen zu Seiten, Suche, Feedback, KI und Leistung erscheinen hier, sobald detaillierte Analysen aktiviert sind.",
+  "analytics_setup_overview": "Zur Übersicht",
+  "analytics_setup_learnmore": "So funktionieren Analysen"
 }

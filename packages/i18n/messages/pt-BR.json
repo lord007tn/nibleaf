@@ -3279,9 +3279,6 @@
   "analytics_projectsummary_loadfailed": "Não conseguimos carregar as visualizações de página deste site agora. O restante desta página continua funcionando.",
   "analytics_status_partial_title": "Alguns números estão incompletos",
   "analytics_status_partial_body": "Mostramos o que temos; as métricas que não conseguimos calcular aparecem como “—”.",
-  "analytics_status_notconfigured_title": "As análises detalhadas não estão configuradas neste servidor",
-  "analytics_status_notconfigured_body": "Esses dados precisam das análises do ClickHouse. O administrador do servidor pode ativá-las com o guia de auto-hospedagem.",
-  "analytics_status_notconfigured_action": "Ler o guia de configuração",
   "analytics_freshness_lastreceived": "Últimos dados recebidos {time}",
   "analytics_freshness_stale_title": "Nenhuma visita nova nas últimas 24 horas",
   "analytics_freshness_stale_body": "A última visita foi registrada em {time}. Se você esperava leitores, confira se o site está publicado e acessível; visitas novas costumam aparecer em menos de um minuto.",
@@ -4319,8 +4316,6 @@
   "gitpreview_invalidbody": "O link pode estar incompleto, ou o pull request foi atualizado ou fechado. Abra o link de prévia mais recente no pull request.",
   "gitpreview_retry": "Tentar novamente",
   "gitpreview_close": "Fechar",
-  "analytics_status_readsdisabled_title": "Os relatórios ainda não estão ativados neste servidor",
-  "analytics_status_readsdisabled_body": "Quem administra este servidor pode ativá-los com o guia de configuração.",
   "publish_reviewchanged": "Seu site mudou desde a revisão. Revise as alterações novamente antes de publicar.",
   "publish_busy": "Outra alteração está sendo salva. Tente publicar novamente em instantes.",
   "admin_pagination_first": "Primeira página",
@@ -5132,5 +5127,9 @@
   "editor_fix_explain_blogrootgroup": "Os leitores veem este nome no topo da barra lateral. Renomeie a seção de acordo com o que suas páginas tratam, como Guias.",
   "editor_fix_placed": "{placed} de {total} destacados",
   "editor_fix_previous": "Anterior",
-  "editor_fix_insideblock": "Dentro de um bloco mantido como foi escrito. Corrija em Markdown."
+  "editor_fix_insideblock": "Dentro de um bloco mantido como foi escrito. Corrija em Markdown.",
+  "analytics_setup_title": "As análises detalhadas ainda não estão ativadas",
+  "analytics_setup_body": "As visualizações de página continuam sendo contadas e aparecem na visão geral do seu site. Dados de páginas, busca, feedback, IA e desempenho vão aparecer aqui quando as análises detalhadas forem ativadas.",
+  "analytics_setup_overview": "Ir para a visão geral",
+  "analytics_setup_learnmore": "Como funcionam as análises"
 }

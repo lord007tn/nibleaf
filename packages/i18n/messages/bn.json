@@ -3212,9 +3212,6 @@
   "analytics_projectsummary_loadfailed": "এই মুহূর্তে এই সাইটের পৃষ্ঠা ভিউ লোড করা যায়নি। পৃষ্ঠার বাকি অংশ ঠিকমতো কাজ করছে।",
   "analytics_status_partial_title": "কিছু সংখ্যা অসম্পূর্ণ",
   "analytics_status_partial_body": "যা আছে তা দেখাচ্ছি; যে মেট্রিক হিসাব করা যায়নি তা “—” হিসেবে দেখায়।",
-  "analytics_status_notconfigured_title": "এই সার্ভারে বিস্তারিত বিশ্লেষণ সেট আপ করা নেই",
-  "analytics_status_notconfigured_body": "এই তথ্যের জন্য ClickHouse বিশ্লেষণ দরকার। আপনার সার্ভার প্রশাসক সেলফ-হোস্টিং গাইড দেখে এটি চালু করতে পারেন।",
-  "analytics_status_notconfigured_action": "সেটআপ গাইড পড়ুন",
   "analytics_freshness_lastreceived": "শেষ ডেটা এসেছে {time}",
   "analytics_freshness_stale_title": "গত 24 ঘণ্টায় নতুন কোনো ভিজিট নেই",
   "analytics_freshness_stale_body": "শেষ ভিজিট রেকর্ড হয়েছে {time}। পাঠক আসার কথা থাকলে দেখে নিন আপনার সাইট প্রকাশিত ও পৌঁছানো যায় কিনা — নতুন ভিজিট সাধারণত এক মিনিটের মধ্যে দেখা যায়।",
@@ -4252,8 +4249,6 @@
   "gitpreview_invalidbody": "লিংকটি অসম্পূর্ণ হতে পারে, অথবা পুল রিকোয়েস্টটি আপডেট বা বন্ধ করা হয়েছে। পুল রিকোয়েস্ট থেকে সর্বশেষ প্রিভিউ লিংকটি খুলুন।",
   "gitpreview_retry": "আবার চেষ্টা করুন",
   "gitpreview_close": "বন্ধ করুন",
-  "analytics_status_readsdisabled_title": "এই সার্ভারে রিপোর্ট এখনও চালু করা হয়নি",
-  "analytics_status_readsdisabled_body": "যিনি এই সার্ভার চালান তিনি সেটআপ গাইড দেখে এগুলো চালু করতে পারেন।",
   "publish_reviewchanged": "পর্যালোচনার পর আপনার সাইট বদলেছে। প্রকাশের আগে পরিবর্তনগুলো আবার পর্যালোচনা করুন।",
   "publish_busy": "আরেকটি পরিবর্তন সংরক্ষণ করা হচ্ছে। একটু পরে আবার প্রকাশ করার চেষ্টা করুন।",
   "admin_pagination_first": "প্রথম পৃষ্ঠা",
@@ -5065,5 +5060,9 @@
   "editor_fix_explain_blogrootgroup": "পাঠকেরা সাইডবারের একেবারে ওপরে এই নামটি দেখেন। বিভাগটির নাম এর পৃষ্ঠাগুলোর বিষয় অনুযায়ী রাখুন, যেমন গাইড।",
   "editor_fix_placed": "{total}টির মধ্যে {placed}টি চিহ্নিত",
   "editor_fix_previous": "আগেরটি",
-  "editor_fix_insideblock": "যেমন লেখা তেমন রাখা একটি ব্লকের ভেতরে। Markdown-এ ঠিক করুন।"
+  "editor_fix_insideblock": "যেমন লেখা তেমন রাখা একটি ব্লকের ভেতরে। Markdown-এ ঠিক করুন।",
+  "analytics_setup_title": "বিস্তারিত বিশ্লেষণ এখনও চালু হয়নি",
+  "analytics_setup_body": "পৃষ্ঠা ভিউ এখনও গণনা করা হয় এবং আপনার সাইটের ওভারভিউতে দেখা যায়। বিস্তারিত বিশ্লেষণ চালু হলে পৃষ্ঠা, অনুসন্ধান, মতামত, AI এবং পারফরম্যান্সের তথ্য এখানে দেখা যাবে।",
+  "analytics_setup_overview": "ওভারভিউতে যান",
+  "analytics_setup_learnmore": "বিশ্লেষণ কীভাবে কাজ করে"
 }

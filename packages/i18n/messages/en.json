@@ -3278,9 +3278,6 @@
   "analytics_projectsummary_loadfailed": "We couldn't load this site's page views right now. The rest of this page still works.",
   "analytics_status_partial_title": "Some figures are incomplete",
   "analytics_status_partial_body": "We show what we have; metrics we couldn't calculate show as “—”.",
-  "analytics_status_notconfigured_title": "Detailed analytics isn't set up on this server",
-  "analytics_status_notconfigured_body": "These insights need ClickHouse analytics. Your server admin can turn it on with the self-hosting guide.",
-  "analytics_status_notconfigured_action": "Read the setup guide",
   "analytics_freshness_lastreceived": "Data last received {time}",
   "analytics_freshness_stale_title": "No new visits in the last 24 hours",
   "analytics_freshness_stale_body": "The last visit was recorded on {time}. If you expected readers, check that your site is published and reachable — new visits usually appear within a minute.",
@@ -4318,8 +4315,6 @@
   "gitpreview_invalidbody": "The link may be incomplete, or the pull request was updated or closed. Open the latest preview link from the pull request.",
   "gitpreview_retry": "Try again",
   "gitpreview_close": "Close",
-  "analytics_status_readsdisabled_title": "Reports aren't switched on for this server yet",
-  "analytics_status_readsdisabled_body": "Whoever runs this server can turn them on with the setup guide.",
   "publish_reviewchanged": "Your site changed since you reviewed it. Review the changes again before publishing.",
   "publish_busy": "Another change is being saved. Try publishing again in a moment.",
   "admin_pagination_first": "First page",
@@ -5131,5 +5126,9 @@
   "editor_fix_explain_blogrootgroup": "Readers see this name at the top of the sidebar. Rename the section to what its pages are, such as Guides.",
   "editor_fix_placed": "Highlighted {placed} of {total}",
   "editor_fix_previous": "Previous",
-  "editor_fix_insideblock": "Inside a block kept as written. Fix it in Markdown."
+  "editor_fix_insideblock": "Inside a block kept as written. Fix it in Markdown.",
+  "analytics_setup_title": "Detailed analytics isn't turned on yet",
+  "analytics_setup_body": "Page views are still counted and show on your site's Overview. Insights on pages, search, feedback, AI and performance appear here once detailed analytics is on.",
+  "analytics_setup_overview": "Go to Overview",
+  "analytics_setup_learnmore": "How analytics works"
 }
