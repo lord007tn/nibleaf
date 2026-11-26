@@ -270,7 +270,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
           <nav className="col-start-1 row-start-1 mb-3 self-center" aria-label={tReader('breadcrumb')} {...chromeLanguage}>
             <ol className="flex flex-wrap items-center gap-1.5 font-semibold text-primary text-sm">
               {ancestors.map((crumb, index) => (
-                <li key={crumb.path} className="flex items-center gap-1.5">
+                <li key={crumb.path} className="flex min-w-0 items-center gap-1.5 [overflow-wrap:anywhere]">
                   {index > 0 ? (
                     <span className="text-muted-foreground/60" aria-hidden>
                       /
@@ -299,7 +299,7 @@ export function SitePageView({ projectId, lang, data }: { projectId: string; lan
         ) : null}
         <h1
           tabIndex={-1}
-          className="col-span-2 row-start-2 min-w-0 outline-none font-semibold text-3xl leading-[1.15] tracking-tight sm:col-span-1 md:text-4xl rtl:leading-[1.3] rtl:tracking-normal"
+          className="col-span-2 row-start-2 min-w-0 outline-none font-semibold text-3xl leading-[1.15] tracking-tight sm:col-span-1 md:text-4xl [&:dir(rtl)]:leading-[1.3] [&:dir(rtl)]:tracking-normal"
           dir={blockDirection(page.title)}
         >
           {page.title}
