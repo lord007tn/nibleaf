@@ -14,17 +14,23 @@ const LANGUAGE_CHANNEL = 'nibleaf-interface-language';
 export function startInterfaceLanguageSync(): () => void {
   if (typeof document === 'undefined' || typeof BroadcastChannel === 'undefined') return () => undefined;
   const otherTabs = new BroadcastChannel(LANGUAGE_CHANNEL);
-  let applyingOtherTab = false;
+  // The language another tab sent last: applying it here must not be sent back. A
+  // locale (not a flag), so a choice made here while that one downloads still goes
+  // out, and overlapping messages can't clear each other's guard.
+  let fromOtherTab: string | undefined;
   otherTabs.onmessage = (event: MessageEvent) => {
     const locale = (event.data as { locale?: unknown } | null)?.locale;
     if (typeof locale !== 'string' || !isSupportedLocale(locale) || locale === getLocale()) return;
-    applyingOtherTab = true;
-    void setLanguage(locale).finally(() => {
-      applyingOtherTab = false;
-    });
+    fromOtherTab = locale;
+    void setLanguage(locale);
   };
   const unsubscribe = subscribeLanguage(() => {
-    if (!applyingOtherTab) otherTabs.postMessage({ locale: getLocale() });
+    const locale = getLocale();
+    if (locale === fromOtherTab) {
+      fromOtherTab = undefined;
+      return;
+    }
+    otherTabs.postMessage({ locale });
   });
   return () => {
     unsubscribe();

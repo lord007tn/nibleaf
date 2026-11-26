@@ -67,6 +67,22 @@ describe('a language chosen in another tab (AUTH-20)', () => {
     expect(heard).not.toHaveBeenCalled();
   });
 
+  it('still tells the other tabs about a choice made here while a choice from another tab is applying', async () => {
+    const { registerLanguagePreparation, setLanguage } = await import('@nibleaf/i18n/locale-state');
+    // The other tab's Arabic catalog is still downloading here (a slow network).
+    registerLanguagePreparation((locale) => (locale === 'ar' ? new Promise<boolean>(() => undefined) : Promise.resolve(true)));
+    (await import('./interface-language-sync')).startInterfaceLanguageSync();
+    const other = otherTab();
+    const heard = vi.fn();
+    other.onmessage = (event) => heard(event.data);
+    other.postMessage({ locale: 'ar' });
+    await flush();
+    await setLanguage('de');
+    await flush();
+    await flush();
+    expect(heard).toHaveBeenCalledWith({ locale: 'de' });
+  });
+
   it('ignores anything that is not a supported locale', async () => {
     const { getLocale } = await import('@nibleaf/i18n/locale-state');
     (await import('./interface-language-sync')).startInterfaceLanguageSync();
