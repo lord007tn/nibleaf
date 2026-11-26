@@ -2196,9 +2196,22 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
   }));
   replacements.push(...indentedComponentCode(source, layout, tokens, pairs, overlaps));
   const coveredByOpaque = spanIndex(opaque);
+  // A braced identifier in native HTML text (such as a path parameter) can
+  // stay editable when the surrounding HTML has structured source metadata.
+  const braceText = opaque.filter(
+    (range) => range.name === 'Expression' && /^\{[ \t]*[\p{ID_Start}_$][\p{ID_Continue}$]*[ \t]*\}$/u.test(range.source),
+  );
+  const braceStarts = new Set(braceText.map(({ start }) => start));
+  const hasBraceText = overlapIndex(braceText);
+  const containsAnchor = overlapIndex(tokens.filter((token) => token.html && token.name === 'a'));
+  const structuredBraceBodies: Span[] = [];
   // Images can leave their original paragraph or heading during DOM parsing.
   // MDX and opaque nodes need their own Markdown serializers after editing.
-  const independentlySerialized = overlapIndex([...opaque, ...tagSpans, ...tokens.filter(({ name }) => /^img$/i.test(name))]);
+  const independentlySerialized = overlapIndex([
+    ...opaque.filter(({ start }) => !braceStarts.has(start)),
+    ...tagSpans,
+    ...tokens.filter(({ name }) => /^img$/i.test(name)),
+  ]);
   let structuredBodyEnd = -1;
   const componentBounds = new Map<number, Span>();
   const onOwnLines = (token: TagToken): boolean =>
@@ -2240,6 +2253,7 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
       if (opener !== token.raw) attributes = parseAttributes(opener, token.name, false);
       if (!attributes.some(({ name }) => token.name !== 'a' || name.toLowerCase() !== 'href')) continue;
       if (attributes.some(({ name, value }) => !safeStructuredAttribute(name, value))) continue;
+      const authoredBraces = hasBraceText(token.end, close.start);
       const metadata: StructuredHtmlSource = { open: opener, close: close.raw };
       if (STRUCTURED_BLOCK_NODES[token.name] === 'heading') {
         const id = attributes.find(({ name }) => name.toLowerCase() === 'id');
@@ -2254,6 +2268,14 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
       if (token.name === 'a') {
         const href = attributes.find(({ name }) => name.toLowerCase() === 'href');
         if (typeof href?.value !== 'string') continue;
+        if (authoredBraces) {
+          if (containsAnchor(token.end, close.start)) continue;
+          const body = source.slice(token.end, close.start);
+          // Inline Markdown can parse a bracketed link inside an HTML anchor
+          // once its destination is no longer an opaque expression.
+          if (/[\r\n[\]]/.test(body)) continue;
+          metadata.inner = body;
+        }
         metadata.href = href.value;
         metadata.hrefRange = [href.start, href.end];
       } else if (token.start >= structuredBodyEnd) {
@@ -2261,6 +2283,7 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
         metadata.inner = source.slice(token.end, close.start);
         structuredBodyEnd = close.end;
       }
+      if (authoredBraces) structuredBraceBodies.push({ start: token.end, end: close.start });
       replacements.push({
         start: token.start,
         end: token.end,
@@ -2312,10 +2335,12 @@ function prepareMdxForEditor(source: string, blockTokens?: MarkdownBlockTokens):
   // From the end, skipping any replacement that overlaps one already taken; then
   // the page is assembled once, front to back.
   replacements.sort((a, b) => b.start - a.start || b.end - a.end);
+  const inStructuredBraceBody = spanIndex(structuredBraceBodies);
   const chosen: typeof replacements = [];
   let lastStart = source.length + 1;
   for (const replacement of replacements) {
     if (replacement.end > lastStart) continue;
+    if (braceStarts.has(replacement.start) && inStructuredBraceBody(replacement.start, replacement.end)) continue;
     chosen.push(replacement);
     lastStart = replacement.start;
   }

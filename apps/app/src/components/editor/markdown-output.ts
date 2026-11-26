@@ -23,6 +23,7 @@ import {
   STRUCTURED_BLOCK_NODES,
   type StructuredHtmlSource,
   structuredLinkSource,
+  unchangedStructuredLinkBody,
   writeStructuredHtmlBlock,
 } from './structured-html-source';
 
@@ -306,6 +307,7 @@ class LinearMarkdownSerializerState extends SerializerState {
   private readonly writtenHeadings = new WeakSet<StructuredHtmlSource>();
   private closedOwner: SerializedLineOwner | null = null;
   private readonly inlines: InlineState[] = [];
+  private structuredLinkBody: { from: number; start: number } | undefined;
   private readonly scanDelims: ScanDelims;
 
   constructor(nodes: NodeWriters, marks: MarkWriters, options: SerializerOptions, scanDelims: ScanDelims) {
@@ -449,7 +451,22 @@ class LinearMarkdownSerializerState extends SerializerState {
   override markString(mark: Mark, open: boolean, parent: PMNode, index: number): string {
     if (mark.type.name === 'link') {
       const source = structuredLinkSource(mark);
-      if (source) return open ? source.open : source.close;
+      if (source) {
+        if (source.inner !== undefined) {
+          if (open) {
+            this.write();
+            this.structuredLinkBody = { from: index, start: this.output.length + source.open.length };
+          } else {
+            const body = this.structuredLinkBody;
+            this.structuredLinkBody = undefined;
+            if (body && unchangedStructuredLinkBody(source.inner, parent, mark, body.from, index)) {
+              this.output.truncate(body.start);
+              this.output.append(source.inner);
+            }
+          }
+        }
+        return open ? source.open : source.close;
+      }
     }
     const info = this.marks[mark.type.name];
     if (info?.expelEnclosingWhitespace) {
