@@ -1,4 +1,4 @@
-import type { Editor } from '@tiptap/core';
+import type { Editor, JSONContent } from '@tiptap/core';
 
 // Zero-based serializer corpus pages whose authored #625 layout changes the saved Markdown.
 export const COMPONENT_LAYOUT_CORPUS_PAGES: readonly number[] = [
@@ -38,4 +38,15 @@ export function replayMainComponentLayout(editor: Editor): boolean {
   if (!transaction.docChanged) return false;
   editor.view.dispatch(transaction.setMeta('addToHistory', false));
   return true;
+}
+
+/** Match pre-#575 JSON where a Markdown node has no authored HTML metadata. */
+export function withoutUnusedStructuredHtml(node: JSONContent, projectChild = withoutUnusedStructuredHtml): JSONContent {
+  let projected = node;
+  if (node.attrs && Object.hasOwn(node.attrs, 'sourceStructuredHtml') && node.attrs.sourceStructuredHtml === undefined) {
+    const { attrs, ...rest } = node;
+    const { sourceStructuredHtml: _empty, ...existing } = attrs;
+    projected = Object.keys(existing).length === 0 ? rest : { ...node, attrs: existing };
+  }
+  return node.content ? { ...projected, content: node.content.map((child) => projectChild(child)) } : projected;
 }
