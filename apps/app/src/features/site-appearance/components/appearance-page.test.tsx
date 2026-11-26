@@ -131,7 +131,7 @@ describe('Appearance as one page', () => {
       'H3 settings.banner.title',
       'H2 settings.appearance.preview.title',
     ]);
-    expect([...container.querySelectorAll('nav a')].map((a) => a.getAttribute('href'))).toEqual([
+    expect([...container.querySelectorAll('aside nav a')].map((a) => a.getAttribute('href'))).toEqual([
       '#appearance-brand',
       '#appearance-theme',
       '#appearance-typography',
@@ -183,6 +183,28 @@ describe('Appearance as one page', () => {
     expect(sheet?.querySelector<HTMLElement>('[data-testid="preview"]')?.dataset.radius).toBe('sharp');
   });
 
+  // Master review of #932: at 390px the page is ~8,700px tall; the parts and Preview must stay reachable.
+  it('keeps the parts and Preview in a bar that sticks while scrolling below the two-column width', async () => {
+    await render(site({ styling: { radius: 'rounded' } }));
+    const bar = container.querySelector<HTMLElement>('[data-appearance-jump]') as HTMLElement;
+    expect(bar.className).toContain('sticky');
+    expect(bar.className).toContain('@3xl/appearance:hidden');
+    expect([...bar.querySelectorAll('nav a')].map((a) => a.getAttribute('href'))).toEqual([
+      '#appearance-brand',
+      '#appearance-theme',
+      '#appearance-typography',
+      '#appearance-chrome',
+    ]);
+    // One Preview, in the bar, not in the page header that scrolls away.
+    expect(container.querySelector('[data-slot="page-header"]')?.textContent).not.toContain('project.preview');
+    expect(button('project.preview', bar)).toBeDefined();
+    const footer = bar.querySelector<HTMLAnchorElement>('a[href="#appearance-chrome"]') as HTMLAnchorElement;
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    await act(async () => footer.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+    expect(document.activeElement?.textContent).toBe('settings.appearance.group.chrome');
+  });
+
   it('in the editor, renders plain panels', async () => {
     await render(site(), 'editor');
     expect(container.querySelector('[data-appearance-host="editor"]')).not.toBeNull();
@@ -195,7 +217,7 @@ describe('Appearance as one page', () => {
   // Review: a hash link went through the route's unsaved-changes guard (a popstate), and could reload the page.
   it('jumps to a part from "On this page" without navigating, focusing its heading', async () => {
     await render(site());
-    const link = container.querySelector<HTMLAnchorElement>('nav a[href="#appearance-chrome"]') as HTMLAnchorElement;
+    const link = container.querySelector<HTMLAnchorElement>('aside nav a[href="#appearance-chrome"]') as HTMLAnchorElement;
     const event = new MouseEvent('click', { bubbles: true, cancelable: true });
     await act(async () => link.dispatchEvent(event));
     expect(event.defaultPrevented).toBe(true);
