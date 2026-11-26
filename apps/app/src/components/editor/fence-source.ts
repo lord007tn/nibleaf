@@ -270,7 +270,7 @@ export interface FenceSerializeState {
   flushClose: (size?: number) => void;
   /** The nodes being rendered, outermost first, each with its parent and index
    *  (LinearMarkdownSerializerState, markdown-output.ts). */
-  path?: ReadonlyArray<{ node: PMNode; parent: PMNode | Fragment; index: number }>;
+  path?: ReadonlyArray<{ node: PMNode; parent: PMNode | Fragment; index: number; listTight?: boolean }>;
 }
 
 /**
@@ -416,10 +416,11 @@ function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNo
     if (!('type' in container)) return null;
     const name = container.type.name;
     const next = writtenAfter(container, at);
-    // A separator before a block outside the list is still part of an unclosed
-    // fence's code. If there is no final empty source line to use, close the
-    // fence so the separator stays outside it (#864).
-    if (next && !quoted && !LISTS.has(name) && !lines.endsWith('\n')) return 'withCloser';
+    const parentList = path[level - 1];
+    const tightSibling = LISTS.has(name) && parentList?.node === container && parentList.listTight;
+    // The blank separator before a block or a loose sibling would become code.
+    // Close the fence if there is no final empty source line to use (#864).
+    if (next && !quoted && !tightSibling && !lines.endsWith('\n')) return 'withCloser';
     if (next) return quoted || endsBeforeNext(lines, state.delim) ? 'container' : null;
     if (name === 'doc') return 'page';
     if (name === 'blockquote') quoted = true;

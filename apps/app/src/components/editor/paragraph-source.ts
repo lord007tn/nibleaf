@@ -70,22 +70,24 @@ interface MarkdownCoreState<T extends MarkdownToken> {
 const LIST_OPEN = new Set(['bullet_list_open', 'ordered_list_open']);
 const LIST_CLOSE = new Set(['bullet_list_close', 'ordered_list_close']);
 const TASK_ITEM = /^\[[ xX]\][ \t]/;
+const QUOTE_PREFIX = /^(?:>[ \t]?)*/;
+const quoteCount = (prefix: string): number => prefix.replace(/[ \t]/g, '').length;
 
-/** Count the authored quote markers on each line when a continuation omits some. */
-function lazyQuotePrefixes(raw: readonly string[], token: MarkdownToken, content: string, depth: number): number[] | null {
+/** Read the quote markers on each line when a continuation omits some. */
+function lazyQuotePrefixes(raw: readonly string[], token: MarkdownToken, content: string, depth: number): string[] | null {
   if (!token.map) return null;
   const [start, end] = token.map;
   const lines = content.split('\n');
   if (lines.length !== end - start) return null;
-  const counts: number[] = [];
+  const prefixes: string[] = [];
   for (const [index, line] of lines.entries()) {
     const original = raw[start + index] ?? '';
-    const prefix = /^(?:> )*/.exec(original)?.[0] ?? '';
-    const count = prefix.length / 2;
+    const prefix = QUOTE_PREFIX.exec(original)?.[0] ?? '';
+    const count = quoteCount(prefix);
     if (count > depth || (index === 0 && count !== depth) || original.slice(prefix.length) !== line) return null;
-    counts.push(count);
+    prefixes.push(prefix);
   }
-  return counts.some((count) => count < depth) ? counts : null;
+  return prefixes.some((prefix) => quoteCount(prefix) < depth) ? prefixes : null;
 }
 
 /**
@@ -127,7 +129,7 @@ function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>
     if (inline?.type !== 'inline' || close?.type !== 'paragraph_close') continue;
     // An empty paragraph is a fence's lead (fence-source.ts), which handles its list.
     if (list && !token.hidden && inline.content !== '') list.shown = true;
-    let quotePrefixes: number[] | null = null;
+    let quotePrefixes: string[] | null = null;
     if (quoteDepth > 0 && inline.content.includes('\n')) {
       rawLines ??= state.src.split('\n');
       quotePrefixes = lazyQuotePrefixes(rawLines, token, inline.content, quoteDepth);
@@ -141,7 +143,7 @@ function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>
       list.revealed = true;
     }
     token.attrSet(SOURCE_ATTRIBUTE, encodeMdxSource(inline.content));
-    if (quotePrefixes) token.attrSet(QUOTE_PREFIXES_ATTRIBUTE, quotePrefixes.join(','));
+    if (quotePrefixes) token.attrSet(QUOTE_PREFIXES_ATTRIBUTE, encodeMdxSource(quotePrefixes.join('\n')));
   }
 }
 
@@ -205,9 +207,13 @@ const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: n
 function lazyQuoteSource(source: string, prefixes: string, delim: string): { canonical: string; authored: string } | null {
   if (!/^(?:> )+$/.test(delim)) return null;
   const lines = source.split('\n');
-  const counts = prefixes.split(',').map(Number);
+  const markers = prefixes.split('\n');
   const depth = delim.length / 2;
-  if (counts[0] !== depth || counts.length !== lines.length || counts.some((count) => !Number.isInteger(count) || count < 0 || count > depth))
+  if (
+    quoteCount(markers[0] ?? '') !== depth ||
+    markers.length !== lines.length ||
+    markers.some((prefix) => QUOTE_PREFIX.exec(prefix)?.[0] !== prefix || quoteCount(prefix) > depth)
+  )
     return null;
   const canonical =
     joinedSourceLines(source) ??
@@ -220,7 +226,7 @@ function lazyQuoteSource(source: string, prefixes: string, delim: string): { can
         return `${line.trimEnd()} `;
       })
       .join('');
-  const authored = lines.map((line, index) => (index === 0 ? line : `${'> '.repeat(counts[index] ?? 0)}${line}`)).join('\n');
+  const authored = lines.map((line, index) => `${markers[index] ?? ''}${line}`).join('\n');
   return { canonical, authored };
 }
 
@@ -243,12 +249,18 @@ function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: P
   state.write();
   const { output } = state;
   const start = output.length;
+  const quoteStart = start - state.delim.length;
+  const canRestoreQuote = lazyQuote && output.lineStart() === quoteStart && output.sliceFrom(quoteStart) === state.delim;
   state.renderInline(node);
   if (output.length - start === joined.length && output.sliceFrom(start) === joined) {
-    output.truncate(start);
     // Unescaped: these lines are the source, already valid Markdown here.
-    if (lazyQuote) output.append(lazyQuote.authored);
-    else state.text(source, false);
+    if (lazyQuote && canRestoreQuote) {
+      output.truncate(quoteStart);
+      output.append(lazyQuote.authored);
+    } else if (!lazyQuote) {
+      output.truncate(start);
+      state.text(source, false);
+    }
   }
   state.closeBlock(node);
 }
@@ -268,7 +280,7 @@ export const SourceParagraph = Paragraph.extend({
         keepOnSplit: false,
         parseHTML: (element) => {
           const source = decodeMdxSource(element.getAttribute(SOURCE_ATTRIBUTE));
-          const prefixes = element.getAttribute(QUOTE_PREFIXES_ATTRIBUTE);
+          const prefixes = decodeMdxSource(element.getAttribute(QUOTE_PREFIXES_ATTRIBUTE));
           return source && prefixes ? `${source}\0${prefixes}` : source;
         },
         rendered: false,

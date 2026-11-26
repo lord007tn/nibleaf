@@ -71,6 +71,7 @@ describe('a lazy quoted continuation keeps its authored prefixes and breaks (#63
     ])(`preserves the %s break in ${locale}`, (_shape, marker) => {
       expectTenIdenticalSaves(`> ${a}${marker}\n${b}\n\n${c}`);
       expectTenIdenticalSaves(`> > ${a}${marker}\n> ${b}\n\n${c}`);
+      expectTenIdenticalSaves(`>> ${a}${marker}\n> ${b}\n\n${c}`);
     });
   }
 });
@@ -140,6 +141,18 @@ describe('a paragraph added after an unclosed fence stays out of its code (#649)
     const reloaded = editor.state.doc.firstChild as PMNode;
     expect([reloaded.childCount, reloaded.lastChild?.textContent]).toEqual([2, 'Appended']);
     expect(save(saved)).toBe(saved);
+  });
+
+  it('closes a fence before a newly appended sibling in a loose list (#864)', () => {
+    const source = '- Before\n\n- ~~~js\n  a';
+    editor.commands.setContent(source, { emitUpdate: false });
+    const before = codes();
+    const list = editor.state.doc.firstChild as PMNode;
+    editor.commands.insertContentAt(list.nodeSize - 1, { type: 'listItem', content: [paragraph] });
+    const saved = getMarkdown(editor);
+    expect(saved).toBe(`${source}\n  ~~~\n\n- Appended`);
+    expect(save(saved)).toBe(saved);
+    expect(codes()).toEqual(before);
   });
 
   // Regression guards, which main passes too: a fence that ends its quote is ended

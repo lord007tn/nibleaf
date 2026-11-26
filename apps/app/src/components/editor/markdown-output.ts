@@ -301,8 +301,15 @@ class LinearMarkdownSerializerState extends SerializerState {
   inTable = false;
   /** The nodes being rendered, outermost first, each with its parent and index: a
    *  fence reads what comes after the containers it ends (fence-source.ts). */
-  readonly path: Array<{ node: PMNode; parent: PMNode | Fragment; index: number; position: number; lastChildEnd?: number; lastChildIndex?: number }> =
-    [];
+  readonly path: Array<{
+    node: PMNode;
+    parent: PMNode | Fragment;
+    index: number;
+    position: number;
+    lastChildEnd?: number;
+    lastChildIndex?: number;
+    listTight?: boolean;
+  }> = [];
   private readonly offsets = new WeakMap<object, number[]>();
   private readonly writtenHeadings = new WeakSet<StructuredHtmlSource>();
   private closedOwner: SerializedLineOwner | null = null;
@@ -394,6 +401,10 @@ class LinearMarkdownSerializerState extends SerializerState {
 
   // tiptap-markdown's MarkdownSerializerState (src/serialize/state.js) from here on.
   override render(node: PMNode, parent: PMNode, index: number): void {
+    const container = this.path.at(-1);
+    if (index === 0 && container?.node === parent && (node.type.name === 'listItem' || node.type.name === 'taskItem')) {
+      container.listTight = this.inTightList;
+    }
     const previous = this.closed;
     if (this.inTightList && parent.type?.name === 'listItem' && previous) {
       const opensFence =
