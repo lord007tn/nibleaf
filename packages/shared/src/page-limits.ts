@@ -86,9 +86,35 @@ const HTML_TAG =
   /<[A-Za-z][A-Za-z0-9-]*(?:[ \t]+[A-Za-z_:][A-Za-z0-9_.:-]*(?:[ \t]*=[ \t]*(?:[^ \t"'=<>`\r\n]+|'[^'\r\n]*'|"[^"\r\n]*"))?)*[ \t]*\/?>|<\/[A-Za-z][A-Za-z0-9-]*[ \t]*>/y;
 /** Where raw HTML (a tag, comment, declaration) or an autolink may start. */
 const MAY_START_HTML = /[A-Za-z/!?]/;
-/** A complete single-line link reference definition, with an optional title. */
-const REFERENCE_DEFINITION =
-  /^\[((?!\^)(?:\\[\\[\]]|[^\\[\]]){1,999})\]:[ \t]*(?:<[^<>]*>|[^\s<>()\p{Cc}]+)(?:[ \t]+(?:"[^"]*"|'[^']*'|\([^()]*\)))?[ \t]*$/u;
+const BLANK = /^[ \t]*$/;
+const START_SPACE = /^[ \t]+/;
+const REFERENCE_LABEL = /^\[((?:\\[\\[\]]|[^\\[\]]){1,999})\]:[ \t]*/u;
+const FOOTNOTE_LABEL = /^\[\^(?:\\[\\[\]]|[^\\[\]\t ]){1,999}\]:/u;
+const REFERENCE_TITLE = /^(?:[ \t]+(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^()\\])*\)))?[ \t]*$/u;
+const ANGLE_DESTINATION = /<(?:\\[<>\\]|[^<>\\]|\\(?![<>\\]))*>/y;
+const DESTINATION_STOP = /[ \t<>\p{Cc}]/u;
+
+/** Recognize a complete single-line definition before treating its resource as literal. */
+const isReferenceDefinition = (text: string): boolean => {
+  const label = REFERENCE_LABEL.exec(text);
+  if (!label?.[1]?.trim()) return false;
+  const start = label[0].length;
+  if (text[start] === '<') {
+    ANGLE_DESTINATION.lastIndex = start;
+    const destination = ANGLE_DESTINATION.exec(text);
+    return Boolean(destination && REFERENCE_TITLE.test(text.slice(ANGLE_DESTINATION.lastIndex)));
+  }
+  let depth = 0;
+  let end = start;
+  for (; end < text.length; end++) {
+    const char = text[end] ?? '';
+    if (DESTINATION_STOP.test(char)) break;
+    if (char === '\\' && /[()\\]/.test(text[end + 1] ?? '')) end++;
+    else if (char === '(' && ++depth > 32) return false;
+    else if (char === ')' && --depth < 0) return false;
+  }
+  return end > start && depth === 0 && REFERENCE_TITLE.test(text.slice(end));
+};
 /** Any tag, as the reader's HTML and MDX parsers may read it, across lines. */
 const TAG = /<(\/?)([A-Za-z][\w.:-]*)(?=[\s/>])[^<>]*>/g;
 
@@ -178,6 +204,8 @@ const readInline = (source: string, from: number, to: number, unit: InlineUnit, 
     pointers.set(length, pointer);
     return starts[pointer] ?? -1;
   };
+  let resourceDepth = 0;
+  let resourceQuote = '';
   for (let at = from; at < to; ) {
     const char = source[at] as string;
     if (char === '\\') {
@@ -186,11 +214,21 @@ const readInline = (source: string, from: number, to: number, unit: InlineUnit, 
       at += source[at + 1] === '\n' || source[at + 1] === '\r' ? 1 : 2;
       continue;
     }
+    // A parsed link destination/title can contain a literal dollar. When a
+    // resource is ambiguous, count math markers there conservatively.
+    if (resourceDepth) {
+      if (resourceQuote) {
+        if (char === resourceQuote) resourceQuote = '';
+      } else if (char === '"' || char === "'") resourceQuote = char;
+      else if (char === '<') resourceQuote = '>';
+      else if (char === '(') resourceDepth++;
+      else if (char === ')') resourceDepth--;
+    } else if (char === '(' && at > from && source[at - 1] === ']') resourceDepth = 1;
     if (char === '`' || char === '$') {
       let end = at + 1;
       while (end < to && source[end] === char) end++;
       const length = end - at;
-      const close = unit.uncertain ? -1 : closerAfter(char === '$' ? -length : length, end);
+      const close = unit.uncertain || (char === '$' && resourceDepth) ? -1 : closerAfter(char === '$' ? -length : length, end);
       if (close !== -1) {
         if (!strict || !/[|\r\n]/.test(source.slice(end, close))) {
           code.push([at, close + length]);
@@ -245,7 +283,7 @@ const cellsOf = (source: string, from: number, to: number): Range[] => {
   const bounds = [from - 1, ...pipes, to];
   const cells: Range[] = [];
   for (let at = 0; at + 1 < bounds.length; at++) cells.push([(bounds[at] as number) + 1, bounds[at + 1] as number]);
-  const blank = (cell: Range | undefined) => cell && !source.slice(cell[0], cell[1]).trim();
+  const blank = (cell: Range | undefined) => cell && BLANK.test(source.slice(cell[0], cell[1]));
   if (pipes.length && blank(cells[0])) cells.shift();
   if (pipes.length && blank(cells.at(-1))) cells.pop();
   return cells;
@@ -266,18 +304,19 @@ const indentOf = (line: SourceLine, facts: MarkdownLineFacts): number => {
   for (let at = facts.content; line.text[at] === ' ' || line.text[at] === '\t'; at++) columns += line.text[at] === '\t' ? 4 : 1;
   return columns;
 };
-/** An ordered list item or a GFM footnote definition can end a table. */
-const NOT_A_ROW = /^(?:\[\^[^\]\s]+\]:|\d{1,9}[.)](?:[ \t]|$))/;
+/** Flow constructs that interrupt GFM's table row continuation. */
+const NOT_A_ROW = /^(?:#{1,6}(?:[ \t]|$)|(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)|([-*_])(?:[ \t]*\1){2,}[ \t]*$)/;
 /** Whether a line in a table's containers can be one of its rows (or its header). */
 const mayBeRow = (line: SourceLine, facts: MarkdownLineFacts): boolean => {
   if (indentOf(line, facts) > 3) return false;
-  const text = line.text.slice(facts.content).trim();
-  if (NOT_A_ROW.test(text)) return false;
+  const text = line.text.slice(facts.content).replace(START_SPACE, '');
+  if (NOT_A_ROW.test(text) || FOOTNOTE_LABEL.test(text)) return false;
   // A whole HTML tag on its own line starts a raw HTML block after a table.
   // An inline tag, autolink, link label, or dollar-delimited formula can be a cell.
   if (!text.startsWith('<')) return true;
   HTML_TAG.lastIndex = 0;
-  return HTML_TAG.exec(text)?.[0] !== text;
+  const tag = HTML_TAG.exec(text);
+  return !tag || !BLANK.test(text.slice(HTML_TAG.lastIndex));
 };
 
 interface TagEvent {
@@ -330,11 +369,12 @@ const nestingTags = (source: string, lines: readonly SourceLine[], masks: readon
 const readLines = (source: string, lines: readonly SourceLine[]) => {
   const { kinds, facts } = markdownBudgetLines(lines.map((line) => line.text));
   const overflowAt: Array<MarkdownParseOverflow | undefined> = [];
+  const overflowTableEnds = new Map<number, number>();
   /** Fenced and indented code lines, and inline code spans, in source order. */
   const masks: Range[] = [];
   const quiet: Range[] = [];
   let quietFrom = 0;
-  const blank = (index: number) => !lines[index]?.text.trim();
+  const blank = (index: number) => BLANK.test(lines[index]?.text ?? '');
   const prose = (index: number) => kinds[index] === 'prose' && !blank(index);
 
   /** The line's own limits, outside its code and tags (`quiet`, read from `quietFrom` on). */
@@ -375,7 +415,7 @@ const readLines = (source: string, lines: readonly SourceLine[]) => {
     const [rowLine, headLine] = [lines[index] as SourceLine, lines[header] as SourceLine];
     if (indentOf(rowLine, row) > 3 || !mayBeRow(headLine, head)) return false;
     const delimiters = cellsOf(source, rowLine.start + row.content, rowLine.end);
-    if (!delimiters.every(([from, to]) => DELIMITER_CELL.test(source.slice(from, to)))) return false;
+    if (!delimiters.length || !delimiters.every(([from, to]) => DELIMITER_CELL.test(source.slice(from, to)))) return false;
     const headStart = headLine.start + head.content;
     return cellsOf(source, headStart, headLine.end).length === delimiters.length;
   };
@@ -397,6 +437,7 @@ const readLines = (source: string, lines: readonly SourceLine[]) => {
         readInline(source, from, to, unit, masks, quiet, false);
       }
     }
+    if (overflowAt[tableStart]?.limit === 'tableRows') overflowTableEnds.set(tableStart, index);
     checkLine(index);
     checkMarkers(index, unit);
   };
@@ -425,7 +466,7 @@ const readLines = (source: string, lines: readonly SourceLine[]) => {
       continue;
     }
     // A table row continues its table in the same containers; anything else ends it.
-    if (table >= 0 && !(fact?.continues && !fact.lazy && fact.depth === table && mayBeRow(line, fact))) table = -1;
+    if (table >= 0 && !(fact && !fact.lazy && !fact.startsContainer && fact.depth === table && mayBeRow(line, fact))) table = -1;
     if (table >= 0) {
       readRow(index, false);
       continue;
@@ -441,18 +482,17 @@ const readLines = (source: string, lines: readonly SourceLine[]) => {
     }
     // Definitions are recognized at the start of a block or after other
     // definitions. A definition-shaped line does not interrupt existing prose.
-    if (fact && !fact.lazy && (first < 0 || !fact.continues) && indentOf(line, fact) <= 3) {
-      const label = REFERENCE_DEFINITION.exec(line.text.slice(fact.content).trimStart())?.[1];
-      if (label?.trim()) {
-        closeUnit(index - 1);
-        quiet.push([line.start, line.end]);
-        masks.push([line.start, line.end]);
-        checkLine(index);
-        continue;
-      }
+    const definition = fact && !fact.lazy && indentOf(line, fact) <= 3 ? line.text.slice(fact.content).replace(START_SPACE, '') : '';
+    const footnote = FOOTNOTE_LABEL.test(definition);
+    if (!footnote && (first < 0 || !fact?.continues) && isReferenceDefinition(definition)) {
+      closeUnit(index - 1);
+      quiet.push([line.start, line.end]);
+      masks.push([line.start, line.end]);
+      checkLine(index);
+      continue;
     }
     const delimiterLike = DELIMITER_ROW.test(line.text) && line.text.includes('-');
-    if (first >= 0 && fact?.continues) {
+    if (first >= 0 && fact?.continues && !footnote) {
       delimiterShape ||= delimiterLike;
       pipe ||= line.text.includes('|');
       continue;
@@ -465,7 +505,7 @@ const readLines = (source: string, lines: readonly SourceLine[]) => {
     pipe = line.text.includes('|');
   }
   closeUnit(lines.length - 1);
-  return { kinds, overflowAt, masks };
+  return { kinds, overflowAt, masks, overflowTableEnds };
 };
 
 const BUDGET_MEMO_LIMIT = 8;
@@ -504,12 +544,12 @@ const readBudget = (source: string): MarkdownParseBudget => {
     };
   }
   const lines = sourceLines(source);
-  const { kinds, overflowAt, masks } = readLines(source, lines);
+  const { kinds, overflowAt, masks, overflowTableEnds } = readLines(source, lines);
   const events = nestingTags(source, lines, masks);
 
   // A block runs between blank lines that are prose (a blank line in a fence or
   // a comment is not a boundary).
-  const boundary = (index: number) => kinds[index] === 'prose' && !lines[index]?.text.trim();
+  const boundary = (index: number) => kinds[index] === 'prose' && BLANK.test(lines[index]?.text ?? '');
   const blockStart = (index: number) => {
     let at = index;
     while (at > 0 && !boundary(at - 1)) at--;
@@ -543,8 +583,9 @@ const readBudget = (source: string): MarkdownParseBudget => {
   /** Marks lines `first`..`last` (extended to their blocks) as plain; returns the region's last line. */
   const addRegion = (first: number, last: number, found: MarkdownParseOverflow): number => {
     overflow ??= found;
-    const from = blockStart(first);
-    const to = blockEnd(last);
+    const tableEnd = found.limit === 'tableRows' ? overflowTableEnds.get(first) : undefined;
+    const from = tableEnd === undefined ? blockStart(first) : first;
+    const to = tableEnd ?? blockEnd(last);
     const previous = regions.at(-1);
     if (previous && from <= previous[1] + 1) previous[1] = Math.max(previous[1], to);
     else regions.push([from, to]);

@@ -106,6 +106,16 @@ describe('markdownParseBudget', () => {
     expect(markdownParseBudget(source).overflow).toBeNull();
     expect(markdownParseBudget(source).content).toBe(source);
     expect(markdownParseBudget(`Prose above a literal run.\n${definitions}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
+    expect(markdownParseBudget(definitions.replaceAll('[#', '\u00a0[#')).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
+  });
+
+  it('handles runs of footnotes and reference definitions with balanced destinations and titles', () => {
+    const definitions = Array.from({ length: 600 }, (_, index) => `[r${index}]: /wiki/Spec_(${index}) "Title \\"example\\""`).join('\n');
+    const footnotes = Array.from({ length: 600 }, (_, index) => `[^note${index}]: Footnote text.`).join('\n');
+    expect(markdownParseBudget(definitions).overflow).toBeNull();
+    expect(markdownParseBudget(footnotes).overflow).toBeNull();
+    const half = '*a'.repeat(600);
+    expect(markdownParseBudget(`[^r]: ${half}\n${half}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
   });
 
   it('reads no-leading-pipe GFM tables whose rows start with links, inline HTML or math', () => {
@@ -131,6 +141,17 @@ describe('markdownParseBudget', () => {
     expect(budget.content).toBe(`${first}\n\n\`\`\`${MARKDOWN_PLAIN_LANGUAGE}\n${second}\n\`\`\`\n\n## Next\n\n[Read next](/next)`);
     // A one-column GFM table can lack pipes even in its header and delimiter.
     expect(markdownParseBudget(`Value\n:-:\n${'A\n'.repeat(16_000)}`).overflow).toMatchObject({ limit: 'tableRows', amount: 2049 });
+  });
+
+  it('keeps under-budget blocks abutting a table and counts setext-like text within it', () => {
+    const table = `Value\n:-:\n=\n--\n${'A\n'.repeat(2051)}`;
+    const budget = markdownParseBudget(`Preamble\n${table}## After\nAfter text`);
+    expect(budget.overflow).toMatchObject({ limit: 'tableRows', amount: 2049 });
+    expect(budget.content).toBe(`Preamble\n\`\`\`${MARKDOWN_PLAIN_LANGUAGE}\n${table}\`\`\`\n## After\nAfter text`);
+  });
+
+  it.each(['[a](/$a)', '[a](/a "$title")'])('does not open inline math in link resources such as %s', (resource) => {
+    expect(markdownParseBudget(`${resource}\n${dense}\nplain $b`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
   });
 
   it('fences only the block over budget, from blank line to blank line, and names its first line', () => {

@@ -301,6 +301,7 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts
   let mathFence = 0;
   // What `read` learns of the current line, for `facts`.
   let continues = false;
+  let startsContainer = false;
   let lazy = false;
   let content: LineCursor = { index: 0, column: 0, spare: 0 };
   let html: HtmlBlockEnd | undefined;
@@ -331,6 +332,7 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts
     }
     const open = stack.items.length;
     const cursor = openContainers(line, continued.cursor, stack, components > 0, paragraph);
+    startsContainer = stack.items.length > open;
     content = cursor;
     // Nothing opened and the paragraph still open: the line continues it.
     const continuing = wasParagraph && stack.items.length === open;
@@ -394,9 +396,10 @@ const scanMarkdownLines = (lines: readonly string[], indentedCode = false, facts
   };
   return lines.map((line, index) => {
     continues = false;
+    startsContainer = false;
     lazy = false;
     const kind = readLine(line);
-    if (facts) facts[index] = { continues, lazy, depth: stack.items.length, content: content.index, indent: content.spare };
+    if (facts) facts[index] = { continues, startsContainer, lazy, depth: stack.items.length, content: content.index, indent: content.spare };
     return kind;
   });
   function readLine(line: string): MarkdownBlockLineKind {
@@ -447,6 +450,8 @@ export const markdownLineKinds = (lines: readonly string[]): MarkdownLineKind[] 
 export interface MarkdownLineFacts {
   /** A paragraph line that continues the paragraph of the line before: CommonMark reads their inline content together. */
   continues: boolean;
+  /** The line opens a quote or list item, including a sibling at the same depth. */
+  startsContainer: boolean;
   /** It continues that paragraph lazily, without all of its containers' prefixes. */
   lazy: boolean;
   /** How many quotes and list items the line is in. */
