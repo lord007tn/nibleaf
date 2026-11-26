@@ -155,7 +155,7 @@ export function ImageControls({ editor, dir }: { editor: Editor; dir: 'ltr' | 'r
             ref={input}
             onKeyDown={onEscape}
             aria-describedby={hintId}
-            className="min-h-11 rounded border border-border bg-background p-2 focus-visible:outline-2 focus-visible:outline-ring"
+            className="min-h-11 rounded border border-input-edge bg-background p-2 focus-visible:outline-2 focus-visible:outline-ring"
             dir="auto"
             value={state.alt}
             onChange={(event) => {
