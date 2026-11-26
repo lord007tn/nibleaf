@@ -166,6 +166,29 @@ include that chunk. So:
 
 ## Budget history
 
+### 274,400 bytes, unchanged: the session cache, query keys and mutation observer out
+
+On main@b2327909c public-docs measured 267.95 KiB against 267.97 KiB, and chunk
+hash churn alone moves it 10–30 bytes. Three dashboard pieces were in every
+published page's eager set: the `/app` route's `beforeLoad` imported the
+session cache (with `useMutation`) statically, the reader's loaders read their
+keys from the app-wide factory (`hooks/api/query-keys.ts`), and the reader's
+analytics sent events through `useMutation`. The session cache now loads when
+`beforeLoad` runs, the reader's keys live in `hooks/api/site-query-options.ts`
+(search keys in `hooks/api/site-search.ts`), and analytics events are plain
+best-effort requests. The analytics validator (`insights/filters.ts`) keeps only
+validation; its query mapping moved to `insights/query.ts`.
+
+| Profile | main@b2327909c | After |
+| --- | --- | --- |
+| public-docs | 267.95 KiB | 264.75 KiB |
+| public-docs-index | 266.50 KiB | 263.35 KiB |
+| auth-sign-in | 315.55 KiB | 313.26 KiB |
+| auth-sign-up | 318.49 KiB | 316.20 KiB |
+
+The module check now also rejects the session cache, the app-wide query-key
+factory and TanStack's mutation observer.
+
 ### 345,100 → 274,400 bytes: zod out of published pages (PUB-017)
 
 Route `validateSearch` options can't be split, so they ship in the router's
@@ -356,7 +379,7 @@ The budget is the 347,620 bytes measured for public-docs after merging main with
 
 The module check now also rejects dashboard query factories, dashboard
 components, `lib/mcp-oauth.ts` and `@nibleaf/shared`'s `mcp`/`rbac` modules.
-Against main@ed15240e it reports 20 forbidden modules. Still eager: the query
+Against main@ed15240e it reports 20 forbidden modules. Still eager then: the query
 key factory (`hooks/api/query-keys.ts`, shared with the reader's own queries) and
 the analytics and AI search validators.
 
