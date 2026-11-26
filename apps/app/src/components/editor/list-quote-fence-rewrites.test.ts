@@ -2,6 +2,7 @@
 import { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { afterAll, describe, expect, it } from 'vitest';
+import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 /*
@@ -59,6 +60,17 @@ describe('a tight list item keeps the text after its fence tight (#605)', () => 
 
   it('preserves the blank lines in a loose item', () => {
     expectTenIdenticalSaves('- Step:\n\n  ```sh\n  npm i\n  ```\n\n  After.\n\n- Next');
+  });
+
+  it.each([
+    [15, '  ```\n\n- the **bold at the end**'],
+    [88, '  ````\n\n  saves [external]'],
+  ])('keeps the loose fence boundary in corpus page %i', (page, boundary) => {
+    const source = serializerCorpus()[page]?.source;
+    expect(source).toBeDefined();
+    const saved = save(source ?? '');
+    expect(saved).toContain(boundary);
+    expect(save(saved)).toContain(boundary);
   });
 });
 

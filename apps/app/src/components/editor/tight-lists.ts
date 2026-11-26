@@ -148,10 +148,14 @@ function interruptsParagraph(list: PMNode): boolean {
 
 /** Whether an authored fence and its neighboring paragraph can share a tight item. */
 export function authoredFenceBoundary(previous: PMNode, next: PMNode): boolean {
-  return (
-    (previous.type.name === 'paragraph' && previous.content.size > 0 && next.type.name === 'codeBlock' && Boolean(next.attrs.sourceFenceOpen)) ||
-    (previous.type.name === 'codeBlock' && Boolean(previous.attrs.sourceFenceOpen) && next.type.name === 'paragraph')
-  );
+  if (previous.type.name === 'paragraph' && next.type.name === 'codeBlock') {
+    const opener = String(next.attrs.sourceFenceOpen ?? '');
+    // Keep the legacy spacing for indented openers recovered inside a list.
+    return previous.content.size > 0 && opener !== '' && !/^[ \t]/.test(opener);
+  }
+  // An empty fence can gain a lead during loading even when the authored item
+  // has a blank line before its paragraph. Preserve the legacy spacing there.
+  return previous.type.name === 'codeBlock' && previous.content.size > 0 && Boolean(previous.attrs.sourceFenceOpen) && next.type.name === 'paragraph';
 }
 
 /**
