@@ -116,14 +116,14 @@
     "@biomejs/biome": "2.5.11",
     "@nibleaf/clickhouse": "workspace:*",
     "@nibleaf/database": "workspace:*",
-    "hono": "^4.13.18",
-    "knip": "6.45.1",
+    "hono": "^4.13.19",
+    "knip": "6.47.0",
     "libpg-query": "17.7.4",
     "playwright-core": "^1.65.1",
     "react-doctor": "0.9.23",
-    "turbo": "^2.11.11",
+    "turbo": "^2.11.13",
     "typescript": "^7.0.2",
     "ultracite": "7.10.7",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }
