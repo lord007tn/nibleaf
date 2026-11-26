@@ -29,9 +29,10 @@ type GitIdentity = { login: string; name: string | null };
  * answers (the import settings above can't tell), and both answers are common:
  * new sites aren't connected, while connected sites are the usual revisit. So
  * the placeholder is the part both screens share — a header (icon, title and a
- * line under it) over one plain panel — and never shows the three connect steps
- * (a connected writer would read them as "my repository was disconnected") or
- * the four connected actions (which a new site never has).
+ * line under it) over one plain panel — and never shows the connect page's
+ * token and repository sections (a connected writer would read them as "my
+ * repository was disconnected") or the four connected actions (which a new site
+ * never has).
  */
 function GitWorkflowSkeleton() {
   const { t } = useLocale();
@@ -323,6 +324,8 @@ export function GitWorkflow({
                 aria-describedby={blocker ? 'git2-connect-reason' : undefined}
                 className="w-full sm:w-auto"
                 disabled={Boolean(blocker) || !token}
+                // Blocked, it stays in the tab order, so its reason (linked above) is read with it.
+                focusableWhenDisabled
                 loading={connect.busy}
                 loadingText={t('settings.git.workflow.verifying')}
                 onClick={() => connect.press({ repository, baseBranch, headBranch, contentPath, token: token || undefined, expectedRevision: null })}

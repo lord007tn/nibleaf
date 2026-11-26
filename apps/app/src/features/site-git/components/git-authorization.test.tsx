@@ -215,14 +215,14 @@ describe('the connect page', () => {
     }
     const connect = () => tab.button('settings.git.workflow.connect');
     const reason = () => tab.host.querySelector('#git2-connect-reason')?.textContent ?? null;
-    expect([connect()?.disabled, reason()]).toEqual([true, t('settings.git.connect.checkFirst')]);
+    expect([connect()?.getAttribute('aria-disabled') === 'true', reason()]).toEqual([true, t('settings.git.connect.checkFirst')]);
     expect(connect()?.getAttribute('aria-describedby')).toBe('git2-connect-reason');
     await tab.type(TOKEN_A);
     await tab.press();
     await answer(0, verified);
-    expect([connect()?.disabled, reason()]).toEqual([true, t('settings.git.connect.repositoryFirst')]);
+    expect([connect()?.getAttribute('aria-disabled') === 'true', reason()]).toEqual([true, t('settings.git.connect.repositoryFirst')]);
     await tab.review();
-    expect([connect()?.disabled, reason()]).toEqual([false, null]);
+    expect([connect()?.getAttribute('aria-disabled') === 'true', reason()]).toEqual([false, null]);
   });
 });
 
@@ -246,7 +246,7 @@ describe('a verification sends the token as typed and reports into the wizard', 
     expect(tab.step()).toBe(2);
     expect(tab.account()).toBe(authorizedAs(ACCOUNT_A));
     // Kept for the final Connect request.
-    expect(tab.button('settings.git.workflow.connect')?.disabled).toBe(false);
+    expect(tab.button('settings.git.workflow.connect')?.getAttribute('aria-disabled') === 'true').toBe(false);
     expect(mocks.error).not.toHaveBeenCalled();
     expect(mocks.success).not.toHaveBeenCalled();
   });

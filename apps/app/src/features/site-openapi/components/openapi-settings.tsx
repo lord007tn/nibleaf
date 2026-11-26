@@ -305,6 +305,8 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
               <Button
                 aria-describedby={saveBlocker ? 'openapi-save-reason' : undefined}
                 disabled={Boolean(saveBlocker)}
+                // Blocked, it stays in the tab order, so its reason (linked above) is read with it.
+                focusableWhenDisabled
                 loading={draft.isSaving}
                 loadingText={t('common.saving')}
                 onClick={() => void draft.submit()}

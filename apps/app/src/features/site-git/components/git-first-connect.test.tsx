@@ -459,7 +459,7 @@ describe('a press belongs to the wizard that made it', () => {
     await answer(0, (request) => json(200, { data: { connection: status(request.param.projectId), webhookSecret: SECRET_A } }));
     // The token and its check are cleared, so Connect waits for a new check.
     expect(tab.step()).toBe(1);
-    expect(tab.connectButton()?.disabled).toBe(true);
+    expect(tab.connectButton()?.getAttribute('aria-disabled') === 'true').toBe(true);
     expect(tab.field('git2-token')).toBe('');
   });
 
@@ -647,7 +647,7 @@ describe('failures', () => {
     await tab.connect();
     await answer(0, refused());
     expect(toasts()).toEqual({ success: [], error: [t('settings.git.workflow.connectError')] });
-    expect([tab.step(), tab.busy(), tab.connectButton()?.disabled]).toEqual([2, false, false]);
+    expect([tab.step(), tab.busy(), tab.connectButton()?.getAttribute('aria-disabled') === 'true']).toEqual([2, false, false]);
     expect(refreshed()).toEqual([detail('site-a')]);
     await tab.connect();
     expect(puts().map((request) => request.json)).toEqual([puts()[0]?.json, puts()[0]?.json]);

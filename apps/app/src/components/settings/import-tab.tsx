@@ -13,7 +13,8 @@ import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
 import { Link } from '@tanstack/react-router';
 import { ArrowUpRight, BookOpen, ChevronDown, DownloadCloud, Ghost, GitBranch, Leaf, Upload } from 'lucide-react';
-import { type ReactNode, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { useGhostImportCommand } from '@/features/site-import/components/use-ghost-import';
 import { useRepositoryImportCommand } from '@/features/site-import/components/use-repository-import';
@@ -68,7 +69,7 @@ function ImportResult({ summary, projectId, onAgain }: { summary: ContentImportS
     return { text, key: `${text}-${occurrence}` };
   });
   return (
-    <SettingsSection title={t('settings.import.success')}>
+    <SettingsSection data-slot="import-result" title={t('settings.import.success')}>
       <SettingsSectionBody className="flex flex-col gap-3 text-sm" role="status">
         <p className="font-medium">
           {t('settings.import.result', { imported: summary.imported, updated: summary.updated, skipped: summary.skipped })}
@@ -170,6 +171,18 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   const ghost = useGhostImportCommand({ projectId: projectId ?? '', open: source === 'ghost', file: ghostFile, ghostUrl });
 
   const pending = repository.busy || ghost.busy;
+  const pageRef = useRef<HTMLDivElement>(null);
+  const showingResult = result !== null;
+  const shownResult = useRef(showingResult);
+  useEffect(() => {
+    if (shownResult.current === showingResult) return;
+    shownResult.current = showingResult;
+    // The button that was pressed (Import, or Import another) is gone: start at the heading of what replaced it.
+    const heading = pageRef.current?.querySelector<HTMLElement>(showingResult ? '[data-slot="import-result"] h2' : '[data-slot="import-picker"] h2');
+    if (!heading) return;
+    heading.setAttribute('tabindex', '-1');
+    heading.focus();
+  }, [showingResult]);
   const clearError = (field: FieldName) => setErrors((current) => (current[field] ? { ...current, [field]: undefined } : current));
   const chooseSource = (next: ImportSource) => {
     setSource(next);
@@ -183,10 +196,12 @@ export function ImportTab({ projectId }: { projectId?: string }) {
       toast.error(t(message));
       return;
     }
-    setErrors((current) => ({ ...current, [target.field]: target.message }));
+    // Rendered before focus moves, so the field is announced with its error.
+    flushSync(() => setErrors((current) => ({ ...current, [target.field]: target.message })));
     document.getElementById(FIELD_IDS[target.field])?.focus();
   };
   const handleSuccess = (summary: ContentImportSummary) => {
+    setErrors({});
     setResult(summary);
     toast.success(t('settings.import.success'));
   };
@@ -234,7 +249,7 @@ export function ImportTab({ projectId }: { projectId?: string }) {
     }
     if (source !== 'ghost') return;
     if (!ghostFile) {
-      setErrors((current) => ({ ...current, ghostFile: 'settings.import.ghost.fileRequired' }));
+      flushSync(() => setErrors((current) => ({ ...current, ghostFile: 'settings.import.ghost.fileRequired' })));
       document.getElementById(FIELD_IDS.ghostFile)?.focus();
       return;
     }
@@ -258,13 +273,13 @@ export function ImportTab({ projectId }: { projectId?: string }) {
   );
 
   return (
-    <div className="flex min-w-0 flex-col gap-8">
+    <div className="flex min-w-0 flex-col gap-8" ref={pageRef}>
       <PageHeader description={t('settings.import.description')} title={t('settings.import.title')} />
       {result ? (
         <ImportResult onAgain={() => setResult(null)} projectId={projectId} summary={result} />
       ) : (
         <>
-          <SettingsSection title={t('settings.import.workspace.emptyTitle')}>
+          <SettingsSection data-slot="import-picker" title={t('settings.import.workspace.emptyTitle')}>
             <SettingsSectionBody>
               <RadioGroup
                 aria-label={t('settings.import.workspace.emptyTitle')}
@@ -393,7 +408,11 @@ export function ImportTab({ projectId }: { projectId?: string }) {
           ) : null}
 
           {source === 'ghost' ? (
-            <SettingsSection description={t('settings.import.ghost.description')} title={t('settings.import.ghost.title')}>
+            <SettingsSection
+              description={t('settings.import.ghost.description')}
+              footer={<p className="text-xs leading-relaxed">{t('settings.import.summaryHint')}</p>}
+              title={t('settings.import.ghost.title')}
+            >
               <SettingsSectionBody className="flex flex-col gap-4">
                 <Field
                   error={errorOf('ghostUrl')}

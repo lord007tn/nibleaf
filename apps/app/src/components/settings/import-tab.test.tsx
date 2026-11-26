@@ -249,6 +249,32 @@ describe('the Import page asks where the content lives first', () => {
   });
 });
 
+describe('after an import', () => {
+  it('starts at the result after Import, and back at the source picker after Import another, with old errors gone', async () => {
+    await tab('site-a');
+    await readyGhost();
+    mocks.ghost.mockImplementationOnce(async () => json(400, { error: { code: 'import:invalid_document', message: 'Not a Ghost export' } }));
+    await press(importButton());
+    await read().finish(JSON.stringify(EXPORT));
+    expect(fieldError('import-ghost-file')).toBe(t('settings.import.ghost.invalidJson'));
+    // The error is in the field's description when focus lands there.
+    expect(document.activeElement?.getAttribute('aria-describedby')).toContain('import-ghost-file-error');
+    await press(importButton());
+    await read().finish(JSON.stringify(EXPORT));
+    expect(showsResult()).toBe(true);
+    expect(document.activeElement?.textContent).toBe(t('settings.import.success'));
+    await press(buttons().find((item) => item.textContent?.trim() === t('settings.import.again')));
+    expect(document.activeElement?.textContent).toBe(t('settings.import.workspace.emptyTitle'));
+    expect(fieldError('import-ghost-file')).toBe('');
+  });
+
+  it('keeps the import note under every source form, Ghost included', async () => {
+    await tab('site-a');
+    await chooseSource('Ghost');
+    expect(container.textContent).toContain(t('settings.import.summaryHint'));
+  });
+});
+
 describe('one owner from reading a Ghost file to sending the import', () => {
   it('sends the export as read, with its site, the trimmed URL and the import metadata', async () => {
     await tab('site-a');
