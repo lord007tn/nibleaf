@@ -491,7 +491,9 @@ function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
   };
   return (
     <DragHandle editor={editor} computePositionConfig={computePositionConfig} onNodeChange={handleNodeChange}>
-      <div className="flex items-center gap-0.5 px-1 text-muted-foreground">
+      {/* A phone's page has no gutter for it: the handle would sit half off the
+          screen, and touch has no hover to reveal it. Phones insert with "/". */}
+      <div className="flex items-center gap-0.5 px-1 text-muted-foreground max-sm:hidden" data-block-handle="">
         <button
           type="button"
           title={t('editor.insertBlock')}

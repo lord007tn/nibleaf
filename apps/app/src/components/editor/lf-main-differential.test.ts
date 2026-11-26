@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor, type JSONContent } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { priorFenceLayoutDigest } from './__fixtures__/authored-fence-layout-main';
 import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout, withoutUnusedStructuredHtml } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import { listItemLeadSources, quotedMarkSources, textChange } from './__fixtures__/list-item-leads';
@@ -260,7 +261,7 @@ describe('pages with LF only save as on main (#702)', () => {
     }
     const main = JSON.parse(readFileSync(FIXTURE, 'utf8')) as { pages: number; digests: string[] };
     expect(main.pages).toBe(pages.length);
-    const changed = digests.flatMap((value, index) => (value === main.digests[index] ? [] : [index]));
+    const changed = digests.flatMap((value, index) => (priorFenceLayoutDigest('lf', index, value) === main.digests[index] ? [] : [index]));
     // #604: the corpus pages with a list item lead or a quoted mark, checked in list-item-leads-main.test.ts.
     const leadPages = changed.filter((index) => isNamed(pages[index]?.page ?? ''));
     const quotedPages = leadPages.filter((index) => quotedSources.has(pages[index]?.page ?? ''));
