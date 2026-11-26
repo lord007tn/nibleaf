@@ -5046,5 +5046,7 @@
   "settings_git_connect_headhint": "Nibleaf 会把你的更改提交到此分支，并从这里发起拉取请求。",
   "settings_git_connect_checkfirst": "请先检查令牌。",
   "settings_git_connect_repositoryfirst": "请先输入仓库。",
-  "settings_git_connect_branchesfirst": "请先输入两个分支。"
+  "settings_git_connect_branchesfirst": "请先输入两个分支。",
+  "settings_openapi_neednameandpath": "请先添加导航标签和发布路径。",
+  "settings_openapi_needsource": "请先添加 OpenAPI 文档。"
 }

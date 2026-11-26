@@ -5133,5 +5133,7 @@
   "settings_git_connect_headhint": "Nibleaf valide vos modifications dans cette branche et ouvre les pull requests depuis celle-ci.",
   "settings_git_connect_checkfirst": "Vérifiez d’abord votre jeton.",
   "settings_git_connect_repositoryfirst": "Saisissez d’abord le dépôt.",
-  "settings_git_connect_branchesfirst": "Saisissez d’abord les deux branches."
+  "settings_git_connect_branchesfirst": "Saisissez d’abord les deux branches.",
+  "settings_openapi_neednameandpath": "Ajoutez d’abord un libellé de navigation et un chemin publié.",
+  "settings_openapi_needsource": "Ajoutez d’abord le document OpenAPI."
 }

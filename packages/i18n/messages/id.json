@@ -5062,5 +5062,7 @@
   "settings_git_connect_headhint": "Nibleaf meng-commit perubahan Anda ke branch ini dan membuka pull request dari sini.",
   "settings_git_connect_checkfirst": "Periksa token Anda terlebih dahulu.",
   "settings_git_connect_repositoryfirst": "Masukkan repositori terlebih dahulu.",
-  "settings_git_connect_branchesfirst": "Masukkan kedua branch terlebih dahulu."
+  "settings_git_connect_branchesfirst": "Masukkan kedua branch terlebih dahulu.",
+  "settings_openapi_neednameandpath": "Tambahkan label navigasi dan jalur terbit terlebih dahulu.",
+  "settings_openapi_needsource": "Tambahkan dokumen OpenAPI terlebih dahulu."
 }

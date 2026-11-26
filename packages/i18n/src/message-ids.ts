@@ -1,5 +1,7 @@
 /** Generated from the canonical Paraglide message IDs. */
 export const MESSAGE_IDS = {
+  'settings.openapi.needNameAndPath': 'settings_openapi_neednameandpath',
+  'settings.openapi.needSource': 'settings_openapi_needsource',
   'settings.import.source.mintlify': 'settings_import_source_mintlify',
   'settings.import.source.gitbook': 'settings_import_source_gitbook',
   'settings.import.source.ghost': 'settings_import_source_ghost',

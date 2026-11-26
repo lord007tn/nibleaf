@@ -5133,5 +5133,7 @@
   "settings_git_connect_headhint": "Nibleaf commits your changes to this branch and opens pull requests from it.",
   "settings_git_connect_checkfirst": "Check your token first.",
   "settings_git_connect_repositoryfirst": "Enter the repository first.",
-  "settings_git_connect_branchesfirst": "Enter both branches first."
+  "settings_git_connect_branchesfirst": "Enter both branches first.",
+  "settings_openapi_neednameandpath": "Add a navigation label and a published path first.",
+  "settings_openapi_needsource": "Add the OpenAPI document first."
 }

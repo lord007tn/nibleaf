@@ -3,7 +3,9 @@ import { Badge } from '@nibleaf/design-system/components/ui/badge';
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { useConfirm } from '@nibleaf/design-system/components/ui/confirm';
+import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { getLocale } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
@@ -11,25 +13,17 @@ import { useStore } from '@tanstack/react-form';
 import { AlertTriangle, Braces, FileUp, RefreshCw, Trash2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  DirtyStateReporter,
-  FIELD_INPUT,
-  FIELD_MONO,
-  Field,
-  SectionHeader,
-  Segmented,
-  SettingsFormSkeleton,
-} from '@/components/project-settings/shared';
+import { DirtyStateReporter, FIELD_INPUT, FIELD_MONO, Field, Segmented, SettingsFormSkeleton } from '@/components/project-settings/shared';
 import { QueryErrorState } from '@/components/query-error-state';
 import type { OpenApiConfiguration } from '@/hooks/api';
 import { localeTag } from '@/lib/format';
 import { useServerDraftForm } from '@/lib/forms/use-server-draft';
 import { useRemoveSiteOpenApi, useSaveSiteOpenApi, useSiteOpenApi, useSyncSiteOpenApi } from '../api/hooks';
 import {
-  canSaveOpenApi,
   confirmedOpenApiValues,
   type OpenApiSourceType,
   type OpenApiValues,
+  openApiSaveBlocker,
   openApiUpsertBody,
   openApiValues,
   switchSource,
@@ -82,6 +76,7 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
     },
   });
   const values = useStore(form.store, (state) => state.values);
+  const saveBlocker = openApiSaveBlocker(values, current);
   const set = <K extends keyof OpenApiValues>(key: K, value: OpenApiValues[K]) => form.setFieldValue(key, value as never);
 
   const changeSource = (next: OpenApiSourceType) => {
@@ -134,7 +129,7 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
   return (
     <div>
       <DirtyStateReporter dirty={draft.isDirty} />
-      <SectionHeader icon={<Braces className="size-4" />} title={t('settings.openapi.title')} description={t('settings.openapi.description')} />
+      <PageHeader className="mb-8" description={t('settings.openapi.description')} title={t('settings.openapi.title')} />
 
       {current && !editing ? (
         <Alert className="mb-6">
@@ -165,14 +160,14 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
       ) : null}
 
       {!current && !editing ? (
-        <div className="rounded-xl border border-dashed p-6 text-center">
-          <Braces className="mx-auto size-6 text-muted-foreground" />
-          <h3 className="mt-3 font-semibold">{t('settings.openapi.emptyTitle')}</h3>
-          <p className="mx-auto mt-1 max-w-lg text-muted-foreground text-sm">{t('settings.openapi.emptyDescription')}</p>
-          <Button className="mt-4" onClick={() => setEditing(true)}>
-            {t('settings.openapi.add')}
-          </Button>
-        </div>
+        <EmptyState
+          action={<Button onClick={() => setEditing(true)}>{t('settings.openapi.add')}</Button>}
+          className="rounded-xl border border-border border-dashed"
+          description={t('settings.openapi.emptyDescription')}
+          headingLevel={2}
+          icon={<Braces />}
+          title={t('settings.openapi.emptyTitle')}
+        />
       ) : null}
 
       {editing ? (
@@ -285,6 +280,11 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
             <AlertDescription>{t('settings.openapi.securityHint')}</AlertDescription>
           </Alert>
 
+          {saveBlocker ? (
+            <p className="mb-3 text-end text-muted-foreground text-sm" id="openapi-save-reason">
+              {t(saveBlocker)}
+            </p>
+          ) : null}
           <div className="flex flex-wrap justify-between gap-3">
             <div>
               {current ? (
@@ -303,7 +303,8 @@ function OpenApiForm({ projectId, current }: { projectId: string; current: OpenA
                 </Button>
               ) : null}
               <Button
-                disabled={!canSaveOpenApi(values, current)}
+                aria-describedby={saveBlocker ? 'openapi-save-reason' : undefined}
+                disabled={Boolean(saveBlocker)}
                 loading={draft.isSaving}
                 loadingText={t('common.saving')}
                 onClick={() => void draft.submit()}

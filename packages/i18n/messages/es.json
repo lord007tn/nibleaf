@@ -5133,5 +5133,7 @@
   "settings_git_connect_headhint": "Nibleaf confirma tus cambios en esta rama y abre pull requests desde ella.",
   "settings_git_connect_checkfirst": "Primero comprueba tu token.",
   "settings_git_connect_repositoryfirst": "Primero escribe el repositorio.",
-  "settings_git_connect_branchesfirst": "Primero escribe las dos ramas."
+  "settings_git_connect_branchesfirst": "Primero escribe las dos ramas.",
+  "settings_openapi_neednameandpath": "Primero añade una etiqueta de navegación y una ruta publicada.",
+  "settings_openapi_needsource": "Primero añade el documento OpenAPI."
 }

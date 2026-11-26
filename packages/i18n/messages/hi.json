@@ -5068,5 +5068,7 @@
   "settings_git_connect_headhint": "Nibleaf आपके बदलाव इसी ब्रांच में कमिट करता है और यहीं से पुल रिक्वेस्ट खोलता है।",
   "settings_git_connect_checkfirst": "पहले अपना टोकन जाँचें।",
   "settings_git_connect_repositoryfirst": "पहले रिपॉज़िटरी दर्ज करें।",
-  "settings_git_connect_branchesfirst": "पहले दोनों ब्रांच दर्ज करें।"
+  "settings_git_connect_branchesfirst": "पहले दोनों ब्रांच दर्ज करें।",
+  "settings_openapi_neednameandpath": "पहले एक नेविगेशन लेबल और प्रकाशित पाथ जोड़ें।",
+  "settings_openapi_needsource": "पहले OpenAPI दस्तावेज़ जोड़ें।"
 }

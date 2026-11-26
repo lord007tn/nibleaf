@@ -5202,5 +5202,7 @@
   "settings_git_connect_headhint": "يحفظ Nibleaf تغييراتك في هذا الفرع ويفتح طلبات الدمج منه.",
   "settings_git_connect_checkfirst": "تحقّق من الرمز أولًا.",
   "settings_git_connect_repositoryfirst": "أدخل المستودع أولًا.",
-  "settings_git_connect_branchesfirst": "أدخل الفرعين أولًا."
+  "settings_git_connect_branchesfirst": "أدخل الفرعين أولًا.",
+  "settings_openapi_neednameandpath": "أضف تسمية التنقل والمسار المنشور أولًا.",
+  "settings_openapi_needsource": "أضف مستند OpenAPI أولًا."
 }

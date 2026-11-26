@@ -5166,5 +5166,7 @@
   "settings_git_connect_headhint": "Nibleaf фиксирует изменения в этой ветке и открывает из неё pull request’ы.",
   "settings_git_connect_checkfirst": "Сначала проверьте токен.",
   "settings_git_connect_repositoryfirst": "Сначала укажите репозиторий.",
-  "settings_git_connect_branchesfirst": "Сначала укажите обе ветки."
+  "settings_git_connect_branchesfirst": "Сначала укажите обе ветки.",
+  "settings_openapi_neednameandpath": "Сначала укажите название в навигации и путь публикации.",
+  "settings_openapi_needsource": "Сначала добавьте документ OpenAPI."
 }

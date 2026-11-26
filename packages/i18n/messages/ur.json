@@ -5124,5 +5124,7 @@
   "settings_git_connect_headhint": "Nibleaf آپ کی تبدیلیاں اسی برانچ میں کمٹ کرتا ہے اور یہیں سے پل ریکویسٹ کھولتا ہے۔",
   "settings_git_connect_checkfirst": "پہلے اپنا ٹوکن جانچیں۔",
   "settings_git_connect_repositoryfirst": "پہلے ریپوزٹری درج کریں۔",
-  "settings_git_connect_branchesfirst": "پہلے دونوں برانچیں درج کریں۔"
+  "settings_git_connect_branchesfirst": "پہلے دونوں برانچیں درج کریں۔",
+  "settings_openapi_neednameandpath": "پہلے نیویگیشن لیبل اور شائع شدہ پاتھ شامل کریں۔",
+  "settings_openapi_needsource": "پہلے OpenAPI دستاویز شامل کریں۔"
 }
