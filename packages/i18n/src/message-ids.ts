@@ -4911,6 +4911,15 @@ export const MESSAGE_IDS = {
   'editor.fix.placed': 'editor_fix_placed',
   'editor.fix.previous': 'editor_fix_previous',
   'editor.fix.insideBlock': 'editor_fix_insideblock',
+  'shortcuts.editor.description': 'shortcuts_editor_description',
+  'shortcuts.editor.text': 'shortcuts_editor_text',
+  'shortcuts.editor.blocks': 'shortcuts_editor_blocks',
+  'shortcuts.editor.page': 'shortcuts_editor_page',
+  'shortcuts.editor.saveDraft': 'shortcuts_editor_savedraft',
+  'shortcuts.editor.moveUp': 'shortcuts_editor_moveup',
+  'shortcuts.editor.moveDown': 'shortcuts_editor_movedown',
+  'shortcuts.editor.formattingMenu': 'shortcuts_editor_formattingmenu',
+  'shortcuts.editor.show': 'shortcuts_editor_show',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

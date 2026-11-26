@@ -1,4 +1,4 @@
-import { type DOMOutputSpec, DOMParser, DOMSerializer, type Mark, type Node as PMNode } from '@tiptap/pm/model';
+import { type DOMOutputSpec, DOMParser, DOMSerializer, Fragment, type Mark, type Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownSerializerState } from 'prosemirror-markdown';
 import { allowedURL, escapeImageAttribute } from './extensions/html-safety';
 
@@ -50,6 +50,9 @@ function canonicalBody(node: PMNode, doc: Document, serializer: DOMSerializer): 
   return element.nodeType === 1 ? (element as Element).innerHTML : (element.textContent ?? '');
 }
 
+const hasUnsafeAttributes = (container: HTMLElement): boolean =>
+  [...container.querySelectorAll('*')].some((element) => [...element.attributes].some(({ name, value }) => !safeStructuredAttribute(name, value)));
+
 function originalBody(node: PMNode, source: StructuredHtmlSource, doc: Document, serializer: DOMSerializer): string | null {
   if (source.inner === undefined) return null;
   let canonical = cachedBodies.get(node.attrs);
@@ -57,9 +60,7 @@ function originalBody(node: PMNode, source: StructuredHtmlSource, doc: Document,
   const container = doc.createElement('div');
   container.innerHTML = source.open + source.inner + source.close;
   // An unchanged native node must not revive an attribute the DOM parser dropped.
-  if (
-    [...container.querySelectorAll('*')].some((element) => [...element.attributes].some(({ name, value }) => !safeStructuredAttribute(name, value)))
-  ) {
+  if (hasUnsafeAttributes(container)) {
     cachedBodies.set(node.attrs, null);
     return null;
   }
@@ -177,4 +178,15 @@ export function structuredLinkSource(mark: Mark): StructuredHtmlSource | undefin
   if (start === undefined || end === undefined || !/^href[\s=]/i.test(source.open.slice(start, end))) return undefined;
   const originalName = /^href/i.exec(source.open.slice(start, end))?.[0] ?? 'href';
   return { ...source, open: replaceAttribute(source.open, originalName, [start, end], href) };
+}
+
+/** Compare an anchor's inline content after decoding entities and native marks. */
+export function unchangedStructuredLinkBody(source: string, parent: PMNode, link: Mark, from: number, to: number): boolean {
+  const container = htmlDocument().createElement('div');
+  container.innerHTML = source;
+  if (hasUnsafeAttributes(container)) return false;
+  const original = DOMParser.fromSchema(parent.type.schema).parse(container);
+  if (original.childCount !== 1 || !original.firstChild?.isTextblock) return false;
+  const inline = parent.children.slice(from, to).map((child) => child.mark(link.removeFromSet(child.marks)));
+  return original.firstChild.content.eq(Fragment.fromArray(inline));
 }

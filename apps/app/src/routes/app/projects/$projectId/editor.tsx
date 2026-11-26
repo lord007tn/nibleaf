@@ -6,6 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
@@ -26,6 +27,7 @@ import {
   Eye,
   FolderPlus,
   History,
+  Keyboard,
   Languages,
   Layers,
   MessageSquare,
@@ -40,7 +42,19 @@ import {
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
-import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  type CSSProperties,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { toast } from 'sonner';
 import { ActiveBranchContext } from '@/components/editor/active-branch-context';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
@@ -75,6 +89,7 @@ import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
 import { createEditorSaveQueue, isSupersededWrite, type PageDraft, type QueuedWrite, samePageDraft } from '@/components/editor/editor-save-queue';
 import { useSaveThrottle } from '@/components/editor/editor-save-throttle';
+import { EditorShortcutsDialog } from '@/components/editor/editor-shortcuts-dialog';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { useLinkedPageHistory } from '@/components/editor/linked-page-history';
@@ -82,11 +97,12 @@ import { MarkdownSourceEditor } from '@/components/editor/markdown-source-editor
 import { MovePageDialog } from '@/components/editor/move-page-dialog';
 import { pagePublicLink } from '@/components/editor/page-public-link';
 import { PageSettingsDialog } from '@/components/editor/page-settings-dialog';
-import { focusBodyStart, PageTitleField } from '@/components/editor/page-title-field';
+import { focusBodyStart, moveTypedToBody, PageTitleField } from '@/components/editor/page-title-field';
 import { PageTrashButton } from '@/components/editor/page-trash-button';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
 import { type PublishFixArrival, PublishFixBar } from '@/components/editor/publish-fix-bar';
 import { NeverPublishedBanner, PagePublishStateBar, type SaveState, SaveStatus } from '@/components/editor/save-status';
+import { modShortcut } from '@/components/editor/shortcut-label';
 import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree, shownRowName } from '@/components/editor/sortable-page-tree';
 import { type EditorDraftHandle, TiptapEditor } from '@/components/editor/tiptap-editor';
@@ -154,17 +170,21 @@ export const Route = createFileRoute('/app/projects/$projectId/editor')({
       fixTarget: boundedText(1),
       publish: flag,
     }),
-  loaderDeps: ({ search: { page } }) => ({ page }),
   // The parent route prefetches the site, languages, branches and publishes. This
   // adds the page tree (every language, default branch), the site's AI drafting
   // capability and, for a deep link, the page and its comments. The pending-changes
   // check is left to the component: it is always stale, so a prefetch would only
   // fetch it twice.
-  loader: ({ context: { queryClient }, params: { projectId }, deps: { page } }) => {
+  // `?page=` is read from the location, not declared as a loader dependency: a
+  // dependency change makes a new route match, which suspends and hides the whole
+  // editor for a moment (dropping focus mid-typing) every time the address names
+  // another page. The editor loads the page it opens itself.
+  loader: ({ context: { queryClient }, params: { projectId }, location }) => {
+    const page = (location?.search as { page?: unknown } | undefined)?.page;
     prefetchScopedPages(queryClient, projectId, { languageId: 'all' });
     prefetchRouteData(queryClient, aiDraftCapabilityQueryOptions(projectId));
     prefetchRouteData(queryClient, projectMembersQueryOptions(projectId));
-    if (page) {
+    if (typeof page === 'string' && page) {
       prefetchRouteData(queryClient, pageQueryOptions(projectId, page));
       prefetchRouteData(queryClient, commentsQueryOptions(projectId, page));
     }
@@ -1127,6 +1147,48 @@ function EditorPage() {
     return configIsSaved();
   };
 
+  // Ctrl/⌘+S, the key writers press out of habit: save the draft now and say so,
+  // instead of the browser offering to save the web page. A failed save already
+  // shows its own banner and status, so nothing more is said here.
+  const saveNow = useEffectEvent(async () => {
+    try {
+      await flushCurrentDraft();
+      setStatus((current) => (current === 'idle' ? 'saved' : current));
+    } catch {
+      // The save banner or the conflict review says what happened.
+    }
+  });
+  // Ctrl/⌘+/ lists the editor's shortcuts (as in Google Docs).
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  useEffect(() => {
+    if (view !== 'content' || !page || !canEditContent) return;
+    // Ctrl/⌘+S runs after the page's own handlers: a dialog that saves its own
+    // form (page settings) marks the key handled. It is matched by the physical
+    // key too, so it works on an Arabic or Russian layout, where the key reads "س".
+    const onSave = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.isComposing || event.defaultPrevented) return;
+      if (event.key.toLowerCase() !== 's' && event.code !== 'KeyS') return;
+      event.preventDefault();
+      if (!event.repeat) void saveNow();
+    };
+    // Ctrl/⌘+/ is matched by the character, since "/" takes Shift on German and
+    // French keyboards, and read before the page body, which would otherwise take
+    // Ctrl+Shift+7 as a numbered list.
+    const onShortcuts = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.isComposing || event.key !== '/') return;
+      if (event.target instanceof Element && event.target.closest('[role="dialog"], [role="alertdialog"]')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (!event.repeat) setShortcutsOpen(true);
+    };
+    window.addEventListener('keydown', onSave);
+    window.addEventListener('keydown', onShortcuts, true);
+    return () => {
+      window.removeEventListener('keydown', onSave);
+      window.removeEventListener('keydown', onShortcuts, true);
+    };
+  }, [view, page, canEditContent]);
+
   const openDraftPreview = async () => {
     if (!configIsSaved()) return;
     // Open synchronously so browsers treat this as a user-initiated popup. We
@@ -1164,6 +1226,35 @@ function EditorPage() {
   const creationInFlight = useRef(false);
   const languageCodeOf = (languageId: string) => orderedLanguages.find((lang) => lang.id === languageId)?.code;
   /** Lock the canvas, save the page being left, then run the switch. */
+  // The address names the page or group the writer opened (`?page=<id>`), as in
+  // Notion and GitBook, so a reload, a copied address or a new tab opens it, not
+  // the site's first page. Written when the writer opens one from the tree or
+  // creates one, once the page being left is saved; an address that changed by
+  // itself (Back, Forward, a link, a Fix) already names its page and is left as
+  // is. It replaces the entry, so Back still leaves the editor, and drops what
+  // belonged to the page before: its section, its scroll position, and a Fix.
+  const addressFor = useRef<string | null>(null);
+  const nameInAddress = (id: string) => {
+    addressFor.current = id;
+  };
+  // Written once that page or group is on screen: writing it earlier, while the
+  // new page loads, took focus away from its title as the writer typed.
+  useEffect(() => {
+    const id = addressFor.current;
+    if (!id || switching || (page?.id !== id && selectedGroup?.id !== id)) return;
+    addressFor.current = null;
+    if (id === pageParam) return;
+    handledPageParam.current = id;
+    void navigate({
+      to: '/app/projects/$projectId/editor',
+      params: { projectId },
+      search: (previous) => ({ ...previous, page: id, fix: undefined, fixTarget: undefined }),
+      state: (previous) => ({ ...previous, editorScroll: undefined, editorKeepScroll: undefined }),
+      replace: true,
+      ignoreBlocker: true,
+      hashScrollIntoView: false,
+    });
+  });
   const beginSwitch = (next: PendingSwitch, action: () => void) => {
     if (transitionInFlight.current) return;
     setPendingSwitch(next);
@@ -1203,6 +1294,7 @@ function EditorPage() {
         onSuccess: (created) => {
           setPendingSwitch({ kind: 'open', id: created.id });
           setSelectedId(created.id);
+          nameInAddress(created.id);
           if (options?.focusTitle) {
             // The page list may be a drawer over the canvas (narrow screens, or
             // the focused Markdown layout): close it so the title that takes
@@ -1256,7 +1348,10 @@ function EditorPage() {
   };
   const openNode = (id: string) => {
     if (id === activeTreeId) return;
-    beginSwitch({ kind: 'open', id }, () => setSelectedId(id));
+    beginSwitch({ kind: 'open', id }, () => {
+      setSelectedId(id);
+      nameInAddress(id);
+    });
   };
   // Follow ?page= deep links (command palette, overview, publish issues) even when
   // the editor is already mounted. The first value seeds the selection; later
@@ -1577,13 +1672,16 @@ function EditorPage() {
       value={title}
     />
   );
-  // Writers start typing the title right after clicking "New page". While the page
-  // is being created the canvas is locked, so keep those keystrokes and hand them to
-  // the new title instead of dropping them.
+  // Writers start typing the title right after clicking "New page". Until the new
+  // page's title takes focus (while the page is created, then loaded), keep those
+  // keystrokes and hand them to the title instead of dropping them. Enter is kept
+  // too: as in the title, it moves on to the body, which gets what follows it.
   const typedWhileCreating = useRef('');
-  const creatingPage = pendingSwitch?.kind === 'create';
+  // After a kept Enter, keys are still kept until the body can take them.
+  const [bodyPending, setBodyPending] = useState(false);
+  const awaitingTitle = pendingSwitch?.kind === 'create' || focusTitleFor !== null || bodyPending;
   useEffect(() => {
-    if (!creatingPage) return;
+    if (!awaitingTitle) return;
     typedWhileCreating.current = '';
     const onKeyDown = (event: KeyboardEvent) => {
       // Only for a new page whose title will take focus, and never for keys meant for
@@ -1593,21 +1691,40 @@ function EditorPage() {
       const target = event.target instanceof HTMLElement ? event.target : null;
       if (target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="combobox"]')) return;
       if (event.key === 'Backspace') typedWhileCreating.current = typedWhileCreating.current.slice(0, -1);
+      else if (event.key === 'Enter') typedWhileCreating.current += '\n';
       else if (event.key.length === 1) typedWhileCreating.current += event.key;
       else return;
       event.preventDefault();
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [creatingPage]);
+  }, [awaitingTitle]);
 
   // A new page opens with its placeholder title selected, so typing replaces it.
   useEffect(() => {
     if (!focusTitleFor || switching || page?.id !== focusTitleFor) return;
     const element = titleRef.current;
     if (!element) return;
+    const buffered = typedWhileCreating.current.trimStart();
+    const enter = buffered.indexOf('\n');
+    const typed = enter < 0 ? buffered : buffered.slice(0, enter);
+    setFocusTitleFor(null);
+    if (enter >= 0) {
+      // Enter was pressed: the title is done, and the body takes what follows,
+      // including keys typed until it is ready (as Enter in the title does).
+      element.value = typed;
+      setTitle(typed);
+      typedWhileCreating.current = buffered.slice(enter + 1);
+      setBodyPending(true);
+      moveTypedToBody(canvasRef.current, () => {
+        const rest = typedWhileCreating.current;
+        typedWhileCreating.current = '';
+        setBodyPending(false);
+        return rest;
+      });
+      return;
+    }
     element.focus();
-    const typed = typedWhileCreating.current.trimStart();
     typedWhileCreating.current = '';
     if (typed) {
       // Write the DOM value and caret synchronously so keys typed from now on land
@@ -1618,7 +1735,6 @@ function EditorPage() {
     } else {
       element.select();
     }
-    setFocusTitleFor(null);
   }, [focusTitleFor, switching, page?.id]);
 
   const openRail = () => {
@@ -1838,6 +1954,13 @@ function EditorPage() {
                   <DropdownMenuItem onClick={() => void runAfterSavingDraft({ action: () => setHistoryForId(page.id) })}>
                     <History /> {t('editor.history.title')}
                   </DropdownMenuItem>
+                  {canEditContent ? (
+                    <DropdownMenuItem onClick={() => setShortcutsOpen(true)}>
+                      <Keyboard />
+                      <span className="flex-1">{t('shortcuts.title')}</span>
+                      <DropdownMenuShortcut>{modShortcut('/')}</DropdownMenuShortcut>
+                    </DropdownMenuItem>
+                  ) : null}
                   <DropdownMenuCheckboxItem
                     checked={effectiveMode === 'wysiwyg'}
                     disabled={effectiveMode === 'markdown'}
@@ -2155,6 +2278,7 @@ function EditorPage() {
               <PageTrashButton branchId={activeBranchId ?? undefined} canEdit={canEditContent} languages={orderedLanguages} projectId={projectId} />
             </div>
           )}
+          <EditorShortcutsDialog onOpenChange={setShortcutsOpen} open={shortcutsOpen} />
           {historyForId && page?.id === historyForId ? (
             <Suspense fallback={null}>
               <PageHistoryPanel
@@ -2442,6 +2566,11 @@ function EditorPage() {
                   <DropdownMenuContent align="end" className="w-64">
                     <DropdownMenuItem onClick={() => void runAfterSavingDraft({ action: () => setHistoryForId(page.id) })}>
                       <History /> {t('editor.history.title')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShortcutsOpen(true)}>
+                      <Keyboard />
+                      <span className="flex-1">{t('shortcuts.title')}</span>
+                      <DropdownMenuShortcut>{modShortcut('/')}</DropdownMenuShortcut>
                     </DropdownMenuItem>
                     <DropdownMenuCheckboxItem
                       checked={effectiveMode === 'wysiwyg'}
