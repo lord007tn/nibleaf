@@ -1,4 +1,3 @@
-import { markdownParseBudget } from '@nibleaf/shared/page-limits';
 import type { LanguageFn } from 'highlight.js';
 import type { LazyHighlightLanguage } from '@/lib/highlight-languages';
 import { HYDRATION_MODULE_ATTRIBUTE, type HydrationModule, hydrationModule, loadServerRenderedModules } from '@/lib/hydration-modules';
@@ -56,9 +55,15 @@ export const articleRendererModules = (content: string) =>
  *  the article's island, which retries and says so inline (not the route's
  *  error page). */
 export const loadArticleRenderer = async (source: string): Promise<void> => {
-  const budget = typeof source === 'string' ? markdownParseBudget(source) : null;
+  const article = articleMarkdownModule.load().catch(() => undefined);
+  // Only article navigation needs the budget scanner. This module also loads
+  // with the eager page shell, before the article renderer is requested.
+  const budget =
+    typeof source === 'string'
+      ? await import('@nibleaf/shared/page-limits').then(({ markdownParseBudget }) => markdownParseBudget(source)).catch(() => null)
+      : null;
   if (!budget || budget.whole) {
-    await articleMarkdownModule.load().catch(() => undefined);
+    await article;
     return;
   }
   // What the renderer reads: blocks over the parse budget are plain text.
@@ -78,11 +83,7 @@ export const loadArticleRenderer = async (source: string): Promise<void> => {
       // A failed download is the article island's to retry.
     }
   })();
-  await Promise.all([
-    ...[articleMarkdownModule, ...articleRendererModules(content)].map((module) => module.load().catch(() => undefined)),
-    decided,
-    grammars,
-  ]);
+  await Promise.all([article, ...articleRendererModules(content).map((module) => module.load().catch(() => undefined)), decided, grammars]);
 };
 
 /** Loads the reader modules whose markup is in the server HTML under `root`

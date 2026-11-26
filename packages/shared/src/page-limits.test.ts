@@ -118,6 +118,12 @@ describe('markdownParseBudget', () => {
     expect(markdownParseBudget(`[^r]: ${half}\n${half}`).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
   });
 
+  it('recognizes escaped angle destinations and rejects unfinished ones', () => {
+    const definitions = Array.from({ length: 600 }, (_, index) => `[r${index}]: </topic/\\<name\\> ${index}> "Title"`).join('\n');
+    expect(markdownParseBudget(definitions).overflow).toBeNull();
+    expect(markdownParseBudget(definitions.replaceAll('> "Title"', '\\> "Title"')).overflow).toMatchObject({ limit: 'syntaxMarkers', line: 1 });
+  });
+
   it('reads no-leading-pipe GFM tables whose rows start with links, inline HTML or math', () => {
     const rows = Array.from({ length: 256 }, (_, i) => {
       const firstCell = [`[\`E${i}\`](/errors/${i})`, `<span>E${i}</span>`, `$x_${i}$`][i % 3];

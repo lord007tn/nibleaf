@@ -91,7 +91,6 @@ const START_SPACE = /^[ \t]+/;
 const REFERENCE_LABEL = /^\[((?:\\[\\[\]]|[^\\[\]]){1,999})\]:[ \t]*/u;
 const FOOTNOTE_LABEL = /^\[\^(?:\\[\\[\]]|[^\\[\]\t ]){1,999}\]:/u;
 const REFERENCE_TITLE = /^(?:[ \t]+(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\((?:\\.|[^()\\])*\)))?[ \t]*$/u;
-const ANGLE_DESTINATION = /<(?:\\[<>\\]|[^<>\\]|\\(?![<>\\]))*>/y;
 const DESTINATION_STOP = /[ \t<>\p{Cc}]/u;
 
 /** Recognize a complete single-line definition before treating its resource as literal. */
@@ -100,9 +99,13 @@ const isReferenceDefinition = (text: string): boolean => {
   if (!label?.[1]?.trim()) return false;
   const start = label[0].length;
   if (text[start] === '<') {
-    ANGLE_DESTINATION.lastIndex = start;
-    const destination = ANGLE_DESTINATION.exec(text);
-    return Boolean(destination && REFERENCE_TITLE.test(text.slice(ANGLE_DESTINATION.lastIndex)));
+    for (let end = start + 1; end < text.length; end++) {
+      const char = text[end];
+      if (char === '<') return false;
+      if (char === '>') return REFERENCE_TITLE.test(text.slice(end + 1));
+      if (char === '\\' && /[<>\\]/.test(text[end + 1] ?? '')) end++;
+    }
+    return false;
   }
   let depth = 0;
   let end = start;
