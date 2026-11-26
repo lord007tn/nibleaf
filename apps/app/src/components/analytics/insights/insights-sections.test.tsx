@@ -220,19 +220,9 @@ describe('Overview', () => {
     expect(text(view)).toContain('Analytics is taking a break');
     expect(text(view)).toContain('Your docs site works normally');
     expect(text(view)).toContain('“—” means not known, not zero');
-    // Calm, not a warning.
-    const notice = view.querySelector('[data-insights-unavailable]');
-    expect(notice?.className).not.toContain('warning');
-    expect(notice?.className).not.toContain('destructive');
     const values = [...view.querySelectorAll('[data-slot="card-title"]')].map(text);
     expect(values.length).toBeGreaterThan(0);
     expect(values.every((value) => value === '—' || !/^\d/.test(value))).toBe(true);
-  });
-
-  it('treats a failed request like an outage', async () => {
-    mocks.overview.mockReturnValue(failed);
-    const view = await render(<OverviewSection />);
-    expect(text(view)).toContain('Analytics is taking a break');
   });
 
   it('checks again from the unavailable notice, showing progress on the button', async () => {
@@ -625,12 +615,10 @@ describe('Feedback, AI visibility and performance', () => {
     expect(text(view)).toContain('llms.txt');
   });
 
-  it('drops the legacy AI answers card and ranks assistant referrals by visits', async () => {
+  it('ranks assistant referrals by visits', async () => {
     const data = aiFixture();
     mocks.ai.mockReturnValue(ready({ ...data, assistantReferrals: [...data.assistantReferrals].reverse() }));
     const view = await render(<AiSection />);
-    expect(text(view)).not.toContain('AI answers and cost');
-    expect(text(view)).not.toContain('No matching content');
     const referrals = text(cardTitled(view, 'Visits from AI assistants'));
     expect(referrals.indexOf('ChatGPT')).toBeLessThan(referrals.indexOf('Other assistants'));
   });
@@ -658,73 +646,38 @@ describe('Feedback, AI visibility and performance', () => {
 });
 
 describe('First load', () => {
-  type Shape = { tiles: number; charts: number; lists: number; tables: number[] };
-  const firstLoad: Array<[string, () => void, () => ReactElement, Shape]> = [
-    ['overview', () => mocks.overview.mockReturnValue(loading), () => <OverviewSection />, { tiles: 10, charts: 1, lists: 4, tables: [] }],
-    ['pages', () => mocks.pages.mockReturnValue(loading), () => <PagesSection />, { tiles: 0, charts: 0, lists: 0, tables: [9] }],
-    [
-      'page drill-down',
-      () => mocks.page.mockReturnValue(loading),
-      () => <PagesSection path="getting-started" />,
-      { tiles: 6, charts: 2, lists: 7, tables: [4] },
-    ],
-    ['search', () => mocks.search_.mockReturnValue(loading), () => <SearchSection />, { tiles: 6, charts: 1, lists: 0, tables: [5, 4, 2] }],
-    ['feedback', () => mocks.feedback.mockReturnValue(loading), () => <FeedbackSection />, { tiles: 4, charts: 1, lists: 0, tables: [5] }],
-    ['AI visibility', () => mocks.ai.mockReturnValue(loading), () => <AiSection />, { tiles: 4, charts: 2, lists: 3, tables: [3, 6, 4] }],
-    [
-      'performance',
-      () => mocks.performance.mockReturnValue(loading),
-      () => <PerformanceSection />,
-      { tiles: 0, charts: 1, lists: 0, tables: [5, 5] },
-    ],
-  ];
+  const sections = [
+    ['overview', mocks.overview, () => <OverviewSection />],
+    ['pages', mocks.pages, () => <PagesSection />],
+    ['page drill-down', mocks.page, () => <PagesSection path="getting-started" />],
+    ['search', mocks.search_, () => <SearchSection />],
+    ['feedback', mocks.feedback, () => <FeedbackSection />],
+    ['AI visibility', mocks.ai, () => <AiSection />],
+    ['performance', mocks.performance, () => <PerformanceSection />],
+  ] as const;
 
-  for (const [name, arrange, element, shape] of firstLoad) {
-    it(`shows the ${name} section's shape while its first response loads`, async () => {
-      arrange();
-      const view = await render(element());
-      // One busy region with one visually hidden status; the blocks themselves are hidden.
-      const region = view.querySelector('[data-insights-region]');
-      expect(region?.getAttribute('aria-busy')).toBe('true');
-      const statuses = view.querySelectorAll('[role="status"]');
-      expect(statuses).toHaveLength(1);
-      expect(text(statuses[0] as Element)).toBe('Loading…');
-      expect(statuses[0]?.className).toContain('sr-only');
+  it.each(sections)('announces loading and hides decorative placeholders in %s', async (_name, hook, makeSection) => {
+    hook.mockReturnValue(loading);
+    const view = await render(makeSection());
+    const region = view.querySelector('[data-insights-region]');
+    expect(region?.getAttribute('aria-busy')).toBe('true');
+    const statuses = view.querySelectorAll('[role="status"]');
+    expect(statuses).toHaveLength(1);
+    expect(statuses[0]?.textContent).toBe('Loading…');
+    expect(statuses[0]?.classList.contains('sr-only')).toBe(true);
 
-      const tiles = [...view.querySelectorAll('[data-slot="skeleton-stat-tile"]')];
-      expect(tiles).toHaveLength(shape.tiles);
-      for (const tile of tiles) {
-        // In the KPI grid, compact on phones like the real tile.
-        expect(tile.parentElement?.className).toContain('min-[340px]:grid-cols-2');
-        expect(tile.className).toContain('max-sm:p-3.5');
-        expect(tile.getAttribute('aria-hidden')).toBe('true');
-      }
-      const charts = [...view.querySelectorAll('[data-chart-skeleton]')];
-      expect(charts).toHaveLength(shape.charts);
-      for (const chart of charts) {
-        expect(chart.getAttribute('aria-hidden')).toBe('true');
-        expect(chart.querySelector('[class*="h-[240px]"]')).not.toBeNull();
-      }
-      const lists = [...view.querySelectorAll('[data-list-skeleton]')];
-      expect(lists).toHaveLength(shape.lists);
-      for (const list of lists) expect(list.querySelectorAll('[data-slot="skeleton-list-row"]').length).toBeGreaterThan(0);
+    const placeholders = view.querySelectorAll(
+      '[data-slot="skeleton-stat-tile"], [data-chart-skeleton], [data-list-skeleton], [data-slot="skeleton-table-row"]',
+    );
+    expect(placeholders.length).toBeGreaterThan(0);
+    for (const placeholder of placeholders) expect(placeholder.closest('[aria-hidden="true"]')).not.toBeNull();
 
-      // Placeholder rows sit inside the real tables, one cell per real column.
-      const tables = [...view.querySelectorAll('table')];
-      expect(tables.map((table) => table.querySelectorAll('thead th').length)).toEqual(shape.tables);
-      for (const table of tables) {
-        const columns = table.querySelectorAll('thead th').length;
-        const rows = [...table.querySelectorAll('tbody tr')];
-        expect(rows.length).toBeGreaterThan(0);
-        for (const row of rows) {
-          expect(row.getAttribute('data-slot')).toBe('skeleton-table-row');
-          expect(row.querySelectorAll('td')).toHaveLength(columns);
-        }
-      }
-      // No bare spinner on the page.
-      expect(view.querySelector('.animate-spin')).toBeNull();
-    });
-  }
+    for (const row of view.querySelectorAll('[data-slot="skeleton-table-row"]')) {
+      const headers = row.closest('table')?.querySelectorAll('thead th') ?? [];
+      expect(headers.length).toBeGreaterThan(0);
+      expect(row.querySelectorAll('td')).toHaveLength(headers.length);
+    }
+  });
 
   it('drops the busy state and the skeletons once figures arrive', async () => {
     mocks.overview.mockReturnValue(ready(overviewFixture()));

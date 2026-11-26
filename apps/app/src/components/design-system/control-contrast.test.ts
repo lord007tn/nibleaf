@@ -41,8 +41,6 @@ describe('checkbox and radio boundaries', () => {
     for (const surface of ['background', 'card', 'popover']) {
       expect(contrast(boundary, token(scope, surface)), `${scope} ${surface}`).toBeGreaterThanOrEqual(3);
     }
-    // The old border did not: keep the reason this exists visible.
-    expect(contrast(token(scope, 'input'), token(scope, 'card'))).toBeLessThan(3);
   });
 
   it.each([':root', '.dark'])('keeps a ticked or chosen control at 3:1 in %s', (scope) => {
@@ -50,5 +48,38 @@ describe('checkbox and radio boundaries', () => {
       expect(contrast(token(scope, 'primary'), token(scope, surface)), `${scope} ${surface}`).toBeGreaterThanOrEqual(3);
     }
     expect(contrast(token(scope, 'primary-foreground'), token(scope, 'primary'))).toBeGreaterThanOrEqual(3);
+  });
+});
+
+// WCAG 1.4.11 again: an empty text field, select or OTP slot is only its
+// boundary too, and so is a switch that is off in light mode (its thumb is the
+// page colour). They draw it with --input-edge, which must reach 3:1 against
+// every surface a form sits on (page, cards, dialogs and muted panels).
+describe('text field boundaries', () => {
+  it.each(['input.tsx', 'textarea.tsx', 'select.tsx', 'input-group.tsx', 'input-otp.tsx'])('%s draws its border with --input-edge', (file) => {
+    expect(source(file)).toContain('border border-input-edge');
+  });
+
+  it.each(['input.tsx', 'textarea.tsx', 'select.tsx'])(
+    '%s keeps a full-strength error edge in dark mode, never fainter than a resting one',
+    (file) => {
+      expect(source(file)).not.toContain('dark:aria-invalid:border-destructive/50');
+    },
+  );
+
+  it('draws an unchecked switch track with --input-edge in light mode', () => {
+    expect(source('switch.tsx')).toContain('data-unchecked:bg-input-edge');
+  });
+
+  it.each([':root', '.dark'])('meets 3:1 against the page, cards, dialogs and muted panels in %s', (scope) => {
+    const boundary = token(scope, 'input-edge');
+    for (const surface of ['background', 'card', 'popover', 'muted']) {
+      expect(contrast(boundary, token(scope, surface)), `${scope} ${surface}`).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it.each([':root', '.dark'])('keeps the old quiet --input tone below 3:1 in %s, so fields must not draw their edge with it', (scope) => {
+    // --input stays the fill tone (dark field fills, the command search box).
+    expect(contrast(token(scope, 'input'), token(scope, 'card'))).toBeLessThan(3);
   });
 });

@@ -98,13 +98,6 @@ const lowlight = createLowlight(common);
 
 const fenceParsers = new WeakSet<object>();
 
-/** A quoted indented code block can contain literal fence markers (#607). */
-function quotedCodeFenceLength(code: string): number {
-  let length = 3;
-  for (const [closer] of code.matchAll(/^ {0,3}`{3,}(?=[ \t]*$)/gm)) length = Math.max(length, closer.trimStart().length + 1);
-  return length;
-}
-
 const replaceFenceLanguage = (opening: string, language: string): string => {
   const match = /^(\s*(?:`{3,}|~{3,}))(\s*)(\S*)?(.*)$/.exec(opening);
   if (!match) return opening;
@@ -240,10 +233,7 @@ const CodeBlock = CodeBlockLowlight.extend({
             return;
           }
           const originalLanguage = String(node.attrs.sourceFenceLanguage ?? '');
-          const length = node.attrs.sourceFenceQuoteTab === 'indented' ? quotedCodeFenceLength(node.textContent) : 3;
-          let open = `${'`'.repeat(length)}${language}`;
-          if (sourceOpen) open = language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language);
-          // `output`, `delim` and `closed`: see LinearMarkdownSerializerState (markdown-output.ts).
+          const open = sourceOpen ? (language === originalLanguage ? sourceOpen : replaceFenceLanguage(sourceOpen, language)) : `\`\`\`${language}`;
           writeFence(fenceState, node, parent, index, open);
         },
         parse: {

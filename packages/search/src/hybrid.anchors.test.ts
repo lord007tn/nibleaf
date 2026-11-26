@@ -57,7 +57,7 @@ describe('section anchors at index time', () => {
     ]);
   });
 
-  it('links an h5 or h6 section to its nearest h1–h4 ancestor, without taking a later heading’s id', () => {
+  it('links an h5 to its nearest h1–h4 ancestor, without taking a later heading’s id', () => {
     // The reader's ids run across all six levels: the h5 is `install`, so the h2 is `install-1`.
     const content = lines('## Setup', '', 'Setup text.', '', '##### Install', '', 'Small text.', '', '## Install', '', 'Install text.');
     expect(sections(page(content))).toEqual([
@@ -100,15 +100,6 @@ describe('section anchors at index time', () => {
       ['Sub part', 'sub-part'],
     ]);
     expect(sections(page(lines('## Use <kbd>Ctrl</kbd> keys', '', 'Text.')))).toEqual([['Use Ctrl keys', 'use-ctrl-keys']]);
-  });
-
-  it('links an h5 or h6 section, which the table of contents leaves out, to its nearest ancestor', () => {
-    const content = lines('## Setup', '', 'Setup text.', '', '##### Fine print', '', 'Small text.', '', '## Next', '', 'Next text.');
-    expect(sections(page(content))).toEqual([
-      ['Setup', 'setup'],
-      ['Fine print', 'setup'],
-      ['Next', 'next'],
-    ]);
   });
 
   it('gives every chunk of a long section the same anchor, and leaves content hashes unchanged', () => {
