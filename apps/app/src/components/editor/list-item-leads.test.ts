@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { Editor } from '@tiptap/core';
+import { setImmediate } from 'node:timers/promises';
+import { createDocument, Editor } from '@tiptap/core';
 import { undoDepth } from '@tiptap/pm/history';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { AllSelection } from '@tiptap/pm/state';
@@ -8,6 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { Markdown } from '@/components/markdown';
 import { textChange } from './__fixtures__/list-item-leads';
+import mainMarkFailures from './__fixtures__/overlapping-marks-main.json';
 import { applyCorpusEdits, type DifferentialEditor, serializerCorpus } from './__fixtures__/serializer-corpus';
 import { markdownToEmit } from './editor-change-origin';
 import { buildEditorExtensions, getMarkdown, seedMarkdown } from './tiptap-editor';
@@ -71,6 +73,73 @@ it.each(['a b c d e', 'أ ب ت ث ج'])('preserves %s when italic starts an ove
     expect(getMarkdown(open(saved))).toBe(saved);
   }
 });
+
+it('round-trips generated overlapping strike, bold and italic ranges in English and Arabic', async () => {
+  const ranges = Array.from({ length: 5 }, (_, start) =>
+    Array.from({ length: 5 - start }, (_, offset) => ({ start, end: start + offset + 1 })),
+  ).flat();
+  const contexts = [
+    ['plain', ''],
+    ['after a paragraph', 'Intro\n\n'],
+    ['list item', '- '],
+    ['quote', '> '],
+  ] as const;
+  expect(mainMarkFailures.contexts).toEqual(contexts.map(([name]) => name));
+  // These named cases also fail on main at the recorded revision in both languages.
+  // Each allowance is main's number of literal delimiters in that context.
+  const allowances = new Map(mainMarkFailures.groups.flatMap(({ ranges, maxAdded }) => ranges.map((name) => [name, maxAdded] as const)));
+  const failures: unknown[] = [];
+  let checked = 0;
+  let mainFailuresChecked = 0;
+  for (const source of ['a b c d e', 'أ ب ت ث ج']) {
+    for (const [contextIndex, [context, prefix]] of contexts.entries()) {
+      const editor = open(`${prefix}${source}`);
+      const expected = editor.state.doc.textContent;
+      const at = find(editor, source);
+      const { parser, serializer } = (
+        editor.storage as unknown as {
+          markdown: { parser: { parse(source: string): string }; serializer: { serialize(doc: PMNode): string } };
+        }
+      ).markdown;
+      for (const strike of ranges) {
+        for (const bold of ranges) {
+          for (const italic of ranges) {
+            const [first, second, third] = [strike, bold, italic].sort((left, right) => left.start - right.start);
+            // All three ranges must form one overlap, including an overlap connected by the middle range.
+            if (!(first && second && third) || second.start >= first.end || third.start >= Math.max(first.end, second.end)) continue;
+            // Use the parser and serializer from load/save without mounting each generated edit in the editor view.
+            const tr = editor.state.tr;
+            for (const [name, { start, end }] of [
+              ['strike', strike],
+              ['bold', bold],
+              ['italic', italic],
+            ] as const) {
+              tr.addMark(at + 2 * start, at + 2 * end - 1, editor.schema.mark(name));
+            }
+            const saved = serializer.serialize(tr.doc);
+            const reloaded = createDocument(parser.parse(saved), editor.schema);
+            const savedAgain = serializer.serialize(reloaded);
+            checked++;
+            // A case name is the three half-open word ranges in strike, bold, italic order.
+            const name = [strike, bold, italic].map(({ start, end }) => `${start}-${end}`).join('/');
+            const maxAdded = allowances.get(name)?.[contextIndex];
+            let valid = reloaded.textContent === expected && savedAgain === saved;
+            if (maxAdded != null) {
+              mainFailuresChecked++;
+              valid = reloaded.textContent.replace(/[*~]/g, '') === expected && reloaded.textContent.length - expected.length <= maxAdded;
+            }
+            if (!valid) failures.push({ source, context, name, maxAdded, saved, reloaded: reloaded.textContent, savedAgain });
+            // Let jsdom release the parsed documents between batches.
+            if (checked % 100 === 0) await setImmediate();
+          }
+        }
+      }
+    }
+  }
+  expect(checked).toBe(18_600);
+  expect(mainFailuresChecked).toBe(9260);
+  expect(failures.slice(0, 5), `${failures.length} overlapping mark cases failed`).toEqual([]);
+}, 300_000);
 
 it('preserves the strike and bold overlap when an independent word is bold and italic', () => {
   const editor = open('a b c d e f');
