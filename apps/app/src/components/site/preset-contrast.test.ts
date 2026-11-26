@@ -870,6 +870,8 @@ describe('pre-v1 dark mode with a dark brand (#744)', () => {
     ]);
     expect(now).toEqual(shipped);
     expect(projectThemeCss({ theme: { preset: 'harbor' } } as never)).toContain('--input-edge:');
+    // Pre-v1 sites read the design-system tokens directly: they keep their field edge too.
+    expect(projectThemeCss({} as never)).toContain('--input-edge:var(--input)');
   });
 });
 

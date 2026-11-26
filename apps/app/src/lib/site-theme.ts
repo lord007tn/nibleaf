@@ -104,6 +104,8 @@ const legacyTokenDeclarations = (accent: string, codeAccent: string): string =>
     '--theme-muted:var(--muted)',
     '--theme-muted-foreground:var(--muted-foreground)',
     '--theme-border:var(--border)',
+    // Pre-v1 sites keep their field edge too: the dashboard's 3:1 --input-edge is not theirs (#929).
+    '--input-edge:var(--input)',
     `--theme-accent:${accent}`,
     '--theme-accent-foreground:var(--primary-foreground)',
     `--theme-focus:${accent}`,

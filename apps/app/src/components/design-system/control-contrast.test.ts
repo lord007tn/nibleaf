@@ -60,6 +60,13 @@ describe('text field boundaries', () => {
     expect(source(file)).toContain('border border-input-edge');
   });
 
+  it.each(['input.tsx', 'textarea.tsx', 'select.tsx'])(
+    '%s keeps a full-strength error edge in dark mode, never fainter than a resting one',
+    (file) => {
+      expect(source(file)).not.toContain('dark:aria-invalid:border-destructive/50');
+    },
+  );
+
   it('draws an unchecked switch track with --input-edge in light mode', () => {
     expect(source('switch.tsx')).toContain('data-unchecked:bg-input-edge');
   });
