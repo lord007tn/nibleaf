@@ -303,6 +303,18 @@ describe('large pages through both exports and the reader (#917 re-check)', () =
     expect(normalizePublicMarkdownContent(source)).toBe(expected.replace('1. >~~~md', '1. &gt;~~~md'));
   });
 
+  it.each([
+    ['many stripped lines', `{/*\n${'comment\n'.repeat(1027)}*/}\n\n`, '', true],
+    ['a large stripped comment', `{/* ${'a'.repeat(65_536)} */}\n\n`, '', false],
+    ['a marker assembled by normalization after the callout', '', 'nibleafcallout{/* note */}0m0x', false],
+  ])('quotes a reader-visible callout with %s', (_name, before, after, publicStripsPrefix) => {
+    const source = `${before}${PAGE}${after}`;
+    const quotedSource = source.replace('<Note>ReviewText</Note>', '> ReviewText');
+    expect(portablePublicMdxMarkdown(source)).toBe(quotedSource);
+    const publicSource = publicStripsPrefix ? quotedSource.slice(before.length) : quotedSource;
+    expect(normalizePublicMarkdownContent(source)).toBe(publicSource.replace('1. >~~~md', '1. &gt;~~~md').replace(/\n+$/, ''));
+  });
+
   it('exports a 260 KB page without exhausting the stack, quoting the callout the reader shows', () => {
     const source = `${PAGE}${'a\n'.repeat(130_000)}`;
     expect(source.length).toBeGreaterThan(260_000);

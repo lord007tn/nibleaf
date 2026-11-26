@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { DOCUMENTATION_COMPONENT_CONTRACT } from '@nibleaf/shared/documentation-component-contract';
+import { READER_TAGS_WITHOUT_MARKDOWN_CHILDREN } from '@nibleaf/shared/documentation-component-contract';
 import {
   DOCUMENTATION_COMPONENTS,
   type DocumentationComponentAttribute,
@@ -141,7 +141,7 @@ it('keeps the export child-rendering contract aligned with the React reader map'
   const folder = `<Folder name="folder">\n\n${note}\n\n</Folder>`;
   const fileHtml = renderRich(file);
   expect(fileHtml).toContain('file.txt');
-  expect(fileHtml.includes('ReviewText')).toBe(!DOCUMENTATION_COMPONENT_CONTRACT.File.readerDropsChildren);
+  expect(fileHtml.includes('ReviewText')).toBe(!READER_TAGS_WITHOUT_MARKDOWN_CHILDREN.includes('file'));
   expect(renderRich(folder)).toContain('ReviewText');
 });
 
