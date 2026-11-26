@@ -113,7 +113,7 @@ function AnalyticsSetupNotice({ projectId }: { projectId: string }) {
 
 /** The availability notice for a section: unavailable, partial, or the analytics-off notice. */
 export function InsightsStatus({ state, projectId, retry }: { state: InsightsState; projectId: string; retry?: InsightsRetry }) {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   if (state.availability === 'unavailable') {
     // An outage of the analytics store is not the owner's problem to fix: say so
     // calmly, in neutral colours, and let them check again.

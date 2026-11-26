@@ -34,7 +34,12 @@ describe('Analytics with detailed analytics off (WORKSPACE-01)', () => {
   const draw = (projectId: string, state: InsightsState) =>
     act(async () =>
       root.render(
-        <AnalyticsLayout filters={{ range: '30d', compare: 'previous' } as never} onFiltersChange={() => undefined} projectId={projectId} timezone="UTC">
+        <AnalyticsLayout
+          filters={{ range: '30d', compare: 'previous' } as never}
+          onFiltersChange={() => undefined}
+          projectId={projectId}
+          timezone="UTC"
+        >
           <InsightsStatus projectId={projectId} state={state} />
         </AnalyticsLayout>,
       ),

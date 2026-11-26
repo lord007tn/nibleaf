@@ -5,7 +5,11 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // Recharts draws nothing measurable in jsdom; record what the chart asks it to draw instead.
-const drawn = vi.hoisted(() => ({ areas: [] as Record<string, unknown>[], lines: [] as Record<string, unknown>[], yAxes: [] as Record<string, unknown>[] }));
+const drawn = vi.hoisted(() => ({
+  areas: [] as Record<string, unknown>[],
+  lines: [] as Record<string, unknown>[],
+  yAxes: [] as Record<string, unknown>[],
+}));
 vi.mock('recharts', () => {
   const pass = ({ children }: { children?: ReactNode }) => <>{children}</>;
   return {
@@ -53,9 +57,7 @@ const series = [
 const rows = (peak: number) =>
   ['2026-11-01', '2026-11-02', '2026-11-03'].map((bucket, index) => ({ bucket, views: index === 1 ? peak : 1, previous: 1 }));
 const render = (peak: number, valueKind?: 'count' | 'ms' | 'usd') =>
-  act(async () =>
-    root.render(<TrendChart empty="none" granularity="day" rows={rows(peak)} series={series} summary="s" valueKind={valueKind} />),
-  );
+  act(async () => root.render(<TrendChart empty="none" granularity="day" rows={rows(peak)} series={series} summary="s" valueKind={valueKind} />));
 
 describe('TrendChart draws without motion or layout jumps (WORKSPACE-14)', () => {
   it('never animates its areas or lines, so a remount or a new range never starts from a blank plot', async () => {

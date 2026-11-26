@@ -137,13 +137,7 @@ export function TrendChart({
           </defs>
           <CartesianGrid vertical={false} />
           <XAxis axisLine={false} dataKey={xKey} minTickGap={28} tickFormatter={tick} tickLine={false} tickMargin={8} />
-          <YAxis
-            allowDecimals={valueKind === 'usd'}
-            axisLine={false}
-            tickFormatter={axisTick}
-            tickLine={false}
-            width={VALUE_AXIS_WIDTH[valueKind]}
-          />
+          <YAxis allowDecimals={valueKind === 'usd'} axisLine={false} tickFormatter={axisTick} tickLine={false} width={VALUE_AXIS_WIDTH[valueKind]} />
           <ChartTooltip
             content={
               <ChartTooltipContent
