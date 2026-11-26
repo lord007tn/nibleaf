@@ -8,7 +8,6 @@ import { PageLoader } from '@/components/page-loader';
 import { getSessionFn } from '@/functions/session';
 import { switcherQueryOptions } from '@/hooks/api/organization-query-options';
 import { prefetchRouteData } from '@/integrations/tanstack-query/query-client';
-import { syncDashboardSession } from '@/integrations/tanstack-query/session-cache';
 import { useDashboardIntentPreload } from '@/lib/dashboard-intent-preload';
 import { loadRouteDashboardLocale } from '@/lib/dashboard-locale-route';
 import { useSession } from '@/services/auth-client';
@@ -21,6 +20,9 @@ export const Route = createFileRoute('/app')({
   beforeLoad: async ({ context: { queryClient }, location }) => {
     const routeSession = await getSessionFn();
     if (typeof window !== 'undefined') {
+      // Imported lazily: beforeLoad is in the router's eager chunk, and the
+      // session cache (with useMutation) would otherwise load on every docs page.
+      const { syncDashboardSession } = await import('@/integrations/tanstack-query/session-cache');
       syncDashboardSession(queryClient, routeSession?.user.id ?? null);
     }
     if (!routeSession) {

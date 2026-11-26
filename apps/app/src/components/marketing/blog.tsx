@@ -153,7 +153,7 @@ export function BlogIndexPage({ entries, stars = 0 }: { entries: BlogEntry[]; st
                 {t('blog.searchLabel')}
               </label>
               <input
-                className="h-10 w-full rounded-md border border-input bg-transparent ps-9 pe-3 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                className="h-10 w-full rounded-md border border-input-edge bg-transparent ps-9 pe-3 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
                 id="blog-search"
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder={t('blog.searchPlaceholder')}

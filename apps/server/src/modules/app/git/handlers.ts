@@ -1,4 +1,3 @@
-import { prisma } from '@nibleaf/database';
 import { MemberRole } from '@nibleaf/shared/constants';
 import { roleAtLeast } from '@nibleaf/shared/rbac';
 import { gitAuthorizationBody, gitConflictResolutionBody, gitConnectionBody, gitOperationBody } from '@nibleaf/validators';
@@ -6,6 +5,7 @@ import { Hono } from 'hono';
 import {
   authorizeGitHub,
   connectGitHub,
+  disconnectGitHub,
   getGitWorkspaceStatus,
   queueGitOperation,
   resolveGitConflict,
@@ -36,19 +36,7 @@ const app = new Hono<HonoEnv>()
     return ctx.json({ data: result }, 200);
   })
   .delete('/connection', ...routes.disconnect, async (ctx) => {
-    const projectId = ctx.req.param('projectId') ?? '';
-    const connection = await prisma.gitConnection.findUnique({ where: { projectId } });
-    if (connection) {
-      await prisma.gitAuditEvent.create({
-        data: { connectionId: connection.id, projectId, actorUserId: getContextUserOrThrow().id, action: 'connection.disconnected' },
-      });
-      // Audit lives under the connection and is removed by cascade. The
-      // sensitive action is also mirrored to the durable platform event table.
-      await prisma.platformEvent.create({
-        data: { type: 'git_connection_disconnected', userId: getContextUserOrThrow().id, projectId, metadata: { repository: connection.repository } },
-      });
-      await prisma.gitConnection.delete({ where: { id: connection.id } });
-    }
+    await disconnectGitHub(ctx.req.param('projectId') ?? '', getContextUserOrThrow().id);
     return ctx.json({ data: { disconnected: true } }, 200);
   })
   .post('/operations', ...routes.operation, validator('json', gitOperationBody), async (ctx) => {

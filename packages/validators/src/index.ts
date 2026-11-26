@@ -1454,6 +1454,7 @@ const gitBranchName = z
     'Use a valid Git branch name.',
   );
 
+/** The Git connection save (`PUT /git/connection`). Tolerates unknown keys (rolling deploys, see below). */
 export const gitConnectionBody = z
   .object({
     repository: z
@@ -1475,7 +1476,8 @@ export const gitConnectionBody = z
      *  save it never saw (#876). Left out, no revision is checked. */
     expectedRevision: z.number().int().min(1).max(2_147_483_647).nullable().optional(),
   })
-  .strict()
+  // Not strict: unknown keys are stripped, so an API one release behind ignores a field a newer dashboard sends
+  // instead of refusing the save (#915; operations/runbook-rolling-deploys.md §6.1).
   .refine((body) => body.baseBranch !== body.headBranch, { message: 'Use a dedicated authoring branch.', path: ['headBranch'] });
 export type GitConnectionBody = z.infer<typeof gitConnectionBody>;
 

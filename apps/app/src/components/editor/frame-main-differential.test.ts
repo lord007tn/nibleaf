@@ -6,6 +6,7 @@ import { DOCUMENTATION_COMPONENTS } from '@nibleaf/shared/documentation-componen
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
 import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
+import { attributeEditHolds, listItemLeadSources, quotedMarkSources } from './__fixtures__/list-item-leads';
 import { serializerCorpus } from './__fixtures__/serializer-corpus';
 import { replaceOpeningAttribute, SUPPORTED_MDX_COMPONENTS } from './extensions/mdx-roundtrip';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
@@ -266,6 +267,14 @@ function seededPages(): SeededPage[] {
 }
 
 const seeded = seededPages();
+/** #604: the corpus pages with a list item led by a quote, heading or list, and those whose
+ *  quoted marks main doubled (QUOTED_MARK_PAGES), checked against main in
+ *  list-item-leads-main.test.ts. */
+const leadSources = listItemLeadSources(true);
+const quotedSources = quotedMarkSources();
+const isNamed = (page: string) => leadSources.has(page) || quotedSources.has(page);
+/** The quoted mark pages whose saves here held a doubled mark on main: all but page 898, whose doubled mark only the serializer corpus edits write. */
+const QUOTED_MARK_CHANGES = 7;
 const pages: Array<{ page: string; key: string; seeded?: SeededPage; corpusIndex?: number }> = [
   ...seeded.map((seededPage) => ({ page: seededPage.page, key: seededPage.key, seeded: seededPage })),
   ...serializerCorpus()
@@ -294,6 +303,15 @@ describe('the generated pages cover every component but Frame', () => {
 describe('pages without a Frame read as on main', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => editor.destroy());
+  /** Every node's attributes in `markdown`, loaded. */
+  const attributesOf = (markdown: string): Array<Record<string, unknown>> => {
+    editor.commands.setContent(markdown, { emitUpdate: false });
+    const all: Array<Record<string, unknown>> = [];
+    editor.state.doc.descendants((node) => {
+      all.push(node.attrs);
+    });
+    return all;
+  };
 
   /** The page's nodes, its save, and its save after the first node with `key` has it
    *  set to `Edited`; and whether a node holds an attribute value with a blank line. */
@@ -329,7 +347,7 @@ describe('pages without a Frame read as on main', () => {
     return { digest: digestOf({ nodes, saved, edited }), nodes, saved, edited, blankLineValue, target: edit };
   };
 
-  it(`gives main’s nodes, save and edited save for all ${pages.length} pages, but #721’s and #714’s`, () => {
+  it(`gives main’s nodes, save and edited save for all ${pages.length} pages, but #721’s, #714’s and #604’s`, () => {
     const recording = process.env.WRITE_NON_FRAME_MAIN || process.env.WRITE_NON_FRAME_714_MAIN;
     const results = pages.map(({ page, key, corpusIndex }) =>
       digest(page, key, !recording && corpusIndex !== undefined && COMPONENT_LAYOUT_CORPUS_PAGES.includes(corpusIndex)),
@@ -430,9 +448,18 @@ describe('pages without a Frame read as on main', () => {
     // with a `{…}` (`{/"/}`) that main's scan misread as a runaway string now loads as an
     // opaque inline expression node, kept byte for byte. Exactly these, by index.
     const nodesOnly: number[] = [];
+    const leadPages: number[] = [];
+    const editBroken: number[] = [];
     const changed = results.flatMap((result, index) => {
       if (result.digest === main.digests[index]) return [];
       const page = pages[index]?.page ?? '';
+      if (isNamed(page)) {
+        leadPages.push(index);
+        // Its attribute-edited save must still change only the attribute (attributeEditHolds).
+        const { saved, edited } = results[index] as { saved: string; edited: string | null };
+        if (!attributeEditHolds(attributesOf, saved, edited, pages[index]?.key ?? '', page)) editBroken.push(index);
+        return [];
+      }
       const record = lossyOnMain.get(index);
       if (record && result.saved === record.saved && result.edited === record.edited) nodesOnly.push(index);
       const seeded = pages[index]?.seeded;
@@ -483,6 +510,12 @@ describe('pages without a Frame read as on main', () => {
     expect(plain.length).toBe(44);
     expect(bodyNormalized.length).toBe(8);
     expect(nodesOnly).toEqual([132, 943, 972, 1132]);
+    const quotedPages = leadPages.filter((index) => quotedSources.has(pages[index]?.page ?? ''));
+    expect(leadPages.filter((index) => !quotedPages.includes(index))).toEqual(
+      pages.flatMap(({ page }, index) => (leadSources.has(page) ? [index] : [])),
+    );
+    expect(quotedPages.length).toBe(QUOTED_MARK_CHANGES);
+    expect(editBroken, 'named pages whose attribute edit changes more than the attribute').toEqual([]);
   }, 600_000);
 });
 
