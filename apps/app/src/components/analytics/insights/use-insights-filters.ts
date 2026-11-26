@@ -1,6 +1,7 @@
 import { getRouteApi, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
-import { browserTimezone, type InsightsSearch, toInsightsQuery, validateInsightsSearch } from './filters';
+import { type InsightsSearch, validateInsightsSearch } from './filters';
+import { browserTimezone, toInsightsQuery } from './query';
 
 const analyticsRoute = getRouteApi('/app/projects/$projectId/analytics');
 

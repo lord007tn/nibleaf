@@ -67,6 +67,21 @@ describe('public docs module boundary', () => {
     expect(forbiddenModuleIds([...zod, app('lib/search-params.ts'), app('lib/zod-csp.ts')])).toEqual(zod);
   });
 
+  it('forbids the session cache, the app-wide query keys and the mutation observer in public profiles', () => {
+    const modules = [
+      app('integrations/tanstack-query/session-cache.ts'),
+      app('hooks/api/query-keys.ts'),
+      `${root}/node_modules/@tanstack/query-core/build/modern/mutationObserver.js`,
+      `${root}/node_modules/.pnpm/@tanstack+react-query@5.90.0/node_modules/@tanstack/react-query/build/modern/useMutation.js`,
+    ];
+    const allowed = [
+      app('hooks/api/site-query-options.ts'),
+      app('integrations/tanstack-query/query-client.ts'),
+      `${root}/node_modules/@tanstack/query-core/build/modern/mutationCache.js`,
+    ];
+    expect(forbiddenModuleIds([...modules, ...allowed])).toEqual(modules);
+  });
+
   it('allows only feature route ids and search parsers needed by non-split route options', () => {
     expect(forbiddenModuleIds([app('features/site-general/model/ids.ts'), app('features/site-general/model/section-search.ts')])).toEqual([]);
   });
