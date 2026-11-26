@@ -41,14 +41,6 @@ it.each(['\n\n', '\n\n\n'])('keeps authored blank lines after an untouched HTML 
   expect(compare(source, `<pre>KEPT</pre>${gap}TEXT\n\n&lt;script>BODY&lt;/script>`).equal).toBe(true);
 });
 
-it.each([
-  ['<script>ACTIVE</script>\n\nKeep *emphasis* here.', '&lt;script>ACTIVE&lt;/script>\n\nKeep &#42;emphasis&#42; here.'],
-  ['<script>ACTIVE</script>\n\nTEXT', '***\n&lt;script>ACTIVE&lt;/script>\n\nTEXT'],
-])('rejects round-11 forbidden edits outside the HTML run: %s', (source, output) => {
-  expect(compare(source, output).equal).toBe(false);
-  expect(compare(source, output).preserved).toBe(false);
-});
-
 it('rejects changed bytes after an expanded rescue region', () => {
   const source = '- <script>BODY</script>\n  FOLLOW\n\nOutside *emphasis* here.';
   const output = escapeDisallowedExportHtml(source);

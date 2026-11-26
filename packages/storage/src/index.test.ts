@@ -1,4 +1,4 @@
-import { S3ServiceException } from '@aws-sdk/client-s3';
+import { CreateBucketCommand, HeadBucketCommand, S3ServiceException } from '@aws-sdk/client-s3';
 import { describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({ send: vi.fn() }));
@@ -13,7 +13,7 @@ describe('bucket bootstrap failure propagation', () => {
   it('accepts an accessible existing bucket without trying to create it', async () => {
     mocks.send.mockReset().mockResolvedValue({});
     await ensureBucket();
-    expect(mocks.send).toHaveBeenCalledTimes(1);
+    expect(mocks.send).toHaveBeenCalledExactlyOnceWith(expect.any(HeadBucketCommand));
   });
   it('creates a missing bucket', async () => {
     mocks.send.mockReset().mockRejectedValueOnce(missingBucket()).mockResolvedValue({});
@@ -23,7 +23,11 @@ describe('bucket bootstrap failure propagation', () => {
   it('confirms bucket access after a concurrent creation', async () => {
     mocks.send.mockReset().mockRejectedValueOnce(missingBucket()).mockRejectedValueOnce(new Error('already exists')).mockResolvedValue({});
     await ensureBucket();
-    expect(mocks.send).toHaveBeenCalledTimes(3);
+    expect(mocks.send.mock.calls.map(([command]) => command)).toEqual([
+      expect.any(HeadBucketCommand),
+      expect.any(CreateBucketCommand),
+      expect.any(HeadBucketCommand),
+    ]);
   });
   it('preserves the original create error when the follow-up bucket check also fails', async () => {
     const createError = new Error('bucket creation failed');
