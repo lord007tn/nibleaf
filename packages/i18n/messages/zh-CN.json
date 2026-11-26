@@ -3910,13 +3910,10 @@
   "dashboard_ai_page": "提问所在页面",
   "dashboard_ai_activity": "最近活动",
   "dashboard_ai_loadmore": "加载更多",
-  "dashboard_ai_disabled": "此服务器暂不支持对话历史记录",
   "dashboard_ai_unavailable": "对话历史记录暂时不可用，请重试。",
   "dashboard_ai_captureoff": "问题未被保存。请在搜索设置中开启“保存问题以改进文档”。",
-  "dashboard_ai_captureinstance": "由于尚未设置对话历史记录，问题未被保存。如果你使用 Cloud，请联系 Nibleaf 支持团队；如果你自托管，请联系你的服务器管理员。",
   "dashboard_ai_settings": "搜索设置",
   "dashboard_ai_empty": "这里还没有问题。读者可以在你已发布的文档中向 AI 助手提问。试试更宽的日期范围或其他筛选条件。",
-  "dashboard_ai_selfhosting": "设置 AI 搜索",
   "dashboard_ai_private": "私密文档",
   "dashboard_ai_sources": "来源",
   "dashboard_ai_delete": "删除对话",
@@ -5043,5 +5040,11 @@
   "analytics_setup_title": "详细分析尚未开启",
   "analytics_setup_body": "页面浏览量仍会统计，并显示在你网站的概览中。开启详细分析后，页面、搜索、反馈、AI 和性能洞察将显示在这里。",
   "analytics_setup_overview": "前往概览",
-  "analytics_setup_learnmore": "分析的工作原理"
+  "analytics_setup_learnmore": "分析的工作原理",
+  "dashboard_ai_unavailabletitle": "读者提问暂不可用",
+  "dashboard_ai_unavailablebody": "可用后，此页面将显示读者在你的文档中向 AI 助手提出的问题，以及哪些页面可以回答得更好。",
+  "dashboard_ai_learnmore": "AI 助手的工作原理",
+  "dashboard_ai_notsavingyet": "新的问题暂未保存。之前保存的问题仍会显示在这里。",
+  "dashboard_ai_emptytitle": "还没有问题",
+  "dashboard_ai_emptybody": "读者可以在你已发布的文档中向 AI 助手提问。试试更宽的日期范围或其他筛选条件。"
 }

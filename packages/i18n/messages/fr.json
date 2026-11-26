@@ -3976,13 +3976,10 @@
   "dashboard_ai_page": "Page d’origine",
   "dashboard_ai_activity": "Dernière activité",
   "dashboard_ai_loadmore": "Charger plus",
-  "dashboard_ai_disabled": "L’historique des conversations n’est pas encore disponible sur ce serveur",
   "dashboard_ai_unavailable": "L’historique des conversations est temporairement indisponible. Réessayez.",
   "dashboard_ai_captureoff": "Les questions ne sont pas enregistrées. Activez « Enregistrer les questions pour améliorer votre documentation » dans les paramètres de recherche.",
-  "dashboard_ai_captureinstance": "Les questions ne sont pas enregistrées, car l’historique des conversations n’est pas encore configuré. Contactez l’assistance Nibleaf sur le Cloud, ou l’administrateur de votre serveur si vous l’auto-hébergez.",
   "dashboard_ai_settings": "Paramètres de recherche",
   "dashboard_ai_empty": "Aucune question pour l’instant. Les lecteurs peuvent interroger l’assistant IA depuis votre documentation publiée. Essayez une période plus large ou d’autres filtres.",
-  "dashboard_ai_selfhosting": "Configurer la recherche par IA",
   "dashboard_ai_private": "Documentation privée",
   "dashboard_ai_sources": "Sources",
   "dashboard_ai_delete": "Supprimer la conversation",
@@ -5130,5 +5127,11 @@
   "analytics_setup_title": "Les statistiques détaillées ne sont pas encore activées",
   "analytics_setup_body": "Les pages vues sont toujours comptées et s’affichent dans l’aperçu de votre site. Les statistiques sur les pages, la recherche, les avis, l’IA et les performances apparaîtront ici dès que les statistiques détaillées seront activées.",
   "analytics_setup_overview": "Aller à l’aperçu",
-  "analytics_setup_learnmore": "Comment fonctionnent les statistiques"
+  "analytics_setup_learnmore": "Comment fonctionnent les statistiques",
+  "dashboard_ai_unavailabletitle": "Les questions des lecteurs ne sont pas encore disponibles",
+  "dashboard_ai_unavailablebody": "Une fois disponibles, cette page montre ce que les lecteurs demandent à l’assistant IA dans votre documentation et où une page pourrait mieux répondre.",
+  "dashboard_ai_learnmore": "Comment fonctionne l’assistant IA",
+  "dashboard_ai_notsavingyet": "Les nouvelles questions ne sont pas encore enregistrées. Les questions enregistrées auparavant s’affichent toujours ici.",
+  "dashboard_ai_emptytitle": "Aucune question pour l’instant",
+  "dashboard_ai_emptybody": "Les lecteurs peuvent interroger l’assistant IA depuis votre documentation publiée. Essayez une période plus large ou d’autres filtres."
 }

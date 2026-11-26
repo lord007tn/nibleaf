@@ -3976,13 +3976,10 @@
   "dashboard_ai_page": "Gefragt auf Seite",
   "dashboard_ai_activity": "Letzte Aktivität",
   "dashboard_ai_loadmore": "Mehr laden",
-  "dashboard_ai_disabled": "Der Gesprächsverlauf ist auf diesem Server noch nicht verfügbar",
   "dashboard_ai_unavailable": "Der Gesprächsverlauf ist vorübergehend nicht verfügbar. Versuchen Sie es erneut.",
   "dashboard_ai_captureoff": "Fragen werden nicht gespeichert. Aktivieren Sie in den Sucheinstellungen „Fragen speichern, um Ihre Dokumentation zu verbessern“.",
-  "dashboard_ai_captureinstance": "Fragen werden nicht gespeichert, weil der Gesprächsverlauf noch nicht eingerichtet ist. Wenden Sie sich in der Cloud an den Nibleaf-Support oder beim Selbsthosten an Ihren Serveradministrator.",
   "dashboard_ai_settings": "Sucheinstellungen",
   "dashboard_ai_empty": "Hier gibt es noch keine Fragen. Leser können den KI-Assistenten aus Ihrer veröffentlichten Dokumentation heraus fragen. Versuchen Sie einen längeren Zeitraum oder andere Filter.",
-  "dashboard_ai_selfhosting": "KI-Suche einrichten",
   "dashboard_ai_private": "Private Dokumentation",
   "dashboard_ai_sources": "Quellen",
   "dashboard_ai_delete": "Unterhaltung löschen",
@@ -5130,5 +5127,11 @@
   "analytics_setup_title": "Detaillierte Analysen sind noch nicht aktiviert",
   "analytics_setup_body": "Seitenaufrufe werden weiterhin gezählt und in der Übersicht Ihrer Website angezeigt. Auswertungen zu Seiten, Suche, Feedback, KI und Leistung erscheinen hier, sobald detaillierte Analysen aktiviert sind.",
   "analytics_setup_overview": "Zur Übersicht",
-  "analytics_setup_learnmore": "So funktionieren Analysen"
+  "analytics_setup_learnmore": "So funktionieren Analysen",
+  "dashboard_ai_unavailabletitle": "Leserfragen sind noch nicht verfügbar",
+  "dashboard_ai_unavailablebody": "Sobald sie verfügbar sind, zeigt diese Seite, was Leser den KI-Assistenten in Ihrer Dokumentation fragen und wo eine Seite besser antworten könnte.",
+  "dashboard_ai_learnmore": "So funktioniert der KI-Assistent",
+  "dashboard_ai_notsavingyet": "Neue Fragen werden noch nicht gespeichert. Früher gespeicherte Fragen werden hier weiterhin angezeigt.",
+  "dashboard_ai_emptytitle": "Noch keine Fragen",
+  "dashboard_ai_emptybody": "Leser können den KI-Assistenten aus Ihrer veröffentlichten Dokumentation heraus fragen. Versuchen Sie einen längeren Zeitraum oder andere Filter."
 }

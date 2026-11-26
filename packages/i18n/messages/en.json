@@ -3976,13 +3976,10 @@
   "dashboard_ai_page": "Page asked from",
   "dashboard_ai_activity": "Last activity",
   "dashboard_ai_loadmore": "Load more",
-  "dashboard_ai_disabled": "Conversation history is not available on this server yet",
   "dashboard_ai_unavailable": "Conversation history is temporarily unavailable. Please try again.",
   "dashboard_ai_captureoff": "Questions are not being saved. Turn on \"Save questions to improve your docs\" in Search settings.",
-  "dashboard_ai_captureinstance": "Questions are not being saved because conversation history is not set up yet. Contact Nibleaf support on Cloud, or your server administrator if you self-host.",
   "dashboard_ai_settings": "Search settings",
   "dashboard_ai_empty": "No questions here yet. Readers can ask the AI assistant from your published docs. Try a wider date range or different filters.",
-  "dashboard_ai_selfhosting": "Set up AI search",
   "dashboard_ai_private": "Private docs",
   "dashboard_ai_sources": "Sources",
   "dashboard_ai_delete": "Delete conversation",
@@ -5130,5 +5127,11 @@
   "analytics_setup_title": "Detailed analytics isn't turned on yet",
   "analytics_setup_body": "Page views are still counted and show on your site's Overview. Insights on pages, search, feedback, AI and performance appear here once detailed analytics is on.",
   "analytics_setup_overview": "Go to Overview",
-  "analytics_setup_learnmore": "How analytics works"
+  "analytics_setup_learnmore": "How analytics works",
+  "dashboard_ai_unavailabletitle": "Reader questions aren't available yet",
+  "dashboard_ai_unavailablebody": "Once they are, this page shows what readers ask the AI assistant on your docs and where a page could answer better.",
+  "dashboard_ai_learnmore": "How the AI assistant works",
+  "dashboard_ai_notsavingyet": "New questions aren't being saved yet. Questions saved earlier still show here.",
+  "dashboard_ai_emptytitle": "No questions yet",
+  "dashboard_ai_emptybody": "Readers can ask the AI assistant from your published docs. Try a wider date range or other filters."
 }

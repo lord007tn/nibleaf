@@ -441,13 +441,10 @@ export const MESSAGE_IDS = {
   'dashboard.ai.page': 'dashboard_ai_page',
   'dashboard.ai.activity': 'dashboard_ai_activity',
   'dashboard.ai.loadMore': 'dashboard_ai_loadmore',
-  'dashboard.ai.disabled': 'dashboard_ai_disabled',
   'dashboard.ai.unavailable': 'dashboard_ai_unavailable',
   'dashboard.ai.captureOff': 'dashboard_ai_captureoff',
-  'dashboard.ai.captureInstance': 'dashboard_ai_captureinstance',
   'dashboard.ai.settings': 'dashboard_ai_settings',
   'dashboard.ai.empty': 'dashboard_ai_empty',
-  'dashboard.ai.selfHosting': 'dashboard_ai_selfhosting',
   'dashboard.ai.private': 'dashboard_ai_private',
   'dashboard.ai.sources': 'dashboard_ai_sources',
   'dashboard.ai.delete': 'dashboard_ai_delete',
@@ -4966,6 +4963,12 @@ export const MESSAGE_IDS = {
   'analytics.setup.body': 'analytics_setup_body',
   'analytics.setup.overview': 'analytics_setup_overview',
   'analytics.setup.learnMore': 'analytics_setup_learnmore',
+  'dashboard.ai.unavailableTitle': 'dashboard_ai_unavailabletitle',
+  'dashboard.ai.unavailableBody': 'dashboard_ai_unavailablebody',
+  'dashboard.ai.learnMore': 'dashboard_ai_learnmore',
+  'dashboard.ai.notSavingYet': 'dashboard_ai_notsavingyet',
+  'dashboard.ai.emptyTitle': 'dashboard_ai_emptytitle',
+  'dashboard.ai.emptyBody': 'dashboard_ai_emptybody',
 } as const;
 
 export type MessageKey = keyof typeof MESSAGE_IDS;

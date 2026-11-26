@@ -3977,13 +3977,10 @@
   "dashboard_ai_page": "Página de origem",
   "dashboard_ai_activity": "Última atividade",
   "dashboard_ai_loadmore": "Carregar mais",
-  "dashboard_ai_disabled": "O histórico de conversas ainda não está disponível neste servidor",
   "dashboard_ai_unavailable": "O histórico de conversas está indisponível no momento. Tente novamente.",
   "dashboard_ai_captureoff": "As perguntas não estão sendo salvas. Ative “Salvar perguntas para melhorar sua documentação” nas configurações de pesquisa.",
-  "dashboard_ai_captureinstance": "As perguntas não estão sendo salvas porque o histórico de conversas ainda não foi configurado. No Cloud, fale com o suporte do Nibleaf; se você hospeda o Nibleaf, fale com o administrador do servidor.",
   "dashboard_ai_settings": "Configurações de pesquisa",
   "dashboard_ai_empty": "Ainda não há perguntas aqui. Os leitores podem perguntar ao assistente de IA na sua documentação publicada. Tente um intervalo de datas maior ou outros filtros.",
-  "dashboard_ai_selfhosting": "Configurar a pesquisa com IA",
   "dashboard_ai_private": "Documentação privada",
   "dashboard_ai_sources": "Fontes",
   "dashboard_ai_delete": "Excluir conversa",
@@ -5131,5 +5128,11 @@
   "analytics_setup_title": "As análises detalhadas ainda não estão ativadas",
   "analytics_setup_body": "As visualizações de página continuam sendo contadas e aparecem na visão geral do seu site. Dados de páginas, busca, feedback, IA e desempenho vão aparecer aqui quando as análises detalhadas forem ativadas.",
   "analytics_setup_overview": "Ir para a visão geral",
-  "analytics_setup_learnmore": "Como funcionam as análises"
+  "analytics_setup_learnmore": "Como funcionam as análises",
+  "dashboard_ai_unavailabletitle": "As perguntas dos leitores ainda não estão disponíveis",
+  "dashboard_ai_unavailablebody": "Quando estiverem, esta página mostrará o que os leitores perguntam ao assistente de IA na sua documentação e onde uma página poderia responder melhor.",
+  "dashboard_ai_learnmore": "Como funciona o assistente de IA",
+  "dashboard_ai_notsavingyet": "As novas perguntas ainda não estão sendo salvas. As perguntas salvas antes continuam aparecendo aqui.",
+  "dashboard_ai_emptytitle": "Ainda não há perguntas",
+  "dashboard_ai_emptybody": "Os leitores podem perguntar ao assistente de IA na sua documentação publicada. Tente um intervalo de datas maior ou outros filtros."
 }

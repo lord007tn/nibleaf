@@ -3976,13 +3976,10 @@
   "dashboard_ai_page": "Página de origen",
   "dashboard_ai_activity": "Última actividad",
   "dashboard_ai_loadmore": "Cargar más",
-  "dashboard_ai_disabled": "El historial de conversaciones aún no está disponible en este servidor",
   "dashboard_ai_unavailable": "El historial de conversaciones no está disponible en este momento. Vuelve a intentarlo.",
   "dashboard_ai_captureoff": "Las preguntas no se están guardando. Activa «Guardar preguntas para mejorar tu documentación» en la configuración de búsqueda.",
-  "dashboard_ai_captureinstance": "Las preguntas no se están guardando porque el historial de conversaciones aún no está configurado. En Cloud, contacta con el soporte de Nibleaf; si lo alojas tú, con el administrador del servidor.",
   "dashboard_ai_settings": "Configuración de búsqueda",
   "dashboard_ai_empty": "Aún no hay preguntas aquí. Los lectores pueden preguntar al asistente de IA desde tu documentación publicada. Prueba con un intervalo de fechas más amplio u otros filtros.",
-  "dashboard_ai_selfhosting": "Configurar la búsqueda con IA",
   "dashboard_ai_private": "Documentación privada",
   "dashboard_ai_sources": "Fuentes",
   "dashboard_ai_delete": "Eliminar conversación",
@@ -5130,5 +5127,11 @@
   "analytics_setup_title": "La analítica detallada aún no está activada",
   "analytics_setup_body": "Las vistas de página se siguen contando y aparecen en la descripción general de tu sitio. Aquí verás datos de páginas, búsqueda, comentarios, IA y rendimiento cuando se active la analítica detallada.",
   "analytics_setup_overview": "Ir a la descripción general",
-  "analytics_setup_learnmore": "Cómo funciona la analítica"
+  "analytics_setup_learnmore": "Cómo funciona la analítica",
+  "dashboard_ai_unavailabletitle": "Las preguntas de lectores aún no están disponibles",
+  "dashboard_ai_unavailablebody": "Cuando lo estén, esta página mostrará qué preguntan los lectores al asistente de IA en tu documentación y dónde una página podría responder mejor.",
+  "dashboard_ai_learnmore": "Cómo funciona el asistente de IA",
+  "dashboard_ai_notsavingyet": "Las preguntas nuevas aún no se guardan. Las preguntas guardadas antes siguen apareciendo aquí.",
+  "dashboard_ai_emptytitle": "Aún no hay preguntas",
+  "dashboard_ai_emptybody": "Los lectores pueden preguntar al asistente de IA desde tu documentación publicada. Prueba con un intervalo de fechas más amplio u otros filtros."
 }

@@ -3910,13 +3910,10 @@
   "dashboard_ai_page": "Halaman asal pertanyaan",
   "dashboard_ai_activity": "Aktivitas terakhir",
   "dashboard_ai_loadmore": "Muat lebih banyak",
-  "dashboard_ai_disabled": "Riwayat percakapan belum tersedia di server ini",
   "dashboard_ai_unavailable": "Riwayat percakapan sementara tidak tersedia. Coba lagi.",
   "dashboard_ai_captureoff": "Pertanyaan tidak disimpan. Aktifkan “Simpan pertanyaan untuk meningkatkan dokumentasi” di pengaturan Pencarian.",
-  "dashboard_ai_captureinstance": "Pertanyaan tidak disimpan karena riwayat percakapan belum disiapkan. Hubungi dukungan Nibleaf jika Anda memakai Cloud, atau administrator server jika Anda melakukan self-hosting.",
   "dashboard_ai_settings": "Pengaturan pencarian",
   "dashboard_ai_empty": "Belum ada pertanyaan di sini. Pembaca dapat bertanya ke asisten AI dari dokumentasi yang sudah diterbitkan. Coba rentang tanggal yang lebih luas atau filter lain.",
-  "dashboard_ai_selfhosting": "Siapkan pencarian AI",
   "dashboard_ai_private": "Dokumentasi privat",
   "dashboard_ai_sources": "Sumber",
   "dashboard_ai_delete": "Hapus percakapan",
@@ -5059,5 +5056,11 @@
   "analytics_setup_title": "Analitik terperinci belum diaktifkan",
   "analytics_setup_body": "Tayangan halaman tetap dihitung dan tampil di Ikhtisar situs Anda. Wawasan tentang halaman, pencarian, masukan, AI, dan performa akan muncul di sini setelah analitik terperinci aktif.",
   "analytics_setup_overview": "Buka Ikhtisar",
-  "analytics_setup_learnmore": "Cara kerja analitik"
+  "analytics_setup_learnmore": "Cara kerja analitik",
+  "dashboard_ai_unavailabletitle": "Pertanyaan pembaca belum tersedia",
+  "dashboard_ai_unavailablebody": "Setelah tersedia, halaman ini menampilkan apa yang ditanyakan pembaca ke asisten AI di dokumentasi Anda dan halaman mana yang bisa menjawab lebih baik.",
+  "dashboard_ai_learnmore": "Cara kerja asisten AI",
+  "dashboard_ai_notsavingyet": "Pertanyaan baru belum disimpan. Pertanyaan yang tersimpan sebelumnya tetap tampil di sini.",
+  "dashboard_ai_emptytitle": "Belum ada pertanyaan",
+  "dashboard_ai_emptybody": "Pembaca dapat bertanya ke asisten AI dari dokumentasi yang sudah diterbitkan. Coba rentang tanggal yang lebih luas atau filter lain."
 }
