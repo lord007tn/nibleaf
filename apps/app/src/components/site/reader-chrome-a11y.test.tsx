@@ -4,8 +4,6 @@
  * the current language (PUB-014), task checkboxes are named (P3-PUB-025), and
  * the layout adds no anonymous landmarks around its navigation (P3-PUB-026).
  */
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -13,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MarkdownRenderer } from '@/components/markdown';
 import RichMarkdown from '@/components/markdown-rich';
 import { LanguageMenu } from '@/components/site/header-menus';
+import { DOCUMENTATION_THEME_TEMPLATES } from './documentation-theme-provider';
 
 const languages = [
   { code: 'en', label: 'English', direction: 'LTR' as const, isDefault: true },
@@ -87,14 +86,21 @@ describe('task lists', () => {
   });
 });
 
-describe('layout landmarks', () => {
-  it('wraps the sidebar and the outline in plain boxes: their navigation is the named landmark', () => {
-    const source = readFileSync(resolve(import.meta.dirname, 'documentation-theme-provider.tsx'), 'utf8');
-    expect(source).not.toMatch(/<aside\b/);
-  });
+it('keeps the sidebar and outline navigation free of redundant landmarks in every reader theme', () => {
+  const sidebar = <nav aria-label="Documentation pages" />;
+  const outline = <nav aria-label="On this page" />;
+  const host = document.createElement('div');
 
-  it('keeps the sidebar quick links inside a named navigation landmark', () => {
-    const source = readFileSync(resolve(import.meta.dirname, '../../routes/sites/$projectId/route.tsx'), 'utf8');
-    expect(source).toMatch(/<nav aria-label=\{t\('quickLinks'\)\}>\s*<ul[^>]*>\s*\{navAnchors\.map/);
-  });
+  for (const template of Object.values(DOCUMENTATION_THEME_TEMPLATES)) {
+    host.innerHTML = renderToStaticMarkup(
+      template.ReaderLayout({
+        header: null,
+        navigation: sidebar,
+        content: template.PageLayout({ article: <article>Guide</article>, tableOfContents: outline }),
+      }),
+    );
+    const labels = Array.from(host.querySelectorAll('nav'), (nav) => nav.getAttribute('aria-label'));
+    expect(labels, template.id).toEqual(['Documentation pages', 'On this page']);
+    expect(host.querySelector('aside, [role="complementary"]'), template.id).toBeNull();
+  }
 });
