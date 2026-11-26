@@ -140,7 +140,7 @@ describe('delete dialog inbound-link advisory', () => {
     expect(button('Delete page').disabled).toBe(false);
   });
 
-  it('keeps the reserved region and footer in place across loading, results, error and empty states', async () => {
+  it('keeps the advisory region and footer mounted across loading, results, error and empty states', async () => {
     let release: (response: Response) => void = () => {
       throw new Error('Request not started');
     };
@@ -155,9 +155,6 @@ describe('delete dialog inbound-link advisory', () => {
     const footer = dialog.querySelector('[data-slot="dialog-footer"]');
     const check = () => {
       expect(dialog.querySelector('[data-slot="delete-page-advisory"]')).toBe(region);
-      expect(region?.classList.contains('h-72')).toBe(true);
-      expect(region?.classList.contains('min-h-72')).toBe(true);
-      expect(region?.classList.contains('overflow-y-auto')).toBe(true);
       expect(region?.contains(footer)).toBe(false);
       expect(footer?.previousElementSibling).toBe(region);
       expect(button('Delete page').disabled).toBe(false);

@@ -254,7 +254,7 @@ const codeTexts = (editor: Editor) => {
   return texts;
 };
 
-describe('council fix 1: media the shared scanner rejects is kept as written', () => {
+describe('media the shared scanner rejects is kept as written', () => {
   it.each([
     ['a "<" in an attribute value', `<iframe src="https://www.youtube.com/embed/${YT}" title="a < b"></iframe>`],
     ['an over-long tag', `<iframe src="https://www.youtube.com/embed/${YT}" title="${'x'.repeat(5000)}"></iframe>`],
@@ -269,7 +269,7 @@ describe('council fix 1: media the shared scanner rejects is kept as written', (
   });
 });
 
-describe('council fix 2: iframes in code stay code', () => {
+describe('iframes in code stay code', () => {
   it('keeps an indented iframe as indented code, with its text unchanged', () => {
     const editor = open(`Intro.\n\n    ${I}\n\nOutro.`);
     expect(blocks(editor)).toEqual([]);
@@ -292,7 +292,7 @@ describe('council fix 2: iframes in code stay code', () => {
   });
 });
 
-describe('council fix 3: an iframe in a raw HTML table keeps the table as written', () => {
+describe('an iframe in a raw HTML table keeps the table as written', () => {
   it('saves no editor markup, and saves the same again after reopening', () => {
     const page = `Intro.\n\n<table><tr><td>${I}</td></tr></table>\n\nOutro.`;
     const saved = stable(page);
@@ -300,7 +300,7 @@ describe('council fix 3: an iframe in a raw HTML table keeps the table as writte
   });
 });
 
-describe('council fix 4: editing a title changes only that attribute', () => {
+describe('editing a title changes only that attribute', () => {
   const setTitle = (page: string, title: string) => {
     const editor = open(page);
     setAttributes(editor, 0, { title });
@@ -330,7 +330,7 @@ describe('council fix 4: editing a title changes only that attribute', () => {
   });
 });
 
-describe('council fix 5: an embed in a list item stays in the list', () => {
+describe('an embed in a list item stays in the list', () => {
   it('opens as the block inside the first item, and saves byte for byte', () => {
     const page = `- First\n\n  ${I}\n\n- Next`;
     const editor = open(page);
