@@ -1807,9 +1807,9 @@
   "settings_exports_workflow_onetime": "一次性导出",
   "settings_exports_workflow_onetimedesc": "下载最新发布的修订版",
   "settings_exports_workflow_schedules": "时间表",
-  "settings_exports_workflow_schedulesdesc": "自动归档快照和保留",
+  "settings_exports_workflow_schedulesdesc": "按计划自动导出。",
   "settings_exports_workflow_history": "运行历史",
-  "settings_exports_workflow_historydesc": "监控、恢复和下载工件",
+  "settings_exports_workflow_historydesc": "查看以前的导出并下载。",
   "settings_exports_workflow_loaderror": "无法加载导出数据。检查连接并重试此页面。",
   "settings_exports_workflow_create": "创建导出",
   "settings_exports_workflow_format_markdown": "Markdown 邮政编码",
@@ -3034,7 +3034,7 @@
   "settings_integrations_googleanalytics_description": "衡量已发布文档的访问量和互动情况。",
   "settings_integrations_plausible_description": "为已发布文档使用隐私友好的分析服务。",
   "settings_integrations_status_notsendingyet": "尚未发送",
-  "settings_integrations_comingsoon_description": "在你的网站发布时发送通知，即将推出。",
+  "settings_integrations_comingsoon_description": "网站发布时发送消息。",
   "settings_integrations_comingsoon_saved": "此连接已保存，但 Nibleaf 尚未向其发送任何内容。你可以将其移除。",
   "settings_integrations_remove": "移除",
   "settings_integrations_removetitle": "移除 {name}？",
@@ -4997,5 +4997,6 @@
   "settings_integrations_openaipage": "打开“{page}”",
   "settings_aiassistants_actionsfor": "{name} 的操作",
   "settings_exports_formats": "格式",
-  "settings_apikeys_rotating": "正在替换密钥…"
+  "settings_apikeys_rotating": "正在替换密钥…",
+  "settings_git_connect_pastefirst": "请先粘贴完整的令牌。"
 }

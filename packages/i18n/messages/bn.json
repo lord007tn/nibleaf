@@ -1807,9 +1807,9 @@
   "settings_exports_workflow_onetime": "এককালীন রপ্তানি",
   "settings_exports_workflow_onetimedesc": "সর্বশেষ প্রকাশিত রিভিশন ডাউনলোড করুন",
   "settings_exports_workflow_schedules": "সময়সূচী",
-  "settings_exports_workflow_schedulesdesc": "স্বয়ংক্রিয় সংরক্ষণাগার স্ন্যাপশট এবং ধারণ",
+  "settings_exports_workflow_schedulesdesc": "সময়সূচি অনুযায়ী স্বয়ংক্রিয়ভাবে এক্সপোর্ট করুন।",
   "settings_exports_workflow_history": "ইতিহাস চালান",
-  "settings_exports_workflow_historydesc": "নিরীক্ষণ, পুনরুদ্ধার, এবং নিদর্শন ডাউনলোড করুন",
+  "settings_exports_workflow_historydesc": "আগের এক্সপোর্টগুলো দেখুন এবং ডাউনলোড করুন।",
   "settings_exports_workflow_loaderror": "এক্সপোর্ট ডেটা লোড করা যায়নি। সংযোগ পরীক্ষা করুন এবং এই পৃষ্ঠাটি আবার চেষ্টা করুন।",
   "settings_exports_workflow_create": "রপ্তানি তৈরি করুন",
   "settings_exports_workflow_format_markdown": "Markdown জিপ",
@@ -3034,7 +3034,7 @@
   "settings_integrations_googleanalytics_description": "আপনার প্রকাশিত ডকুমেন্টেশনে ভিজিট এবং সম্পৃক্ততা পরিমাপ করুন ।",
   "settings_integrations_plausible_description": "আপনার প্রকাশিত ডকুমেন্টেশনে গোপনীয়তা-বান্ধব বিশ্লেষণ ব্যবহার করুন ।",
   "settings_integrations_status_notsendingyet": "এখনও পাঠানো হচ্ছে না",
-  "settings_integrations_comingsoon_description": "আপনার সাইট প্রকাশিত হলে পোস্ট করবে, শীঘ্রই আসছে।",
+  "settings_integrations_comingsoon_description": "আপনার সাইট প্রকাশিত হলে পোস্ট করে।",
   "settings_integrations_comingsoon_saved": "এই সংযোগটি সংরক্ষিত আছে, কিন্তু Nibleaf এখনও এতে কিছু পাঠায় না। আপনি এটি সরাতে পারেন।",
   "settings_integrations_remove": "সরান",
   "settings_integrations_removetitle": "{name} সরাবেন?",
@@ -5018,5 +5018,6 @@
   "settings_integrations_openaipage": "{page} খুলুন",
   "settings_aiassistants_actionsfor": "{name}-এর জন্য অ্যাকশন",
   "settings_exports_formats": "ফরম্যাট",
-  "settings_apikeys_rotating": "কী বদলানো হচ্ছে…"
+  "settings_apikeys_rotating": "কী বদলানো হচ্ছে…",
+  "settings_git_connect_pastefirst": "প্রথমে পুরো টোকেনটি পেস্ট করুন।"
 }

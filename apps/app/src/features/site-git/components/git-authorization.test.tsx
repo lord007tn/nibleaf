@@ -255,9 +255,13 @@ describe('a verification sends the token as typed and reports into the wizard', 
     const tab = page();
     await tab.open('site-a');
     await tab.type(`   ${'x'.repeat(19)}   `);
-    expect(tab.verify()?.disabled).toBe(true);
+    // Blocked with its reason, and still reachable by keyboard.
+    expect(tab.verify()?.getAttribute('aria-disabled')).toBe('true');
+    expect(tab.verify()?.getAttribute('aria-describedby')).toBe('git2-authorize-reason');
+    expect(tab.host.querySelector('#git2-authorize-reason')?.textContent).toBe(t('settings.git.connect.pasteFirst'));
     await tab.type('x'.repeat(20));
-    expect(tab.verify()?.disabled).toBe(false);
+    expect(tab.verify()?.getAttribute('aria-disabled')).not.toBe('true');
+    expect(tab.host.querySelector('#git2-authorize-reason')).toBeNull();
   });
 
   it('keeps the token after a refusal, shows the error once, refreshes nothing, and retries with the same body', async () => {

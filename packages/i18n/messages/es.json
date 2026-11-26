@@ -1862,9 +1862,9 @@
   "settings_exports_workflow_onetime": "Exportación única",
   "settings_exports_workflow_onetimedesc": "Descargue la última revisión publicada",
   "settings_exports_workflow_schedules": "Horarios",
-  "settings_exports_workflow_schedulesdesc": "Automatizar instantáneas de archivo y retención",
+  "settings_exports_workflow_schedulesdesc": "Exporta automáticamente según un calendario.",
   "settings_exports_workflow_history": "Historial de ejecución",
-  "settings_exports_workflow_historydesc": "Monitorear, recuperar y descargar artefactos",
+  "settings_exports_workflow_historydesc": "Consulta las exportaciones anteriores y descárgalas.",
   "settings_exports_workflow_loaderror": "No se pudieron cargar los datos de exportación. Verifique la conexión y vuelva a intentar esta página.",
   "settings_exports_workflow_create": "Crear exportación",
   "settings_exports_workflow_format_markdown": "Markdown ZIP",
@@ -3100,7 +3100,7 @@
   "settings_integrations_googleanalytics_description": "Mida las visitas y el compromiso en su documentación publicada.",
   "settings_integrations_plausible_description": "Utiliza análisis respetuosos con la privacidad en tu documentación publicada.",
   "settings_integrations_status_notsendingyet": "Aún no envía",
-  "settings_integrations_comingsoon_description": "Publicará un aviso cuando se publique tu sitio. Próximamente.",
+  "settings_integrations_comingsoon_description": "Publica cuando se publica tu sitio.",
   "settings_integrations_comingsoon_saved": "Esta conexión está guardada, pero Nibleaf aún no le envía nada. Puedes quitarla.",
   "settings_integrations_remove": "Quitar",
   "settings_integrations_removetitle": "¿Quitar {name}?",
@@ -5084,5 +5084,6 @@
   "settings_integrations_openaipage": "Abrir {page}",
   "settings_aiassistants_actionsfor": "Acciones para {name}",
   "settings_exports_formats": "Formatos",
-  "settings_apikeys_rotating": "Reemplazando la clave…"
+  "settings_apikeys_rotating": "Reemplazando la clave…",
+  "settings_git_connect_pastefirst": "Primero pega el token completo."
 }

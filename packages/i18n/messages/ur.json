@@ -1853,9 +1853,9 @@
   "settings_exports_workflow_onetime": "ایک بار برآمد",
   "settings_exports_workflow_onetimedesc": "تازہ ترین شائع شدہ نظرثانی ڈاؤن لوڈ کریں",
   "settings_exports_workflow_schedules": "شیڈولز",
-  "settings_exports_workflow_schedulesdesc": "محفوظ شدہ دستاویزات کے اسنیپ شاٹس اور برقرار رکھنے کو خودکار بنائیں",
+  "settings_exports_workflow_schedulesdesc": "شیڈول کے مطابق خودکار طور پر ایکسپورٹ کریں۔",
   "settings_exports_workflow_history": "تاریخ چلائیں",
-  "settings_exports_workflow_historydesc": "نمونے کی نگرانی، بازیافت اور ڈاؤن لوڈ کریں",
+  "settings_exports_workflow_historydesc": "پچھلی ایکسپورٹس دیکھیں اور ڈاؤن لوڈ کریں۔",
   "settings_exports_workflow_loaderror": "ایکسپورٹ ڈیٹا لوڈ نہیں ہو سکا۔ کنکشن چیک کریں اور اس صفحہ کو دوبارہ آزمائیں۔",
   "settings_exports_workflow_create": "ایکسپورٹ بنائیں",
   "settings_exports_workflow_format_markdown": "Markdown ZIP",
@@ -3091,7 +3091,7 @@
   "settings_integrations_googleanalytics_description": "اپنی شائع شدہ دستاویزات پر دوروں اور مصروفیت کی پیمائش کریں ۔",
   "settings_integrations_plausible_description": "اپنی شائع شدہ دستاویزات پر رازداری کے موافق تجزیات استعمال کریں ۔",
   "settings_integrations_status_notsendingyet": "ابھی نہیں بھیج رہا",
-  "settings_integrations_comingsoon_description": "آپ کی سائٹ شائع ہونے پر پوسٹ کرے گا، جلد آ رہا ہے۔",
+  "settings_integrations_comingsoon_description": "آپ کی سائٹ شائع ہونے پر پوسٹ کرتا ہے۔",
   "settings_integrations_comingsoon_saved": "یہ کنکشن محفوظ ہے، لیکن Nibleaf ابھی اس پر کچھ نہیں بھیجتا۔ آپ اسے ہٹا سکتے ہیں۔",
   "settings_integrations_remove": "ہٹائیں",
   "settings_integrations_removetitle": "{name} ہٹائیں؟",
@@ -5075,5 +5075,6 @@
   "settings_integrations_openaipage": "{page} کھولیں",
   "settings_aiassistants_actionsfor": "{name} کے لیے کارروائیاں",
   "settings_exports_formats": "فارمیٹس",
-  "settings_apikeys_rotating": "کلید تبدیل کی جا رہی ہے…"
+  "settings_apikeys_rotating": "کلید تبدیل کی جا رہی ہے…",
+  "settings_git_connect_pastefirst": "پہلے پورا ٹوکن پیسٹ کریں۔"
 }

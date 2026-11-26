@@ -287,8 +287,15 @@ export function GitTab({ projectId }: { projectId?: string }) {
       failed: (_error) => toast.error(t('settings.git.import.error')),
     });
 
-  if (settings.isPending) return <SettingsFormSkeleton />;
-  if (settings.isError && !data) return <QueryErrorState onRetry={() => void settings.refetch()} retrying={settings.isFetching} />;
+  const header = <PageHeader description={t('settings.git.workflow.connectDescription')} title={t('settings.git')} />;
+  if (settings.isPending || (settings.isError && !data)) {
+    return (
+      <div className="flex flex-col gap-8">
+        {header}
+        {settings.isPending ? <SettingsFormSkeleton /> : <QueryErrorState onRetry={() => void settings.refetch()} retrying={settings.isFetching} />}
+      </div>
+    );
+  }
 
   const webUrl = repoWebUrl(git);
   const ProviderGlyph = git.provider === 'github' ? GithubIcon : GitBranch;
@@ -419,7 +426,7 @@ export function GitTab({ projectId }: { projectId?: string }) {
 
   return (
     <div className="flex flex-col gap-8">
-      <PageHeader description={t('settings.git.workflow.connectDescription')} title={t('settings.git')} />
+      {header}
       {/* The one place to connect, sync and disconnect Git for this site. */}
       {projectId ? (
         <div className="scroll-mt-6" id="git-connection">

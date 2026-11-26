@@ -1862,9 +1862,9 @@
   "settings_exports_workflow_onetime": "Einmaliger Export",
   "settings_exports_workflow_onetimedesc": "Laden Sie die neueste veröffentlichte Revision herunter",
   "settings_exports_workflow_schedules": "Zeitpläne",
-  "settings_exports_workflow_schedulesdesc": "Automatisieren Sie Archiv-Snapshots und Aufbewahrung",
+  "settings_exports_workflow_schedulesdesc": "Automatisch nach Zeitplan exportieren.",
   "settings_exports_workflow_history": "Laufverlauf",
-  "settings_exports_workflow_historydesc": "Artefakte überwachen, wiederherstellen und herunterladen",
+  "settings_exports_workflow_historydesc": "Frühere Exporte ansehen und herunterladen.",
   "settings_exports_workflow_loaderror": "Exportdaten konnten nicht geladen werden. Überprüfen Sie die Verbindung und versuchen Sie es erneut mit dieser Seite.",
   "settings_exports_workflow_create": "Export erstellen",
   "settings_exports_workflow_format_markdown": "Markdown ZIP",
@@ -3100,7 +3100,7 @@
   "settings_integrations_googleanalytics_description": "Messen Sie Besuche und Engagement in Ihrer veröffentlichten Dokumentation.",
   "settings_integrations_plausible_description": "Verwenden Sie datenschutzfreundliche Analysen für Ihre veröffentlichte Dokumentation.",
   "settings_integrations_status_notsendingyet": "Sendet noch nicht",
-  "settings_integrations_comingsoon_description": "Meldet jede Veröffentlichung Ihrer Website, demnächst verfügbar.",
+  "settings_integrations_comingsoon_description": "Postet, wenn Ihre Website veröffentlicht wird.",
   "settings_integrations_comingsoon_saved": "Diese Verbindung ist gespeichert, aber Nibleaf sendet noch nichts dorthin. Sie können sie entfernen.",
   "settings_integrations_remove": "Entfernen",
   "settings_integrations_removetitle": "{name} entfernen?",
@@ -5084,5 +5084,6 @@
   "settings_integrations_openaipage": "{page} öffnen",
   "settings_aiassistants_actionsfor": "Aktionen für {name}",
   "settings_exports_formats": "Formate",
-  "settings_apikeys_rotating": "Schlüssel wird ersetzt…"
+  "settings_apikeys_rotating": "Schlüssel wird ersetzt…",
+  "settings_git_connect_pastefirst": "Fügen Sie zuerst das vollständige Token ein."
 }

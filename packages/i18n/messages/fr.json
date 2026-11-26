@@ -1862,9 +1862,9 @@
   "settings_exports_workflow_onetime": "Exportation unique",
   "settings_exports_workflow_onetimedesc": "Téléchargez la dernière révision publiée",
   "settings_exports_workflow_schedules": "Horaires",
-  "settings_exports_workflow_schedulesdesc": "Automatisez les instantanés d'archivage et la conservation",
+  "settings_exports_workflow_schedulesdesc": "Exportez automatiquement selon un calendrier.",
   "settings_exports_workflow_history": "Historique d'exécution",
-  "settings_exports_workflow_historydesc": "Surveiller, récupérer et télécharger des artefacts",
+  "settings_exports_workflow_historydesc": "Consultez les exports précédents et téléchargez-les.",
   "settings_exports_workflow_loaderror": "Les données d'exportation n'ont pas pu être chargées. Vérifiez la connexion et réessayez cette page.",
   "settings_exports_workflow_create": "Créer une exportation",
   "settings_exports_workflow_format_markdown": "Markdown ZIP",
@@ -3100,7 +3100,7 @@
   "settings_integrations_googleanalytics_description": "Mesurez les visites et l'engagement sur votre documentation publiée.",
   "settings_integrations_plausible_description": "Utilisez l'analyse de confidentialité sur votre documentation publiée.",
   "settings_integrations_status_notsendingyet": "N’envoie pas encore",
-  "settings_integrations_comingsoon_description": "Publiera un message quand votre site sera publié. Bientôt disponible.",
+  "settings_integrations_comingsoon_description": "Publie un message quand votre site est publié.",
   "settings_integrations_comingsoon_saved": "Cette connexion est enregistrée, mais Nibleaf n’y envoie encore rien. Vous pouvez la supprimer.",
   "settings_integrations_remove": "Supprimer",
   "settings_integrations_removetitle": "Supprimer {name} ?",
@@ -5084,5 +5084,6 @@
   "settings_integrations_openaipage": "Ouvrir {page}",
   "settings_aiassistants_actionsfor": "Actions pour {name}",
   "settings_exports_formats": "Formats",
-  "settings_apikeys_rotating": "Remplacement de la clé…"
+  "settings_apikeys_rotating": "Remplacement de la clé…",
+  "settings_git_connect_pastefirst": "Collez d’abord le jeton complet."
 }
