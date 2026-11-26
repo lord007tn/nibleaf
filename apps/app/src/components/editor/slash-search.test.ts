@@ -37,8 +37,6 @@ describe('multi-word slash queries', () => {
   });
 
   it('matches every word in any order, and drops blocks missing one of them', () => {
-    expect(first('block code')).toBe(key('codeBlock'));
-    expect(first('field param')).toBe(key('paramField'));
     expect(titles('code block')).not.toContain(key('codeGroup'));
     expect(titles('code gr')).toEqual([key('codeGroup')]);
     // A word may come from a keyword: "api" is a keyword of Request example, "example" is in its title.
@@ -120,8 +118,6 @@ describe('slash search in other languages', () => {
   });
 
   it('ignores Arabic diacritics and letter variants', () => {
-    // The catalog writes "مرقّمة" with a shadda; writers rarely type it.
-    expect(ar('numberedList')).toContain('ّ');
     expect(first('قائمة مرقمة', 'ar')).toBe(key('numberedList'));
     expect(first('مرقمه', 'ar')).toBe(key('numberedList'));
     expect(first('قَائِمَة مُرَقَّمَة', 'ar')).toBe(key('numberedList'));

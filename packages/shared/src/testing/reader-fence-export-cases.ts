@@ -1,0 +1,274 @@
+import type { MdxToken } from '../mdx-tokens';
+
+/**
+ * #591's export family: fences main's tokenizer reads differently from the
+ * published reader, each followed by a tail of prose, components, HTML,
+ * braces or ESM. Main's outputs are committed in
+ * `__fixtures__/mdx-tokens.reader-fences.main.json`.
+ *
+ * `reshaped` is decided here, from the shape alone, never by the code under
+ * test: a callout line changes form only after a fence the reader closes with a
+ * matching delimiter, when main kept that line as code, the line is a complete,
+ * plain-text callout at the start of a line, and blank lines (or the end) sit
+ * on both sides of it.
+ */
+export interface ReaderFenceExportCase {
+  index: number;
+  source: string;
+  /** The callout lines whose form changes, as written. Empty for controls. */
+  reshaped: string[];
+  /** Text that must stay in the output, once each and in this order. */
+  markers: string[];
+}
+
+interface FenceShape {
+  name: string;
+  lines: string[];
+  /** The reader closes this fence with a matching delimiter, and main read that
+   *  delimiter as an opener whose code runs on into the tail. */
+  overrun: boolean;
+}
+
+/** #587's five repros plus three more of the same kind, then three controls. */
+const FENCES: readonly FenceShape[] = [
+  { name: 'ordered list quote (issue #591)', lines: ['1. >~~~md', '   > [Literal](/literal)', '   > ~~~'], overrun: true },
+  { name: 'ordered list quote, `)` marker', lines: ['1) > ```md', '   > [Literal](/literal)', '   > ```'], overrun: true },
+  { name: 'bullet list quote, longer closer', lines: ['- > ````md', '  > [Literal](/literal)', '  > `````'], overrun: true },
+  { name: 'quote with a nested quote in the body', lines: ['> ```md', '> example', '> > ```', '> still code', '> ```'], overrun: true },
+  { name: 'list item with a nested item in the body', lines: ['- ```md', '  example', '  - ```', '  still code', '  ```'], overrun: true },
+  { name: 'tilde fence with a quoted false closer', lines: ['~~~~md', 'example', '> ~~~~', 'still code', '~~~~~'], overrun: true },
+  { name: 'ordered list in two quotes, braces in the body', lines: ['1. > > ~~~md', '   > > {Literal}', '   > > ~~~'], overrun: true },
+  { name: 'ordered list quote, other-marker fence in the body', lines: ['1. >~~~md', '   > ```js', '   > ~~~'], overrun: true },
+  // Controls: the reader ends the fence by leaving its quote, or both scanners agree.
+  { name: 'quote fence ended by leaving the quote (container exit)', lines: ['> ~~~md', '> [Literal](/literal)'], overrun: false },
+  { name: 'closed top-level fence (both agree)', lines: ['~~~md', '[Literal](/literal)', '~~~'], overrun: false },
+  { name: 'unclosed top-level fence (both agree)', lines: ['~~~md', '[Literal](/literal)'], overrun: false },
+];
+
+interface Tail {
+  name: string;
+  lines: string[];
+  /** Lines that change form after an overrun fence. */
+  reshaped: string[];
+  markers: string[];
+}
+
+const TAILS: readonly Tail[] = [
+  { name: 'note', lines: ['', '<Note>After</Note>'], reshaped: ['<Note>After</Note>'], markers: ['After'] },
+  {
+    name: 'note, then prose',
+    lines: ['', '<Note>After</Note>', '', 'Closing words.'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['After', 'Closing words.'],
+  },
+  {
+    name: 'warning',
+    lines: ['', "<Warning>Mind the gap, it's real.</Warning>"],
+    reshaped: ["<Warning>Mind the gap, it's real.</Warning>"],
+    markers: ['Mind the gap'],
+  },
+  {
+    name: 'two callouts',
+    lines: ['', '<Note>After</Note>', '', '<Tip>Also this (twice).</Tip>'],
+    reshaped: ['<Note>After</Note>', '<Tip>Also this (twice).</Tip>'],
+    markers: ['After', 'Also this (twice).'],
+  },
+  {
+    name: 'braces before the note',
+    lines: ['', '{VISIBLE}', '', '<Note>After</Note>'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['{VISIBLE}', 'After'],
+  },
+  {
+    name: 'ESM before the note',
+    lines: ['', 'import Thing from "pkg"', '', '<Note>After</Note>'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['import Thing from "pkg"', 'After'],
+  },
+  {
+    name: 'ESM after the note',
+    lines: ['', '<Note>After</Note>', '', 'export const Value = 1;'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['After', 'export const Value = 1;'],
+  },
+  {
+    name: 'inline component and link after the note',
+    lines: ['', '<Note>After</Note>', '', 'See <Badge>New</Badge> and [Docs](/docs).'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['After', 'New', 'Docs'],
+  },
+  // Controls: nothing changes.
+  { name: 'no blank line before', lines: ['<Note>After</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'lazy line after', lines: ['', '<Note>After</Note>', 'Lazy line.'], reshaped: [], markers: ['After', 'Lazy line.'] },
+  { name: 'braces in the note', lines: ['', '<Note>{VISIBLE}</Note>'], reshaped: [], markers: ['{VISIBLE}'] },
+  { name: 'HTML in the note', lines: ['', '<Note><b>After</b></Note>'], reshaped: [], markers: ['After'] },
+  { name: 'active HTML in the note', lines: ['', '<Note><script>ACTIVE</script></Note>'], reshaped: [], markers: [] },
+  { name: 'link in the note', lines: ['', '<Note>[After](/after)</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'attribute on the note', lines: ['', '<Note title="T">After</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'note over three lines', lines: ['', '<Note>', 'After', '</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'two notes on one line', lines: ['', '<Note>After</Note><Note>Again</Note>'], reshaped: [], markers: ['After', 'Again'] },
+  { name: 'lowercase note', lines: ['', '<note>After</note>'], reshaped: [], markers: ['After'] },
+  { name: 'indented note', lines: ['', '  <Note>After</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'unsupported callout name', lines: ['', '<Callout>After</Callout>'], reshaped: [], markers: ['After'] },
+  { name: 'note starting with a list marker', lines: ['', '<Note>1. After</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'HTML block around the note', lines: ['', '<div>', '<Note>After</Note>', '</div>'], reshaped: [], markers: ['After'] },
+  { name: 'HTML block before the note', lines: ['', '<div>', '', '<Note>After</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'active HTML before the note', lines: ['', '<script>ACTIVE</script>', '', '<Note>After</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'active HTML after the note', lines: ['', '<Note>After</Note>', '', '<style>p{}</style>'], reshaped: [], markers: ['After'] },
+  { name: 'fence around the note', lines: ['', '~~~', '<Note>After</Note>', '~~~'], reshaped: [], markers: ['After'] },
+  { name: 'fence after the note', lines: ['', '<Note>After</Note>', '', '```', 'code', '```'], reshaped: [], markers: ['After', 'code'] },
+];
+
+const BEFORE: ReadonlyArray<readonly string[]> = [[], ['Intro text.', ''], ['<Steps>', '']];
+
+/**
+ * MDX comments and other lines the reader strips or doesn't render as prose (#917 review).
+ * A callout inside a comment never shows in the reader, so it keeps main's bytes, as does one
+ * the reader finally reads as code. An unclosed `{/*` is text to the reader, and comment
+ * markers inside inline code are not a comment, so a callout next to them changes form.
+ */
+const COMMENT_TAILS: readonly Tail[] = [
+  {
+    name: 'callout in a multiline comment (review repro)',
+    lines: ['', '{/*', '', '<Note>After</Note>', '', '*/}'],
+    reshaped: [],
+    markers: ['After'],
+  },
+  {
+    name: 'callout in a multiline comment, then prose',
+    lines: ['', '{/*', '', '<Note>After</Note>', '', '*/}', '', 'Closing words.'],
+    reshaped: [],
+    markers: ['After', 'Closing words.'],
+  },
+  { name: 'comment opened in a list item', lines: ['', '- {/*', '', '<Note>After</Note>', '', '*/}'], reshaped: [], markers: ['After'] },
+  { name: 'comment opened in a quote', lines: ['', '> {/*', '', '<Note>After</Note>', '', '*/}'], reshaped: [], markers: ['After'] },
+  { name: 'comment closed in a list item', lines: ['', '{/*', '', '<Note>After</Note>', '', '- */}'], reshaped: [], markers: ['After'] },
+  {
+    name: 'comment inside list text',
+    lines: ['', '- Item {/*', '', '<Note>After</Note>', '', '  */} more'],
+    reshaped: [],
+    markers: ['Item', 'After', 'more'],
+  },
+  { name: 'single-line comment around the callout', lines: ['', '{/* <Note>After</Note> */}'], reshaped: [], markers: ['After'] },
+  {
+    name: 'single-line comment before a fence opener',
+    lines: ['', '{/* aside */}~~~', '', '<Note>After</Note>'],
+    reshaped: [],
+    markers: ['aside', 'After'],
+  },
+  {
+    name: 'one-line block holding a fence opener',
+    lines: ['', '<Tip>~~~</Tip>', '', '<Note>After</Note>'],
+    reshaped: [],
+    markers: ['After'],
+  },
+  { name: 'callout on the line after `*/}`', lines: ['', '{/*', 'aside', '*/}', '<Note>After</Note>'], reshaped: [], markers: ['aside', 'After'] },
+  // Changed: the reader shows these callouts.
+  {
+    name: 'callout after `*/}` and a blank line',
+    lines: ['', '{/*', 'aside', '*/}', '', '<Note>After</Note>'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['aside', 'After'],
+  },
+  {
+    name: 'single-line comment, then the callout',
+    lines: ['', '{/* aside */}', '', '<Note>After</Note>'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['aside', 'After'],
+  },
+  {
+    name: 'callout in a comment, then one after it',
+    lines: ['', '{/*', '', '<Note>Hidden</Note>', '', '*/}', '', '<Tip>Shown.</Tip>'],
+    reshaped: ['<Tip>Shown.</Tip>'],
+    markers: ['Hidden', 'Shown.'],
+  },
+  { name: 'unclosed comment before the callout', lines: ['', '{/*', '', '<Note>After</Note>'], reshaped: ['<Note>After</Note>'], markers: ['After'] },
+  { name: 'unclosed comment after the callout', lines: ['', '<Note>After</Note>', '', '{/*'], reshaped: ['<Note>After</Note>'], markers: ['After'] },
+  {
+    name: 'comment markers in inline code',
+    lines: ['', '`{/*`', '', '<Note>After</Note>', '', '`*/}`'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['After'],
+  },
+];
+
+/**
+ * Regions the reader renders literally, not as prose (#917 re-check): a `$$` math block, and the
+ * HTML elements whose content the reader shows as text or keeps preformatted (raw-text and RCDATA
+ * elements, `<pre>`, `<plaintext>`), in any letter case. A callout inside one shows as text, so it
+ * keeps main's bytes, as does one inside a plain HTML wrapper. Inline math in a paragraph before
+ * the callout is prose, so that callout changes form.
+ */
+const LITERAL_TAILS: readonly Tail[] = [
+  { name: 'math block around the callout (re-check repro)', lines: ['', '$$', '', '<Note>After</Note>', '', '$$'], reshaped: [], markers: ['After'] },
+  { name: 'unclosed math block before the callout', lines: ['', '$$', '', '<Note>After</Note>'], reshaped: [], markers: ['After'] },
+  {
+    name: 'math block with a formula, then the callout inside it',
+    lines: ['', '$$', 'x^2', '', '<Note>After</Note>', '', '$$'],
+    reshaped: [],
+    markers: ['x^2', 'After'],
+  },
+  {
+    name: 'upper-case textarea around the callout (re-check repro)',
+    lines: ['', '<TEXTAREA>', '', '<Note>After</Note>', '', '</TEXTAREA>'],
+    reshaped: [],
+    markers: ['After'],
+  },
+  {
+    name: 'textarea with attributes around the callout',
+    lines: ['', '<textarea rows="3">', '', '<Note>After</Note>', '', '</textarea>'],
+    reshaped: [],
+    markers: ['After'],
+  },
+  { name: 'script around the callout', lines: ['', '<script>', '', '<Note>After</Note>', '', '</script>'], reshaped: [], markers: ['After'] },
+  { name: 'style around the callout', lines: ['', '<Style>', '', '<Note>After</Note>', '', '</Style>'], reshaped: [], markers: ['After'] },
+  { name: 'title around the callout', lines: ['', '<title>', '', '<Note>After</Note>', '', '</title>'], reshaped: [], markers: ['After'] },
+  { name: 'pre around the callout', lines: ['', '<pre>', '', '<Note>After</Note>', '', '</pre>'], reshaped: [], markers: ['After'] },
+  { name: 'unclosed upper-case pre before the callout', lines: ['', '<PRE>', '', '<Note>After</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'xmp around the callout', lines: ['', '<Xmp>', '', '<Note>After</Note>', '', '</Xmp>'], reshaped: [], markers: ['After'] },
+  { name: 'plaintext before the callout', lines: ['', '<plaintext>', '', '<Note>After</Note>'], reshaped: [], markers: ['After'] },
+  { name: 'plain HTML wrapper around the callout', lines: ['', '<div>', '', '<Note>After</Note>', '', '</div>'], reshaped: [], markers: ['After'] },
+  // Changed: the reader shows this callout.
+  {
+    name: 'inline math in a paragraph before the callout',
+    lines: ['', 'Inline $x^2$ math.', '', '<Note>After</Note>'],
+    reshaped: ['<Note>After</Note>'],
+    markers: ['Inline', 'After'],
+  },
+];
+
+const exportCases = (tails: readonly Tail[]): ReaderFenceExportCase[] => {
+  const cases: ReaderFenceExportCase[] = [];
+  for (const fence of FENCES)
+    for (const tail of tails)
+      for (const before of BEFORE)
+        cases.push({
+          index: cases.length,
+          source: [...before, ...fence.lines, ...tail.lines].join('\n'),
+          reshaped: fence.overrun ? tail.reshaped : [],
+          markers: tail.markers,
+        });
+  return cases;
+};
+
+export const readerFenceExportCases = (): ReaderFenceExportCase[] => exportCases(TAILS);
+
+/** The same fences and openings, each followed by a tail from `COMMENT_TAILS`. */
+export const readerFenceCommentCases = (): ReaderFenceExportCase[] => exportCases(COMMENT_TAILS);
+
+/** The same fences and openings, each followed by a tail from `LITERAL_TAILS`. */
+export const readerFenceLiteralCases = (): ReaderFenceExportCase[] => exportCases(LITERAL_TAILS);
+
+/** The lines a token stream keeps byte for byte as fenced code: the export's
+ *  protection, read back from `tokenizeMdx`. Tokens concatenate to the source. */
+export const protectedLines = (tokens: readonly MdxToken[], lineCount: number): boolean[] => {
+  const lines = Array.from({ length: lineCount }, () => false);
+  let line = 0;
+  for (const token of tokens) {
+    const value = 'raw' in token ? token.raw : token.value;
+    const breaks = value.split('\n').length - 1;
+    if (token.kind === 'code' && token.block) for (let at = line; at <= line + breaks; at++) lines[at] = true;
+    line += breaks;
+  }
+  return lines;
+};

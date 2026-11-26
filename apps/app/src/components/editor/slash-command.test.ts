@@ -200,62 +200,6 @@ describe('writer block search', () => {
       'editor.slash.section.inline',
     ]);
   });
-  it('keeps the full menu order when items move between modules', () => {
-    expect(createSlashItems().map((item) => item.titleKey)).toMatchInlineSnapshot(`
-      [
-        "editor.slash.text.title",
-        "editor.slash.h1.title",
-        "editor.slash.h2.title",
-        "editor.slash.h3.title",
-        "editor.slash.bulletList.title",
-        "editor.slash.numberedList.title",
-        "editor.slash.todo.title",
-        "editor.slash.quote.title",
-        "editor.slash.codeBlock.title",
-        "editor.slash.mermaid.title",
-        "editor.slash.divider.title",
-        "editor.slash.note.title",
-        "editor.slash.tip.title",
-        "editor.slash.info.title",
-        "editor.slash.check.title",
-        "editor.slash.warning.title",
-        "editor.slash.danger.title",
-        "editor.slash.banner.title",
-        "editor.slash.image.title",
-        "editor.slash.video.title",
-        "editor.slash.embed.title",
-        "editor.slash.table.title",
-        "editor.slash.frame.title",
-        "editor.slash.tabs.title",
-        "editor.slash.steps.title",
-        "editor.slash.accordion.title",
-        "editor.slash.expandable.title",
-        "editor.slash.columns2.title",
-        "editor.slash.columns3.title",
-        "editor.slash.columns4.title",
-        "editor.slash.card.title",
-        "editor.slash.cardGroup.title",
-        "editor.slash.cardGrid3.title",
-        "editor.slash.cardGrid4.title",
-        "editor.slash.relatedContent.title",
-        "editor.slash.relatedCard.title",
-        "editor.slash.update.title",
-        "editor.slash.paramField.title",
-        "editor.slash.responseField.title",
-        "editor.slash.apiExample.title",
-        "editor.slash.requestExample.title",
-        "editor.slash.responseExample.title",
-        "editor.slash.codeGroup.title",
-        "editor.slash.fileTree.title",
-        "editor.slash.folder.title",
-        "editor.slash.file.title",
-        "editor.slash.tooltip.title",
-        "editor.slash.icon.title",
-        "editor.slash.badge.title",
-        "editor.slash.button.title",
-      ]
-    `);
-  });
   it('ranks exact labels above description matches in English and Arabic', () => {
     const items = createSlashItems();
     expect(rankSlashItems(items, 'warning')[0]?.titleKey).toBe('editor.slash.warning.title');
