@@ -201,10 +201,10 @@ export function ToggleRow({
   return (
     <div className="flex items-center gap-4 border-border border-t py-3.5">
       <div className={cn('flex-1 leading-snug', disabled && 'opacity-60')}>
-        <div id={titleId} className="font-medium text-sm">
+        <div id={titleId} className="font-medium text-sm leading-snug">
           {title}
         </div>
-        {hint ? <div className="mt-0.5 text-muted-foreground text-sm">{hint}</div> : null}
+        {hint ? <div className="mt-0.5 text-muted-foreground text-sm leading-snug">{hint}</div> : null}
       </div>
       <Switch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} aria-labelledby={titleId} />
     </div>
