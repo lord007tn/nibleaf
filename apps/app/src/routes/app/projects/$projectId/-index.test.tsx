@@ -223,6 +223,17 @@ describe('site overview first load', () => {
     if (role !== 'member') expect(container.querySelector('a[href="/settings?section=integrations"]')).not.toBeNull();
   });
 
+  it('lets every KPI tile open the page behind its number', async () => {
+    await act(async () => root.render(<SiteOverviewPage />));
+    const tiles = [...container.querySelectorAll('[data-slot="card"] a.absolute')];
+    expect(tiles.map((link) => [link.getAttribute('aria-label'), link.getAttribute('data-to')])).toEqual([
+      ['overview.stats.pages', '/app/projects/$projectId/editor'],
+      ['overview.stats.members', '/app/projects/$projectId/settings'],
+      ['overview.stats.deploys', '/app/projects/$projectId/publishes'],
+      ['overview.stats.pageviews', '/app/projects/$projectId/analytics'],
+    ]);
+  });
+
   it('prefetches the page views the overview opens with, in the loader', async () => {
     const queryClient = {};
     (Route.options.loader as (context: { context: { queryClient: unknown }; params: { projectId: string } }) => void)({

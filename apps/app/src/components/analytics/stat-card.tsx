@@ -20,6 +20,7 @@ export function StatCard({
   delta,
   hint,
   loading,
+  link,
 }: {
   label: string;
   value: number | null;
@@ -30,10 +31,21 @@ export function StatCard({
   delta?: Delta | null;
   hint?: string;
   loading?: boolean;
+  /**
+   * Where the number leads (the pages, the team, the publish history, the
+   * analytics): a link stretched over the whole tile, named after it. The
+   * tile itself stays a plain card for assistive tech.
+   */
+  link?: ReactNode;
 }) {
   const { number } = useFormatters();
   return (
-    <Card className="@container/card min-w-0 gap-3">
+    <Card
+      className={cn(
+        '@container/card min-w-0 gap-3',
+        link && 'relative transition-colors focus-within:ring-3 focus-within:ring-ring/50 hover:bg-muted/40 [&_a]:outline-none',
+      )}
+    >
       <CardHeader>
         <CardDescription className="flex min-w-0 items-start gap-1.5">
           {icon ? <span className="mt-0.5 shrink-0 [&_svg]:size-4">{icon}</span> : null}
@@ -54,6 +66,7 @@ export function StatCard({
         ) : null}
       </CardHeader>
       {hint && !loading ? <CardFooter className={cn('text-muted-foreground text-xs')}>{hint}</CardFooter> : null}
+      {link}
     </Card>
   );
 }
