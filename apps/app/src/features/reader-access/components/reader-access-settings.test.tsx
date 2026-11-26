@@ -222,7 +222,10 @@ const errorOf = (el: HTMLElement) =>
     .split(' ')
     .map((id) => document.getElementById(id))
     .find((node) => node?.dataset.slot === 'settings-row-error')?.textContent;
-const radios = () => [...container.querySelectorAll<HTMLInputElement>('input[type="radio"]')];
+/** The visibility choices: the design-system RadioGroup's radios (base-ui), not native inputs. */
+const radios = () => [...container.querySelectorAll<HTMLElement>('[role="radiogroup"] [role="radio"]')];
+const isChecked = (radio: HTMLElement | undefined) => radio?.getAttribute('aria-checked') === 'true';
+const nameOf = (radio: HTMLElement) => document.getElementById(radio.getAttribute('aria-labelledby') ?? '')?.textContent;
 const region = () => container.querySelector('[data-slot="save-region"]');
 const saveBar = () => act(async () => button(region() ?? document, 'common.save')?.click());
 const dialog = () => document.querySelector<HTMLElement>('[data-slot="action-dialog"]');
@@ -268,12 +271,13 @@ describe('who can read the site', () => {
     mocks.data = readerData({ accessMode: 'PUBLIC' });
     await render();
     expect(container.querySelector('h1')?.textContent).toBe('settings.authentication');
-    expect(radios().map((radio) => [radio.value, radio.checked])).toEqual([
-      ['PUBLIC', true],
-      ['WORKSPACE', false],
-      ['READERS', false],
+    expect(radios().map((radio) => [nameOf(radio), isChecked(radio)])).toEqual([
+      ['settings.visibility.public.titlesettings.visibility.current', true],
+      ['settings.visibility.team.title', false],
+      ['settings.visibility.readers.title', false],
     ]);
-    expect(container.querySelector('fieldset legend')?.textContent).toBe('settings.visibility.title');
+    expect(container.querySelector('input[type="radio"]:not([aria-hidden="true"])')).toBeNull();
+    expect(container.querySelector('[role="radiogroup"]')?.getAttribute('aria-label')).toBe('settings.visibility.title');
     expect(container.textContent).toContain('settings.visibility.current');
     expect(button(container, 'settings.visibility.save')).toBeUndefined();
     // Reader controls only show for an Invited readers site.
@@ -307,7 +311,7 @@ describe('who can read the site', () => {
     await act(async () => button(container, 'settings.visibility.save')?.click());
     await confirmDialog();
     expect(dialog()?.querySelector('[data-slot="action-dialog-error"]')?.textContent).toBe('settings.saveError');
-    expect(radios()[1]?.checked).toBe(true);
+    expect(isChecked(radios()[1])).toBe(true);
   });
 
   // Regression (operations/ui-overhaul.md §4.1): a useEffect copied the server's
@@ -317,9 +321,29 @@ describe('who can read the site', () => {
     await render();
     await act(async () => radios()[2]?.click());
     await refetch(readerData({ accessMode: 'PUBLIC', readerEmailDomains: ['acme.com'] }));
-    expect(radios()[2]?.checked).toBe(true);
+    expect(isChecked(radios()[2])).toBe(true);
     expect(button(container, 'settings.visibility.save')).toBeDefined();
     expect(dirty.size).toBeGreaterThan(0);
+  });
+
+  // The design-system RadioGroup (#483): one tab stop, and arrow keys only preview a choice; nothing is saved without the dialog.
+  it('previews a choice with the arrow keys from one tab stop, without saving it', async () => {
+    mocks.data = readerData({ accessMode: 'PUBLIC' });
+    await render();
+    expect(radios().map((radio) => radio.tabIndex)).toEqual([0, -1, -1]);
+    const first = radios()[0] as HTMLElement;
+    await act(async () => first.focus());
+    await act(async () => {
+      first.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+    });
+    expect(isChecked(radios()[1])).toBe(true);
+    expect(document.activeElement).toBe(radios()[1]);
+    expect(mocks.m.setMode.mutateAsync).not.toHaveBeenCalled();
+    expect(button(container, 'settings.visibility.save')).toBeDefined();
+    // Cancel goes back to the saved choice.
+    await act(async () => button(container, 'common.cancel')?.click());
+    expect(isChecked(radios()[0])).toBe(true);
+    expect(button(container, 'settings.visibility.save')).toBeUndefined();
   });
 
   it('points a Team only site at Members', async () => {
@@ -919,8 +943,12 @@ describe('access', () => {
     mocks.status = 'pending';
     await render();
     expect(container.querySelector('[data-slot="callout"]')).toBeNull();
-    expect(container.querySelector('fieldset')?.disabled).toBe(true);
-    expect(container.querySelector('fieldset')?.getAttribute('aria-describedby')).toBeNull();
+    expect(radios()).toHaveLength(3);
+    expect(radios().every((radio) => radio.hasAttribute('data-disabled'))).toBe(true);
+    expect(container.querySelector('[role="radiogroup"]')?.getAttribute('aria-describedby')).toBeNull();
+    // A locked choice can't be picked.
+    await act(async () => radios()[0]?.click());
+    expect(radios().map(isChecked)).toEqual([false, false, true]);
     expect(field('settings.visibility.invite.label').disabled).toBe(true);
   });
 });

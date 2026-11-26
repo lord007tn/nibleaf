@@ -56,7 +56,9 @@
         "scripts/site-owner-addresses.fixture.tsx",
         "scripts/theme-contrast.fixture.tsx",
         // Run by hand to record main's serializer output for the differential (#612).
-        "src/components/editor/__fixtures__/serializer-differential.generate.mjs"
+        "src/components/editor/__fixtures__/serializer-differential.generate.mjs",
+        // Run by hand to record main's list item lead results (#604).
+        "src/components/editor/__fixtures__/list-item-leads-main.generate.mjs"
       ]
     },
     "packages/database": {
