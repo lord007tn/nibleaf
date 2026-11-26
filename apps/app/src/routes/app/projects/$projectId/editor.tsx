@@ -75,6 +75,7 @@ import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
 import { createEditorSaveQueue, isSupersededWrite, type PageDraft, type QueuedWrite, samePageDraft } from '@/components/editor/editor-save-queue';
 import { useSaveThrottle } from '@/components/editor/editor-save-throttle';
+import { editorIn } from '@/components/editor/editor-sections';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { useLinkedPageHistory } from '@/components/editor/linked-page-history';
@@ -1601,13 +1602,14 @@ function EditorPage() {
       value={title}
     />
   );
-  // Writers start typing the title right after clicking "New page". While the page
-  // is being created the canvas is locked, so keep those keystrokes and hand them to
-  // the new title instead of dropping them.
+  // Writers start typing the title right after clicking "New page". Until the new
+  // page's title takes focus (while the page is created, then loaded), keep those
+  // keystrokes and hand them to the title instead of dropping them. Enter is kept
+  // too: as in the title, it moves on to the body, which gets what follows it.
   const typedWhileCreating = useRef('');
-  const creatingPage = pendingSwitch?.kind === 'create';
+  const awaitingTitle = pendingSwitch?.kind === 'create' || focusTitleFor !== null;
   useEffect(() => {
-    if (!creatingPage) return;
+    if (!awaitingTitle) return;
     typedWhileCreating.current = '';
     const onKeyDown = (event: KeyboardEvent) => {
       // Only for a new page whose title will take focus, and never for keys meant for
@@ -1617,13 +1619,14 @@ function EditorPage() {
       const target = event.target instanceof HTMLElement ? event.target : null;
       if (target?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], [role="combobox"]')) return;
       if (event.key === 'Backspace') typedWhileCreating.current = typedWhileCreating.current.slice(0, -1);
+      else if (event.key === 'Enter') typedWhileCreating.current += '\n';
       else if (event.key.length === 1) typedWhileCreating.current += event.key;
       else return;
       event.preventDefault();
     };
     window.addEventListener('keydown', onKeyDown, true);
     return () => window.removeEventListener('keydown', onKeyDown, true);
-  }, [creatingPage]);
+  }, [awaitingTitle]);
 
   // A new page opens with its placeholder title selected, so typing replaces it.
   useEffect(() => {
@@ -1631,18 +1634,22 @@ function EditorPage() {
     const element = titleRef.current;
     if (!element) return;
     element.focus();
-    const typed = typedWhileCreating.current.trimStart();
+    const buffered = typedWhileCreating.current.trimStart();
     typedWhileCreating.current = '';
+    const enter = buffered.indexOf('\n');
+    const typed = enter < 0 ? buffered : buffered.slice(0, enter);
     if (typed) {
       // Write the DOM value and caret synchronously so keys typed from now on land
       // after the buffered text; React then renders the same value.
       element.value = typed;
       element.setSelectionRange(typed.length, typed.length);
       setTitle(typed);
-    } else {
+    } else if (enter < 0) {
       element.select();
     }
     setFocusTitleFor(null);
+    // Enter was pressed: on to the body, as Enter in the title does, with what was typed after it.
+    if (enter >= 0) moveTypedToBody(canvasRef.current, buffered.slice(enter + 1));
   }, [focusTitleFor, switching, page?.id]);
 
   const openRail = () => {
@@ -2614,6 +2621,33 @@ type PendingChangesData = ReturnType<typeof usePendingChanges>['data'];
 
 /** Whether a page's address may still follow its title, from the freshest cached
  *  publish state (see addressMayFollowTitle). */
+/**
+ * Put the caret at the start of the page body and type `text` there (`\n` makes
+ * a new paragraph), once the page's editor holds its content.
+ */
+function moveTypedToBody(canvas: HTMLElement | null, text: string, frames = 30): void {
+  const editor = editorIn(canvas);
+  // Markdown source mode edits the body in a plain text field.
+  const source = canvas?.querySelector<HTMLTextAreaElement>('textarea:not([data-page-title])');
+  if (!editor && !source) {
+    if (frames > 0) requestAnimationFrame(() => moveTypedToBody(canvas, text, frames - 1));
+    return;
+  }
+  focusBodyStart(canvas);
+  if (!text) return;
+  if (!editor) {
+    source?.setRangeText(text, 0, 0, 'end');
+    source?.dispatchEvent(new Event('input', { bubbles: true }));
+    return;
+  }
+  const chain = editor.chain().focus('start');
+  text.split('\n').forEach((line, index) => {
+    if (index > 0) chain.splitBlock();
+    if (line) chain.insertContent({ type: 'text', text: line });
+  });
+  chain.run();
+}
+
 function addressFollowsTitle(queryClient: QueryClient, projectId: string, pageId: string): boolean {
   return addressMayFollowTitle(
     pageId,
