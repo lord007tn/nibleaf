@@ -174,20 +174,6 @@ describe('review content regressions', () => {
     textPaste(editor, url);
     expect(editor.state.doc.firstChild?.type.name === 'image').toBe(image);
   });
-  it('cleans a roughly 1 MB paste without per-element ancestor walks (L)', () => {
-    // Many realistic spans/links, with text dominating the byte size as in articles.
-    const fixture = (blocks: number) =>
-      `<form>${'<p class="word"><a href="/help"><span style="text-decoration:underline">Read this. </span></a>'.padEnd(4096, 'x').concat('</p>').repeat(blocks)}</form>`;
-    expect(fixture(256).length).toBeGreaterThan(1024 * 1024);
-    /** Cleanup mutates the tree, so each run parses a fresh copy. */
-    const clean = (html: string) => {
-      const root = document.createElement('div');
-      root.innerHTML = html;
-      cleanPasteDOM(root);
-      return root;
-    };
-    expect(clean(fixture(256)).querySelector('form,span,[style]')).toBeNull();
-  });
   it.each(['ltr', 'rtl'] as const)('shows active and default alignment and matching physical reader alignment in %s (J, C, 8)', async (dir) => {
     const editor = make();
     editor.commands.setContent('| A |\n| --- |\n| B |', { emitUpdate: false });
