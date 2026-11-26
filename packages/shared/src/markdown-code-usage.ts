@@ -33,7 +33,7 @@ export interface MarkdownCodeUsage {
 /** micromark can go superlinear on long runs of emphasis, bracket and tag
  *  markers (#453). Past these bounds the caller falls back to its conservative
  *  line-based detection instead of parsing. */
-const MAX_LENGTH = 400_000;
+export const MARKDOWN_PARSE_MAX_LENGTH = 400_000;
 const MAX_MARKERS = 40_000;
 const MARKERS = new Set(['*', '_', '[', ']', '<', '>']);
 
@@ -57,7 +57,7 @@ const hasMathNode = (node: { type: string; children?: unknown[] }): boolean =>
 /** Null when the document is too large or marker-dense to parse safely. */
 export const markdownCodeUsage = (markdown: string): MarkdownCodeUsage | null => {
   if (typeof markdown !== 'string') return { languages: [], rich: false, math: false };
-  if (markdown.length > MAX_LENGTH) return null;
+  if (markdown.length > MARKDOWN_PARSE_MAX_LENGTH) return null;
   let markers = 0;
   for (let index = 0; index < markdown.length; index += 1) {
     if (MARKERS.has(markdown[index] as string) && ++markers > MAX_MARKERS) return null;
