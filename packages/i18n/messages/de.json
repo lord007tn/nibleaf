@@ -5131,5 +5131,14 @@
   "editor_fix_explain_blogrootgroup": "Leser sehen diesen Namen oben in der Seitenleiste. Benennen Sie den Bereich nach dem Inhalt seiner Seiten um, zum Beispiel Anleitungen.",
   "editor_fix_placed": "{placed} von {total} hervorgehoben",
   "editor_fix_previous": "Vorherige",
-  "editor_fix_insideblock": "In einem Block, der wie geschrieben bleibt. In Markdown beheben."
+  "editor_fix_insideblock": "In einem Block, der wie geschrieben bleibt. In Markdown beheben.",
+  "shortcuts_editor_description": "Schreiben und formatieren, ohne die Tastatur loszulassen. Auf einem Mac ⌘ statt Ctrl verwenden.",
+  "shortcuts_editor_text": "Text",
+  "shortcuts_editor_blocks": "Blöcke",
+  "shortcuts_editor_page": "Seite",
+  "shortcuts_editor_savedraft": "Entwurf jetzt speichern",
+  "shortcuts_editor_moveup": "Block nach oben verschieben",
+  "shortcuts_editor_movedown": "Block nach unten verschieben",
+  "shortcuts_editor_formattingmenu": "Zum Formatierungsmenü des markierten Texts wechseln",
+  "shortcuts_editor_show": "Tastenkürzel anzeigen"
 }

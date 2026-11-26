@@ -5164,5 +5164,14 @@
   "editor_fix_explain_blogrootgroup": "Читатели видят это название вверху боковой панели. Переименуйте раздел по содержанию его страниц, например «Руководства».",
   "editor_fix_placed": "Выделено {placed} из {total}",
   "editor_fix_previous": "Предыдущее",
-  "editor_fix_insideblock": "Внутри блока, сохранённого как написано. Исправьте в Markdown."
+  "editor_fix_insideblock": "Внутри блока, сохранённого как написано. Исправьте в Markdown.",
+  "shortcuts_editor_description": "Пишите и форматируйте, не отрываясь от клавиатуры. На Mac используйте ⌘ вместо Ctrl.",
+  "shortcuts_editor_text": "Текст",
+  "shortcuts_editor_blocks": "Блоки",
+  "shortcuts_editor_page": "Страница",
+  "shortcuts_editor_savedraft": "Сохранить черновик сейчас",
+  "shortcuts_editor_moveup": "Переместить блок вверх",
+  "shortcuts_editor_movedown": "Переместить блок вниз",
+  "shortcuts_editor_formattingmenu": "Перейти в меню форматирования выделенного текста",
+  "shortcuts_editor_show": "Показать сочетания клавиш"
 }

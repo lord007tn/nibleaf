@@ -1,5 +1,7 @@
+import { detectShortcutPlatform } from '@/lib/shortcut';
+
 /** True on macOS and iOS, where the shortcut modifier is ⌘ rather than Ctrl. */
-export const isApplePlatform = () => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+export const isApplePlatform = () => detectShortcutPlatform(globalThis.navigator) === 'apple';
 
 /**
  * A Ctrl/⌘ shortcut as the platform writes it: `Ctrl+Shift+8` on Windows and

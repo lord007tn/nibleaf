@@ -320,6 +320,19 @@ describe('AUTH-16 editor save lifecycle', () => {
     expect(mocks.update).not.toHaveBeenCalled();
     expect(container.textContent).toContain('editor.savedShort');
   });
+  it('Ctrl+/ lists the keyboard shortcuts', async () => {
+    const input = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]');
+    if (!input) throw new Error('Missing editor input');
+    const event = new KeyboardEvent('keydown', { key: '/', ctrlKey: true, bubbles: true, cancelable: true });
+    await act(async () => {
+      input.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog?.textContent).toContain('shortcuts.title');
+    expect(dialog?.textContent).toContain('shortcuts.editor.saveDraft');
+    expect(dialog?.textContent).toContain('Ctrl+S');
+  });
   it('leaves Ctrl+Shift+S and Alt+S to the browser', async () => {
     expect((await pressSave({ ctrlKey: true, shiftKey: true })).defaultPrevented).toBe(false);
     expect((await pressSave({ ctrlKey: true, altKey: true })).defaultPrevented).toBe(false);

@@ -5060,5 +5060,14 @@
   "editor_fix_explain_blogrootgroup": "Pembaca melihat nama ini di bagian atas bilah samping. Ganti nama bagian sesuai isi halamannya, misalnya Panduan.",
   "editor_fix_placed": "{placed} dari {total} disorot",
   "editor_fix_previous": "Sebelumnya",
-  "editor_fix_insideblock": "Di dalam blok yang dipertahankan seperti yang ditulis. Perbaiki di Markdown."
+  "editor_fix_insideblock": "Di dalam blok yang dipertahankan seperti yang ditulis. Perbaiki di Markdown.",
+  "shortcuts_editor_description": "Menulis dan memformat tanpa melepas keyboard. Di Mac, gunakan ⌘ sebagai ganti Ctrl.",
+  "shortcuts_editor_text": "Teks",
+  "shortcuts_editor_blocks": "Blok",
+  "shortcuts_editor_page": "Halaman",
+  "shortcuts_editor_savedraft": "Simpan draf sekarang",
+  "shortcuts_editor_moveup": "Pindahkan blok ke atas",
+  "shortcuts_editor_movedown": "Pindahkan blok ke bawah",
+  "shortcuts_editor_formattingmenu": "Buka menu format untuk teks yang dipilih",
+  "shortcuts_editor_show": "Tampilkan pintasan keyboard"
 }

@@ -5131,5 +5131,14 @@
   "editor_fix_explain_blogrootgroup": "Readers see this name at the top of the sidebar. Rename the section to what its pages are, such as Guides.",
   "editor_fix_placed": "Highlighted {placed} of {total}",
   "editor_fix_previous": "Previous",
-  "editor_fix_insideblock": "Inside a block kept as written. Fix it in Markdown."
+  "editor_fix_insideblock": "Inside a block kept as written. Fix it in Markdown.",
+  "shortcuts_editor_description": "Write and format without leaving the keyboard. On a Mac, use ⌘ instead of Ctrl.",
+  "shortcuts_editor_text": "Text",
+  "shortcuts_editor_blocks": "Blocks",
+  "shortcuts_editor_page": "Page",
+  "shortcuts_editor_savedraft": "Save the draft now",
+  "shortcuts_editor_moveup": "Move block up",
+  "shortcuts_editor_movedown": "Move block down",
+  "shortcuts_editor_formattingmenu": "Go to the formatting menu of selected text",
+  "shortcuts_editor_show": "Show keyboard shortcuts"
 }

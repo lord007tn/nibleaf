@@ -513,7 +513,7 @@ function BlockHandle({ editor, dir }: { editor: Editor; dir: 'ltr' | 'rtl' }) {
           <Plus className="size-4" />
         </button>
         <span
-          title={t('editor.dragToMove')}
+          title={withShortcut(t('editor.dragToMove'), 'Shift+↑/↓')}
           className="grid size-6 cursor-grab place-items-center rounded hover:bg-muted hover:text-foreground active:cursor-grabbing"
         >
           <GripVertical className="size-4" />

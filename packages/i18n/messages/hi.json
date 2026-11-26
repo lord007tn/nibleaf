@@ -5066,5 +5066,14 @@
   "editor_fix_explain_blogrootgroup": "पाठक साइडबार के सबसे ऊपर यह नाम देखते हैं। अनुभाग का नाम उसके पेजों के अनुसार रखें, जैसे गाइड।",
   "editor_fix_placed": "{total} में से {placed} हाइलाइट किए गए",
   "editor_fix_previous": "पिछला",
-  "editor_fix_insideblock": "जैसा लिखा है वैसा ही रखे गए ब्लॉक के अंदर। इसे Markdown में ठीक करें।"
+  "editor_fix_insideblock": "जैसा लिखा है वैसा ही रखे गए ब्लॉक के अंदर। इसे Markdown में ठीक करें।",
+  "shortcuts_editor_description": "कीबोर्ड छोड़े बिना लिखें और फ़ॉर्मैट करें। Mac पर Ctrl की जगह ⌘ इस्तेमाल करें।",
+  "shortcuts_editor_text": "टेक्स्ट",
+  "shortcuts_editor_blocks": "ब्लॉक",
+  "shortcuts_editor_page": "पेज",
+  "shortcuts_editor_savedraft": "ड्राफ़्ट अभी सेव करें",
+  "shortcuts_editor_moveup": "ब्लॉक ऊपर ले जाएँ",
+  "shortcuts_editor_movedown": "ब्लॉक नीचे ले जाएँ",
+  "shortcuts_editor_formattingmenu": "चुने गए टेक्स्ट के फ़ॉर्मैटिंग मेन्यू पर जाएँ",
+  "shortcuts_editor_show": "कीबोर्ड शॉर्टकट दिखाएँ"
 }
