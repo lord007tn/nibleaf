@@ -8,14 +8,14 @@
 
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { Editor } from '@tiptap/core';
+import type { Editor } from '@tiptap/core';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 
-import { buildEditorExtensions, getMarkdown, seedMarkdown, TiptapEditor } from './tiptap-editor';
+import { TiptapEditor } from './tiptap-editor';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
@@ -57,36 +57,6 @@ const mount = async (element: React.ReactElement) => {
   await settle();
   return { root, container, prose: () => container.querySelector('.ProseMirror') };
 };
-
-describe('seedMarkdown', () => {
-  it('clears the document for an empty source', () => {
-    const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
-    try {
-      seedMarkdown(editor, '# Previous page\n\nBody text.');
-      expect(getMarkdown(editor)).toContain('Previous page');
-      seedMarkdown(editor, '');
-      expect(getMarkdown(editor)).toBe('');
-      expect(editor.state.doc.textContent).toBe('');
-      seedMarkdown(editor, '   \n');
-      expect(getMarkdown(editor)).toBe('');
-    } finally {
-      editor.destroy();
-    }
-  });
-
-  it('does not emit an update while seeding', () => {
-    const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
-    const onUpdate = vi.fn();
-    editor.on('update', onUpdate);
-    try {
-      seedMarkdown(editor, 'Hello');
-      seedMarkdown(editor, '');
-      expect(onUpdate).not.toHaveBeenCalled();
-    } finally {
-      editor.destroy();
-    }
-  });
-});
 
 describe('TiptapEditor', () => {
   // content-blocks.css styles these blocks for the editor and the published

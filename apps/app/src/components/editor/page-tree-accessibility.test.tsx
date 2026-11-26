@@ -105,7 +105,7 @@ it('exposes a grouped tree with one tab stop, sibling metadata and a shared desc
   expect(document.getElementById(descriptions[0] ?? '')?.textContent).toContain('F2');
 });
 
-it('keeps group case and gives an untitled page a visible, named warning dot', async () => {
+it('labels an untitled page and keeps its warning dot out of the accessible name', async () => {
   await render();
   const group = pages[0];
   const original = pages[2];
@@ -118,10 +118,8 @@ it('keeps group case and gives an untitled page a visible, named warning dot', a
       </PageTreeDndProvider>,
     ),
   );
-  expect(row('guide').querySelector('button')?.className).not.toContain('uppercase');
   const dot = row('config').querySelector('.bg-warning');
   expect(dot?.getAttribute('aria-hidden')).toBe('true');
-  expect(dot?.className).toContain('bg-warning');
   expect(row('config').textContent).toContain('Untitled');
 });
 

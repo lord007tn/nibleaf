@@ -224,8 +224,11 @@ export function GitWorkflow({
                   value={token}
                 />
                 <Button
+                  aria-describedby={tokenTooShort ? 'git2-authorize-reason' : undefined}
                   className="w-full sm:w-auto"
                   disabled={tokenTooShort}
+                  // Blocked, it stays in the tab order, so its reason (below) is read with it.
+                  focusableWhenDisabled
                   loading={authorize.busy}
                   loadingText={t('settings.git.workflow.authorizing')}
                   onClick={() => authorize.verify(token, (identity) => setAuthorizedAccount(identity))}
@@ -238,6 +241,11 @@ export function GitWorkflow({
               <p className="text-muted-foreground text-xs" id="git2-token-hint">
                 {t('settings.git.connect.tokenHint')}
               </p>
+              {tokenTooShort ? (
+                <p className="text-muted-foreground text-sm" id="git2-authorize-reason">
+                  {t('settings.git.connect.pasteFirst')}
+                </p>
+              ) : null}
               {authorize.failed ? (
                 <p aria-live="polite" className="text-destructive text-sm">
                   {t('settings.git.workflow.authorizeError')}

@@ -338,7 +338,7 @@ const copySelection = (editor: Editor) => {
   return values;
 };
 
-describe('#846 review blockers', () => {
+describe('fileTree names, source, and clipboard edits', () => {
   it('copies only selected text within one File name', async () => {
     const editor = await make('<FileTree>\n\n<File name="index.ts" />\n\n</FileTree>');
     const file = nodesOf(editor, 'mdxFile')[0];

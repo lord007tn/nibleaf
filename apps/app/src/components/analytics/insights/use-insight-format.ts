@@ -35,6 +35,13 @@ export function useInsightFormat() {
     return value < 1000 ? unit(Math.round(value), 'millisecond') : unit(value / 1000, 'second', 1);
   };
   const position = (value: number | null) => (value === null ? UNKNOWN : base.number(value, { maximumFractionDigits: 1 }));
+  /** Short axis labels: "12", "4.5K", "1.2M" (and "$4.5K" for spend). */
+  const compact = (value: number, currency?: 'USD') =>
+    new Intl.NumberFormat(tag, {
+      notation: 'compact',
+      maximumFractionDigits: 1,
+      ...(currency ? { style: 'currency', currency } : {}),
+    }).format(value);
   const decimal = (value: number | null, digits = 2) => (value === null ? UNKNOWN : base.number(value, { maximumFractionDigits: digits }));
 
   const metric = (value: number | null, kind: MetricKind) => {
@@ -77,5 +84,5 @@ export function useInsightFormat() {
     return Number.isNaN(date.getTime()) ? value : base.date(date);
   };
 
-  return { ...base, count, rate, duration, ms, position, decimal, metric, delta, bucket, bucketLong, day };
+  return { ...base, count, compact, rate, duration, ms, position, decimal, metric, delta, bucket, bucketLong, day };
 }

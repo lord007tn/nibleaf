@@ -17,6 +17,7 @@ import { isBuildRetired } from '@/lib/build-retired';
 import { currentRouteNeedsDashboardLocale } from '@/lib/dashboard-locale-boot';
 import { reloadDocument, runOptionalLoad } from '@/lib/document-recovery';
 import { showRecoveryNotice } from '@/lib/hydration-recovery';
+import { startInterfaceLanguageSync } from '@/lib/interface-language-sync';
 
 /** How long to wait before each automatic retry while a document waits to hydrate. */
 const HYDRATION_RETRY_DELAYS_MS = [500, 1500];
@@ -184,4 +185,6 @@ if (typeof document !== 'undefined') {
   subscribeLanguage(() => {
     failedChoice = undefined;
   });
+  // Another tab's language choice applies here too, catalog, lang and dir together (AUTH-20).
+  startInterfaceLanguageSync();
 }

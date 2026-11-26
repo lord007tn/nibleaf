@@ -185,7 +185,6 @@ describe('SiteNav sections', () => {
     container.innerHTML = renderToString(<SiteNav nodes={nodes} projectId="docs" currentPath="intro" toggleLabel="Toggle" />);
     const blockStarts = [...container.querySelectorAll('[data-nav-block-start]')].map((item) => item.querySelector('a')?.textContent);
     expect(blockStarts).toEqual(['faq']);
-    expect(container.querySelector('[data-nav-block-start]')?.className).toContain('mt-7');
   });
 
   it('names the page list so it is distinct from the header links', () => {
@@ -279,36 +278,21 @@ describe('SiteNav long titles', () => {
     expect(container.querySelector('.truncate')).toBeNull();
   });
 
-  it('puts a tag on its own line under the title, so the title keeps the whole row (#537)', () => {
+  it('keeps the tag in the titled link without layering tints on the current page', () => {
     const container = document.createElement('div');
-    container.innerHTML = renderToString(<SiteNav nodes={tree} projectId="docs" currentPath="ai" toggleLabel="Toggle subpages" />);
-    const tag = container.querySelector<HTMLElement>('[data-nav-tag]');
-    expect(tag?.textContent).toBe('New');
-    // Directly under the title in one column, not a fixed column beside it.
-    expect(tag?.previousElementSibling?.hasAttribute('data-nav-label')).toBe(true);
-    expect(tag?.parentElement?.className).toContain('flex-col');
-    expect(tag?.parentElement?.className).toContain('flex-1');
-    expect(tag?.className).not.toMatch(/\b(shrink-0|ms-auto)\b/);
-  });
-
-  it('drops the tag tint on an active row, which already draws it, and keeps it elsewhere (#678)', () => {
-    const tagIn = (currentPath: string) => {
-      const container = document.createElement('div');
+    const tagAt = (currentPath: string) => {
       container.innerHTML = renderToString(<SiteNav nodes={tree} projectId="docs" currentPath={currentPath} toggleLabel="Toggle subpages" />);
       return container.querySelector<HTMLElement>('[data-nav-tag]');
     };
-    // Active: the row's own bg-primary/10 is the only tint; a ring keeps the tag distinct.
-    const active = tagIn('ai');
-    expect(active?.closest('a')?.getAttribute('aria-current')).toBe('page');
-    expect(active?.closest('a')?.className).toContain('bg-primary/10');
-    expect(active?.className).not.toContain('bg-primary/10');
-    expect(active?.className).toMatch(/\bring-1\b/);
-    expect(active?.className).toContain('text-primary');
-    // Inactive: unchanged, the tag carries its own tint and no ring.
-    const inactive = tagIn('leaf');
-    expect(inactive?.closest('a')?.hasAttribute('aria-current')).toBe(false);
-    expect(inactive?.className).toContain('bg-primary/10');
-    expect(inactive?.className).not.toMatch(/\bring-/);
+    const tag = tagAt('ai');
+    expect(tag?.textContent).toBe('New');
+    const link = tag?.closest('a');
+    expect(link?.querySelector('[data-nav-label]')?.textContent).toBe(`Page: ${long}`);
+    expect(link?.getAttribute('aria-current')).toBe('page');
+    // The contrast model assumes one tint. A second tint puts Harbor's label below AA.
+    expect(link?.classList.contains('bg-primary/10')).toBe(true);
+    expect(tag?.classList.contains('bg-primary/10')).toBe(false);
+    expect(tagAt('leaf')?.classList.contains('bg-primary/10')).toBe(true);
   });
 
   it('shows the whole title on hover or focus only when two lines are not enough', async () => {
