@@ -39,7 +39,8 @@ export function InterfaceLanguageDialog({ open, onOpenChange }: { open: boolean;
         {/* cmdk names its search box and list from `label`; a placeholder alone names nothing. */}
         <Command className="rounded-none bg-transparent" label={t('account.language.search')}>
           <CommandInput placeholder={t('account.language.search')} />
-          <CommandList className="max-h-[min(24rem,60vh)] pb-1">
+          {/* Its own name: without one, cmdk names the list with its English fallback "Suggestions". */}
+          <CommandList className="max-h-[min(24rem,60vh)] pb-1" label={t('account.language')}>
             <CommandEmpty>{t('account.language.noResults')}</CommandEmpty>
             <CommandGroup>
               {INTERFACE_LOCALES.map((option) => (

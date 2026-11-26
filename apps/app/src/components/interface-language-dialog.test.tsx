@@ -36,7 +36,7 @@ describe('interface language dialog (PUBLIC-16)', () => {
     expect(input).not.toBeNull();
     expect(computeAccessibleName(input as HTMLInputElement)).toBe('account.language.search');
     const list = document.querySelector('[role="listbox"]');
-    expect(computeAccessibleName(list as Element)).not.toBe('');
+    expect(computeAccessibleName(list as Element)).toBe('account.language');
   });
 
   it('says which language is in use, not only with a hidden check mark', async () => {

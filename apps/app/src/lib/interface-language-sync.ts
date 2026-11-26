@@ -1,4 +1,4 @@
-import { getLocale, setLanguage, subscribeLanguage } from '@nibleaf/i18n/locale-state';
+import { getLocale, setLanguage, subscribeLanguage, subscribeLanguageChoice } from '@nibleaf/i18n/locale-state';
 import { isSupportedLocale } from '@nibleaf/i18n/locales';
 
 const LANGUAGE_CHANNEL = 'nibleaf-interface-language';
@@ -18,12 +18,26 @@ export function startInterfaceLanguageSync(): () => void {
   // locale (not a flag), so a choice made here while that one downloads still goes
   // out, and overlapping messages can't clear each other's guard.
   let fromOtherTab: string | undefined;
+  let receiving = false;
   otherTabs.onmessage = (event: MessageEvent) => {
     const locale = (event.data as { locale?: unknown } | null)?.locale;
-    if (typeof locale !== 'string' || !isSupportedLocale(locale) || locale === getLocale()) return;
+    if (typeof locale !== 'string' || !isSupportedLocale(locale)) return;
+    // Applied even when it is the language on screen: an earlier switch here may still be
+    // downloading, and this newer choice must supersede it. setLanguage tells its choice
+    // listeners synchronously, so `receiving` marks exactly this call.
     fromOtherTab = locale;
-    void setLanguage(locale);
+    receiving = true;
+    try {
+      void setLanguage(locale);
+    } finally {
+      receiving = false;
+    }
   };
+  // A choice made here supersedes whatever another tab sent, so a later local choice of
+  // that same language is still broadcast.
+  const unsubscribeChoice = subscribeLanguageChoice(() => {
+    if (!receiving) fromOtherTab = undefined;
+  });
   const unsubscribe = subscribeLanguage(() => {
     const locale = getLocale();
     if (locale === fromOtherTab) {
@@ -33,6 +47,7 @@ export function startInterfaceLanguageSync(): () => void {
     otherTabs.postMessage({ locale });
   });
   return () => {
+    unsubscribeChoice();
     unsubscribe();
     otherTabs.close();
   };

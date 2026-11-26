@@ -83,6 +83,43 @@ describe('a language chosen in another tab (AUTH-20)', () => {
     expect(heard).toHaveBeenCalledWith({ locale: 'de' });
   });
 
+  it('lets another tab supersede a switch still downloading here, even back to the language on screen', async () => {
+    const { getLocale, registerLanguagePreparation, setLanguage } = await import('@nibleaf/i18n/locale-state');
+    let finishArabic: (ready: boolean) => void = () => undefined;
+    registerLanguagePreparation((locale) => (locale === 'ar' ? new Promise<boolean>((done) => (finishArabic = done)) : Promise.resolve(true)));
+    (await import('./interface-language-sync')).startInterfaceLanguageSync();
+    const other = otherTab();
+    const switching = setLanguage('ar'); // still downloading
+    other.postMessage({ locale: 'en' }); // the other tab went back to English meanwhile
+    await flush();
+    await flush();
+    finishArabic(true);
+    await switching;
+    await flush();
+    expect(getLocale()).toBe('en');
+    expect(document.documentElement.lang).toBe('en');
+  });
+
+  it('broadcasts a local choice of a language another tab sent earlier but that never applied here', async () => {
+    const { registerLanguagePreparation, setLanguage } = await import('@nibleaf/i18n/locale-state');
+    let frenchCalls = 0;
+    registerLanguagePreparation((locale) => {
+      if (locale === 'fr' && frenchCalls++ === 0) return new Promise<boolean>(() => undefined); // the first download hangs
+      return Promise.resolve(true);
+    });
+    (await import('./interface-language-sync')).startInterfaceLanguageSync();
+    const other = otherTab();
+    const heard = vi.fn();
+    other.onmessage = (event) => heard(event.data);
+    other.postMessage({ locale: 'fr' });
+    await flush();
+    await setLanguage('de');
+    await setLanguage('fr');
+    await flush();
+    expect(heard).toHaveBeenCalledWith({ locale: 'de' });
+    expect(heard).toHaveBeenLastCalledWith({ locale: 'fr' });
+  });
+
   it('ignores anything that is not a supported locale', async () => {
     const { getLocale } = await import('@nibleaf/i18n/locale-state');
     (await import('./interface-language-sync')).startInterfaceLanguageSync();
