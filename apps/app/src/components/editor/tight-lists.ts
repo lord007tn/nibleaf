@@ -8,7 +8,7 @@
  */
 
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { isLeadToken, itemLineBlock } from './list-item-leads';
+import { endsLineAtMarker, isLeadToken, itemLineBlock } from './list-item-leads';
 
 interface MarkdownToken {
   type: string;
@@ -141,6 +141,7 @@ const ENDS_WITH_TEXT: ReadonlySet<string> = new Set(['paragraph', 'blockquote', 
 function interruptsParagraph(list: PMNode): boolean {
   const first = list.firstChild;
   if (list.type.name === 'orderedList' && Number(list.attrs.start ?? 1) !== 1) return false;
+  if (first?.type.name === 'listItem') return !endsLineAtMarker(first);
   return !!first && !(first.childCount === 1 && first.firstChild?.content.size === 0);
 }
 

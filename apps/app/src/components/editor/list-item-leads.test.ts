@@ -47,6 +47,16 @@ it.each(['-', '*'])('keeps nested %s items when their first child contains only 
   }
 });
 
+it.each(['space', 'two empty paragraphs'])('keeps the parent text separate from a nested marker after %s', (edit) => {
+  const editor = open('- Top\n  - x\n  - Tail\n- Next');
+  const at = find(editor, 'x');
+  const tr = editor.state.tr;
+  editor.view.dispatch(edit === 'space' ? tr.insertText(' ', at, at + 1) : tr.delete(at, at + 1).split(at));
+  const saved = getMarkdown(editor);
+  expect(saved).toBe('- Top\n\n  - \n  - Tail\n\n- Next');
+  stable(saved);
+});
+
 it.each(['a b c d e', 'أ ب ت ث ج'])('preserves %s when italic starts an overlapping strike and bold edit', (source) => {
   for (const prefix of ['', 'Intro\n\n', '- ', '> ']) {
     const editor = open(`${prefix}${source}`);
