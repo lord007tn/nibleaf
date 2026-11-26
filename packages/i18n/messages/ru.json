@@ -5129,5 +5129,8 @@
   "settings_appearance_onthispage": "На этой странице",
   "settings_appearance_preview_title": "Живой предпросмотр",
   "settings_appearance_preview_hint": "Показывает несохранённые изменения по мере их внесения.",
-  "settings_appearance_preview_mode": "Цветовой режим предпросмотра"
+  "settings_appearance_preview_mode": "Цветовой режим предпросмотра",
+  "settings_seo_description": "Как ваш сайт выглядит в результатах поиска и при публикации ссылок на его страницы.",
+  "settings_redirects_empty": "Перенаправлений пока нет",
+  "settings_variables_empty": "Переменных пока нет"
 }

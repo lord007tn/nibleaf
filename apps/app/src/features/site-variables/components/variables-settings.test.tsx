@@ -144,12 +144,16 @@ describe('VariablesSettings — rows', () => {
     expect(saveRegion()).toBeNull();
   });
 
-  it('with nothing stored, explains variables and offers Add in an empty state', async () => {
+  it('with nothing stored, explains variables under the page heading and offers Add in an empty state', async () => {
     await render(projectWith(undefined));
     expect(rowsOf()).toHaveLength(0);
+    // One page heading saying how to use a variable (B5b: the settings layout), then the empty state.
+    const header = container.querySelector('[data-slot="page-header"]');
+    expect(header?.querySelector('h1')?.textContent).toBe('settings.variables.title');
+    expect(header?.textContent).toContain('settings.variables.descriptionBefore');
+    expect(header?.textContent).toContain('{{ var.name }}');
     const empty = container.querySelector('[data-slot="empty-state"]');
-    expect(empty?.textContent).toContain('settings.variables.descriptionBefore');
-    expect(empty?.textContent).toContain('{{ var.name }}');
+    expect(empty?.querySelector('h2')?.textContent).toBe('settings.variables.empty');
     expect(empty?.contains(addButton())).toBe(true);
   });
 

@@ -5096,5 +5096,8 @@
   "settings_appearance_onthispage": "Auf dieser Seite",
   "settings_appearance_preview_title": "Live-Vorschau",
   "settings_appearance_preview_hint": "Zeigt Ihre ungespeicherten Änderungen, während Sie sie vornehmen.",
-  "settings_appearance_preview_mode": "Farbmodus der Vorschau"
+  "settings_appearance_preview_mode": "Farbmodus der Vorschau",
+  "settings_seo_description": "Wie Ihre Website in Suchergebnissen und beim Teilen ihrer Seiten erscheint.",
+  "settings_redirects_empty": "Noch keine Weiterleitungen",
+  "settings_variables_empty": "Noch keine Variablen"
 }

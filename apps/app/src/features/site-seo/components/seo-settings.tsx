@@ -1,20 +1,15 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { Input } from '@nibleaf/design-system/components/ui/input';
+import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { SettingsSection } from '@nibleaf/design-system/components/ui/settings-section';
 import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
-import { SearchCheck, Upload } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  FIELD_TEXTAREA,
-  LanguageScopePicker,
-  SectionHeader,
-  sortLanguagesDefaultFirst,
-  useScopeDirtyGuard,
-} from '@/components/project-settings/shared';
+import { FIELD_TEXTAREA, LanguageScopePicker, sortLanguagesDefaultFirst, useScopeDirtyGuard } from '@/components/project-settings/shared';
 import { FormField, type FormFieldControl } from '@/components/ui/form-field';
 import type { Language, Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
@@ -108,7 +103,7 @@ function SeoForm({ project }: { project: Project }) {
   return (
     <form noValidate {...formProps}>
       <SaveRegionSubmit />
-      <SectionHeader icon={<SearchCheck className="size-4" />} title={t('settings.seo.title')} />
+      <PageHeader className="mb-8" description={t('settings.seo.description')} title={t('settings.seo.title')} />
       <LanguageScopePicker
         defaultLanguage={defaultLanguage}
         guard={guard}

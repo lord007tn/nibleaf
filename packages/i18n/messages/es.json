@@ -5096,5 +5096,8 @@
   "settings_appearance_onthispage": "En esta página",
   "settings_appearance_preview_title": "Vista previa en vivo",
   "settings_appearance_preview_hint": "Muestra tus cambios sin guardar a medida que los haces.",
-  "settings_appearance_preview_mode": "Modo de color de la vista previa"
+  "settings_appearance_preview_mode": "Modo de color de la vista previa",
+  "settings_seo_description": "Cómo aparece tu sitio en los resultados de búsqueda y al compartir sus páginas.",
+  "settings_redirects_empty": "Aún no hay redirecciones",
+  "settings_variables_empty": "Aún no hay variables"
 }

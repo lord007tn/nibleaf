@@ -152,11 +152,14 @@ describe('RedirectsSettings — rows', () => {
     expect(problemsShown()).toBe(false);
   });
 
-  it('with nothing stored, explains redirects and offers Add in an empty state', async () => {
+  it('with nothing stored, explains redirects under the page heading and offers Add in an empty state', async () => {
     await render(projectWith(undefined));
     expect(fromInputs()).toHaveLength(0);
+    // One page heading with what redirects are for (B5b: the settings layout), then the empty state.
+    expect(container.querySelector('h1')?.textContent).toBe('settings.redirects.title');
+    expect(container.querySelector('[data-slot="page-header"]')?.textContent).toContain('settings.redirects.description');
     const empty = container.querySelector('[data-slot="empty-state"]');
-    expect(empty?.textContent).toContain('settings.redirects.description');
+    expect(empty?.querySelector('h2')?.textContent).toBe('settings.redirects.empty');
     expect(empty?.contains(addButton())).toBe(true);
   });
 
