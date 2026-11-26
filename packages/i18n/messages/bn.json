@@ -5022,5 +5022,13 @@
   "dashboard_ai_emptytitle": "এখনও কোনো প্রশ্ন নেই",
   "dashboard_ai_emptybody": "পাঠকেরা আপনার প্রকাশিত ডকুমেন্টেশন থেকে AI সহকারীকে প্রশ্ন করতে পারেন। আরও বড় সময়সীমা বা অন্য ফিল্টার চেষ্টা করুন।",
   "overview_viewsemptylive": "এখনও কোনো ভিজিট নেই। প্রথম পাঠকদের পেতে আপনার সাইটের ঠিকানা শেয়ার করুন।",
-  "settings_git_connect_pastefirst": "প্রথমে পুরো টোকেনটি পেস্ট করুন।"
+  "settings_git_connect_pastefirst": "প্রথমে পুরো টোকেনটি পেস্ট করুন।",
+  "settings_appearance_group_theme": "থিম",
+  "settings_appearance_group_themehint": "অ্যাকসেন্ট রং, কোণ, লেআউট ও কম্পোনেন্ট, পাঠকেরা যেমন দেখেন।",
+  "settings_appearance_group_chrome": "হেডার, ফুটার ও ব্যানার",
+  "settings_appearance_group_chromehint": "প্রতিটি পৃষ্ঠার চারপাশে যা থাকে: নেভিগেশন বার, ফুটার এবং একটি ঘোষণা ব্যানার।",
+  "settings_appearance_onthispage": "এই পৃষ্ঠায়",
+  "settings_appearance_preview_title": "লাইভ প্রিভিউ",
+  "settings_appearance_preview_hint": "অসংরক্ষিত পরিবর্তনগুলো করার সঙ্গে সঙ্গে দেখায়।",
+  "settings_appearance_preview_mode": "প্রিভিউর রঙের মোড"
 }

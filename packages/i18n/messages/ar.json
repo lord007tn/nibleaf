@@ -5157,5 +5157,13 @@
   "dashboard_ai_emptytitle": "لا توجد أسئلة بعد",
   "dashboard_ai_emptybody": "يمكن للقرّاء سؤال مساعد الذكاء الاصطناعي من صفحات التوثيق المنشورة. جرّب فترة زمنية أطول أو غيّر عوامل التصفية.",
   "overview_viewsemptylive": "لا توجد زيارات بعد. شارك عنوان موقعك لتصل إلى أول قرّائك.",
-  "settings_git_connect_pastefirst": "الصق الرمز كاملًا أولًا."
+  "settings_git_connect_pastefirst": "الصق الرمز كاملًا أولًا.",
+  "settings_appearance_group_theme": "السمة",
+  "settings_appearance_group_themehint": "لون التمييز والزوايا والتخطيط والمكونات، كما يراها القرّاء.",
+  "settings_appearance_group_chrome": "الترويسة والتذييل والشريط",
+  "settings_appearance_group_chromehint": "ما يحيط بكل صفحة: شريط التنقل والتذييل وشريط الإعلانات.",
+  "settings_appearance_onthispage": "في هذه الصفحة",
+  "settings_appearance_preview_title": "معاينة مباشرة",
+  "settings_appearance_preview_hint": "تعرض تغييراتك غير المحفوظة فور إجرائها.",
+  "settings_appearance_preview_mode": "وضع ألوان المعاينة"
 }

@@ -5089,5 +5089,13 @@
   "dashboard_ai_emptytitle": "Ainda não há perguntas",
   "dashboard_ai_emptybody": "Os leitores podem perguntar ao assistente de IA na sua documentação publicada. Tente um intervalo de datas maior ou outros filtros.",
   "overview_viewsemptylive": "Ainda não há visitas. Compartilhe o endereço do seu site para atrair os primeiros leitores.",
-  "settings_git_connect_pastefirst": "Cole o token completo primeiro."
+  "settings_git_connect_pastefirst": "Cole o token completo primeiro.",
+  "settings_appearance_group_theme": "Tema",
+  "settings_appearance_group_themehint": "Cor de destaque, cantos, layout e componentes, como os leitores os veem.",
+  "settings_appearance_group_chrome": "Cabeçalho, rodapé e banner",
+  "settings_appearance_group_chromehint": "O que envolve cada página: a barra de navegação, o rodapé e um banner de aviso.",
+  "settings_appearance_onthispage": "Nesta página",
+  "settings_appearance_preview_title": "Prévia ao vivo",
+  "settings_appearance_preview_hint": "Mostra suas alterações não salvas enquanto você as faz.",
+  "settings_appearance_preview_mode": "Modo de cor da prévia"
 }

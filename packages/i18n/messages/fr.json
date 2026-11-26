@@ -5088,5 +5088,13 @@
   "dashboard_ai_emptytitle": "Aucune question pour l’instant",
   "dashboard_ai_emptybody": "Les lecteurs peuvent interroger l’assistant IA depuis votre documentation publiée. Essayez une période plus large ou d’autres filtres.",
   "overview_viewsemptylive": "Aucune visite pour l’instant. Partagez l’adresse de votre site pour attirer vos premiers lecteurs.",
-  "settings_git_connect_pastefirst": "Collez d’abord le jeton complet."
+  "settings_git_connect_pastefirst": "Collez d’abord le jeton complet.",
+  "settings_appearance_group_theme": "Thème",
+  "settings_appearance_group_themehint": "Couleur d’accent, coins, mise en page et composants, tels que les lecteurs les voient.",
+  "settings_appearance_group_chrome": "En-tête, pied de page et bannière",
+  "settings_appearance_group_chromehint": "Ce qui entoure chaque page : la barre de navigation, le pied de page et une bannière d’annonce.",
+  "settings_appearance_onthispage": "Sur cette page",
+  "settings_appearance_preview_title": "Aperçu en direct",
+  "settings_appearance_preview_hint": "Affiche vos modifications non enregistrées au fur et à mesure.",
+  "settings_appearance_preview_mode": "Mode de couleur de l’aperçu"
 }

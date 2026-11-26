@@ -7,6 +7,7 @@ import { useT } from '@nibleaf/i18n/react';
 import { Upload } from 'lucide-react';
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
+import { useSectionScope } from '@/components/project-settings/shared';
 import { FormField, type FormFieldControl } from '@/components/ui/form-field';
 import type { Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
@@ -67,6 +68,7 @@ function BrandingForm({ project }: { project: Project }) {
     },
   });
 
+  const scope = useSectionScope();
   const uploadImage = useUploadBrandingImage(project.id);
   const uploads = useBrandingUploads({
     siteId: project.id,
@@ -133,7 +135,7 @@ function BrandingForm({ project }: { project: Project }) {
         </Callout>
       ) : null}
 
-      <SettingsSection title={t('settings.branding.title')}>
+      <SettingsSection {...scope} title={t('settings.branding.title')}>
         {UPLOAD_ROWS.map(({ field: name, label, hint, placeholder }) => (
           <form.Field key={name} name={name}>
             {(field) => (

@@ -13,6 +13,7 @@ import { useCallback, useId, useMemo, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 import { FIELD_MONO, GroupLabel, SectionHeader, Segmented } from '@/components/project-settings/shared';
+import { useAppearanceDrafts, usePublishAppearanceDraft } from '@/features/site-appearance/components/preview-drafts';
 import type { Project } from '@/hooks/api';
 import { friendlyErrorMessage } from '@/hooks/api/errors';
 import { SaveRegionProvider, SaveRegionSubmit, useSaveRegionForm } from '@/lib/forms/save-region';
@@ -87,7 +88,10 @@ function StylingForm({ project }: { project: Project }) {
   const source = useMemo(() => stylingValues(styling), [styling]);
   // What an unset radius gets from the stored theme. Shown, never written into the draft.
   const theme = (project.config as ThemeOwnedProjectConfig | undefined)?.theme;
-  const inherited = useMemo(() => inheritedRadius(theme), [theme]);
+  // On the Appearance page, the Theme draft's radius (a preset just picked) is what an unset radius gets.
+  const themeDraft = useAppearanceDrafts().theme;
+  const shownTheme = themeDraft ? themeDraft.theme : theme;
+  const inherited = useMemo(() => inheritedRadius(shownTheme), [shownTheme]);
   const identity = JSON.stringify([project.id, 'styling']);
   const [reveal, setReveal] = useIdentityState(identity, HIDDEN);
   const [transient, setTransient] = useIdentityState<Transient | null>(identity, null);
@@ -138,6 +142,9 @@ function StylingForm({ project }: { project: Project }) {
   });
 
   const values = useStore(form.store, (state) => state.values);
+  // The Appearance page's live preview shows this draft (colour and corners) with the page's other drafts.
+  const published = useMemo(() => ({ values, baseline: draft.baseline }), [values, draft.baseline]);
+  usePublishAppearanceDraft('styling', published);
   const color = values.primaryColor;
   const shown = shownColor(color);
   // The exact view lasts only while the draft keeps holding its color: once

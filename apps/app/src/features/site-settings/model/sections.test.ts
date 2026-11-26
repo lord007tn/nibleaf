@@ -69,15 +69,19 @@ describe('parseSettingsSearch', () => {
     }
   });
 
-  it("keeps Appearance's own subsections, only under Appearance", () => {
-    expect(parseSettingsSearch({ section: 'appearance', appearanceSection: 'navbar' })).toEqual({
-      section: 'appearance',
-      appearanceSection: 'navbar',
-    });
+  it("keeps Appearance's parts, only under Appearance", () => {
+    for (const part of ['brand', 'theme', 'typography', 'chrome']) {
+      expect(parseSettingsSearch({ section: 'appearance', appearanceSection: part })).toEqual({ section: 'appearance', appearanceSection: part });
+    }
     expect(parseSettingsSearch({ section: 'appearance', appearanceSection: 'arbitrary' })).toEqual({ section: 'appearance' });
     expect(parseSettingsSearch({ section: 'appearance', appearanceSection: 'toString' })).toEqual({ section: 'appearance' });
     expect(parseSettingsSearch({ section: 'general', appearanceSection: 'navbar' })).toEqual({ section: 'general' });
     expect(parseSettingsSearch({ section: 'general', appearanceSection: 'redirects' })).toEqual({ section: 'general' });
+  });
+
+  // B5: an old tab link stays valid; the Appearance page opens it at its part (site-appearance/model/parts).
+  it.each(['branding', 'themes', 'styling', 'navbar', 'footer', 'banner'])('keeps an old %s tab link for the page to map', (tab) => {
+    expect(parseSettingsSearch({ section: 'appearance', appearanceSection: tab })).toEqual({ section: 'appearance', appearanceSection: tab });
   });
 
   // Council #456: an inherited property passed as a section left a blank page.

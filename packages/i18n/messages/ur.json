@@ -5079,5 +5079,13 @@
   "dashboard_ai_emptytitle": "ابھی کوئی سوال نہیں",
   "dashboard_ai_emptybody": "قارئین آپ کی شائع شدہ دستاویزات سے AI معاون سے پوچھ سکتے ہیں۔ لمبی مدت یا مختلف فلٹرز آزمائیں۔",
   "overview_viewsemptylive": "ابھی کوئی وزٹ نہیں۔ اپنے پہلے قارئین تک پہنچنے کے لیے اپنی سائٹ کا پتا شیئر کریں۔",
-  "settings_git_connect_pastefirst": "پہلے پورا ٹوکن پیسٹ کریں۔"
+  "settings_git_connect_pastefirst": "پہلے پورا ٹوکن پیسٹ کریں۔",
+  "settings_appearance_group_theme": "تھیم",
+  "settings_appearance_group_themehint": "نمایاں رنگ، کونے، لے آؤٹ اور اجزاء، جیسے قارئین انہیں دیکھتے ہیں۔",
+  "settings_appearance_group_chrome": "ہیڈر، فوٹر اور بینر",
+  "settings_appearance_group_chromehint": "جو ہر صفحے کے گرد ہوتا ہے: نیویگیشن بار، فوٹر اور اعلان کا بینر۔",
+  "settings_appearance_onthispage": "اس صفحے پر",
+  "settings_appearance_preview_title": "براہ راست پیش منظر",
+  "settings_appearance_preview_hint": "آپ کی غیر محفوظ تبدیلیاں کرتے ہی دکھاتا ہے۔",
+  "settings_appearance_preview_mode": "پیش منظر کا رنگ موڈ"
 }

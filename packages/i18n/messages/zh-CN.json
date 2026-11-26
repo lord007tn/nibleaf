@@ -5001,5 +5001,13 @@
   "dashboard_ai_emptytitle": "还没有问题",
   "dashboard_ai_emptybody": "读者可以在你已发布的文档中向 AI 助手提问。试试更宽的日期范围或其他筛选条件。",
   "overview_viewsemptylive": "还没有访问。分享你的网站地址，迎来第一批读者。",
-  "settings_git_connect_pastefirst": "请先粘贴完整的令牌。"
+  "settings_git_connect_pastefirst": "请先粘贴完整的令牌。",
+  "settings_appearance_group_theme": "主题",
+  "settings_appearance_group_themehint": "强调色、圆角、布局和组件，即读者看到的样子。",
+  "settings_appearance_group_chrome": "页眉、页脚和横幅",
+  "settings_appearance_group_chromehint": "环绕每个页面的内容：导航栏、页脚和公告横幅。",
+  "settings_appearance_onthispage": "本页内容",
+  "settings_appearance_preview_title": "实时预览",
+  "settings_appearance_preview_hint": "实时显示你尚未保存的更改。",
+  "settings_appearance_preview_mode": "预览颜色模式"
 }

@@ -37,9 +37,20 @@ export type SectionId = (typeof SECTION_IDS)[number];
 export const MOVED_SECTION_IDS = ['plan', 'notifications'] as const;
 export type MovedSectionId = (typeof MOVED_SECTION_IDS)[number];
 
-/** Appearance's own sections. SEO, Redirects, Variables and Search are pages of their own now. */
-export const APPEARANCE_SECTION_IDS = ['branding', 'themes', 'styling', 'typography', 'navbar', 'footer', 'banner'] as const;
-export type AppearanceSectionId = (typeof APPEARANCE_SECTION_IDS)[number];
+/**
+ * The parts of the one Appearance page (§5.7): Brand, Theme (accent colour,
+ * corners and the theme), Typography, and the header, footer and banner.
+ * SEO, Redirects, Variables and Search are pages of their own.
+ */
+export type AppearanceSectionId = 'brand' | 'theme' | 'typography' | 'chrome';
+
+/**
+ * What `appearanceSection` may name: a part, or one of Appearance's seven
+ * former tabs, which the page maps to the part that holds it now (outside this
+ * eager chunk: `site-appearance/model/parts`).
+ */
+const APPEARANCE_LINKS = ['brand', 'theme', 'typography', 'chrome', 'branding', 'themes', 'styling', 'navbar', 'footer', 'banner'] as const;
+export type AppearanceLink = (typeof APPEARANCE_LINKS)[number];
 
 /** Appearance subsections that became pages: old `?section=appearance&appearanceSection=…` links open the page. */
 const PROMOTED_APPEARANCE_SECTIONS = { seo: 'seo', redirects: 'redirects', variables: 'variables', search: 'search' } as const satisfies Record<
@@ -50,11 +61,11 @@ const PROMOTED_APPEARANCE_SECTIONS = { seo: 'seo', redirects: 'redirects', varia
 const includes = <T extends string>(list: readonly T[], value: unknown): value is T => (list as readonly unknown[]).includes(value);
 export const isSectionId = (value: unknown): value is SectionId => includes(SECTION_IDS, value);
 export const isMovedSectionId = (value: unknown): value is MovedSectionId => includes(MOVED_SECTION_IDS, value);
-const isAppearanceSectionId = (value: unknown): value is AppearanceSectionId => includes(APPEARANCE_SECTION_IDS, value);
+const isAppearanceLink = (value: unknown): value is AppearanceLink => includes(APPEARANCE_LINKS, value);
 
 export type SettingsSearch = {
   section?: SectionId | MovedSectionId;
-  appearanceSection?: AppearanceSectionId;
+  appearanceSection?: AppearanceLink;
   /**
    * The integration open inside Integrations (`?integration=…`), kept as the link gave it: Integrations
    * itself knows which ones exist (features/site-integrations/model/hub.ts), so the list stays out of this
@@ -80,7 +91,7 @@ export function parseSettingsSearch(search: Record<string, unknown>): SettingsSe
   const parsed: SettingsSearch['section'] = isSectionId(section) || isMovedSectionId(section) ? section : section === 'smartAi' ? 'ai' : undefined;
   return {
     section: parsed,
-    ...(parsed === 'appearance' && isAppearanceSectionId(appearanceSection) ? { appearanceSection } : {}),
+    ...(parsed === 'appearance' && isAppearanceLink(appearanceSection) ? { appearanceSection } : {}),
     ...(parsed === 'integrations' && typeof integration === 'string' ? { integration } : {}),
   };
 }

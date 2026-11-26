@@ -4,9 +4,9 @@ import { Textarea } from '@nibleaf/design-system/components/ui/textarea';
 import { useT } from '@nibleaf/i18n/react';
 import { MAX_THEME_TEMPLATE_BYTES } from '@nibleaf/shared/themes';
 import { Download, FileJson, Upload } from 'lucide-react';
-import { type ChangeEvent, useId, useRef, useState } from 'react';
+import { type ChangeEvent, type ComponentProps, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { Field, Segmented } from '@/components/project-settings/shared';
+import { Field, Segmented, useSectionScope } from '@/components/project-settings/shared';
 import type { ProjectThemeImportResult } from '@/hooks/api';
 import { useThemeExchange } from '../api/hooks';
 import { readTemplateText, type ThemeValues, themeValues } from '../model/theme';
@@ -43,6 +43,12 @@ const downloadText = (fileName: string, contents: string) => {
  * Render one per site (`key` it by the site): a late answer for another site
  * then has nowhere to land.
  */
+/** Export and Import head their parts one level below the Theme section's own heading. */
+function SubHeading(props: ComponentProps<'h3'>) {
+  const Heading = useSectionScope().headingLevel === 3 ? 'h4' : 'h3';
+  return <Heading {...props} />;
+}
+
 export function ThemeExchange({
   projectId,
   slug,
@@ -240,7 +246,7 @@ export function ThemeExchange({
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="rounded-xl border border-border p-4">
           <FileJson className="size-5 text-primary" />
-          <h3 className="mt-3 font-semibold">{t('settings.theme.exportTitle')}</h3>
+          <SubHeading className="mt-3 font-semibold">{t('settings.theme.exportTitle')}</SubHeading>
           <p className="mt-1 text-muted-foreground text-xs">{t('settings.theme.exportHint')}</p>
           <Button className="mt-4" loading={exporting} onClick={exportTheme} type="button">
             <Download className="size-4" /> {t('settings.theme.export')}
@@ -248,7 +254,7 @@ export function ThemeExchange({
         </div>
         <div className="rounded-xl border border-border p-4">
           <Upload className="size-5 text-primary" />
-          <h3 className="mt-3 font-semibold">{t('settings.theme.importTitle')}</h3>
+          <SubHeading className="mt-3 font-semibold">{t('settings.theme.importTitle')}</SubHeading>
           <p className="mt-1 text-muted-foreground text-xs">{t('settings.theme.importHint')}</p>
           <input accept="application/json,.json" className="sr-only" onChange={handleFile} ref={fileInput} type="file" />
           <Button className="mt-3" onClick={() => fileInput.current?.click()} type="button" variant="outline">

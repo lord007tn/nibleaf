@@ -57,7 +57,7 @@ export function ConfigCanvas({
             </Button>
           </div>
         ) : !permissionsPending && canManage && project ? (
-          <div className={cn('w-full', section === 'themes' ? 'max-w-6xl' : 'max-w-4xl')}>
+          <div className={cn('w-full', section === 'appearance' ? 'max-w-6xl' : 'max-w-4xl')}>
             <ConfigDirtyProvider report={reportDirty}>
               <ConfigSection project={project} section={section} />
             </ConfigDirtyProvider>

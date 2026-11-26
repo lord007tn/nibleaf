@@ -5088,5 +5088,13 @@
   "dashboard_ai_emptytitle": "Noch keine Fragen",
   "dashboard_ai_emptybody": "Leser können den KI-Assistenten aus Ihrer veröffentlichten Dokumentation heraus fragen. Versuchen Sie einen längeren Zeitraum oder andere Filter.",
   "overview_viewsemptylive": "Noch keine Besuche. Teilen Sie die Adresse Ihrer Website, um die ersten Leser zu gewinnen.",
-  "settings_git_connect_pastefirst": "Fügen Sie zuerst das vollständige Token ein."
+  "settings_git_connect_pastefirst": "Fügen Sie zuerst das vollständige Token ein.",
+  "settings_appearance_group_theme": "Design",
+  "settings_appearance_group_themehint": "Akzentfarbe, Ecken, Layout und Komponenten, so wie Leser sie sehen.",
+  "settings_appearance_group_chrome": "Kopfzeile, Fußzeile und Banner",
+  "settings_appearance_group_chromehint": "Was jede Seite umgibt: die Navigationsleiste, die Fußzeile und ein Hinweisbanner.",
+  "settings_appearance_onthispage": "Auf dieser Seite",
+  "settings_appearance_preview_title": "Live-Vorschau",
+  "settings_appearance_preview_hint": "Zeigt Ihre ungespeicherten Änderungen, während Sie sie vornehmen.",
+  "settings_appearance_preview_mode": "Farbmodus der Vorschau"
 }

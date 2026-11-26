@@ -5023,5 +5023,13 @@
   "dashboard_ai_emptytitle": "अभी कोई प्रश्न नहीं",
   "dashboard_ai_emptybody": "पाठक आपके प्रकाशित दस्तावेज़ों से AI असिस्टेंट से पूछ सकते हैं। लंबी अवधि या दूसरे फ़िल्टर आज़माएँ।",
   "overview_viewsemptylive": "अभी कोई विज़िट नहीं। अपने पहले पाठकों तक पहुँचने के लिए अपनी साइट का पता शेयर करें।",
-  "settings_git_connect_pastefirst": "पहले पूरा टोकन पेस्ट करें।"
+  "settings_git_connect_pastefirst": "पहले पूरा टोकन पेस्ट करें।",
+  "settings_appearance_group_theme": "थीम",
+  "settings_appearance_group_themehint": "एक्सेंट रंग, कोने, लेआउट और कंपोनेंट, जैसे पाठक उन्हें देखते हैं।",
+  "settings_appearance_group_chrome": "हेडर, फ़ुटर और बैनर",
+  "settings_appearance_group_chromehint": "हर पेज के आसपास क्या है: नेविगेशन बार, फ़ुटर और एक सूचना बैनर।",
+  "settings_appearance_onthispage": "इस पेज पर",
+  "settings_appearance_preview_title": "लाइव पूर्वावलोकन",
+  "settings_appearance_preview_hint": "आपके बिना सहेजे बदलाव, जैसे-जैसे आप करते हैं, दिखाता है।",
+  "settings_appearance_preview_mode": "पूर्वावलोकन का रंग मोड"
 }
