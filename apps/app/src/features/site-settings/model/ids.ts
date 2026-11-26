@@ -47,9 +47,6 @@ const PROMOTED_APPEARANCE_SECTIONS = { seo: 'seo', redirects: 'redirects', varia
   SectionId
 >;
 
-/** Sections that were renamed or folded into another. */
-const RENAMED_SECTIONS: Readonly<Record<string, SectionId>> = { smartAi: 'ai' };
-
 /**
  * The integrations that open a page of their own inside Integrations
  * (`?section=integrations&integration=…`), so Back closes it and a link can
@@ -62,8 +59,6 @@ const includes = <T extends string>(list: readonly T[], value: unknown): value i
 export const isSectionId = (value: unknown): value is SectionId => includes(SECTION_IDS, value);
 export const isMovedSectionId = (value: unknown): value is MovedSectionId => includes(MOVED_SECTION_IDS, value);
 const isAppearanceSectionId = (value: unknown): value is AppearanceSectionId => includes(APPEARANCE_SECTION_IDS, value);
-
-const isIntegrationDetailId = (value: unknown): value is IntegrationDetailId => includes(INTEGRATION_DETAIL_IDS, value);
 
 export type SettingsSearch = {
   section?: SectionId | MovedSectionId;
@@ -83,12 +78,12 @@ export function parseSettingsSearch(search: Record<string, unknown>): SettingsSe
   if (section === 'appearance' && typeof appearanceSection === 'string' && Object.hasOwn(PROMOTED_APPEARANCE_SECTIONS, appearanceSection)) {
     return { section: PROMOTED_APPEARANCE_SECTIONS[appearanceSection as keyof typeof PROMOTED_APPEARANCE_SECTIONS] };
   }
-  // Own keys only: `toString`, `constructor` or `__proto__` must not resolve to something inherited.
-  const renamed = typeof section === 'string' && Object.hasOwn(RENAMED_SECTIONS, section) ? RENAMED_SECTIONS[section] : undefined;
-  const parsed: SettingsSearch['section'] = isSectionId(section) || isMovedSectionId(section) ? section : renamed;
+  // Smart AI was renamed; Analytics folded into Integrations (above). This file is in the public reader's
+  // eager chunk, so the one rename is a comparison, not a lookup table.
+  const parsed: SettingsSearch['section'] = isSectionId(section) || isMovedSectionId(section) ? section : section === 'smartAi' ? 'ai' : undefined;
   return {
     section: parsed,
     ...(parsed === 'appearance' && isAppearanceSectionId(appearanceSection) ? { appearanceSection } : {}),
-    ...(parsed === 'integrations' && isIntegrationDetailId(integration) ? { integration } : {}),
+    ...(parsed === 'integrations' && includes(INTEGRATION_DETAIL_IDS, integration) ? { integration } : {}),
   };
 }
