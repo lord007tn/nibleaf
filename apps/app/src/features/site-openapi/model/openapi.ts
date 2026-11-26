@@ -1,3 +1,4 @@
+import type { MessageKey } from '@nibleaf/i18n';
 /**
  * Site settings → OpenAPI, as pure logic: what the form edits, what a save
  * sends, and what the server confirms. Rendered by
@@ -62,14 +63,15 @@ export function openApiUpsertBody(values: OpenApiValues): { title: string; path:
 }
 
 /**
- * Whether Save can be pressed: a name and a path, and a source when there is
- * none yet or the person switched to another kind of source.
+ * Why Save can't run yet, as the person reads it next to the button, or null:
+ * a name and an address first, then a document (a new reference, or a new kind
+ * of source, needs one; the same kind keeps the saved document).
  */
-export function canSaveOpenApi(values: OpenApiValues, current: OpenApiConfigurationLike | null | undefined): boolean {
-  if (!values.title.trim() || !values.path.trim()) return false;
+export function openApiSaveBlocker(values: OpenApiValues, current: OpenApiConfigurationLike | null | undefined): MessageKey | null {
+  if (!values.title.trim() || !values.path.trim()) return 'settings.openapi.needNameAndPath';
   const hasSource = Boolean(values.source.value.trim());
-  if (!current) return hasSource;
-  return values.source.type === current.source.type || hasSource;
+  if (hasSource || (current && values.source.type === current.source.type)) return null;
+  return 'settings.openapi.needSource';
 }
 
 /**
