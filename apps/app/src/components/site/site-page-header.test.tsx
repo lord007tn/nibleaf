@@ -63,7 +63,7 @@ const page = (overrides: Partial<SitePage> = {}): SitePage => ({
 const titleSelectors = () => {
   const css = readFileSync(resolve('src/styles.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   return [...css.matchAll(/([^{};]+)\{/g)]
-    .map((match) => match[1].replace(/\s+/g, ' ').trim())
+    .map((match) => (match[1] ?? '').replace(/\s+/g, ' ').trim())
     .filter((selector) => !selector.startsWith('@') && /> h1$/.test(selector));
 };
 
