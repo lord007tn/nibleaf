@@ -32,7 +32,7 @@ export const Route = createFileRoute('/(auth)/sign-in')({
   // too, so the button is in the first HTML instead of pushing the form down.
   loader: ({ context: { queryClient } }) => loadRouteData(queryClient, getPublicMetaQueryOptions()),
   // The same words the localized title uses in English (lib/auth-document-title).
-  head: () => ({ meta: [{ title: 'Log in — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
+  head: () => ({ meta: [{ title: 'Log in · Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: SignInPage,
 });
 
