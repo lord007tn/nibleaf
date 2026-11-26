@@ -37,6 +37,21 @@
     font-family: var(--theme-font-arabic);
   }
 
+  /* Code keeps its monospace face on Arabic (and other RTL) pages. The rule
+   * above matches every element, so inline code, keyboard keys and each
+   * highlighted token inside a code block took the proportional Arabic face,
+   * and code columns no longer lined up. Arabic letters inside code still fall
+   * back to an Arabic face, glyph by glyph. */
+  .nibleaf-site-chrome
+  :is(pre, code, kbd, samp):is(:lang(ar), :lang(fa), :lang(ur)) {
+    font-family: var(--font-mono, ui-monospace, monospace);
+  }
+  .nibleaf-site-chrome
+    :is(pre, code, kbd, samp)
+    :is(:lang(ar), :lang(fa), :lang(ur)) {
+    font-family: inherit;
+  }
+
   .nibleaf-site-chrome[dir="rtl"] .typeset {
     line-height: calc(var(--typeset-leading) * 1.08);
   }
