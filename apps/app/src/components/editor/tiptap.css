@@ -16,6 +16,8 @@
 }
 
 .pl-editor-document .pl-document-scroll {
+  /* The floating menus are positioned in here, so they move with the text as it scrolls (#963). */
+  position: relative;
   min-height: 0;
   flex: 1 1 auto;
   overflow: auto;

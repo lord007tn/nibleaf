@@ -2616,7 +2616,7 @@ function EditorPage() {
                     ? 'flex flex-col overflow-hidden'
                     : effectiveMode === 'wysiwyg'
                       ? 'flex flex-col overflow-hidden'
-                      : 'overflow-y-auto px-4 py-6 sm:px-7 sm:py-8',
+                      : 'relative overflow-y-auto px-4 py-6 sm:px-7 sm:py-8',
                 )}
               >
                 {unsupportedTags.length > 0 && effectiveMode !== 'markdown' ? (
