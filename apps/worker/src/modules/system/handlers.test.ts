@@ -1,6 +1,10 @@
 import { beforeEach, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({ connected: vi.fn(), analytics: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  connected: vi.fn(),
+  analytics: vi.fn(),
+  env: { POSTMARK_API_KEY: 'synthetic-configured-provider', EMAIL_DELIVERY_REQUIRED: true },
+}));
 vi.mock('@nibleaf/bullmq/queues', () => ({ queues: {} }));
 vi.mock('@nibleaf/bullmq/workers', () => ({ getWorkerHealth: mocks.connected }));
 vi.mock('@nibleaf/clickhouse', () => ({ getAnalyticsHealth: mocks.analytics }));
@@ -8,13 +12,15 @@ vi.mock('@getworkbench/hono', async () => {
   const { Hono } = await import('hono');
   return { workbench: () => new Hono() };
 });
-vi.mock('../../env', () => ({ env: { POSTMARK_API_KEY: 'synthetic-configured-provider', EMAIL_DELIVERY_REQUIRED: true } }));
+vi.mock('../../env', () => ({ env: mocks.env }));
 
 import app, { setWorkerReady } from './handlers';
 
 beforeEach(() => {
   mocks.connected.mockReset();
   mocks.analytics.mockResolvedValue({ configured: true, latencyMs: 1, status: 'ok' });
+  mocks.env.POSTMARK_API_KEY = 'synthetic-configured-provider';
+  mocks.env.EMAIL_DELIVERY_REQUIRED = true;
   setWorkerReady(false);
 });
 
@@ -48,4 +54,18 @@ it.each(['unavailable', 'migrating', 'schema_outdated', 'disabled'])('keeps core
   const response = await app.request('/health');
   expect(response.status).toBe(200);
   expect(await response.json()).toMatchObject({ status: 'ok', analytics: { status } });
+});
+
+it.each([
+  { required: true, status: 503, email: 'misconfigured' },
+  { required: false, status: 200, email: 'disabled' },
+])('reports a missing email provider as $email (required: $required)', async ({ required, status, email }) => {
+  setWorkerReady(true);
+  mocks.connected.mockResolvedValue([{ queue: 'email', ready: true, reason: 'ready' }]);
+  mocks.env.POSTMARK_API_KEY = ' ';
+  mocks.env.EMAIL_DELIVERY_REQUIRED = required;
+
+  const response = await app.request('/health');
+  expect(response.status).toBe(status);
+  expect(await response.json()).toMatchObject({ email: { status: email, provider: 'none', required } });
 });

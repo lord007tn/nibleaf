@@ -39,8 +39,6 @@ describe('Paraglide message catalogs', () => {
   it.each(INTERFACE_LOCALES.map(({ code }) => code))('%s uses its Ask AI name throughout dashboard status copy and links', (locale) => {
     const catalog = loadCatalog(locale);
     for (const key of [
-      'settings_integrations_opensmartai',
-      'settings_integrations_smartaiowned',
       'settings_ai_switch_on',
       'settings_ai_reason_serverunavailable',
       'settings_ai_reason_publishfirst',
@@ -175,9 +173,9 @@ describe('Paraglide message catalogs', () => {
     const catalog = loadCatalog(locale);
     const pairs = [
       ['settings_integrations_connected', 'settings_integrations_notconnected'],
-      ['settings_integrations_health_healthy', 'settings_integrations_health_unhealthy'],
-      ['settings_integrations_status_active', 'settings_integrations_status_inactive'],
-      ['settings_integrations_availability_available', 'settings_integrations_availability_unavailable'],
+      ['settings_integrations_connected', 'settings_integrations_status_notworking'],
+      ['settings_integrations_connected', 'settings_integrations_status_paused'],
+      ['settings_integrations_status_notsendingyet', 'settings_integrations_availability_comingsoon'],
     ] as const;
 
     for (const [positive, negative] of pairs) expect(catalog[positive]).not.toBe(catalog[negative]);
@@ -227,9 +225,6 @@ describe('Paraglide message catalogs', () => {
       settings_integrations_notconnected: 'সংযুক্ত নয়',
       settings_integrations_connect: 'সংযুক্ত করুন',
       settings_integrations_manage: 'পরিচালনা করুন',
-      settings_integrations_value_runtime_hybrid: 'হাইব্রিড',
-      settings_integrations_value_mode_dualwrite: 'দ্বৈত লেখা',
-      settings_integrations_value_mode_shadowread: 'ছায়া পাঠ',
     });
     expect(loadCatalog('ur')).toMatchObject({
       settings_integrations_title: 'انضمامات',
@@ -238,9 +233,6 @@ describe('Paraglide message catalogs', () => {
       settings_integrations_notconnected: 'منسلک نہیں',
       settings_integrations_connect: 'منسلک کریں',
       settings_integrations_manage: 'انتظام کریں',
-      settings_integrations_value_runtime_hybrid: 'ہائبرڈ',
-      settings_integrations_value_mode_dualwrite: 'دوہری تحریر',
-      settings_integrations_value_mode_shadowread: 'شیڈو ریڈ',
     });
   });
 
@@ -251,7 +243,8 @@ describe('Paraglide message catalogs', () => {
       const intentionallyIdentical = new Set([
         ...orderedKeys.filter((key) => key.startsWith('settings_integrations_provider_')),
         ...orderedKeys.filter((key) => key.startsWith('settings_integrations_placeholder_')),
-        'settings_integrations_value_mode_clickhouse',
+        // A loanword in French ("Notifications").
+        'settings_integrations_group_notifications',
       ]);
       const integrationKeys = orderedKeys.filter((key) => key.startsWith('settings_integrations_') && !intentionallyIdentical.has(key));
 

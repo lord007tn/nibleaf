@@ -21,7 +21,14 @@ const mocks = vi.hoisted(() => ({
   error: vi.fn(),
 }));
 vi.mock('sonner', () => ({ toast: { error: mocks.error, success: mocks.success } }));
-vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }));
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  Link: ({ children, className }: { children?: ReactNode; className?: string }) => (
+    <a className={className} href="#settings">
+      {children}
+    </a>
+  ),
+}));
 vi.mock('@nibleaf/i18n/react', async () => {
   const { translateFn: translate } = await vi.importActual<typeof import('@nibleaf/i18n')>('@nibleaf/i18n');
   return {
@@ -87,7 +94,13 @@ const render = async (node: ReactNode) => {
 const tab = (projectId: string | undefined, key?: string) => render(<ImportTab key={key} projectId={projectId} />);
 
 const buttons = () => [...container.querySelectorAll('button')];
-const chip = (label: string) => buttons().find((item) => item.hasAttribute('aria-pressed') && item.textContent?.trim() === label);
+/** A source in the picker, found by its label. */
+const chip = (label: string) =>
+  [...container.querySelectorAll<HTMLElement>('[role="radio"]')].find(
+    (item) => document.getElementById(item.getAttribute('aria-labelledby') ?? '')?.textContent?.trim() === label,
+  );
+/** The error shown under a field, by the field's id. */
+const fieldError = (id: string) => container.querySelector(`#${id}-error`)?.textContent ?? '';
 /** The Import button: its running text is always in the markup (hidden while idle). */
 const importButton = () => buttons().find((item) => item.textContent?.includes(t('settings.import.running')));
 const press = async (element: HTMLElement | undefined) => {
@@ -183,16 +196,24 @@ describe('Mintlify and GitBook imports own their request', () => {
   });
 
   it.each([
-    ['not owner/repo', 'acme', '', 'settings.import.mintlify.invalidRepo'],
-    ['another host', 'https://gitlab.com/acme/handbook', '', 'settings.import.mintlify.invalidRepo'],
-    ['a source URL with credentials', 'acme/handbook', 'https://user:secret@help.example.com', 'settings.import.sourceUrl'],
-    ['a source URL with another protocol', 'acme/handbook', 'ftp://help.example.com', 'settings.import.sourceUrl'],
-  ] as const)('refuses %s before sending, keeping what was typed', async (_case, repo, sourceUrl, message) => {
+    ['not owner/repo', 'acme', '', 'import-repo', 'settings.import.mintlify.invalidRepo'],
+    ['another host', 'https://gitlab.com/acme/handbook', '', 'import-repo', 'settings.import.mintlify.invalidRepo'],
+    [
+      'a source URL with credentials',
+      'acme/handbook',
+      'https://user:secret@help.example.com',
+      'import-source-url',
+      'settings.import.invalidSourceUrl',
+    ],
+    ['a source URL with another protocol', 'acme/handbook', 'ftp://help.example.com', 'import-source-url', 'settings.import.invalidSourceUrl'],
+  ] as const)('refuses %s before sending, under the field, keeping what was typed', async (_case, repo, sourceUrl, id, message) => {
     await tab('site-a');
     await ready(MINTLIFY(), repo);
     if (sourceUrl) await type('#import-source-url', sourceUrl);
     await press(importButton());
-    expect(errors()).toEqual([t(message)]);
+    expect(fieldError(id)).toBe(t(message));
+    expect(document.activeElement?.id).toBe(id);
+    expect(errors()).toEqual([]);
     expect(mintlifyPosts()).toEqual([]);
     expect(isBusy()).toBe(false);
     expect(field('#import-repo').value).toBe(repo);
@@ -239,7 +260,7 @@ describe('Mintlify and GitBook imports own their request', () => {
     mocks.mintlify.mockImplementation(() => answer.promise);
     await press(importButton());
     await chooseSource(GITBOOK());
-    expect(chip(GITBOOK())?.getAttribute('aria-pressed')).toBe('true');
+    expect(chip(GITBOOK())?.getAttribute('aria-checked')).toBe('true');
     expect(isBusy()).toBe(true);
     await press(importButton());
     await chooseSource(t('settings.import.ghost.title'));
@@ -283,7 +304,7 @@ describe('Mintlify and GitBook imports own their request', () => {
     expect(refreshed()).toEqual(siteRefresh('site-a'));
     expect(showsResult()).toBe(false);
     expect(mocks.success).not.toHaveBeenCalled();
-    expect(chip(GITBOOK())?.getAttribute('aria-pressed')).toBe('true');
+    expect(chip(GITBOOK())?.getAttribute('aria-checked')).toBe('true');
     expect(field('#import-repo').value).toBe('acme/other');
     expect(isBusy()).toBe(false);
     expect(mintlifyPosts()).toHaveLength(1);

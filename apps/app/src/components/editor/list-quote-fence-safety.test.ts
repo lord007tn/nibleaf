@@ -14,18 +14,22 @@ const save = (source: string) => {
   return getMarkdown(editor);
 };
 
-describe('nested items that the editor moves out of their list', () => {
+// These nested items were moved out of their list on main, and a save turned `Top` into a
+// heading (#843). With list item leads (#604, #865) the quote stays in its item.
+describe('nested items led by a quote', () => {
   it.each([
-    ['- Top\n  - > Alpha', '- Top\n\n  - \n\n  > Alpha'],
-    ['- Top\n  - > Alpha\n  - Beta', '- Top\n\n  - \n\n  > Alpha\n\n  - Beta'],
-    ['- Top\n  - > Alpha\n\n  - Beta', '- Top\n\n  - \n\n  > Alpha\n\n  - Beta'],
-    ['- Top\n  - > Alpha\n    - Beta\n  \n    - Gamma\n  - Delta', '- Top\n\n  - \n\n  > Alpha\n\n  - Beta\n\n  - Gamma\n\n\n  - Delta'],
-  ])('keeps main’s saved bytes and reader paragraphs for %j', (source, main) => {
+    ['- Top\n  - > Alpha', '- Top\n  - > Alpha'],
+    ['- Top\n  - > Alpha\n  - Beta', '- Top\n  - > Alpha\n  - Beta'],
+    ['- Top\n  - > Alpha\n\n  - Beta', '- Top\n  - > Alpha\n\n  - Beta'],
+    // A line of spaces only is written as an empty line.
+    ['- Top\n  - > Alpha\n    - Beta\n  \n    - Gamma\n  - Delta', '- Top\n  - > Alpha\n    - Beta\n\n    - Gamma\n  - Delta'],
+  ])('saves %j as written, and the reader shows it as the source, Top not a heading', (source, written) => {
     const saved = save(source);
-    expect(saved).toBe(main);
-    const html = renderToStaticMarkup(createElement(MarkdownRenderer, { content: saved }));
-    expect(html).toContain('<p dir="auto">Top</p>');
-    expect(html).not.toContain('<h2');
+    expect(saved).toBe(written);
+    expect(save(saved)).toBe(saved);
+    const render = (content: string) => renderToStaticMarkup(createElement(MarkdownRenderer, { content }));
+    expect(render(saved)).toBe(render(source));
+    expect(render(saved)).not.toContain('<h2');
   });
 });
 

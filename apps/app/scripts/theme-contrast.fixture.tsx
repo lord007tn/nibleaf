@@ -6,7 +6,7 @@ import { ConfirmProvider } from '@nibleaf/design-system/components/ui/confirm';
 import { setLanguage } from '@nibleaf/i18n/locale-state';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { createRoot } from 'react-dom/client';
-import { ThemeSection } from '../src/components/project-settings/theme-section';
+import { ThemeSettings as ThemeSection } from '../src/features/site-theme/components/theme-settings';
 import type { Project } from '../src/hooks/api';
 import { createQueryClient } from '../src/integrations/tanstack-query/query-client';
 

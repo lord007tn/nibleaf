@@ -53,6 +53,7 @@
   --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
+  --color-input-edge: var(--input-edge);
   --color-border: var(--border);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-destructive: var(--destructive);
@@ -125,6 +126,10 @@
   --badge-purple: #7c3aed;
   --border: #e5e5e5;
   --input: #e5e5e5;
+  /* An empty text field, select or switch is only its edge, so the edge needs
+     3:1 on the page, cards, dialogs and muted panels (WCAG 1.4.11): 3.36:1 on
+     white, 3.08:1 on --muted. --input stays the quiet fill tone. */
+  --input-edge: #8c8c8c;
   --ring: #b83d0b;
   --chart-1: #c2410c;
   --chart-2: #404040;
@@ -170,6 +175,8 @@
   --badge-purple: #a78bfa;
   --border: #262626;
   --input: #404040;
+  /* 3:1 or more on the page, cards, dialogs and --muted (3.19:1). */
+  --input-edge: #737373;
   --ring: #f97316;
   --chart-1: #f97316;
   --chart-2: #d4d4d4;

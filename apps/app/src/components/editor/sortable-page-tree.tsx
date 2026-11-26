@@ -1475,7 +1475,7 @@ function RenameInput({ initialValue, label, onDone }: { initialValue: string; la
     <input
       ref={inputRef}
       aria-label={label}
-      className="h-7 min-w-0 flex-1 rounded-sm border border-input bg-background px-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:h-10"
+      className="h-7 min-w-0 flex-1 rounded-sm border border-input-edge bg-background px-1.5 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:h-10"
       dir="auto"
       maxLength={200}
       onBlur={() => finish(true)}
