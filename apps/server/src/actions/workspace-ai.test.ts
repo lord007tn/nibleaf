@@ -50,7 +50,7 @@ describe('direct OpenAI answer model picker', () => {
   });
 });
 
-describe('checking the saved key keeps what it learned (#566 council)', () => {
+describe('checking the saved key keeps what it learned', () => {
   const saved = {
     id: 'key-1',
     revision: 4,
