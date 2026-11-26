@@ -1164,6 +1164,26 @@ function EditorPage() {
   const creationInFlight = useRef(false);
   const languageCodeOf = (languageId: string) => orderedLanguages.find((lang) => lang.id === languageId)?.code;
   /** Lock the canvas, save the page being left, then run the switch. */
+  // The address names the page or group the writer opened (`?page=<id>`), as in
+  // Notion and GitBook, so a reload, a copied address or a new tab opens it, not
+  // the site's first page. Written when the writer opens one from the tree or
+  // creates one, once the page being left is saved; an address that changed by
+  // itself (Back, Forward, a link, a Fix) already names its page and is left as
+  // is. It replaces the entry, so Back still leaves the editor, and drops what
+  // belonged to the page before: its section, its scroll position, and a Fix.
+  const nameInAddress = (id: string) => {
+    if (id === pageParam) return;
+    handledPageParam.current = id;
+    void navigate({
+      to: '/app/projects/$projectId/editor',
+      params: { projectId },
+      search: (previous) => ({ ...previous, page: id, fix: undefined, fixTarget: undefined }),
+      state: (previous) => ({ ...previous, editorScroll: undefined, editorKeepScroll: undefined }),
+      replace: true,
+      ignoreBlocker: true,
+      hashScrollIntoView: false,
+    });
+  };
   const beginSwitch = (next: PendingSwitch, action: () => void) => {
     if (transitionInFlight.current) return;
     setPendingSwitch(next);
@@ -1203,6 +1223,7 @@ function EditorPage() {
         onSuccess: (created) => {
           setPendingSwitch({ kind: 'open', id: created.id });
           setSelectedId(created.id);
+          nameInAddress(created.id);
           if (options?.focusTitle) {
             // The page list may be a drawer over the canvas (narrow screens, or
             // the focused Markdown layout): close it so the title that takes
@@ -1256,7 +1277,10 @@ function EditorPage() {
   };
   const openNode = (id: string) => {
     if (id === activeTreeId) return;
-    beginSwitch({ kind: 'open', id }, () => setSelectedId(id));
+    beginSwitch({ kind: 'open', id }, () => {
+      setSelectedId(id);
+      nameInAddress(id);
+    });
   };
   // Follow ?page= deep links (command palette, overview, publish issues) even when
   // the editor is already mounted. The first value seeds the selection; later
@@ -1354,16 +1378,6 @@ function EditorPage() {
       }),
     [navigate, projectId],
   );
-  // The address names the page on screen (`?page=<id>`), as in Notion and GitBook:
-  // a reload, a copied address or a new tab opens that page, not the site's first
-  // one. Rewritten in place, so Back still leaves the editor. A Fix that arrived
-  // for another page doesn't follow the writer to this one.
-  const openPageId = page && !switching && activeId === page.id ? page.id : null;
-  useEffect(() => {
-    if (!openPageId || openPageId === pageParam) return;
-    handledPageParam.current = openPageId;
-    rewriteSearch((previous) => ({ ...previous, page: openPageId, fix: undefined, fixTarget: undefined }));
-  }, [openPageId, pageParam, rewriteSearch]);
   const dropFixParams = useCallback(() => rewriteSearch((previous) => ({ ...previous, fix: undefined, fixTarget: undefined })), [rewriteSearch]);
   // The bar shows once the page (or group) it is about is on screen, and goes when the writer moves on.
   // It waits for the writer's access: the editor remounts once that is known, which would drop the landing.

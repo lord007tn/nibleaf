@@ -136,6 +136,7 @@ describe('AUTH-16 editor save lifecycle', () => {
     mocks.pages = [page];
     mocks.role = 'member';
     mocks.update.mockReset();
+    mocks.navigate.mockReset();
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -189,19 +190,46 @@ describe('AUTH-16 editor save lifecycle', () => {
     const title = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="editor.pageTitlePlaceholder"]');
     expect(document.activeElement).toBe(title);
   });
-  it('names the open page in the address, in place, so a reload or a copied address reopens it', async () => {
-    // Opened without ?page=: the address is rewritten to the page on screen.
-    const rewrites = mocks.navigate.mock.calls
-      .map(([options]) => options as { replace?: boolean; search?: (previous: Record<string, unknown>) => Record<string, unknown> })
-      .filter((options) => typeof options?.search === 'function');
-    const named = rewrites.find((options) => options.search?.({ publish: true, fix: 'missing-alt', fixTarget: 'x' }).page === 'page-1');
-    expect(named?.replace).toBe(true);
-    // Other parameters stay; a Fix that arrived for another page does not follow.
-    expect(named?.search?.({ publish: true, fix: 'missing-alt', fixTarget: 'x' })).toEqual({
+  it('names a page the writer creates in the address, in place, so a reload or a copied address reopens it', async () => {
+    type Navigation = {
+      replace?: boolean;
+      hash?: unknown;
+      search?: (previous: Record<string, unknown>) => Record<string, unknown>;
+      state?: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    const named = (id: string) =>
+      mocks.navigate.mock.calls
+        .map(([options]) => options as Navigation)
+        .filter((options) => typeof options?.search === 'function' && options.search({}).page === id);
+    // Opening the editor writes nothing: an address that changed by itself already names its page.
+    expect(named('page-1')).toEqual([]);
+    const created = { ...page, id: 'page-new', title: '', slug: 'untitled', path: 'untitled' };
+    mocks.create.mockImplementation((_body, callbacks) => {
+      mocks.page = created;
+      mocks.pages = [page, created];
+      callbacks.onSuccess(created);
+      callbacks.onSettled();
+    });
+    const newPage = [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('editor.newPage'));
+    if (!newPage) throw new Error('Missing new page action');
+    await act(async () => newPage.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    const [navigation, ...more] = named('page-new');
+    expect(more).toEqual([]);
+    expect(navigation?.replace).toBe(true);
+    // No section of the page before (no hash), other parameters kept, a Fix for another page dropped.
+    expect(navigation?.hash).toBeUndefined();
+    expect(navigation?.search?.({ publish: true, fix: 'missing-alt', fixTarget: 'x' })).toEqual({
       publish: true,
-      page: 'page-1',
+      page: 'page-new',
       fix: undefined,
       fixTarget: undefined,
+    });
+    // The page before's scroll position doesn't come along.
+    expect(navigation?.state?.({ editorScroll: 640, editorKeepScroll: true, other: 1 })).toEqual({
+      editorScroll: undefined,
+      editorKeepScroll: undefined,
+      other: 1,
     });
   });
   it('AUTH-07: failed creation clears the pending canvas and restores the action focus', async () => {
