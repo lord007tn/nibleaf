@@ -60,8 +60,14 @@ describe('writer clipboard fixtures', () => {
     );
     expect(instance.state.doc.child(2).attrs.start).toBe(4);
     const markdown = getMarkdown(instance);
-    expect(markdown).toContain('- Second item\n  - **Nested item** with *emphasis*\n    3. [Deep link](https://example.com/guide)\n- Third item');
-    expect(markdown).not.toContain('\n\n  ');
+    // The nested list starts at 3, which cannot interrupt `Nested item`'s line, so that
+    // item's list is written loose (#604): written tight, the reload read `3. Deep link`
+    // as more of that paragraph's text. The save reloads as the pasted tree.
+    expect(markdown).toContain('- Second item\n  - **Nested item** with *emphasis*\n\n    3. [Deep link](https://example.com/guide)\n- Third item');
+    const reloaded = editor();
+    reloaded.commands.setContent(markdown, { emitUpdate: false });
+    expect(tree(reloaded.state.doc)).toEqual(tree(instance.state.doc));
+    expect(getMarkdown(reloaded)).toBe(markdown);
     const html = cleanPastedHTML(fixture(name));
     expect(html).not.toMatch(/style=|<span|<div|docs-internal|<a(?:\s[^>]*)?><\/a>|<br/);
   });

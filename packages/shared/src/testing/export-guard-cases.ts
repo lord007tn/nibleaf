@@ -128,9 +128,6 @@ export const seededExportCases = () => {
   return cases;
 };
 
-/** The 13 portable outputs that round 4 newly activated relative to main. */
-export const PORTABLE_REGRESSION_IDS = [63, 597, 752, 824, 838, 874, 907, 1436, 1806, 2101, 3348, 3437, 3985] as const;
-
 /** #633: a fence-looking line inside HTML must not exempt a later tag from export safety. */
 export const activeHtmlExportCases = () => {
   const payloads = ['script', 'style', 'iframe', 'object', 'embed'].map((tag) => `<${tag}>SAFE</${tag}>`);

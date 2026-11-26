@@ -27,13 +27,16 @@ vi.mock('@/components/organization/organization-context', () => ({
   useCurrentOrganization: () => ({ id: 'org-1', slug: 'acme', name: 'Acme Docs', logo: null, orgRole: mocks.orgRole, canCreateWebsite: true }),
   isOrgAdmin: (organization: { orgRole: OrgRole }) => organization.orgRole !== 'member',
 }));
-vi.mock('@/components/settings/usage-tab', () => ({
+vi.mock('@/features/usage/model/usage', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/usage/model/usage')>()),
   unavailableExplanationKey: (reason?: string | null) => (reason ? `reason:${reason}` : 'settings.usage.unknownExplanation'),
   // As the real one, over the mocked reason keys: one reason for every missing org total.
   sharedMissingReason: (meters: Array<{ quantity: string | null; unavailableReason?: string | null }>) => {
     const reasons = meters.filter((meter) => meter.quantity === null).map((meter) => `reason:${meter.unavailableReason}`);
     return reasons.length > 1 && reasons.every((reason) => reason === reasons[0]) ? reasons[0] : null;
   },
+}));
+vi.mock('@/features/usage/components/usage-overview', () => ({
   UsageOverview: (props: { planKey: string | null; isPending: boolean; headingLevel?: number }) => {
     mocks.overview(props);
     return <div data-plan={props.planKey ?? ''} data-testid="usage-overview" />;

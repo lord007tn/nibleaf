@@ -1,49 +1,35 @@
-import { Alert, AlertDescription, AlertTitle } from '@nibleaf/design-system/components/ui/alert';
-import { Badge } from '@nibleaf/design-system/components/ui/badge';
-import { Button } from '@nibleaf/design-system/components/ui/button';
+import { Button, buttonVariants } from '@nibleaf/design-system/components/ui/button';
+import { Callout } from '@nibleaf/design-system/components/ui/callout';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Label } from '@nibleaf/design-system/components/ui/label';
+import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
+import { StatusBadge, type StatusBadgeTone } from '@nibleaf/design-system/components/ui/status-badge';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
-import type {
-  IntegrationCatalogEntry,
-  IntegrationCategory,
-  IntegrationProviderId,
-  IntegrationPublicConfig,
-  IntegrationSettingsSection,
-} from '@nibleaf/shared/integrations';
+import type { IntegrationCatalogEntry, IntegrationProviderId } from '@nibleaf/shared/integrations';
 import { randomUUID } from '@nibleaf/shared/uuid';
-import { useNavigate } from '@tanstack/react-router';
-import {
-  Activity,
-  ArrowLeft,
-  Bot,
-  ChartNoAxesCombined,
-  Cloud,
-  Database,
-  GitBranch,
-  HardDrive,
-  Mail,
-  MessageSquare,
-  PlugZap,
-  RefreshCw,
-  Rocket,
-  Search,
-  Send,
-  ShieldCheck,
-  Trash2,
-  TriangleAlert,
-  Zap,
-} from 'lucide-react';
-import { type ComponentType, type FormEvent, useMemo, useState } from 'react';
+import { Link, useNavigate } from '@tanstack/react-router';
+import { Activity, ArrowLeft, Bot, ChartNoAxesCombined, GitBranch, MessageSquare, RefreshCw, ShieldCheck, Trash2, Zap } from 'lucide-react';
+import { type ComponentType, type FormEvent, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon, SlackIcon } from '@/components/icons/brand';
-import { AnalyticsSection } from '@/components/project-settings/analytics-section';
 import { NO_AUTOFILL_PROPS, SecretInput } from '@/components/secret-input';
+import { AnalyticsSettings } from '@/features/site-analytics-settings/components/analytics-settings';
 import { useWebhookIntegrationSaveCommand } from '@/features/site-integrations/components/use-webhook-integration-save-command';
+import {
+  type CardLine,
+  type CardState,
+  detailEntry,
+  type HubCard,
+  type HubGroupId,
+  hubCard,
+  hubGroups,
+  type IntegrationDetailId,
+  integrationDetailId,
+} from '@/features/site-integrations/model/hub';
 import {
   type Project,
   useActivateProjectIntegration,
@@ -52,15 +38,13 @@ import {
   useProjectIntegrations,
   useVerifyProjectIntegration,
 } from '@/hooks/api';
-import { CLICKHOUSE_MODE_MESSAGE_KEYS, SEARCH_RUNTIME_MESSAGE_KEYS } from './integration-config-values';
 import { SettingsSection } from './section';
 
 type ConfigurableProviderId = 'slack' | 'discord' | 'zapier';
 type ProviderIcon = ComponentType<{ className?: string }>;
 
-const CATEGORY_ORDER: IntegrationCategory[] = ['source_control', 'deployment', 'ai', 'email', 'analytics', 'storage', 'webhook'];
-
-const PROVIDER_META: Record<IntegrationProviderId, { name: MessageKey; description: MessageKey; icon: ProviderIcon; tint: string }> = {
+/** The providers the hub draws (features/site-integrations/model/hub.ts): their names, one-line benefit and icon. */
+const PROVIDER_META: Partial<Record<IntegrationProviderId, { name: MessageKey; description: MessageKey; icon: ProviderIcon; tint: string }>> = {
   github: {
     name: 'settings.integrations.provider.github',
     description: 'settings.integrations.github.description',
@@ -109,113 +93,19 @@ const PROVIDER_META: Record<IntegrationProviderId, { name: MessageKey; descripti
     icon: Zap,
     tint: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
   },
-  openrouter: {
-    name: 'settings.integrations.provider.openrouter',
-    description: 'settings.integrations.openrouter.description',
-    icon: Bot,
-    tint: 'bg-fuchsia-500/15 text-fuchsia-700 dark:text-fuchsia-300',
-  },
-  openai: {
-    name: 'settings.integrations.provider.openai',
-    description: 'settings.integrations.openai.description',
-    icon: Bot,
-    tint: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
-  },
-  qdrant: {
-    name: 'settings.integrations.provider.qdrant',
-    description: 'settings.integrations.qdrant.description',
-    icon: Database,
-    tint: 'bg-red-500/15 text-red-700 dark:text-red-300',
-  },
-  clickhouse: {
-    name: 'settings.integrations.provider.clickhouse',
-    description: 'settings.integrations.clickhouse.description',
-    icon: Database,
-    tint: 'bg-yellow-500/15 text-yellow-700 dark:text-yellow-300',
-  },
-  postmark: {
-    name: 'settings.integrations.provider.postmark',
-    description: 'settings.integrations.postmark.description',
-    icon: Send,
-    tint: 'bg-blue-500/15 text-blue-700 dark:text-blue-300',
-  },
-  smtp: {
-    name: 'settings.integrations.provider.smtp',
-    description: 'settings.integrations.smtp.description',
-    icon: Mail,
-    tint: 'bg-slate-500/15 text-slate-700 dark:text-slate-300',
-  },
-  maxio: {
-    name: 'settings.integrations.provider.maxio',
-    description: 'settings.integrations.maxio.description',
-    icon: HardDrive,
-    tint: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300',
-  },
-  minio: {
-    name: 'settings.integrations.provider.minio',
-    description: 'settings.integrations.minio.description',
-    icon: HardDrive,
-    tint: 'bg-red-500/15 text-red-700 dark:text-red-300',
-  },
-  'amazon-s3': {
-    name: 'settings.integrations.provider.amazonS3',
-    description: 'settings.integrations.amazonS3.description',
-    icon: HardDrive,
-    tint: 'bg-orange-500/15 text-orange-700 dark:text-orange-300',
-  },
-  'cloudflare-r2': {
-    name: 'settings.integrations.provider.cloudflareR2',
-    description: 'settings.integrations.cloudflareR2.description',
-    icon: Cloud,
-    tint: 'bg-orange-500/15 text-orange-700 dark:text-orange-300',
-  },
-  'backblaze-b2': {
-    name: 'settings.integrations.provider.backblazeB2',
-    description: 'settings.integrations.backblazeB2.description',
-    icon: HardDrive,
-    tint: 'bg-red-500/15 text-red-700 dark:text-red-300',
-  },
-  cloudflare: {
-    name: 'settings.integrations.provider.cloudflare',
-    description: 'settings.integrations.cloudflare.description',
-    icon: Rocket,
-    tint: 'bg-orange-500/15 text-orange-700 dark:text-orange-300',
-  },
+};
+const metaOf = (id: IntegrationProviderId) => {
+  const meta = PROVIDER_META[id];
+  if (!meta) throw new Error(`No hub card for ${id}`);
+  return meta;
 };
 
-const CATEGORY_KEYS: Record<IntegrationCategory, MessageKey> = {
-  source_control: 'settings.integrations.category.sourceControl',
-  deployment: 'settings.integrations.category.deployment',
-  ai: 'settings.integrations.category.ai',
-  email: 'settings.integrations.category.email',
-  analytics: 'settings.integrations.category.analytics',
-  storage: 'settings.integrations.category.storage',
-  webhook: 'settings.integrations.category.webhook',
+const GROUP_KEYS: Record<HubGroupId, MessageKey> = {
+  sync: 'settings.integrations.group.sync',
+  analytics: 'settings.integrations.group.analytics',
+  notifications: 'settings.integrations.group.notifications',
+  automation: 'settings.integrations.group.automation',
 };
-
-const STATUS_KEYS = {
-  active: 'settings.integrations.status.active',
-  inactive: 'settings.integrations.status.inactive',
-  error: 'settings.integrations.status.error',
-} as const satisfies Record<NonNullable<IntegrationCatalogEntry['connection']>['status'], MessageKey>;
-
-const AVAILABILITY_KEYS = {
-  available: 'settings.integrations.availability.available',
-  not_configured: 'settings.integrations.availability.notConfigured',
-  unavailable: 'settings.integrations.availability.unavailable',
-  coming_soon: 'settings.integrations.availability.comingSoon',
-} as const satisfies Record<IntegrationCatalogEntry['availability'], MessageKey>;
-
-const HEALTH_KEYS = {
-  healthy: 'settings.integrations.health.healthy',
-  unhealthy: 'settings.integrations.health.unhealthy',
-  unverified: 'settings.integrations.health.unverified',
-} as const satisfies Record<NonNullable<IntegrationCatalogEntry['connection']>['health']['status'], MessageKey>;
-
-const OWNERSHIP_KEYS = {
-  project: 'settings.integrations.ownership.project',
-  instance: 'settings.integrations.ownership.instance',
-} as const satisfies Record<NonNullable<IntegrationCatalogEntry['connection']>['ownership'], MessageKey>;
 
 const PLACEHOLDER_KEYS = {
   slack: 'settings.integrations.placeholder.slack',
@@ -232,188 +122,158 @@ const storedLabelOf = (connection: IntegrationCatalogEntry['connection']) => {
   return config?.providerId === 'slack' || config?.providerId === 'discord' || config?.providerId === 'zapier' ? (config.label ?? '') : '';
 };
 
-const isAnalyticsProvider = (providerId: IntegrationProviderId) => providerId === 'google-analytics' || providerId === 'plausible';
 const isComingSoon = (entry: IntegrationCatalogEntry) => entry.availability === 'coming_soon';
-
-/** Where a provider is really set up, when that is another settings page: its button and the line above it. */
-const SETTINGS_LINKS = {
-  git: { label: 'settings.integrations.openGitSettings', description: 'settings.integrations.adapterOwned', icon: GitBranch },
-  ai: { label: 'settings.integrations.openSmartAi', description: 'settings.integrations.smartAiOwned', icon: Bot },
-} as const satisfies Record<Exclude<IntegrationSettingsSection, 'integrations'>, { label: MessageKey; description: MessageKey; icon: ProviderIcon }>;
 const newIdempotencyKey = () => randomUUID();
 
-function IntegrationStatus({ entry }: { entry: IntegrationCatalogEntry }) {
+const STATE_BADGE: Partial<Record<CardState['kind'], { label: MessageKey; tone: StatusBadgeTone }>> = {
+  connected: { label: 'settings.integrations.connected', tone: 'success' },
+  paused: { label: 'settings.integrations.status.paused', tone: 'neutral' },
+  notWorking: { label: 'settings.integrations.status.notWorking', tone: 'danger' },
+  comingSoon: { label: 'settings.integrations.availability.comingSoon', tone: 'neutral' },
+  notSendingYet: { label: 'settings.integrations.status.notSendingYet', tone: 'warning' },
+};
+
+/** The line under a card's name: what it does once connected, or what it would do. */
+function CardText({ card }: { card: HubCard }) {
   const t = useT();
-  const comingSoon = isComingSoon(entry);
-  const status = comingSoon ? undefined : entry.connection?.status;
-  // A site's own AI key that is saved but isn't what answers readers right now.
-  const savedKeyNotInUse = status === 'inactive' && entry.category === 'ai' && entry.connection?.ownership === 'project';
-  const label = t(
-    comingSoon && entry.connection
-      ? 'settings.integrations.status.notSendingYet'
-      : savedKeyNotInUse
-        ? 'settings.integrations.status.notInUse'
-        : status
-          ? STATUS_KEYS[status]
-          : AVAILABILITY_KEYS[entry.availability],
-  );
-  return (
-    <Badge
-      className={cn(
-        status === 'active' && 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-        status === 'error' && 'border-destructive/30 bg-destructive/10 text-destructive',
-      )}
-      variant="outline"
-    >
-      <span
-        className={cn(
-          'size-1.5 rounded-full bg-muted-foreground/50',
-          status === 'active' && 'bg-emerald-500',
-          status === 'error' && 'bg-destructive',
-        )}
-      />
-      {label}
-    </Badge>
+  const { state, entry } = card;
+  const line: CardLine | null = 'line' in state ? state.line : null;
+  if (state.kind === 'comingSoon' || state.kind === 'notSendingYet') return <>{t('settings.integrations.comingSoon.description')}</>;
+  if (state.kind === 'notWorking') return <>{t('settings.integrations.notWorkingLine')}</>;
+  if (!line) return <>{t(metaOf(entry.id).description)}</>;
+  if (line.kind === 'syncing')
+    return (
+      <>
+        {t('settings.integrations.line.syncing')}{' '}
+        <bdi className="font-mono" dir="ltr">
+          {line.repository}
+        </bdi>{' '}
+        · <bdi dir="ltr">{line.branch}</bdi>
+      </>
+    );
+  if (line.kind === 'tracking')
+    return (
+      <>
+        {t('settings.integrations.line.tracking')}{' '}
+        <bdi className="font-mono" dir="ltr">
+          {line.id}
+        </bdi>
+      </>
+    );
+  return line.label ? (
+    <>
+      {t('settings.integrations.line.posts')} <bdi>{line.label}</bdi>
+    </>
+  ) : (
+    t(metaOf(entry.id).description)
   );
 }
 
-/** One catalog card's shape: icon tile and status, name, two description lines. */
-function CatalogCardSkeleton() {
-  return (
-    <div aria-hidden className="flex min-h-36 w-full flex-col rounded-xl border border-border bg-card p-4">
-      <div className="flex w-full items-start justify-between gap-3">
-        <Skeleton className="size-10 rounded-lg" />
-        <Skeleton className="h-5 w-20 rounded-full" />
-      </div>
-      <Skeleton className="mt-4 h-4 w-28" />
-      <Skeleton className="mt-2 h-3.5 w-full" />
-      <Skeleton className="mt-1.5 h-3.5 w-2/3" />
-    </div>
-  );
-}
+const cardClassName = 'flex min-h-20 w-full min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4 text-start';
+const linkCardClassName = cn(
+  cardClassName,
+  'outline-none transition-colors hover:border-foreground/20 hover:bg-muted/30 focus-visible:ring-3 focus-visible:ring-ring/50',
+);
 
-// Two category groups, as the catalog usually shows on first load.
-const SKELETON_GROUPS = [
-  { id: 'first', cards: ['a', 'b', 'c', 'd'] },
-  { id: 'second', cards: ['e', 'f'] },
-];
-
-function CatalogSkeleton() {
+/**
+ * One integration: icon, name, one line, and at the end either its status or
+ * its one action. The whole card is a link when there is somewhere to go.
+ */
+function IntegrationCard({ card, projectId }: { card: HubCard; projectId: string }) {
   const t = useT();
-  return (
-    <section aria-busy="true" className="flex flex-col gap-7">
-      <p className="sr-only" role="status">
-        {t('common.loading')}
-      </p>
-      {SKELETON_GROUPS.map((group) => (
-        <div key={group.id}>
-          <Skeleton aria-hidden className="mb-3 h-3 w-24" />
-          <div className="grid gap-3 sm:grid-cols-2">
-            {group.cards.map((card) => (
-              <CatalogCardSkeleton key={card} />
-            ))}
-          </div>
-        </div>
-      ))}
-    </section>
-  );
-}
-
-function CatalogCard({ entry, onSelect }: { entry: IntegrationCatalogEntry; onSelect: () => void }) {
-  const t = useT();
-  const meta = PROVIDER_META[entry.id];
+  const meta = metaOf(card.entry.id);
   const Icon = meta.icon;
-  const comingSoon = isComingSoon(entry);
+  const badge = STATE_BADGE[card.state.kind];
   const body = (
     <>
-      <div className="flex w-full items-start justify-between gap-3">
-        <span className={cn('grid size-10 shrink-0 place-items-center rounded-lg', meta.tint)}>
-          <Icon className="size-5" />
+      <span aria-hidden className={cn('grid size-10 shrink-0 place-items-center rounded-lg', meta.tint)}>
+        <Icon className="size-5" />
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="font-medium text-sm">{t(meta.name)}</span>
+        <span className="mt-0.5 break-words text-muted-foreground text-sm">
+          <CardText card={card} />
         </span>
-        <IntegrationStatus entry={entry} />
-      </div>
-      <div className="mt-4 font-semibold text-sm">{t(meta.name)}</div>
-      <p className="mt-1 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
-        {t(comingSoon ? 'settings.integrations.comingSoon.description' : meta.description)}
-      </p>
+      </span>
+      {badge ? (
+        <StatusBadge className="shrink-0" tone={badge.tone}>
+          {t(badge.label)}
+        </StatusBadge>
+      ) : card.state.kind === 'setUp' ? (
+        // A link styled as its action: the card is the control, so this is not a second button.
+        <span className={cn(buttonVariants({ size: 'sm', variant: 'outline' }), 'pointer-events-none shrink-0')}>
+          {t(card.state.action === 'connect' ? 'settings.integrations.connect' : 'settings.integrations.setUp')}
+        </span>
+      ) : null}
     </>
   );
-  // Nothing to open: it can't be connected yet and nothing is stored to remove.
-  if (comingSoon && !entry.connection) {
+  if (!card.target) {
     return (
-      <div className="flex min-h-36 w-full flex-col rounded-xl border border-border border-dashed bg-card p-4 text-start" data-coming-soon="">
+      <div className={cn(cardClassName, 'border-dashed')} data-coming-soon="">
         {body}
       </div>
     );
   }
+  if (card.target.kind === 'git') {
+    return (
+      <Link className={linkCardClassName} params={{ projectId }} search={{ section: 'git' }} to="/app/projects/$projectId/settings">
+        {body}
+      </Link>
+    );
+  }
   return (
-    <button
-      className="group flex min-h-36 w-full flex-col rounded-xl border border-border bg-card p-4 text-start outline-none transition-colors hover:border-foreground/20 hover:bg-muted/30 focus-visible:ring-3 focus-visible:ring-ring/50"
-      onClick={onSelect}
-      type="button"
+    <Link
+      className={linkCardClassName}
+      params={{ projectId }}
+      search={{ section: 'integrations', integration: card.target.id }}
+      to="/app/projects/$projectId/settings"
     >
       {body}
-    </button>
+    </Link>
   );
 }
 
-function ConfigRows({ config }: { config: IntegrationPublicConfig }) {
+/** The hub's shape on first load: two groups of two cards. */
+function HubSkeleton() {
   const t = useT();
-  const rows = (() => {
-    switch (config.providerId) {
-      case 'github':
-        return [
-          [t('settings.integrations.field.repository'), config.repository],
-          [t('settings.integrations.field.branch'), config.headBranch],
-        ];
-      case 'gitlab':
-      case 'public-git':
-        return [
-          [t('settings.integrations.field.repository'), config.repository],
-          [t('settings.integrations.field.branch'), config.branch],
-        ];
-      case 'google-analytics':
-        return [[t('settings.integrations.field.measurementId'), config.measurementId]];
-      case 'plausible':
-        return [[t('settings.integrations.field.domain'), config.domain]];
-      case 'slack':
-      case 'discord':
-      case 'zapier':
-        return [[t('settings.integrations.field.label'), config.label ?? t('settings.integrations.value.notSet')]];
-      case 'openrouter':
-      case 'openai':
-        return [
-          ...(config.draftModel ? [[t('settings.integrations.field.draftModel'), config.draftModel]] : []),
-          [t('settings.integrations.field.answerModel'), config.answerModel],
-          [t('settings.integrations.field.embeddingModel'), config.embeddingModel],
-        ];
-      case 'qdrant':
-        return [
-          [t('settings.integrations.field.collection'), config.collectionAlias],
-          [t('settings.integrations.field.runtime'), t(SEARCH_RUNTIME_MESSAGE_KEYS[config.searchRuntime])],
-        ];
-      case 'clickhouse':
-        return [[t('settings.integrations.field.mode'), t(CLICKHOUSE_MODE_MESSAGE_KEYS[config.mode])]];
-      case 'postmark':
-        return [[t('settings.integrations.field.messageStream'), config.messageStream ?? t('settings.integrations.value.default')]];
-      case 'cloudflare':
-        return [[t('settings.integrations.field.worker'), config.workerScript]];
-      default:
-        return [];
-    }
-  })();
-  if (rows.length === 0) return null;
   return (
-    <dl className="grid gap-3 sm:grid-cols-2">
-      {rows.map(([label, value]) => (
-        <div className="min-w-0 rounded-lg border border-border bg-muted/20 px-3 py-2.5" key={label}>
-          <dt className="text-muted-foreground text-xs">{label}</dt>
-          <dd className="mt-1 truncate font-mono text-sm" dir="ltr">
-            {value}
-          </dd>
+    <div aria-busy="true" className="flex flex-col gap-8">
+      <p className="sr-only" role="status">
+        {t('common.loading')}
+      </p>
+      {['first', 'second'].map((group) => (
+        <div aria-hidden className="flex flex-col gap-3" key={group}>
+          <Skeleton className="h-4 w-28" />
+          <div className="grid gap-3 sm:grid-cols-2">
+            {['a', 'b'].map((card) => (
+              <div className={cardClassName} data-slot="integration-card-skeleton" key={card}>
+                <Skeleton className="size-10 shrink-0 rounded-lg" />
+                <div className="flex min-w-0 flex-1 flex-col gap-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3.5 w-3/4" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       ))}
-    </dl>
+    </div>
+  );
+}
+
+/** The way back from an integration's page to the hub. */
+function BackToHub({ projectId }: { projectId: string }) {
+  const t = useT();
+  return (
+    <Link
+      className="-ms-1 inline-flex items-center gap-1 rounded-md px-1 py-1 text-muted-foreground outline-none hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
+      params={{ projectId }}
+      search={{ section: 'integrations' }}
+      to="/app/projects/$projectId/settings"
+    >
+      <ArrowLeft aria-hidden className="size-4 rtl:-scale-x-100" />
+      {t('settings.integrations.allIntegrations')}
+    </Link>
   );
 }
 
@@ -457,62 +317,65 @@ function ConfirmationDialog({
   );
 }
 
+/** An integration's page: back to the hub, then the integration's name, status and one line. */
+function DetailHeader({ entry, projectId, comingSoon }: { entry: IntegrationCatalogEntry; projectId: string; comingSoon?: boolean }) {
+  const t = useT();
+  const meta = metaOf(entry.id);
+  const Icon = meta.icon;
+  const card = hubCard(entry);
+  const badge = card ? STATE_BADGE[card.state.kind] : undefined;
+  return (
+    <div className="flex items-start gap-3">
+      <span aria-hidden className={cn('mt-0.5 grid size-10 shrink-0 place-items-center rounded-lg', meta.tint)}>
+        <Icon className="size-5" />
+      </span>
+      <PageHeader
+        back={<BackToHub projectId={projectId} />}
+        badge={badge ? <StatusBadge tone={badge.tone}>{t(badge.label)}</StatusBadge> : null}
+        className="min-w-0 flex-1"
+        description={t(comingSoon ? 'settings.integrations.comingSoon.description' : meta.description)}
+        title={t(meta.name)}
+      />
+    </div>
+  );
+}
+
 /**
  * A provider that delivers nothing yet ("Coming soon"): a stored connection can
  * only be removed. No test, no edit, no activation.
  */
 function ComingSoonDetail({
   entry,
-  onBack,
+  projectId,
   onRemove,
   pending,
   removeOpen,
   setRemoveOpen,
 }: {
   entry: IntegrationCatalogEntry;
-  onBack: () => void;
+  projectId: string;
   onRemove: () => void;
   pending: boolean;
   removeOpen: boolean;
   setRemoveOpen: (open: boolean) => void;
 }) {
   const t = useT();
-  const meta = PROVIDER_META[entry.id];
-  const Icon = meta.icon;
-  const name = t(meta.name);
-  const config = entry.connection?.config;
-  const label = config && 'label' in config ? config.label : null;
+  const name = t(metaOf(entry.id).name);
+  const label = storedLabelOf(entry.connection);
   return (
-    <div className="flex flex-col gap-4">
-      <Button className="w-fit" onClick={onBack} size="sm" variant="ghost">
-        <ArrowLeft className="rtl:-scale-x-100" />
-        {t('settings.integrations.allIntegrations')}
-      </Button>
-      <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <span className={cn('grid size-12 shrink-0 place-items-center rounded-xl', meta.tint)}>
-            <Icon className="size-6" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-semibold text-lg">{name}</h2>
-              <IntegrationStatus entry={entry} />
-            </div>
-            <p className="mt-1 text-muted-foreground text-sm leading-relaxed">{t('settings.integrations.comingSoon.description')}</p>
-          </div>
-        </div>
-      </section>
+    <div className="flex flex-col gap-8">
+      <DetailHeader comingSoon entry={entry} projectId={projectId} />
       {entry.connection ? (
         <SettingsSection title={t('settings.integrations.status.notSendingYet')} description={t('settings.integrations.comingSoon.saved')}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             {label ? (
-              <p className="min-w-0 truncate font-medium text-sm">
+              <p className="min-w-0 break-words font-medium text-sm">
                 <bdi>{label}</bdi>
               </p>
             ) : (
               <span />
             )}
-            <Button className="h-9" disabled={pending} onClick={() => setRemoveOpen(true)} type="button" variant="destructive">
+            <Button disabled={pending} onClick={() => setRemoveOpen(true)} type="button" variant="destructive">
               <Trash2 />
               {t('settings.integrations.remove')}
             </Button>
@@ -533,21 +396,11 @@ function ComingSoonDetail({
   );
 }
 
-function IntegrationDetail({
-  projectId,
-  project,
-  entry,
-  onBack,
-}: {
-  projectId: string;
-  project: Project;
-  entry: IntegrationCatalogEntry;
-  onBack: () => void;
-}) {
+/** A webhook integration's page (Slack, Discord, Zapier). */
+function WebhookDetail({ projectId, entry }: { projectId: string; entry: IntegrationCatalogEntry }) {
   const t = useT();
   const navigate = useNavigate();
-  const meta = PROVIDER_META[entry.id];
-  const Icon = meta.icon;
+  const meta = metaOf(entry.id);
   const connection = entry.connection;
   const saveCommand = useWebhookIntegrationSaveCommand({ projectId, providerId: entry.id, providerName: meta.name });
   const activate = useActivateProjectIntegration(projectId);
@@ -568,6 +421,12 @@ function IntegrationDetail({
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
   const pending = saveCommand.pending || activate.isPending || deactivate.isPending || verify.isPending || remove.isPending;
+  const pageRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // Opened by a link before the list loaded: the hub's title had focus and is gone now.
+    if (document.activeElement === document.body) pageRef.current?.querySelector<HTMLElement>('h1')?.focus();
+  }, []);
+  const backToHub = () => navigate({ to: '/app/projects/$projectId/settings', params: { projectId }, search: { section: 'integrations' } });
 
   async function deleteConnection() {
     if (pending) return;
@@ -576,7 +435,7 @@ function IntegrationDetail({
       await remove.mutateAsync({ providerId: entry.id, expectedRevision: connection.revision });
       setDeleteOpen(false);
       toast.success(isComingSoon(entry) ? t('settings.integrations.removedToast', { name: t(meta.name) }) : t('settings.integrations.deletedToast'));
-      onBack();
+      void backToHub();
     } catch {
       // Toasted in plain words by the mutation (meta.errorMessage).
     }
@@ -584,31 +443,18 @@ function IntegrationDetail({
 
   if (isComingSoon(entry)) {
     return (
-      <ComingSoonDetail
-        entry={entry}
-        onBack={onBack}
-        onRemove={deleteConnection}
-        pending={remove.isPending}
-        removeOpen={deleteOpen}
-        setRemoveOpen={setDeleteOpen}
-      />
-    );
-  }
-
-  if (isAnalyticsProvider(entry.id)) {
-    return (
-      <div className="flex flex-col gap-4">
-        <Button className="w-fit" onClick={onBack} size="sm" variant="ghost">
-          <ArrowLeft className="rtl:-scale-x-100" />
-          {t('settings.integrations.allIntegrations')}
-        </Button>
-        <AnalyticsSection project={project} />
+      <div ref={pageRef}>
+        <ComingSoonDetail
+          entry={entry}
+          onRemove={deleteConnection}
+          pending={remove.isPending}
+          projectId={projectId}
+          removeOpen={deleteOpen}
+          setRemoveOpen={setDeleteOpen}
+        />
       </div>
     );
   }
-
-  const settingsSection = entry.navigation.settingsSection;
-  const settingsLink = settingsSection && settingsSection !== 'integrations' ? SETTINGS_LINKS[settingsSection] : null;
 
   const save = (event: FormEvent) => {
     event.preventDefault();
@@ -641,16 +487,14 @@ function IntegrationDetail({
     }
     try {
       const body =
-        entry.id === 'github'
-          ? { providerId: 'github' as const }
-          : isConfigurableProvider(entry.id) && connection
-            ? {
-                providerId: entry.id,
-                expectedRevision: connection.revision,
-                idempotencyKey: newIdempotencyKey(),
-                ...(entry.verificationSideEffect ? { confirmExternalSideEffect: true } : {}),
-              }
-            : null;
+        isConfigurableProvider(entry.id) && connection
+          ? {
+              providerId: entry.id,
+              expectedRevision: connection.revision,
+              idempotencyKey: newIdempotencyKey(),
+              ...(entry.verificationSideEffect ? { confirmExternalSideEffect: true } : {}),
+            }
+          : null;
       if (!body) return;
       await verify.mutateAsync({ providerId: entry.id, body });
       setVerifyOpen(false);
@@ -661,162 +505,73 @@ function IntegrationDetail({
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <Button className="w-fit" onClick={onBack} size="sm" variant="ghost">
-        <ArrowLeft className="rtl:-scale-x-100" />
-        {t('settings.integrations.allIntegrations')}
-      </Button>
-      <section className="rounded-xl border border-border bg-card p-4 sm:p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
-          <span className={cn('grid size-12 shrink-0 place-items-center rounded-xl', meta.tint)}>
-            <Icon className="size-6" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="font-semibold text-lg">{t(meta.name)}</h2>
-              <IntegrationStatus entry={entry} />
+    <div className="flex flex-col gap-8" ref={pageRef}>
+      <DetailHeader entry={entry} projectId={projectId} />
+      <SettingsSection title={t('settings.integrations.configuration')} description={t('settings.integrations.webhookDescription')}>
+        <form className="flex flex-col gap-4" onSubmit={save}>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`${entry.id}-label`}>{t('settings.integrations.field.label')}</Label>
+              <Input
+                {...NO_AUTOFILL_PROPS}
+                id={`${entry.id}-label`}
+                maxLength={80}
+                name={`${entry.id}-integration-label`}
+                onChange={(event) => setLabel(event.target.value)}
+                placeholder={t('settings.integrations.labelPlaceholder')}
+                value={label}
+              />
             </div>
-            <p className="mt-1 text-muted-foreground text-sm leading-relaxed">{t(meta.description)}</p>
-          </div>
-        </div>
-      </section>
-
-      {connection ? (
-        <SettingsSection title={t('settings.integrations.statusTitle')} description={t('settings.integrations.statusDescription')}>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border p-3">
-              <div className="text-muted-foreground text-xs">{t('settings.integrations.health')}</div>
-              <div className="mt-1 font-medium text-sm">{t(HEALTH_KEYS[connection.health.status])}</div>
-            </div>
-            <div className="rounded-lg border p-3">
-              <div className="text-muted-foreground text-xs">{t('settings.integrations.credentials')}</div>
-              <div className="mt-1 font-medium text-sm">
-                {connection.credential?.configured ? t('settings.integrations.configured') : t('settings.integrations.notRequired')}
-              </div>
-            </div>
-            <div className="rounded-lg border p-3">
-              <div className="text-muted-foreground text-xs">{t('settings.integrations.ownership')}</div>
-              <div className="mt-1 font-medium text-sm">{t(OWNERSHIP_KEYS[connection.ownership])}</div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor={`${entry.id}-url`}>{t('settings.integrations.webhookUrl')}</Label>
+              <SecretInput
+                id={`${entry.id}-url`}
+                inputMode="url"
+                name={`${entry.id}-webhook-url`}
+                onChange={(event) => {
+                  setWebhookUrl(event.target.value);
+                  saveCommand.retire();
+                }}
+                placeholder={connection ? t('settings.integrations.credentialKept') : t(PLACEHOLDER_KEYS[entry.id as ConfigurableProviderId])}
+                required={!connection}
+                value={webhookUrl}
+              />
             </div>
           </div>
-          <div className="mt-4">
-            <ConfigRows config={connection.config} />
-          </div>
-        </SettingsSection>
-      ) : null}
-
-      {settingsLink ? (
-        <SettingsSection title={t('settings.integrations.configuration')} description={t(settingsLink.description)}>
-          <Button
-            onClick={() =>
-              navigate({
-                to: '/app/projects/$projectId/settings',
-                params: { projectId },
-                search: { section: entry.navigation.settingsSection ?? 'integrations' },
-                replace: true,
-              })
-            }
-          >
-            <settingsLink.icon />
-            {t(settingsLink.label)}
-          </Button>
-        </SettingsSection>
-      ) : null}
-
-      {entry.lifecycle === 'managed' ? (
-        <Alert variant={entry.availability === 'available' ? 'success' : 'warning'}>
-          {entry.availability === 'available' ? <ShieldCheck /> : <TriangleAlert />}
-          <AlertTitle>
-            {t(entry.availability === 'available' ? 'settings.integrations.managedReady' : 'settings.integrations.managedUnavailable')}
-          </AlertTitle>
-          <AlertDescription>{t('settings.integrations.managedDescription')}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {isConfigurableProvider(entry.id) ? (
-        <SettingsSection title={t('settings.integrations.configuration')} description={t('settings.integrations.webhookDescription')}>
-          <form className="flex flex-col gap-4" onSubmit={save}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`${entry.id}-label`}>{t('settings.integrations.field.label')}</Label>
-                <Input
-                  {...NO_AUTOFILL_PROPS}
-                  className="h-9"
-                  id={`${entry.id}-label`}
-                  maxLength={80}
-                  name={`${entry.id}-integration-label`}
-                  onChange={(event) => setLabel(event.target.value)}
-                  placeholder={t('settings.integrations.labelPlaceholder')}
-                  value={label}
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor={`${entry.id}-url`}>{t('settings.integrations.webhookUrl')}</Label>
-                <SecretInput
-                  className="h-9"
-                  id={`${entry.id}-url`}
-                  inputMode="url"
-                  name={`${entry.id}-webhook-url`}
-                  onChange={(event) => {
-                    setWebhookUrl(event.target.value);
-                    saveCommand.retire();
-                  }}
-                  placeholder={connection ? t('settings.integrations.credentialKept') : t(PLACEHOLDER_KEYS[entry.id])}
-                  required={!connection}
-                  value={webhookUrl}
-                />
-              </div>
-            </div>
-            <p className="text-muted-foreground text-xs">
-              <ShieldCheck className="me-1 inline size-3.5" />
-              {t('settings.integrations.credentialPrivacy')}
-            </p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button className="h-9" disabled={pending} loading={saveCommand.pending} type="submit">
-                {connection ? t('common.save') : t('settings.integrations.connect')}
+          <p className="text-muted-foreground text-xs">
+            <ShieldCheck className="me-1 inline size-3.5" />
+            {t('settings.integrations.credentialPrivacy')}
+          </p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            <Button disabled={pending} loading={saveCommand.pending} type="submit">
+              {connection ? t('common.save') : t('settings.integrations.connect')}
+            </Button>
+            {connection ? (
+              <Button disabled={pending} loading={activate.isPending || deactivate.isPending} onClick={changeStatus} type="button" variant="outline">
+                {connection.status === 'inactive' ? t('settings.integrations.activate') : t('settings.integrations.deactivate')}
               </Button>
-              {connection ? (
-                <Button
-                  className="h-9"
-                  disabled={pending}
-                  loading={activate.isPending || deactivate.isPending}
-                  onClick={changeStatus}
-                  type="button"
-                  variant="outline"
-                >
-                  {connection.status === 'inactive' ? t('settings.integrations.activate') : t('settings.integrations.deactivate')}
-                </Button>
-              ) : null}
-              {connection && (entry.supportsPassiveVerification || entry.verificationSideEffect) ? (
-                <Button
-                  className="h-9"
-                  disabled={pending || connection.status !== 'active'}
-                  loading={verify.isPending && !verifyOpen}
-                  onClick={() => runVerify()}
-                  type="button"
-                  variant="outline"
-                >
-                  <RefreshCw />
-                  {t(entry.verificationSideEffect ? 'settings.integrations.sendTest' : 'settings.integrations.verify')}
-                </Button>
-              ) : null}
-              {connection ? (
-                <Button
-                  className="h-9 sm:ms-auto"
-                  disabled={pending}
-                  loading={false}
-                  onClick={() => setDeleteOpen(true)}
-                  type="button"
-                  variant="destructive"
-                >
-                  <Trash2 />
-                  {t('common.delete')}
-                </Button>
-              ) : null}
-            </div>
-          </form>
-        </SettingsSection>
-      ) : null}
+            ) : null}
+            {connection && (entry.supportsPassiveVerification || entry.verificationSideEffect) ? (
+              <Button
+                disabled={pending || connection.status !== 'active'}
+                loading={verify.isPending && !verifyOpen}
+                onClick={() => runVerify()}
+                type="button"
+                variant="outline"
+              >
+                <RefreshCw />
+                {t(entry.verificationSideEffect ? 'settings.integrations.sendTest' : 'settings.integrations.verify')}
+              </Button>
+            ) : null}
+            {connection ? (
+              <Button className="sm:ms-auto" disabled={pending} onClick={() => setDeleteOpen(true)} type="button" variant="destructive">
+                <Trash2 />
+                {t('common.delete')}
+              </Button>
+            ) : null}
+          </div>
+        </form>
+      </SettingsSection>
 
       <ConfirmationDialog
         confirmLabel={t('settings.integrations.sendTest')}
@@ -841,74 +596,101 @@ function IntegrationDetail({
   );
 }
 
-export function IntegrationsTab({ projectId, project }: { projectId?: string; project?: Project }) {
-  const t = useT();
-  const [search, setSearch] = useState('');
-  const [selectedId, setSelectedId] = useState<IntegrationProviderId | null>(null);
-  const integrations = useProjectIntegrations(projectId);
-  const filtered = useMemo(() => {
-    const query = search.trim().toLocaleLowerCase();
-    if (!query) return integrations.data ?? [];
-    return (integrations.data ?? []).filter((entry) => {
-      const meta = PROVIDER_META[entry.id];
-      return [t(meta.name), t(meta.description), t(CATEGORY_KEYS[entry.category])].some((value) => value.toLocaleLowerCase().includes(query));
-    });
-  }, [integrations.data, search, t]);
-  const selected = integrations.data?.find((entry) => entry.id === selectedId) ?? null;
+/**
+ * Settings → Integrations (operations/ux/ai-and-integrations.md §4.4): only
+ * what a site owner connects, grouped by job, with AI keys pointed to their
+ * own page. The open integration is in the URL (`integration`), so Back
+ * closes it and a link can point at it.
+ */
+type IntegrationsViewProps = { projectId: string; project: Project; integration?: IntegrationDetailId };
 
-  if (projectId && project && selected) {
-    return <IntegrationDetail entry={selected} key={selected.id} onBack={() => setSelectedId(null)} project={project} projectId={projectId} />;
+/** `integration` is the URL's value as given; an unknown one shows the hub. */
+export function IntegrationsTab({ integration: requested, ...props }: Omit<IntegrationsViewProps, 'integration'> & { integration?: string }) {
+  const integration = integrationDetailId(requested);
+  const ref = useRef<HTMLDivElement>(null);
+  const shown = useRef(integration);
+  useEffect(() => {
+    if (shown.current === integration) return;
+    shown.current = integration;
+    // Opening an integration, or going back to the hub, starts keyboard and screen reader users at the new
+    // page's heading, as changing settings page does; the link they followed is gone.
+    ref.current?.querySelector<HTMLElement>('h1')?.focus();
+  }, [integration]);
+  return (
+    <div ref={ref}>
+      <IntegrationsView {...props} integration={integration} />
+    </div>
+  );
+}
+
+function IntegrationsView({ projectId, project, integration }: IntegrationsViewProps) {
+  const t = useT();
+  const integrations = useProjectIntegrations(projectId);
+
+  if (integration === 'analytics') {
+    return (
+      <div className="flex flex-col gap-8">
+        <PageHeader
+          back={<BackToHub projectId={projectId} />}
+          description={t('settings.integrations.analytics.description')}
+          title={t('settings.analytics.title')}
+        />
+        <AnalyticsSettings project={project} />
+      </div>
+    );
   }
+  const opened = integration && integrations.data ? detailEntry(integrations.data, integration) : null;
+  if (opened) return <WebhookDetail entry={opened} key={opened.id} projectId={projectId} />;
 
   return (
-    <SettingsSection title={t('settings.integrations.title')} description={t('settings.integrations.subtitle')}>
-      <div className="relative mb-5">
-        <Search className="pointer-events-none absolute top-1/2 start-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          aria-label={t('settings.integrations.search')}
-          className="h-9 ps-9"
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder={t('settings.integrations.search')}
-          type="search"
-          value={search}
-        />
-      </div>
-      {integrations.isPending ? <CatalogSkeleton /> : null}
-      {integrations.isError ? (
-        <Alert variant="destructive">
-          <TriangleAlert />
-          <AlertTitle>{t('settings.integrations.loadError')}</AlertTitle>
-          <AlertDescription>{t('settings.integrations.loadErrorDescription')}</AlertDescription>
-          <Button className="mt-2 w-fit" onClick={() => integrations.refetch()} size="sm" variant="outline">
-            {t('common.retry')}
+    <div className="flex flex-col gap-8">
+      <PageHeader description={t('settings.integrations.subtitle')} title={t('settings.integrations.title')} />
+      {integrations.isPending ? <HubSkeleton /> : null}
+      {integrations.isError && !integrations.data ? (
+        <Callout
+          action={
+            <Button loading={integrations.isFetching} onClick={() => void integrations.refetch()} size="sm" variant="outline">
+              {t('common.retry')}
+            </Button>
+          }
+          title={t('settings.integrations.loadError')}
+          tone="danger"
+        >
+          {t('settings.integrations.loadErrorDescription')}
+        </Callout>
+      ) : null}
+      {integrations.data
+        ? hubGroups(integrations.data).map((group) => (
+            <section aria-labelledby={`integrations-${group.id}`} className="flex flex-col gap-3" key={group.id}>
+              <h2 className="font-semibold text-base" id={`integrations-${group.id}`}>
+                {t(GROUP_KEYS[group.id])}
+              </h2>
+              <ul className="grid gap-3 sm:grid-cols-2">
+                {group.cards.map((card) => (
+                  <li className="flex min-w-0" key={card.entry.id}>
+                    <IntegrationCard card={card} projectId={projectId} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))
+        : null}
+      {integrations.data ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border border-dashed p-4" data-slot="ai-keys-pointer">
+          <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+            <Bot className="size-5" />
+          </span>
+          <p className="min-w-0 flex-1 basis-56 text-muted-foreground text-sm">{t('settings.integrations.aiPointer', { page: t('settings.ai') })}</p>
+          <Button
+            nativeButton={false}
+            render={<Link params={{ projectId }} search={{ section: 'ai' }} to="/app/projects/$projectId/settings" />}
+            size="sm"
+            variant="outline"
+          >
+            {t('settings.integrations.openAiPage', { page: t('settings.ai') })}
           </Button>
-        </Alert>
-      ) : null}
-      {integrations.isSuccess && filtered.length === 0 ? (
-        <div className="rounded-xl border border-dashed p-8 text-center">
-          <PlugZap className="mx-auto size-8 text-muted-foreground" />
-          <p className="mt-3 font-medium text-sm">{t('settings.integrations.noResults')}</p>
-          <p className="mt-1 text-muted-foreground text-sm">{t('settings.integrations.noResultsDescription')}</p>
         </div>
       ) : null}
-      {integrations.isSuccess ? (
-        <div className="flex flex-col gap-7">
-          {CATEGORY_ORDER.map((category) => {
-            const entries = filtered.filter((entry) => entry.category === category);
-            if (entries.length === 0) return null;
-            return (
-              <section key={category}>
-                <h2 className="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">{t(CATEGORY_KEYS[category])}</h2>
-                <div className={cn('grid gap-3', entries.length > 1 ? 'sm:grid-cols-2' : 'max-w-2xl')}>
-                  {entries.map((entry) => (
-                    <CatalogCard entry={entry} key={entry.id} onSelect={() => setSelectedId(entry.id)} />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </div>
-      ) : null}
-    </SettingsSection>
+    </div>
   );
 }

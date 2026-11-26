@@ -782,6 +782,10 @@ model Project {
   /// projects must not be publicly served and cannot be published.
   takedownAt     DateTime?
   takedownReason String?
+  /// The `settingsRevision` the site's last disconnected Git connection had
+  /// reached (#915). A new connection starts past it, so a settings form left
+  /// open from before a disconnect never matches a reconnect's revision.
+  gitSettingsRevisionFloor Int @default(0)
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -958,7 +962,8 @@ model GitConnection {
   lastSyncedAt           DateTime?
   /// The revision of the settings a connection save writes (#876): it moves
   /// only on a save, so a form that loaded an older one is refused as stale.
-  /// Sync status and worker updates leave it alone.
+  /// Sync status and worker updates leave it alone. A first connection starts
+  /// past the site's `gitSettingsRevisionFloor` (#915).
   settingsRevision       Int       @default(1)
   createdById            String
   createdAt              DateTime  @default(now())

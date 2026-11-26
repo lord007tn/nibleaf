@@ -101,7 +101,7 @@ export function SectionHeader({ icon, title, description }: { icon: ReactNode; t
         <span className="text-base text-muted-foreground">{icon}</span>
         <h2 className="font-semibold text-lg tracking-tight">{title}</h2>
       </div>
-      {description ? <p className="mt-1.5 text-[13px] text-muted-foreground leading-snug">{description}</p> : null}
+      {description ? <p className="mt-1.5 text-muted-foreground text-sm leading-snug">{description}</p> : null}
     </div>
   );
 }
@@ -128,10 +128,10 @@ export function Field({
 
   return (
     <div className={cn('mb-6', className)}>
-      <label className="block font-semibold text-[13px]" htmlFor={controlId}>
+      <label className="block font-semibold text-sm" htmlFor={controlId}>
         {label}
       </label>
-      {hint ? <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">{hint}</p> : <div className="mb-2.5" />}
+      {hint ? <p className="mt-1 mb-2.5 text-muted-foreground text-sm leading-snug">{hint}</p> : <div className="mb-2.5" />}
       {labelledChildren}
     </div>
   );
@@ -143,7 +143,7 @@ export function Field({
  * non-`<label>` element so it isn't expected to associate with one control.
  */
 export function GroupLabel({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('font-semibold text-[13px]', className)}>{children}</div>;
+  return <div className={cn('font-semibold text-sm', className)}>{children}</div>;
 }
 
 /** A pill segmented control matching the chip-background design tokens. */
@@ -201,10 +201,10 @@ export function ToggleRow({
   return (
     <div className="flex items-center gap-4 border-border border-t py-3.5">
       <div className={cn('flex-1 leading-snug', disabled && 'opacity-60')}>
-        <div id={titleId} className="font-medium text-[13.5px]">
+        <div id={titleId} className="font-medium text-sm leading-snug">
           {title}
         </div>
-        {hint ? <div className="mt-0.5 text-[12px] text-muted-foreground">{hint}</div> : null}
+        {hint ? <div className="mt-0.5 text-muted-foreground text-sm leading-snug">{hint}</div> : null}
       </div>
       <Switch checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} aria-labelledby={titleId} />
     </div>
@@ -232,7 +232,7 @@ export function LanguageOptionLabel({ language }: { language: { label: string; e
   return (
     <span className="inline-flex items-baseline gap-1.5">
       <span dir={dir}>{language.label}</span>
-      <span className="font-normal text-[10px] text-muted-foreground/80 uppercase tracking-wide">{t('settings.languages.hiddenBadge')}</span>
+      <span className="font-normal text-muted-foreground/80 text-xs uppercase tracking-wide">{t('settings.languages.hiddenBadge')}</span>
     </span>
   );
 }
@@ -281,7 +281,7 @@ export function LanguageScopePicker({
   return (
     <div className="mb-6">
       <GroupLabel>{t('settings.chrome.scope.label')}</GroupLabel>
-      <p className="mt-1 mb-2.5 text-[12.5px] text-muted-foreground leading-snug">{hint}</p>
+      <p className="mt-1 mb-2.5 text-muted-foreground text-sm leading-snug">{hint}</p>
       <Segmented
         onChange={(next) => void handleChange(next)}
         options={[
@@ -290,7 +290,7 @@ export function LanguageScopePicker({
             label: defaultLanguage ? (
               <span className="inline-flex items-baseline gap-1.5">
                 {t('settings.chrome.scope.default')}
-                <span className="font-normal text-[12px] text-muted-foreground">
+                <span className="font-normal text-muted-foreground text-xs">
                   ·{' '}
                   <span dir={defaultLanguage.direction ? (defaultLanguage.direction === 'RTL' ? 'rtl' : 'ltr') : undefined}>
                     {defaultLanguage.label}

@@ -187,7 +187,11 @@ A contract change ships in a release *after* the one that stopped using the old 
      - the backup and restore-test reference;
      - a statement that the rollback target no longer reads the removed shape.
 
-## 6. Queue job compatibility (api ↔ worker)
+## 6. Cross-release compatibility
+
+Two releases serve at once during every roll and after every rollback. §5 covers the schema; this section covers the queue (api ↔ worker) and dashboard requests (web ↔ api, §6.1).
+
+**Queue jobs (api ↔ worker).**
 
 During a release, the **new API enqueues jobs that the old worker processes** until the worker rolls last. After a rollback, jobs enqueued by the new release are retried by the old worker, and the same can happen in the other direction. BullMQ's locks and retries prove that jobs are delivered. They don't prove the payload is understood.
 
@@ -201,6 +205,26 @@ If this lists **any** change to a job payload type (`packages/bullmq/src/jobs/*`
 3. **Rollback:** jobs written by the new release are still processed correctly by the old worker, or are drained first.
 
 Acceptable evidence: a test, or a reviewed note that cites the processor code. Without that evidence, **do not deploy**. Instead, split the change: make the processor tolerant first, and change the payload in a later release.
+
+### 6.1 Dashboard requests (web ↔ api)
+
+The roll order puts the API first, but an open dashboard keeps the bundle it loaded. After a rollback, or whenever the web tier is ahead of an API container (a manual deploy out of order, a stop-then-start deploy where the web comes up first), a request body written by release N+1 reaches the API of release N. The review of #909 found the failure this causes: #876 added `expectedRevision` to Git connection saves, and an older API's `.strict()` validator refuses every such save with a validation error until both tiers match (#915).
+
+**The rule.**
+1. **The dashboard's request bodies strip unknown keys** (Zod's default `z.object`), so an API one release behind ignores a field it doesn't know instead of refusing the request. Don't add `.strict()` to a body the dashboard sends.
+2. **A new request field must be optional, and leaving it out must mean what the previous release did.** The previous API ignores it, so for the length of one release the field is advisory. An optimistic-concurrency revision qualifies: the old API simply doesn't check it, as before.
+3. **A field the previous API must not ignore ships server-first.** That covers a field that changes what the request does (a flag that deletes, replaces a credential or widens access). Release N accepts it and the dashboard sends nothing new; release N+1's dashboard sends it. The same holds for a body that is still strict (below): relax it in release N, add the field in N+1.
+4. **Removing or renaming a field** follows the contract rule in §5: stop sending it first, stop reading it one release later.
+
+**Still strict, on purpose.** Bodies whose strictness is part of their contract keep `.strict()`: creating an integration connection (it carries a new webhook credential), GitHub verification (it sends no fields), public API and MCP inputs (third-party clients need to hear about a misspelt field), and stored-data schemas (what a release reads back from the database). Their tests say so.
+
+**Where it applies today.** The dashboard's revisioned saves tolerate unknown keys: the Git connection (`gitConnectionBody`), add-on saves and state changes (`updateProjectAddonBody`, `mutateProjectAddonBody`), the AI provider and selection saves (`saveWorkspaceAiConnectionBody`, `workspaceAiSelectionBody`), and the integration update, revision, verification and delete-confirmation bodies. `packages/validators/src/rolling-deploy-bodies.test.ts` holds that list; a body joins it when it is relaxed. Other dashboard bodies are still strict and are relaxed one release before they gain a field (rule 3).
+
+**Release gate.** Before a release, check what request bodies changed:
+```sh
+git diff <rollback sha>..<candidate sha> -- packages/validators/src
+```
+A new required field, a `.strict()` added to a dashboard body, or a new field on a body that was strict in the rollback revision means the dashboard's saves fail during the roll. Split the change as rule 3 says.
 
 ## 7. Verification
 

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { customRangeError, toInsightsQuery, validateInsightsSearch } from './filters';
+import { customRangeError, validateInsightsSearch } from './filters';
 import { alignWithPrevious, dataFreshness, groupCrawlerSeries, mergeSeries, sortWorstFirst } from './insights-data';
 import { compareDelta, deltaTone } from './metrics';
+import { toInsightsQuery } from './query';
 import { aiFixture, feedbackFixture } from './test-fixtures';
 import { findPageIdForPath } from './use-page-links';
 import { rateVital } from './web-vitals';

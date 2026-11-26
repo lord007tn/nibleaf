@@ -2,11 +2,20 @@
 import { readerHeadings } from '@nibleaf/shared/reader-headings';
 import { Editor } from '@tiptap/core';
 import { closeHistory } from '@tiptap/pm/history';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import RichMarkdown from '@/components/markdown-rich';
 import { encodeMdxSource } from './extensions/mdx-roundtrip';
 import { buildEditorExtensions, getMarkdown } from './tiptap-editor';
 
 const makeEditor = () => new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
+
+function readerText(content: string): string {
+  const root = document.createElement('div');
+  root.innerHTML = renderToStaticMarkup(createElement(RichMarkdown, { content }));
+  return (root.textContent ?? '').trim();
+}
 
 function expectReloads(firstSave: string, text: string): void {
   let saved = firstSave;
@@ -22,6 +31,82 @@ function expectReloads(firstSave: string, text: string): void {
     }
   }
 }
+
+describe.each([
+  ['GET /users/', 'id'],
+  ['المستخدمون ', 'س'],
+])('authored braces in structured HTML (#921), %s', (lead, name) => {
+  it.each([
+    ['heading', '<h2 id="get-user">', '</h2>'],
+    ['paragraph', '<p align="center">', '</p>'],
+    ['link', '<a href="/x" class="btn">', '</a>'],
+    ['quote', '<blockquote dir="rtl"><p>', '</p></blockquote>'],
+  ])('keeps a %s and its attributes before and after text edits', (_shape, open, close) => {
+    const editor = makeEditor();
+    try {
+      const text = `${lead}{${name}}`;
+      const source = `${open}${text}${close}`;
+      editor.commands.setContent(source, { emitUpdate: false });
+      expect(getMarkdown(editor)).toBe(source);
+      expectReloads(source, text);
+      expect(readerText(source)).toBe(text);
+
+      let at = 0;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.text?.startsWith(lead)) at = pos + 1;
+      });
+      expect(at).toBeGreaterThan(0);
+      editor.view.dispatch(editor.state.tr.insertText('!', at));
+      const editedLead = `${lead[0]}!${lead.slice(1)}`;
+      const edited = getMarkdown(editor);
+      expect(edited).toBe(`${open}${editedLead}&#123;${name}&#125;${close}`);
+      expectReloads(edited, `${editedLead}{${name}}`);
+      expect(readerText(edited)).toBe(`${editedLead}{${name}}`);
+    } finally {
+      editor.destroy();
+    }
+  });
+});
+
+it.each([
+  ['<p align="center">\n{userId}\n</p>', '{userId}'],
+  ['<p align="center">{ userId }</p>', '{ userId }'],
+  ['<a href="/x" class="btn">GET &amp; /users/{id}</a>', 'GET & /users/{id}'],
+  ['<a href="/x" class="btn"><strong>GET</strong> /users/{id}</a>', 'GET /users/{id}'],
+])('keeps authored brace text and surrounding HTML in %s', (source, text) => {
+  expectReloads(source, text);
+  expect(readerText(source)).toBe(text);
+  const editor = makeEditor();
+  try {
+    editor.commands.setContent(source, { emitUpdate: false });
+    let at = 0;
+    editor.state.doc.descendants((node, pos) => {
+      if (!at && node.isText) at = pos + 1;
+    });
+    expect(at).toBeGreaterThan(0);
+    editor.view.dispatch(editor.state.tr.insertText('!', at));
+    const saved = getMarkdown(editor);
+    expect(saved.startsWith(source.slice(0, source.indexOf('>') + 1))).toBe(true);
+    expect(saved).toContain('&#123;');
+    const edited = `${text[0]}!${text.slice(1)}`;
+    expectReloads(saved, edited);
+    expect(readerText(saved)).toBe(edited);
+  } finally {
+    editor.destroy();
+  }
+});
+
+it('keeps bracketed text inside an anchor from becoming a separate Markdown link', () => {
+  const editor = makeEditor();
+  try {
+    editor.commands.setContent('<a href="/x" class="btn">[x]({id})</a>', { emitUpdate: false });
+    const saved = getMarkdown(editor);
+    expect(saved).toBe('[\\[x\\]({id})](/x)');
+    expect(readerText(saved)).toBe('[x]({id})');
+  } finally {
+    editor.destroy();
+  }
+});
 
 describe.each([
   ['EN', 'GET /users/', 'details', 'id'],
