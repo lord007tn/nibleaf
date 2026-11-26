@@ -30,7 +30,7 @@ describe('MarkdownSourceEditor', () => {
 
     expect(markup).toContain('role="toolbar"');
     expect(markup).toContain('aria-label="editor.mode.markdown"');
+    expect(markup).toMatch(/<button\b[^>]*aria-label="editor\.format\.bold"/);
     expect(markup).toContain('aria-label="Document title"');
-    expect(markup).toContain('data-slot="button"');
   });
 });
