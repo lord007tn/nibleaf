@@ -7,7 +7,7 @@ import { act, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Project } from '@/hooks/api';
-import { ThemeSection } from './theme-section';
+import { ThemeSettings as ThemeSection } from './theme-settings';
 
 /** Option labels are deliberately distinct from the raw option ids so a trigger
  *  that shows the id instead of the label is caught. */

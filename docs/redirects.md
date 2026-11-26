@@ -4,7 +4,7 @@ description: 'Send readers from an old page address to its new location, learn w
 audience: 'site admins planning URL changes'
 content_type: 'reference'
 last_reviewed: '2026-11-07'
-verified_against: 'apps/app/src/components/project-settings/redirects-section.tsx, apps/app/src/components/project/publish-modal.tsx, packages/shared/src/redirects.ts, packages/validators/src/redirects.ts, and apps/server/src/actions/deployments.ts'
+verified_against: 'apps/app/src/features/site-redirects/components/redirects-settings.tsx, apps/app/src/components/project/publish-modal.tsx, packages/shared/src/redirects.ts, packages/validators/src/redirects.ts, and apps/server/src/actions/deployments.ts'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'redirects'

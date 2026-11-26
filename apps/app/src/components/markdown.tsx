@@ -1,9 +1,10 @@
 import { cn } from '@nibleaf/design-system/lib/utils';
+import { MARKDOWN_PLAIN_LANGUAGE, markdownParseBudget } from '@nibleaf/shared/page-limits';
 import { rehypeReaderHeadingIds } from '@nibleaf/shared/reader-heading-ids';
 import { readerRenderMode } from '@nibleaf/shared/reader-render-mode';
 import type { PathLanguage } from '@nibleaf/shared/site-language';
 import type { LanguageFn } from 'highlight.js';
-import { type ComponentProps, createContext, Suspense, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { type ComponentProps, createContext, type ReactNode, Suspense, useContext, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import ReactMarkdown, { type Components, type Options as ReactMarkdownOptions } from 'react-markdown';
 import rehypeAutolinkHeadings from 'rehype-autolink-headings';
 import rehypeSanitize from 'rehype-sanitize';
@@ -51,6 +52,9 @@ export interface MarkdownProps {
   site?: SiteLinkContext;
   /** Grammars beyond the core set, loaded for this content (see `Markdown`). */
   highlightGrammars?: Readonly<Record<string, LanguageFn>>;
+  /** Set when `content` is already a parse budget's output (`markdownParseBudget(...).content`):
+   *  the fence language of its plain-text regions. Otherwise the renderer reads the budget itself. */
+  plainLanguage?: string;
 }
 
 /** The rich renderer's chunk (see richMarkdownModule). */
@@ -213,8 +217,7 @@ export const baseMdxComponents: Pick<DocumentationComponents, 'callout' | 'merma
  *  render (server, hydration) always shows the content as given. */
 function useShownContent(content: string): string {
   const [shown, setShown] = useState(content);
-  const waitsForMath =
-    content !== shown && mathMarkdownModule.status() !== 'loaded' && readerRenderMode(content).math && readerRenderMode(content).rich;
+  const waitsForMath = content !== shown && mathMarkdownModule.status() !== 'loaded' && rendererModulesFor(content).includes(mathMarkdownModule);
   useEffect(() => {
     if (content === shown) return;
     if (!waitsForMath) {
@@ -289,24 +292,71 @@ const subscribeNever = () => () => undefined;
 const notHydrating = () => false;
 const isHydrating = () => true;
 
+/** A page over the parse budget's size cap: all of its source as text. */
+function PlainMarkdown({ content, className }: Pick<MarkdownProps, 'content' | 'className'>) {
+  return (
+    <div className={cn('typeset nibleaf-content', className)}>
+      <pre className="whitespace-pre-wrap wrap-anywhere" dir="auto">
+        {content}
+      </pre>
+    </div>
+  );
+}
+
+/** The text of rendered children (strings, and the elements around them). */
+function textOf(node: ReactNode): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(textOf).join('');
+  const element = node as { props?: { children?: ReactNode } } | null;
+  return element?.props ? textOf(element.props.children) : '';
+}
+
+/** A block over the parse budget (a `nibleaf-plain` fence, see `markdownParseBudget`):
+ *  its text exactly as written, as text, wrapped like prose in its own direction. */
+function PlainRegion({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-(--typeset-flow) whitespace-pre-wrap wrap-anywhere" data-markdown-plain="" dir="auto">
+      {textOf(children).replace(/\n$/, '')}
+    </div>
+  );
+}
+
+/** Whether a `pre`'s code is a region's fence: its language is the budget's own (`language`), never an authored one. */
+const isPlainRegion = (children: ReactNode, language: string): boolean => {
+  const code = children as { props?: { className?: unknown } } | null;
+  return typeof code?.props?.className === 'string' && code.props.className.split(/\s+/).includes(`language-${language}`);
+};
+
 function MarkdownContent(props: MarkdownProps) {
   // Read with the renderer's own Markdown semantics (nested fences, container
   // ends, `r&#117;st`), the same on the server and in the browser, so the
   // modules the server marked are the ones hydration expects. Past the parser's
   // safety bounds, the line-based checks decide, erring towards loading.
-  const { rich, math, usage } = readerRenderMode(props.content);
-  const languages = usage ? lazyHighlightLanguagesNamed(usage.languages, props.content) : lazyHighlightLanguages(props.content);
-  if (languages.length === 0) return <MarkdownBody {...props} rich={rich} math={math} />;
+  // Blocks over the parse budget arrive as plain-text fences (`budget.content`).
+  const { rich, math, usage, budget } = readerRenderMode(props.content);
+  if (budget.whole) return <PlainMarkdown content={props.content} className={props.className} />;
+  const content = budget.content;
+  const languages = usage ? lazyHighlightLanguagesNamed(usage.languages, content) : lazyHighlightLanguages(content);
+  if (languages.length === 0) return <MarkdownBody {...props} content={content} plainLanguage={budget.plainLanguage} rich={rich} math={math} />;
   // Code in a language outside the core grammars: its grammars load like the
   // rich renderer (before hydrating, and in the reader's loaders), and until
   // they have, the plain body keeps those blocks readable, unhighlighted.
   const modules = languages.map(highlightLanguageModule);
-  const plain = <MarkdownBody {...props} rich={rich} math={math} />;
+  const plain = <MarkdownBody {...props} content={content} plainLanguage={budget.plainLanguage} rich={rich} math={math} />;
   const marker = { [HYDRATION_MODULE_ATTRIBUTE]: modules.map((module) => module.key).join(' ') };
   return (
     <Suspense fallback={plain}>
       <HydrationIsland className="contents" {...marker} modules={modules} pending={plain} failed={() => plain}>
-        {() => <MarkdownBody {...props} rich={rich} math={math} highlightGrammars={Object.assign({}, ...modules.map((module) => module.read()))} />}
+        {() => (
+          <MarkdownBody
+            {...props}
+            content={content}
+            plainLanguage={budget.plainLanguage}
+            rich={rich}
+            math={math}
+            highlightGrammars={Object.assign({}, ...modules.map((module) => module.read()))}
+          />
+        )}
       </HydrationIsland>
     </Suspense>
   );
@@ -318,6 +368,7 @@ function MarkdownBody({
   className,
   site,
   highlightGrammars,
+  plainLanguage,
   rich,
   math,
 }: MarkdownProps & { rich: boolean; math: boolean }) {
@@ -328,7 +379,14 @@ function MarkdownBody({
     // keeps the text readable; so does a chunk that never loads. Only the
     // server render suspends, waiting for the chunk.
     const plain = (
-      <MarkdownRenderer content={content} imageDimensions={imageDimensions} className={className} site={site} highlightGrammars={highlightGrammars} />
+      <MarkdownRenderer
+        content={content}
+        imageDimensions={imageDimensions}
+        className={className}
+        site={site}
+        highlightGrammars={highlightGrammars}
+        plainLanguage={plainLanguage}
+      />
     );
     return (
       <Suspense fallback={plain}>
@@ -344,6 +402,7 @@ function MarkdownBody({
             return (
               <Rich
                 content={content}
+                plainLanguage={plainLanguage}
                 imageDimensions={imageDimensions}
                 className={className}
                 site={site}
@@ -357,7 +416,14 @@ function MarkdownBody({
     );
   }
   return (
-    <MarkdownRenderer content={content} imageDimensions={imageDimensions} className={className} site={site} highlightGrammars={highlightGrammars} />
+    <MarkdownRenderer
+      content={content}
+      imageDimensions={imageDimensions}
+      className={className}
+      site={site}
+      highlightGrammars={highlightGrammars}
+      plainLanguage={plainLanguage}
+    />
   );
 }
 
@@ -371,6 +437,7 @@ export function MarkdownRenderer({
   extraRehypePlugins = [],
   afterSanitizePlugins = [],
   mdxComponents,
+  plainLanguage,
 }: MarkdownProps & {
   extraRemarkPlugins?: NonNullable<ReactMarkdownOptions['remarkPlugins']>;
   extraRehypePlugins?: NonNullable<ReactMarkdownOptions['rehypePlugins']>;
@@ -379,6 +446,9 @@ export function MarkdownRenderer({
   /** Renderers for authored component tags, supplied by the rich renderer. */
   mdxComponents?: Components;
 }) {
+  // Content from MarkdownContent arrives as its budget left it (`plainLanguage` set); anything else is read here.
+  const budget = plainLanguage === undefined ? markdownParseBudget(content) : null;
+  const regionLanguage = budget?.plainLanguage ?? plainLanguage ?? MARKDOWN_PLAIN_LANGUAGE;
   const components = useMemo(() => {
     const mergedComponents: Components = {
       ...htmlComponents,
@@ -408,7 +478,8 @@ export function MarkdownRenderer({
             ),
           } satisfies Components)
         : {}),
-      pre: (props: ComponentProps<'pre'>) => <Pre {...props} locale={site?.lang} />,
+      pre: (props: ComponentProps<'pre'>) =>
+        isPlainRegion(props.children, regionLanguage) ? <PlainRegion>{props.children}</PlainRegion> : <Pre {...props} locale={site?.lang} />,
       table: (props: ComponentProps<'table'>) => <ScrollTable {...props} locale={site?.lang} />,
       td: TableCell,
       th: TableHeaderCell,
@@ -417,7 +488,8 @@ export function MarkdownRenderer({
       ...mdxComponents,
     };
     return mergedComponents;
-  }, [site, mdxComponents]);
+  }, [site, mdxComponents, regionLanguage]);
+  if (budget?.whole) return <PlainMarkdown content={content} className={className} />;
   return (
     // nibleaf-content: the tables, code blocks and task lists styled the same
     // in the editor (content-blocks.css).
@@ -445,7 +517,7 @@ export function MarkdownRenderer({
           [rehypeReaderHighlight, { grammars: highlightGrammars ? { ...CORE_HIGHLIGHT_GRAMMARS, ...highlightGrammars } : CORE_HIGHLIGHT_GRAMMARS }],
         ]}
       >
-        {normalizeMdxBlocks(content)}
+        {normalizeMdxBlocks(budget ? budget.content : content)}
       </ReactMarkdown>
     </div>
   );
