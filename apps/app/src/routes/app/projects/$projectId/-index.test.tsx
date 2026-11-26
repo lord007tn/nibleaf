@@ -424,6 +424,15 @@ describe('first-publish checklist and reserved address', () => {
       routeParams.projectId = 'project-2';
       await act(async () => root.render(<SiteOverviewPage />));
       expect(container.textContent).toContain('Your docs are not live yet');
+      // Dismiss B too, then go back to A: both stay dismissed for the visit.
+      await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]')?.click());
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+      routeParams.projectId = 'project-1';
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+      routeParams.projectId = 'project-2';
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).not.toContain('Your docs are not live yet');
     } finally {
       routeParams.projectId = 'project-1';
       setItem.mockRestore();
