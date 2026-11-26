@@ -66,11 +66,17 @@ export function CodeBlockMenu({ editor }: { editor: Editor }) {
       data-editor-bubble-menu=""
       editor={editor}
       pluginKey="nibleaf-code-block-menu"
-      // At the block's top corner, beside its language label, not over the line being typed.
+      // Inside the block's top corner, on the row of its language label: never
+      // over the line being typed, nor over the block above.
       getReferencedVirtualElement={anchor}
-      options={{ placement: 'top-end', offset: 6, flip: { padding: MENU_EDGE_PADDING }, shift: { padding: MENU_EDGE_PADDING } }}
+      options={{
+        placement: 'top-end',
+        offset: ({ rects }) => ({ mainAxis: -rects.floating.height - 4, alignmentAxis: 6 }),
+        flip: false,
+        shift: { padding: MENU_EDGE_PADDING },
+      }}
       shouldShow={({ editor: current }) => current.isEditable && current.isActive('codeBlock')}
-      className="rounded-lg border border-border bg-card p-1 shadow-lg"
+      className="rounded-md border border-border bg-card shadow-sm"
     >
       <Select
         items={items}

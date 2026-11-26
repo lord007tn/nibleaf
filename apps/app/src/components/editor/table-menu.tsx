@@ -43,8 +43,9 @@ interface TableAction {
 /**
  * Floating table controls, shown while the caret (or a cell selection) is inside
  * a table: insert/delete rows and columns, toggle the header row, delete the
- * table. Positioned BELOW the selection so it never fights the text formatting
- * bubble (which floats above and only appears for non-empty text selections).
+ * table. It sits above the table (below when there is no room), never over the
+ * row being typed in, and only while no text is selected, so it never shows with
+ * the text formatting menu.
  */
 export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?: 'ltr' | 'rtl' }) {
   const t = useT();
@@ -64,7 +65,7 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
     }),
   });
 
-  const anchor = useMemo(() => blockAnchor(editor, 'table'), [editor]);
+  const anchor = useMemo(() => blockAnchor(editor, '.tableWrapper', 'table'), [editor]);
   const actions: TableAction[] = [
     {
       labelKey: 'editor.table.alignDefault',

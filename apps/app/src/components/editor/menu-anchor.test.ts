@@ -45,6 +45,41 @@ describe('the anchor of a block menu', () => {
     expect(blockAnchor(editor, 'pre')()?.getBoundingClientRect().top).toBe(300);
   });
 
+  it('is the visible part of a block taller than the screen, so the menu stays in view', () => {
+    seedMarkdown(editor, 'Intro\n\n```bash\nnpm install -g acme\n```');
+    const pre = editor.view.dom.querySelector('pre');
+    if (!pre) throw new Error('No code block');
+    // Starts above the viewport and ends below it.
+    pre.getBoundingClientRect = () => new DOMRect(10, -500, 600, 3000);
+    caretIn('install');
+    const rect = blockAnchor(editor, 'pre')()?.getBoundingClientRect();
+    expect(rect?.top).toBe(0);
+    expect(rect?.bottom).toBe(window.innerHeight);
+  });
+
+  it('is none for a block scrolled out of view, so the menu follows the selection', () => {
+    seedMarkdown(editor, 'Intro\n\n```bash\nnpm install -g acme\n```');
+    const pre = editor.view.dom.querySelector('pre');
+    if (!pre) throw new Error('No code block');
+    pre.getBoundingClientRect = () => new DOMRect(10, -500, 600, 100);
+    caretIn('install');
+    expect(blockAnchor(editor, 'pre')()).toBeNull();
+  });
+
+  it('prefers the first selector that matches: a table’s scroll box over the table itself', () => {
+    seedMarkdown(editor, 'Intro\n\n| Plan | Price |\n| - | - |\n| Free | 0 |');
+    const table = editor.view.dom.querySelector('table');
+    if (!table) throw new Error('No table');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'tableWrapper';
+    table.replaceWith(wrapper);
+    wrapper.append(table);
+    wrapper.getBoundingClientRect = () => new DOMRect(10, 200, 400, 120);
+    table.getBoundingClientRect = () => new DOMRect(10, 200, 1200, 120);
+    caretIn('Free');
+    expect(blockAnchor(editor, '.tableWrapper', 'table')()?.getBoundingClientRect().width).toBe(400);
+  });
+
   it('is none outside such a block, so the menu follows the selection', () => {
     seedMarkdown(editor, 'Intro\n\n| Plan | Price |\n| - | - |\n| Free | 0 |');
     caretIn('Intro');
