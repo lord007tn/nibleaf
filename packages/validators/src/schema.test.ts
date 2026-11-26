@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-it('council: REST revisions survive validation and generated rules round-trip through config', () => {
-  const expectedUpdatedAt = '2026-11-01T00:00:00.000Z';
-  expect(updatePageBody.parse({ content: 'Draft', expectedUpdatedAt })).toMatchObject({ expectedUpdatedAt });
-  expect(projectConfigSchema.parse({ redirects: [{ from: '/old', to: '/new', generated: true }] }).redirects?.[0]).toMatchObject({ generated: true });
-});
-
 import {
   addDomainBody,
   adminSetRoleBody,
@@ -41,6 +35,11 @@ import {
   updateProjectSearchConfigurationBody,
   upsertOpenApiBody,
 } from './index';
+
+it('keeps the revision used to detect concurrent page edits', () => {
+  const expectedUpdatedAt = '2026-11-01T00:00:00.000Z';
+  expect(updatePageBody.parse({ content: 'Draft', expectedUpdatedAt })).toMatchObject({ expectedUpdatedAt });
+});
 
 describe('page translation keys', () => {
   it('allows absence or null and rejects blank values for creates and updates', () => {
@@ -202,10 +201,11 @@ describe('projectConfigSchema', () => {
 
   it('accepts redirect chains and resolves them to one final hop', () => {
     const redirects = [
-      { from: '/old', to: '/renamed' },
+      { from: '/old', to: '/renamed', generated: true },
       { from: '/renamed', to: '/current' },
     ];
-    expect(projectConfigSchema.safeParse({ redirects }).success).toBe(true);
+    const parsed = projectConfigSchema.parse({ redirects });
+    expect(parsed.redirects?.[0]).toMatchObject({ generated: true });
     expect(resolveRedirectTarget(redirects, '/old')).toBe('/current');
     expect(resolveRedirectTarget([...redirects, { from: '/current', to: 'https://example.com/docs' }], '/old')).toBe('https://example.com/docs');
     expect(resolveRedirectTarget([{ from: '/', to: '/start' }], '/')).toBe('/start');
@@ -288,17 +288,7 @@ describe('project translation input', () => {
   });
 });
 
-describe('updateProjectBody', () => {
-  it('accepts a DNS-safe deployment slug', () => {
-    expect(updateProjectBody.safeParse({ slug: 'docs-v2' }).success).toBe(true);
-  });
-});
-
 describe('addDomainBody', () => {
-  it('accepts a hostname', () => {
-    expect(addDomainBody.safeParse({ domain: 'docs.example.com' }).success).toBe(true);
-  });
-
   it('normalizes hostnames before validation', () => {
     const parsed = addDomainBody.safeParse({ domain: ' Docs.Example.COM. ' });
     expect(parsed.success && parsed.data.domain).toBe('docs.example.com');

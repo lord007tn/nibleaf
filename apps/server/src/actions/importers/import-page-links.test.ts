@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import type { SiteSnapshot, SnapshotPage } from '@nibleaf/shared/site';
+import { createLinkResolver } from '@nibleaf/shared/site-links';
 import { describe, expect, it, vi } from 'vitest';
 import { componentLinkFixtures } from './fixtures/component-links';
 import { extendedImportWrappers } from './fixtures/link-discovery-extended';
@@ -8,7 +10,8 @@ import { assertDefinitionDiscoveryDelta, traceLinkDiscovery, withMainLinkScanner
 import { rewriteMainInternalLinks } from './fixtures/page-links.main-reference';
 import corpus from './fixtures/page-links-corpus.json';
 import { convertGitBookMarkdown as convertHeadGitBookMarkdown } from './gitbook-markdown';
-import { rewriteMintlifyInternalLinks } from './mintlify-links';
+import { buildMintlifyLanguageRouteMaps, buildMintlifyRouteMap, mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
+import { parseMintlifyLanguages } from './mintlify-mapping';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
 // Linear corpus comparisons can exceed the five-second default on busy CI (#658).
@@ -40,7 +43,7 @@ const assertDiscoveryParity = (
   return { main, head, ...delta };
 };
 
-describe('main discovery: named repros from every review round', () => {
+describe('link discovery compatibility', () => {
   it('deduplication changes target strings at the same main offsets and leaves code literal', () => {
     const prose = '<Note>\n<div title="[Example](/next)">\n[^f]\n\n[^f]: [Go](/next?x=1#part)\n</div>\n</Note>\n\n</code>\n\n[Again](/next)';
     const code = '\n\n`[Code](/next)`\n\n~~~md\n[Code](/next)\n~~~';
@@ -51,13 +54,16 @@ describe('main discovery: named repros from every review round', () => {
     expect(head.output).toBe(prose.replaceAll('(/next', '(/topic-2/next') + code);
     expect(head.reports).toEqual(main.reports);
   });
-  it.each(linkDiscoveryRepros)('$name: preserves main offsets and reports', ({ content }) => {
-    assertDiscoveryParity(content, 'intro', routes, { sourceUrl: 'https://help.test', languageCode: 'en' });
-  });
+  it.each(linkDiscoveryRepros.map((fixture) => ({ ...fixture, label: fixture.name.replace(/^round[- ]\d+:\s*/i, '') })))(
+    '$label: preserves reference offsets and reports',
+    ({ content }) => {
+      assertDiscoveryParity(content, 'intro', routes, { sourceUrl: 'https://help.test', languageCode: 'en' });
+    },
+  );
   it.each(componentLinkFixtures)('component compatibility: $name', ({ content }) => {
     assertDiscoveryParity(content, 'intro');
   });
-  it('round 3: main leaves the invalid definition line byte-identical', () => {
+  it('keeps an invalid definition byte-identical', () => {
     const source = '[x]: /topic/next extra text';
     const result = assertDiscoveryParity(source, 'intro');
     expect(result.main.output).toBe(source);
@@ -221,7 +227,7 @@ it('seed 0x618663: fidelity reports equal main with and without rewrite candidat
   expect(mainReports).toBeGreaterThan(0);
 });
 
-it('round 7: extended discovery and adversarial angle destinations exactly equal main', () => {
+it('extended discovery and malformed angle destinations match the reference scanner', () => {
   let documents = 0;
   let rewrittenLinks = 0;
   const shapes: string[] = [];
@@ -250,5 +256,203 @@ it('round 7: extended discovery and adversarial angle destinations exactly equal
       rewrittenLinks += head.rewrites.length;
       documents++;
     }
-  console.info('round-7 exact differential', { documents, rewrittenLinks, mismatches: 0, fidelityMismatches: 0 });
+  console.info('extended link discovery differential', { documents, rewrittenLinks, mismatches: 0, fidelityMismatches: 0 });
+});
+
+describe('Imported link destinations', () => {
+  it('prefers the exact application destination over a conflicting source key and basename', () => {
+    const routes = new Map([
+      ['next', '/guides/next'],
+      ['api/next', '/next'],
+    ]);
+    expect(rewriteMintlifyInternalLinks('[Next](https://nibleaf.com/pages/next#start)', 'intro', routes)).toBe('[Next](/next#start)');
+    expect(rewriteMintlifyInternalLinks('[Next](https://nibleaf.com/pages/guides/next)', 'intro', routes)).toBe('[Next](/guides/next)');
+    expect(
+      rewriteMintlifyInternalLinks(
+        '[Next](https://nibleaf.com/pages/next)',
+        'intro',
+        new Map([
+          ['a/page', '/next'],
+          ['b/page', '/guides/next'],
+        ]),
+      ),
+    ).toBe('[Next](/next)');
+  });
+
+  it('reports an ambiguous basename without guessing', () => {
+    const url = 'https://nibleaf.com/pages/next';
+    const issues: string[] = [];
+    expect(
+      rewriteMintlifyInternalLinks(
+        `[Next](${url})`,
+        'intro',
+        new Map([
+          ['a/page', '/guides/next'],
+          ['b/page', '/api/next'],
+        ]),
+        {
+          onUnresolved: (value) => issues.push(value),
+        },
+      ),
+    ).toBe(`[Next](${url})`);
+    expect(issues).toEqual([url]);
+  });
+
+  it('decodes HTML language query entities and escapes the rewritten href', () => {
+    const source = '<a href="https://nibleaf.com/pages/next?x=1&amp;lang=ar#start">Next</a>';
+    const options = {
+      languageCode: 'en',
+      languageRoutes: new Map([
+        ['en', new Map([['next', '/english/next']])],
+        ['ar', new Map([['next', '/arabic/next']])],
+      ]),
+    };
+    expect(rewriteMintlifyInternalLinks(source, 'intro', new Map([['next', '/english/next']]), options)).toBe(
+      '<a href="/arabic/next?x=1&amp;lang=ar#start">Next</a>',
+    );
+    const markdown = '[Next](https://external.test/next?x=1&amp;lang=ar)';
+    expect(rewriteMintlifyInternalLinks(markdown, 'intro', new Map(), options)).toBe(markdown);
+    expect(
+      rewriteMintlifyInternalLinks('[Next](https://nibleaf.com/pages/next?x=1&amp;lang=ar)', 'intro', new Map([['next', '/english/next']]), options),
+    ).toBe('[Next](/english/next?x=1&amp;lang=ar)');
+  });
+
+  it.each(['guides/café', 'guides/مرحبا', 'guides/%broken'])('resolves encoded and plain segments to the same page: %s', (path) => {
+    const encoded = path.split('/').map(encodeURIComponent).join('/');
+    const routes = buildMintlifyRouteMap([{ kind: 'page', path }]);
+    expect([...buildMintlifyRouteMap([{ kind: 'page', path: encoded }]).keys()]).toEqual([path]);
+    const issues: string[] = [];
+    for (const reference of [path, encoded]) {
+      expect(mintlifyInternalLinkTargets(`[Next](/${reference})`, 'intro')).toEqual([path]);
+      expect(
+        rewriteMintlifyInternalLinks(`[Next](https://help.test/${reference}?lang=ar#start)`, 'intro', routes, {
+          sourceUrl: 'https://help.test',
+          onUnresolved: (url) => issues.push(url),
+        }),
+      ).toBe(`[Next](${routes.get(path)}?lang=ar#start)`);
+    }
+    expect(issues).toEqual([]);
+  });
+});
+
+describe('Localized imported destinations', () => {
+  const page = (id: string, path: string, languageCode: string, versionId = 'v1'): SnapshotPage => ({
+    id,
+    path,
+    languageCode,
+    versionId,
+    slug: 'next',
+    title: id,
+    parentId: null,
+    kind: 'PAGE',
+    content: '',
+    description: null,
+    icon: null,
+    updatedAt: '2026-11-13T00:00:00Z',
+    position: 0,
+    hidden: false,
+    config: null,
+    translationKey: null,
+  });
+  const snapshot: SiteSnapshot = {
+    generatedAt: '2026-11-13T00:00:00Z',
+    project: {
+      id: 'synthetic',
+      slug: 'synthetic',
+      name: 'Synthetic',
+      description: null,
+      icon: null,
+      config: null,
+      languages: [
+        { code: 'en', label: 'English', direction: 'LTR', isDefault: true, config: null },
+        { code: 'ar', label: 'Arabic', direction: 'RTL', isDefault: false, config: null },
+      ],
+      versions: [
+        { id: 'v1', name: 'Latest', slug: 'latest', isDefault: true },
+        { id: 'v2', name: 'v2', slug: 'v2', isDefault: false },
+      ],
+    },
+    pages: [
+      page('from', 'intro', 'en'),
+      page('en-next', 'english/next', 'en'),
+      page('ar-next', 'arabic/next', 'ar'),
+      page('v2-from', 'intro', 'en', 'v2'),
+      page('v2-ar-next', 'arabic/next', 'ar', 'v2'),
+    ],
+  };
+
+  it('resolves an explicit Arabic link to the Arabic page', () => {
+    const result = rewriteMintlifyInternalLinks(
+      '[Next](https://nibleaf.com/pages/next?lang=ar#start)',
+      'intro',
+      new Map([['next', '/english/next']]),
+      {
+        languageCode: 'en',
+        languageRoutes: new Map([
+          ['en', new Map([['next', '/english/next']])],
+          ['ar', new Map([['next', '/arabic/next']])],
+        ]),
+      },
+    );
+    expect(result).toBe('[Next](/arabic/next?lang=ar#start)');
+    expect(createLinkResolver(snapshot)('/arabic/next?lang=ar#start', snapshot.pages[0] as SnapshotPage)).toMatchObject({
+      id: 'ar-next',
+      languageCode: 'ar',
+    });
+  });
+
+  it('reports a missing Arabic page without falling back to English', () => {
+    const issues: string[] = [];
+    const url = 'https://nibleaf.com/pages/next?lang=ar#start';
+    expect(
+      rewriteMintlifyInternalLinks(`[Next](${url})`, 'intro', new Map([['next', '/english/next']]), {
+        languageCode: 'en',
+        languageRoutes: new Map([
+          ['en', new Map([['next', '/english/next']])],
+          ['ar', new Map()],
+        ]),
+        onUnresolved: (href) => issues.push(href),
+      }),
+    ).toBe(`[Next](${url})`);
+    expect(issues).toEqual([url]);
+  });
+
+  it('keeps an explicit language link in the selected version', () => {
+    const { languages } = parseMintlifyLanguages({
+      navigation: {
+        languages: [
+          {
+            language: 'en',
+            versions: [
+              { version: 'v1', default: true, pages: ['en/next'] },
+              { version: 'v2', pages: ['en/next'] },
+            ],
+          },
+          {
+            language: 'ar',
+            versions: [
+              { version: 'v1', default: true, pages: ['ar/next'] },
+              { version: 'v2', groups: [{ group: 'Arabic', pages: ['ar/next'] }] },
+            ],
+          },
+        ],
+      },
+    });
+    const url = 'https://nibleaf.com/pages/next?lang=ar#start';
+    const rewritten = rewriteMintlifyInternalLinks(`[Next](${url})`, 'intro', new Map([['next', '/english/next']]), {
+      languageCode: 'en',
+      languageRoutes: buildMintlifyLanguageRouteMaps(languages, 'v2'),
+    });
+    expect(rewritten).toBe('[Next](/arabic/next?lang=ar#start)');
+    expect(createLinkResolver(snapshot)('/arabic/next?lang=ar#start', snapshot.pages[3] as SnapshotPage)).toMatchObject({ id: 'v2-ar-next' });
+    const missing: string[] = [];
+    expect(
+      rewriteMintlifyInternalLinks(`[Next](${url})`, 'intro', new Map([['next', '/english/next']]), {
+        languageCode: 'en',
+        languageRoutes: buildMintlifyLanguageRouteMaps(languages, 'v3'),
+        onUnresolved: (href) => missing.push(href),
+      }),
+    ).toBe(`[Next](${url})`);
+    expect(missing).toEqual([url]);
+  });
 });

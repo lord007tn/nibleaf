@@ -4,7 +4,7 @@ import type { Editor } from '@tiptap/core';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { useMemo } from 'react';
-import { blockAnchor, MENU_EDGE_PADDING } from './menu-anchor';
+import { blockAnchor, MENU_EDGE_PADDING, useMenuScrollTarget } from './menu-anchor';
 
 /** Curated fence languages (lowlight `common` grammars + mermaid). The value is
  *  what lands after the ``` fence in Markdown, so it must stay highlightable on
@@ -45,6 +45,7 @@ const CODE_BLOCK_LANGUAGES = [
 export function CodeBlockMenu({ editor }: { editor: Editor }) {
   const t = useT();
   const anchor = useMemo(() => blockAnchor(editor, 'pre'), [editor]);
+  const scrollTarget = useMenuScrollTarget();
   const state = useEditorState({
     editor,
     selector: ({ editor: current }) => ({
@@ -74,6 +75,7 @@ export function CodeBlockMenu({ editor }: { editor: Editor }) {
         offset: ({ rects }) => ({ mainAxis: -rects.floating.height - 4, alignmentAxis: 6 }),
         flip: false,
         shift: { padding: MENU_EDGE_PADDING },
+        scrollTarget,
       }}
       shouldShow={({ editor: current }) => current.isEditable && current.isActive('codeBlock')}
       className="rounded-md border border-border bg-card shadow-sm"

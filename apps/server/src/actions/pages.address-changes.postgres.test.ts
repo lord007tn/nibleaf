@@ -234,7 +234,7 @@ describe.skipIf(process.env.PAGE_ADDRESS_INTEGRATION !== '1')('page address tran
     expect(attempts).toBe(1);
   });
 
-  it('council: real PostgreSQL rollback, commit, and stale autosave preserve the address-link invariant', async () => {
+  it('real PostgreSQL rollback, commit, and stale autosave preserve the address-link invariant', async () => {
     const f = await fixture();
     const constraint = `address_test_${randomUUID().replaceAll('-', '')}`;
     // Scoped to one fictional row in this disposable migrated database.
@@ -256,7 +256,7 @@ describe.skipIf(process.env.PAGE_ADDRESS_INTEGRATION !== '1')('page address tran
     expect(await db.prisma.page.findUnique({ where: { id: f.source.id } })).toMatchObject({ content: '[link](/new)' });
   }, 60_000);
 
-  it('council: 313-page fixture measures real transaction time with no parsing under locks', async () => {
+  it('313-page fixture measures real transaction time with no parsing under locks', async () => {
     const f = await fixture(313);
     metrics.parsesUnderLock = 0;
     const start = performance.now();

@@ -29,17 +29,21 @@ vi.mock('./export-html', async (original) => {
   const actual = await original<typeof import('./export-html')>();
   return { ...actual, escapeDisallowedExportHtml: (source: string) => (mode.main ? source : actual.escapeDisallowedExportHtml(source)) };
 });
-it.each([
-  ['expanded', expandedExportStructureCases, 19_800],
-  ['hazards', exportContentHazardCases, 3030],
-  ['contexts', exportInertContextCases, 2415],
-  ['review', reviewedExportCases, 17_090],
-  // The repository corpus grows whenever docs are added, so its count is a
-  // floor (the 352 pages reviewed in #652); docs edits never fail CI on count.
-  ['corpus', () => markdownCorpus(fileURLToPath(new URL('../../..', import.meta.url))).map(([, source]) => source), 352],
-] as const)(
-  'preserves structure, source text and inert content: %s',
-  (_label, build, count) => {
+it.each(
+  (
+    [
+      ['expanded', expandedExportStructureCases, 19_800],
+      ['hazards', exportContentHazardCases, 3030],
+      ['contexts', exportInertContextCases, 2415],
+      ['review', reviewedExportCases, 17_090],
+      // The repository corpus grows whenever docs are added, so its count is a
+      // floor (the 352 pages reviewed in #652); docs edits never fail CI on count.
+      ['corpus', () => markdownCorpus(fileURLToPath(new URL('../../..', import.meta.url))).map(([, source]) => source), 352],
+    ] as const
+  ).map(([key, build, count]) => ({ key, build, count, description: key === 'review' ? 'mixed HTML and container boundaries' : key })),
+)(
+  'preserves structure, source text and inert content: $description',
+  ({ key, build, count }) => {
     const cases = build();
     const failures: unknown[] = [];
     const totals = {
@@ -55,8 +59,8 @@ it.each([
       codeChanges: 0,
       throws: 0,
     };
-    const allowedFallbacks = new Set(ceilings[_label]?.indices ?? []);
-    const allowedExpanded = new Set(ceilings[_label]?.expandedIndices ?? []);
+    const allowedFallbacks = new Set(ceilings[key]?.indices ?? []);
+    const allowedExpanded = new Set(ceilings[key]?.expandedIndices ?? []);
     for (const [index, source] of cases.entries())
       for (const [target, project] of [normalizePublicMarkdownContent, portablePublicMdxMarkdown].entries()) {
         mode.main = true;
@@ -118,7 +122,7 @@ it.each([
         )
           failures.push({ source, baseline, output, live: after.elements, newlyLive, structure: comparison.equal, preserved: comparison.preserved });
       }
-    console.info(_label, totals);
+    console.info(key, totals);
     expect({
       failures,
       live: totals.live,
@@ -129,18 +133,19 @@ it.each([
       throws: totals.throws,
       codeChanges: totals.codeChanges,
     }).toEqual({ failures: [], live: 0, newFeatures: 0, structure: 0, textLoss: 0, inactiveChanges: 0, throws: 0, codeChanges: 0 });
-    expect(totals.unpreservable).toBeLessThanOrEqual(ceilings[_label]?.ceiling ?? -1);
-    expect(totals.expanded).toBeLessThanOrEqual(ceilings[_label]?.expandedCeiling ?? -1);
-    if (_label === 'corpus') expect([totals.unpreservable, totals.expanded]).toEqual([0, 0]);
+    expect(totals.unpreservable).toBeLessThanOrEqual(ceilings[key]?.ceiling ?? -1);
+    expect(totals.expanded).toBeLessThanOrEqual(ceilings[key]?.expandedCeiling ?? -1);
+    if (key === 'corpus') expect([totals.unpreservable, totals.expanded]).toEqual([0, 0]);
     // Generated matrices are exact; the repository corpus only has a floor.
-    if (_label !== 'corpus') expect(cases.length).toBe(count);
+    if (key !== 'corpus') expect(cases.length).toBe(count);
     else expect(cases.length).toBeGreaterThanOrEqual(count);
   },
   // The full 39,600-export row took 8.7s locally; CI has shown 28x slowdown.
   300_000,
 );
 
-const reviewedBoundaries = [
+// The mixed matrix also covers the first two sources below with LF.
+const mixedBoundaries = [
   '> <script></script>\n> <a>\n\tCODE',
   '- <pre><script></script>\n\n  TEXT\n- NEXT',
   '- <script></script>\n  <a>\n- NEXT',
@@ -150,14 +155,16 @@ const reviewedBoundaries = [
   '- <script>BODY\n  </textarea>\n      CODE\n  <img onerror="NEW_ATTACK()">\n  </script>\n- NEXT',
 ];
 it.each(
-  reviewedBoundaries.flatMap((source) =>
+  mixedBoundaries.flatMap((source, index) =>
     [
       ['LF', '\n'],
       ['CRLF', '\r\n'],
       ['CR', '\r'],
-    ].map(([label, ending]) => ({ label, source: source.replaceAll('\n', ending ?? '\n') })),
+    ]
+      .filter(([label]) => label !== 'LF' || index >= 2)
+      .map(([label, ending]) => ({ label, source: source.replaceAll('\n', ending ?? '\n') })),
   ),
-)('pins the reviewed boundary ($label): $source', ({ source }) => {
+)('preserves structure across a $label boundary: $source', ({ source }) => {
   mode.main = true;
   const baseline = portablePublicMdxMarkdown(source);
   mode.main = false;

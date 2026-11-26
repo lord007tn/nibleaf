@@ -81,7 +81,7 @@ describe.skipIf(process.env.IMPORT_REHEARSAL !== '1')('import safety with Postgr
     );
   });
 
-  it('council re-check: promotes literal code and authored src video metadata without spurious reports', async () => {
+  it('promotes literal code and authored src video metadata without spurious reports', async () => {
     const { project, run } = await fixture();
     const literal = 'Example:\n\n    [Next](https://help.test/next)\n    [Missing](https://help.test/missing)\n    ![Missing](./missing.png)';
     const video = '<video src="https://cdn.test/a.mp4" poster="/poster.jpg" title="Original" width="640" controls></video>';
@@ -95,7 +95,7 @@ describe.skipIf(process.env.IMPORT_REHEARSAL !== '1')('import safety with Postgr
     expect(report.warnings).toEqual(['Replaced the existing draft navigation only after the complete Mintlify import succeeded.']);
   });
 
-  it('full review: keeps foreign-language discovery out of English and decodes HTML lang entities', async () => {
+  it('keeps foreign-language discovery out of English and decodes HTML lang entities', async () => {
     const { project, run } = await fixture();
     source.files.set(
       'docs.json',
@@ -124,7 +124,7 @@ describe.skipIf(process.env.IMPORT_REHEARSAL !== '1')('import safety with Postgr
     expect(report.fidelityIssues).toContainEqual({ kind: 'link', page: 'intro', reference: foreign });
   });
 
-  it('council P2: promotes an explicit Arabic link to the Arabic route, without English fallback', async () => {
+  it('promotes an explicit Arabic link to the Arabic route, without English fallback', async () => {
     const { project, run } = await fixture();
     source.files.set(
       'docs.json',

@@ -1,6 +1,8 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@nibleaf/design-system/components/ui/dialog';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useT } from '@nibleaf/i18n/react';
+import { useState } from 'react';
+import { scrollFadeStyle, useScrollEdges } from './scroll-edges';
 import { modShortcut } from './shortcut-label';
 
 interface Row {
@@ -55,30 +57,44 @@ const GROUPS: Array<{ heading: MessageKey; rows: Row[] }> = [
 /** "Keyboard shortcuts" for writing a page: Ctrl/⌘+/ or the page's … menu. */
 export function EditorShortcutsDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   const t = useT();
+  // The list scrolls under the heading; a fade at its edge shows there is more.
+  const [list, setList] = useState<HTMLElement | null>(null);
+  const edges = useScrollEdges(list, 'y');
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[calc(100dvh-2rem)] grid-rows-[auto_minmax(0,1fr)] sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>{t('shortcuts.title')}</DialogTitle>
           <DialogDescription>{t('shortcuts.editor.description')}</DialogDescription>
         </DialogHeader>
-        {GROUPS.map((group) => (
-          <section aria-label={t(group.heading)} className="space-y-1.5" key={group.heading}>
-            <h3 className="font-medium text-muted-foreground text-xs">{t(group.heading)}</h3>
-            <dl className="divide-y divide-border rounded-lg border border-border">
-              {group.rows.map((row) => (
-                <div className="flex items-center justify-between gap-4 px-3 py-2 text-sm" key={`${row.label}-${row.keys}`}>
-                  <dt className="min-w-0">{t(row.label)}</dt>
-                  <dd className="shrink-0" dir="ltr">
-                    <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs">
-                      {row.plain ? row.keys : modShortcut(row.keys)}
-                    </kbd>
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </section>
-        ))}
+        {/* Focusable so the keys scroll it in every browser (Safari doesn't focus scrollers itself). */}
+        <section
+          aria-label={t('shortcuts.title')}
+          className="-mx-6 min-h-0 space-y-6 overflow-y-auto rounded-md px-6 pb-1 outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          data-scroll-edges={[edges.start && 'start', edges.end && 'end'].filter(Boolean).join(' ') || undefined}
+          ref={setList}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be reachable by keyboard (WCAG 2.1.1, axe scrollable-region-focusable).
+          tabIndex={0}
+          style={scrollFadeStyle(edges, 'y')}
+        >
+          {GROUPS.map((group) => (
+            <section aria-label={t(group.heading)} className="space-y-1.5" key={group.heading}>
+              <h3 className="font-medium text-muted-foreground text-xs">{t(group.heading)}</h3>
+              <dl className="divide-y divide-border rounded-lg border border-border">
+                {group.rows.map((row) => (
+                  <div className="flex items-center justify-between gap-4 px-3 py-2 text-sm" key={`${row.label}-${row.keys}`}>
+                    <dt className="min-w-0">{t(row.label)}</dt>
+                    <dd className="shrink-0" dir="ltr">
+                      <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-xs">
+                        {row.plain ? row.keys : modShortcut(row.keys)}
+                      </kbd>
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </section>
+          ))}
+        </section>
       </DialogContent>
     </Dialog>
   );

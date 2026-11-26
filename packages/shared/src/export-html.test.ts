@@ -119,7 +119,7 @@ it.each(followingBaseline.cases)('keeps adjacent author text: $name', ({ source,
 it('pins adjacent-block sources to main', () => {
   expect(followingBaseline.cases.map(({ name, source }) => ({ name, source }))).toEqual(exportFollowingBlockCases());
 });
-it('keeps the round-7 list tight or literalizes its complete owned block', () => {
+it('keeps the list tight or literalizes its complete owned block', () => {
   const source = '- <script>BODY</script>\n  FOLLOW\n- NEXT';
   for (const project of [normalizePublicMarkdownContent, portablePublicMdxMarkdown]) {
     const output = project(source);
