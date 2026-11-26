@@ -42,6 +42,7 @@ const CONTAINERS = [
   { name: 'page', first: '', rest: '' },
   { name: 'list item', first: '- ', rest: '  ' },
   { name: 'quoted ordered list', first: '> 1. ', rest: '>    ' },
+  { name: 'list inside three quotes', first: '> > > - ', rest: '> > >   ' },
 ] as const;
 const OPENERS = ['```js', '~~~', '````', null] as const;
 
@@ -67,6 +68,28 @@ describe('a code block’s fence is longer than any line of its code that would 
     reader.destroy();
   });
   const load = (target: Editor, markdown: string) => target.commands.setContent(markdown, { emitUpdate: false });
+
+  it.each(['-', '*', '+'])('preserves an untouched, indented quote fence before another %s list', (bullet) => {
+    const source = `Before\n\n- Top\n\n  >  \`\`\`\n  >   x\n\n${bullet} next`;
+    load(editor, source);
+    editor.view.dispatch(editor.state.tr.insertText('!', 7));
+    const saved = getMarkdown(editor);
+    expect(saved).toContain('  >  ```\n  >   x\n');
+    load(reader, saved);
+    expect(codeBlocks(reader.state.doc).map((block) => block.textContent)).toEqual([' x']);
+    expect(getMarkdown(reader)).toBe(saved);
+  });
+
+  it.each(['```js', '~~~sh', '````md'])('preserves %s on code edits when a tab-indented run cannot close it', (opener) => {
+    const close = /^(`+|~+)/.exec(opener)?.[1];
+    const source = `${opener}\nold\n\t${close}\ntail\n${close}\n\nAfter`;
+    load(editor, source);
+    editor.view.dispatch(editor.state.tr.insertText('new', 1, 4));
+    const saved = getMarkdown(editor);
+    expect(saved).toBe(source.replace('old', 'new'));
+    load(reader, saved);
+    expect(getMarkdown(reader)).toBe(saved);
+  });
 
   it('saves generated code texts so that each reloads as written, with the page after it', () => {
     const texts = codeTexts();

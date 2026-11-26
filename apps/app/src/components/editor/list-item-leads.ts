@@ -89,6 +89,13 @@ const opensItemLine = (node: PMNode): boolean =>
 
 const isEmptyParagraph = (node: PMNode): boolean => node.type.name === 'paragraph' && node.content.size === 0;
 
+/** A plain space or tab does not give a list marker visible content. */
+export function isBlankItemParagraph(node: PMNode): boolean {
+  if (isEmptyParagraph(node)) return true;
+  const text = node.firstChild;
+  return node.type.name === 'paragraph' && node.childCount === 1 && !!text?.isText && text.marks.length === 0 && /^[ \t]+$/.test(text.text ?? '');
+}
+
 /**
  * The block that opens a list item's line after its lead: the item's first block that is
  * not an empty paragraph, when every block before it is one (at least one) and it is in
@@ -118,9 +125,10 @@ export const isItemLead = (node: PMNode, parent: PMNode | Fragment | undefined, 
 export function endsLineAtMarker(item: PMNode): boolean {
   const first = item.firstChild;
   if (!first) return true;
-  if (!isEmptyParagraph(first)) return false;
+  if (!isBlankItemParagraph(first)) return false;
   if (itemLineBlock(item)) return false;
+  if (!isEmptyParagraph(first)) return true;
   const next = item.childCount > 1 ? item.child(1) : null;
   // A paragraph or fence after an empty first paragraph opens the item's line (paragraph-source.ts, fence-source.ts).
-  return !next || !((next.type.name === 'paragraph' && next.content.size > 0) || next.type.name === 'codeBlock');
+  return !next || !((next.type.name === 'paragraph' && !isBlankItemParagraph(next)) || next.type.name === 'codeBlock');
 }

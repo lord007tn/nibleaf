@@ -355,11 +355,13 @@ function sourceLinesFor(node: PMNode, open: string, delim: string, first: string
 
 const FENCE_MARKER = /^[ \t]*(`{3,}|~{3,})/;
 
-/** A code line that can close a fence of its marker as long as its run or shorter: up to
- *  three columns of indent, the run, then only spaces or tabs (CommonMark's closing code
- *  fence). A tab is at least one column, and inside a list item or a quote it can be just
- *  that (`  \t` after `- ` reaches column 4, two in), so it counts as one. */
-const CLOSING_LINE = /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/;
+const CLOSING_LINE = /^([ \t]{0,3})(`{3,}|~{3,})[ \t]*$/;
+
+function indentColumns(indent: string, start: number): number {
+  let column = start;
+  for (const space of indent) column = space === '\t' ? nextTabStop(column) : column + 1;
+  return column - start;
+}
 
 /**
  * `open` with its marker run long enough that no line of `code` closes it (#920): longer
@@ -369,14 +371,19 @@ const CLOSING_LINE = /^[ \t]{0,3}(`{3,}|~{3,})[ \t]*$/;
  * rest of the page read back as code. An opener already long enough, as every authored
  * one read from source is, is kept as written.
  */
-function fenceOpenFor(open: string, code: string): string {
+function fenceOpenFor(open: string, code: string, prefix: string): string {
   const run = FENCE_MARKER.exec(open)?.[1];
   if (!run) return open;
   const marker = run[0] as string;
+  // markdown-it's blockquote rule carries only the previous quote's offset into
+  // the current one. At three or more quotes that can differ from the page column.
+  const quotes = prefix.split('>');
+  const parserColumn = quotes.length > 3 ? quotes.slice(-3).join('>').length - 1 : prefix.length;
   let length = run.length;
   for (const line of code.split('\n')) {
-    const closer = CLOSING_LINE.exec(line)?.[1];
-    if (closer?.[0] === marker && closer.length >= length) length = closer.length + 1;
+    const [, indent = '', closer = ''] = CLOSING_LINE.exec(line) ?? [];
+    if (closer[0] !== marker || closer.length < length) continue;
+    if (indentColumns(indent, prefix.length) < 4 || indentColumns(indent, parserColumn) < 4) length = closer.length + 1;
   }
   return length === run.length ? open : open.replace(run, marker.repeat(length));
 }
@@ -454,7 +461,7 @@ function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNo
     const next = writtenAfter(container, at);
     // A list after a list of its type is written after two blank lines (markdown-output.ts),
     // which markdown-it reads as more of the fence's code.
-    if (next && LISTS.has(next.type.name) && path[level]?.node.type === next.type) return null;
+    if (!quoted && next && LISTS.has(next.type.name) && path[level]?.node.type === next.type) return null;
     if (next) return quoted || endsBeforeNext(lines, state.delim) ? 'container' : null;
     if (name === 'doc') return 'page';
     if (name === 'blockquote') quoted = true;
@@ -497,7 +504,7 @@ export function writeFence(state: FenceSerializeState, node: PMNode, parent: PMN
   }
   // Written anew, the opener is longer than any line of the code that would close it (#920;
   // a quoted indented code block, #607). Source lines, above, are kept while they hold.
-  const opener = fenceOpenFor(open, node.textContent);
+  const opener = fenceOpenFor(open, node.textContent, state.delim);
   state.write(opener);
   state.write('\n');
   state.text(node.textContent, false);

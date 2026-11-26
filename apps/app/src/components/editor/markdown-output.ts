@@ -311,9 +311,9 @@ type MarkWriters = Record<string, { open: unknown; close: unknown; expelEnclosin
 type SerializerOptions = { tightLists?: boolean; hardBreakNodeName?: string; strict?: boolean };
 
 /** Closing strike after this space leaves a delimiter inside the next mark. */
-function hasStrikeAcrossMarkBoundary(parent: PMNode): boolean {
-  const strike = parent.type.schema.marks.strike;
-  if (!strike) return false;
+function canMixStrikeAcrossMarkBoundary(parent: PMNode, scanDelims: ScanDelims): boolean {
+  const { strike, bold } = parent.type.schema.marks;
+  if (!strike || !bold) return false;
   for (let index = 1; index < parent.childCount; index++) {
     const previous = parent.child(index - 1);
     const next = parent.child(index);
@@ -322,9 +322,22 @@ function hasStrikeAcrossMarkBoundary(parent: PMNode): boolean {
       /\s$/.test(previous.text ?? '') &&
       strike.isInSet(previous.marks) &&
       strike.isInSet(next.marks) &&
-      next.marks.some((mark) => mark.type.name === 'bold' && !mark.isInSet(previous.marks))
-    )
-      return true;
+      bold.isInSet(next.marks) &&
+      !bold.isInSet(previous.marks)
+    ) {
+      // A third mark can reorder the surrounding delimiters when strike becomes mixable.
+      return parent.children.every(({ marks, text }, at) => {
+        if (!strike.isInSet(marks) && !bold.isInSet(marks)) return true;
+        if (marks.some((mark) => mark.type !== strike && mark.type !== bold)) return false;
+        const before = parent.children[at - 1];
+        if (!strike.isInSet(marks) || (before && strike.isInSet(before.marks))) return true;
+        // A mixed strike can put punctuation directly after its opener. A
+        // delimiter after a word cannot open there (`a~~-b`).
+        const left = text && /^\s/.test(text) ? ' ' : (before?.text?.slice(-2) ?? '');
+        const src = `${left}~~${text?.trimStart().slice(0, 2) ?? ''}`;
+        return scanDelims.call({ src, posMax: src.length }, left.length, true).can_open;
+      });
+    }
   }
   return false;
 }
@@ -510,7 +523,7 @@ class LinearMarkdownSerializerState extends SerializerState {
   // tiptap-markdown's MarkdownSerializerState (src/serialize/state.js) from here on.
   override renderInline(parent: PMNode, fromBlockStart?: boolean): void {
     const strike = this.marks.strike;
-    if (!strike || !hasStrikeAcrossMarkBoundary(parent)) {
+    if (!strike || !canMixStrikeAcrossMarkBoundary(parent, this.scanDelims)) {
       super.renderInline(parent, fromBlockStart);
       return;
     }
@@ -586,12 +599,9 @@ class LinearMarkdownSerializerState extends SerializerState {
     const info = this.marks[mark.type.name];
     if (info?.expelEnclosingWhitespace) {
       if (open) {
-        // The mark's string is written next, through `text`, which first writes what comes
-        // before it: the blank line closing the block before, and the containers' prefixes.
-        // Write them now, so the run starts after them. Inside a quote they hold `>`, which
-        // the whitespace trim in `render` does not skip: a paragraph opening with bold after
-        // another block in a quoted list item saved as `****bold**` (#604).
-        this.write();
+        // Inside a quote, the pending separator contains `>`, which the mark's
+        // whitespace trim does not skip. Flush it before measuring the run (#604).
+        if (parent.type.name === 'paragraph' && (this.closed || this.atBlank()) && this.delim.includes('>')) this.write();
         this.inlines.push({ start: this.output.length, delimiter: String(info.open) });
       } else {
         const top = this.inlines.pop();

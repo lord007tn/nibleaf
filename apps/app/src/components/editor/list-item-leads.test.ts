@@ -34,6 +34,58 @@ afterEach(() => {
   for (const editor of editors.splice(0)) editor.destroy();
 });
 
+it.each(['-', '*'])('keeps nested %s items when their first child contains only a space or tab', (bullet) => {
+  for (const prefix of ['', '> ']) {
+    for (const whitespace of [' ', '  ', '\t']) {
+      const editor = open(`${prefix}${bullet} ${bullet} ${bullet} x\n${prefix}    ${bullet} Tail`);
+      const at = find(editor, 'x');
+      editor.view.dispatch(editor.state.tr.insertText(whitespace, at, at + 1));
+      const expected = `${prefix}- - * \n${prefix}    * Tail`;
+      expect(getMarkdown(editor)).toBe(expected);
+      stable(expected);
+    }
+  }
+});
+
+it.each(['a b c d e', 'أ ب ت ث ج'])('preserves %s when italic starts an overlapping strike and bold edit', (source) => {
+  for (const prefix of ['', 'Intro\n\n', '- ', '> ']) {
+    const editor = open(`${prefix}${source}`);
+    const at = find(editor, source);
+    const tr = editor.state.tr
+      .addMark(at, at + 5, editor.schema.mark('strike'))
+      .addMark(at + 2, at + 7, editor.schema.mark('bold'))
+      .addMark(at, at + 1, editor.schema.mark('italic'));
+    editor.view.dispatch(tr);
+    const saved = getMarkdown(editor);
+    expect(open(saved).state.doc.textContent).toBe(editor.state.doc.textContent);
+    expect(getMarkdown(open(saved))).toBe(saved);
+  }
+});
+
+it('preserves the strike and bold overlap when an independent word is italic', () => {
+  const editor = open('a b c d e f');
+  const at = find(editor, 'a b c d e f');
+  editor.view.dispatch(
+    editor.state.tr
+      .addMark(at, at + 5, editor.schema.mark('strike'))
+      .addMark(at + 2, at + 7, editor.schema.mark('bold'))
+      .addMark(at + 10, at + 11, editor.schema.mark('italic')),
+  );
+  const saved = getMarkdown(editor);
+  expect(saved).toBe('~~a **b c**~~ **d** e *f*');
+  expect(open(saved).state.doc.textContent).toBe('a b c d e f');
+  stable(saved);
+});
+
+it('keeps the strike opener readable when a strike starts at punctuation inside a word', () => {
+  const editor = open('a-b c d e');
+  const at = find(editor, 'a-b c d e');
+  editor.view.dispatch(editor.state.tr.addMark(at + 1, at + 5, editor.schema.mark('strike')).addMark(at + 4, at + 7, editor.schema.mark('bold')));
+  const saved = getMarkdown(editor);
+  expect(saved).toBe('a-~~b~~ **~~c~~ d** e');
+  expect(open(saved).state.doc.textContent).toBe('a-b c d e');
+});
+
 /** The document's containers and text, less empty paragraphs and source attributes. */
 function shape(node: PMNode): unknown {
   if (node.type.name === 'paragraph' && node.content.size === 0) return null;
@@ -447,6 +499,10 @@ describe('edits of lead-led items, from #887’s reviews (#604, #865)', () => {
 // whitespace trim started before the line's `>` prefix and wrote `****bold**`. A
 // heading-led item in a quote now keeps its blocks in the item, which reaches it.
 describe('a quoted list item’s paragraph that opens with bold (#604)', () => {
+  it('keeps the quote prefix before a bold line after a hard break', () => {
+    stable('> - first\\\n>   **second**');
+  });
+
   const published = (content: string) => {
     const root = document.createElement('div');
     root.innerHTML = renderToStaticMarkup(createElement(Markdown, { content }));

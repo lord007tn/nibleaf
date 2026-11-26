@@ -2,7 +2,7 @@ import Paragraph from '@tiptap/extension-paragraph';
 import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
-import { isItemLead, leadListItems } from './list-item-leads';
+import { isBlankItemParagraph, isItemLead, leadListItems } from './list-item-leads';
 import type { MarkdownOutput } from './markdown-output';
 import { markTightLists } from './tight-lists';
 
@@ -178,6 +178,10 @@ const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: n
 function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: PMNode | Fragment, index?: number): void {
   // A list item's lead before a quote, heading or list (list-item-leads.ts) writes nothing.
   if (emptyLead(node, parent, index) || isItemLead(node, parent, index)) return;
+  if (node.content.size > 0 && index === 0 && parent && 'type' in parent && parent.type.name === 'listItem' && isBlankItemParagraph(node)) {
+    state.closeBlock(node);
+    return;
+  }
   const source = String(node.attrs.sourceParagraph ?? '');
   const joined = source ? joinedSourceLines(source) : null;
   if (joined === null) {
