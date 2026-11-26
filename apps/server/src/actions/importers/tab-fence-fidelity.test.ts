@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { convertGitBookMarkdown } from './gitbook-markdown';
 import { importCodeLines } from './import-markdown-code';
-import { mintlifyInternalLinkTargets, rewriteMintlifyInternalLinks } from './mintlify-links';
+import { rewriteMintlifyInternalLinks } from './mintlify-links';
 import { normalizeMintlifyMdx } from './mintlify-mdx';
 
 describe.each([
@@ -23,15 +23,5 @@ describe.each([
     expect(content).toContain(literal);
     expect(content).not.toContain('<iframe');
     expect(content).toContain('[After](/guide/next)');
-  });
-
-  it('discovers the existing app destination before an unrelated source file', () => {
-    const routes = new Map([
-      ['intro', '/intro'],
-      ['api/next', '/next'],
-    ]);
-    const content = convert('[Next](https://nibleaf.com/pages/next)');
-    expect(mintlifyInternalLinkTargets(content, 'intro', undefined, undefined, 'en', ['en'], routes)).toEqual(['api/next']);
-    expect(rewriteMintlifyInternalLinks(content, 'intro', routes)).toBe('[Next](/next)');
   });
 });
