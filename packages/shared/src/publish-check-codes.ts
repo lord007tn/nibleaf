@@ -26,6 +26,7 @@ export const PUBLISH_CHECK_CODES = [
   'video-poster-hidden',
   'home-untranslated',
   'blog-root-group',
+  'markdown-parse-limit',
 ] as const;
 
 export type PublishCheckCode = (typeof PUBLISH_CHECK_CODES)[number];

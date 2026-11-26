@@ -7,6 +7,7 @@ import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { markdownLineKinds } from './markdown-code';
+import { markdownParseBudget } from './page-limits';
 import { type ReaderHastNode, readerHastText, readerHeadingRank, rehypeReaderHeadingIds } from './reader-heading-ids';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { readerRenderMode } from './reader-render-mode';
@@ -63,8 +64,10 @@ const headingsOf = (tree: ReaderHastNode, into: ReaderHeading[] = []): ReaderHea
 
 /** Every h1–h6 the reader renders for this page, in document order, with its id and text. */
 export const readerHeadings = (content: string): ReaderHeading[] => {
-  const processor = readerRenderMode(content).rich ? rich : base;
-  const tree = processor.runSync(processor.parse(normalizeMdxBlocks(content))) as unknown as ReaderHastNode;
+  const { rich: useRichRenderer, budget } = readerRenderMode(content);
+  if (budget.whole) return [];
+  const processor = useRichRenderer ? rich : base;
+  const tree = processor.runSync(processor.parse(normalizeMdxBlocks(budget.content))) as unknown as ReaderHastNode;
   return headingsOf(tree);
 };
 
@@ -104,11 +107,15 @@ const SETEXT_UNDERLINE = /^ {0,3}(?:=+|-+)[ \t]*$/;
 const QUIET_LINE = /^ {0,3}(?:[-*+>]|\d{1,9}[.)]|$)/;
 
 /** The heading lines of a page's source, outside fenced code and HTML blocks (the shared scanner). */
-const sourceHeadings = (lines: readonly string[]) => {
+const sourceHeadings = (lines: readonly string[], plain: ReadonlyArray<readonly [number, number]> = []) => {
   const kinds = markdownLineKinds(lines);
   const found: { line: number; depth: number; text: string }[] = [];
+  let region = 0;
   for (let index = 0; index < lines.length; index += 1) {
     if (kinds[index] !== 'prose') continue;
+    // A block over the parse budget renders as plain text: it holds no heading.
+    while ((plain[region]?.[1] ?? Number.POSITIVE_INFINITY) < index) region += 1;
+    if ((plain[region]?.[0] ?? Number.POSITIVE_INFINITY) <= index) continue;
     const line = (lines[index] ?? '').replace(/\r$/, '');
     const atx = atxHeading(line);
     if (atx) {
@@ -142,10 +149,11 @@ const renderedSourceText = (depth: number, text: string): string => {
  */
 export const readerSections = (content: string): ReaderSection[] => {
   const rendered = readerHeadings(content);
+  if (!rendered.length) return [];
   const lines = content.split('\n');
   const sections: ReaderSection[] = [];
   let cursor = 0;
-  for (const candidate of sourceHeadings(lines)) {
+  for (const candidate of sourceHeadings(lines, markdownParseBudget(content).regions)) {
     const key = readerHeadingKey(renderedSourceText(candidate.depth, candidate.text));
     let found = -1;
     for (let index = cursor; key && index < rendered.length; index += 1) {
