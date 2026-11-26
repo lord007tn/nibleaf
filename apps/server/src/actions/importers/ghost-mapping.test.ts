@@ -164,6 +164,12 @@ describe('isGhostPlaceholder', () => {
 });
 
 describe('convertGhostHtml', () => {
+  it('keeps plain HTML video embeds and dividers from Ghost exports', () => {
+    const result = convertGhostHtml('<p>Tour</p><iframe src="https://youtu.be/abcdefghijk" title="Tour"></iframe><hr><p>Next</p>');
+    expect(result.markdown).toContain('<iframe src="https://www.youtube-nocookie.com/embed/abcdefghijk" title="Tour"></iframe>');
+    expect(result.markdown).toContain('\n\n---\n\n');
+  });
+
   it('converts headings, emphasis, code blocks, images, and tables to Markdown', () => {
     const html = [
       '<h2>Title</h2>',

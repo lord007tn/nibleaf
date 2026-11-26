@@ -2,6 +2,7 @@ import Paragraph from '@tiptap/extension-paragraph';
 import type { Fragment, Node as PMNode } from '@tiptap/pm/model';
 import type { MarkdownNodeSpec } from 'tiptap-markdown';
 import { decodeMdxSource, encodeMdxSource } from './extensions/mdx-roundtrip';
+import { isBlankItemParagraph, isItemLead, leadListItems } from './list-item-leads';
 import type { MarkdownOutput } from './markdown-output';
 import { markTightLists } from './tight-lists';
 
@@ -75,7 +76,9 @@ const quoteCount = (prefix: string): number => prefix.replace(/[ \t]/g, '').leng
 
 /** Read the quote markers on each line when a continuation omits some. */
 function lazyQuotePrefixes(raw: readonly string[], token: MarkdownToken, content: string, depth: number): string[] | null {
-  if (!token.map) return null;
+  // MDX preprocessing can put newlines inside generated HTML attributes. Only
+  // Markdown lines with stable offsets in the prepared source carry these prefixes.
+  if (!token.map || /<\/?[a-z]/i.test(content)) return null;
   const [start, end] = token.map;
   const lines = content.split('\n');
   if (lines.length !== end - start) return null;
@@ -191,8 +194,8 @@ const LINE_CONTAINERS: ReadonlySet<string> = new Set(['listItem', 'blockquote'])
  * after it. Markdown has no empty paragraph there: written (`- `, a blank line, then the
  * rest), it read back as an empty item and a paragraph outside the list, so a page with
  * one never saved to a fixed point. It is left out, and the paragraph after it opens the
- * item. Before any other block (a nested list, a quote) it is written as before: left
- * out, that block's own marker would share the item's line (`- - Beta`).
+ * item. Before a quote, heading or nested list in a list item it is that item's lead,
+ * also left out, so that block opens the item's line (`- - Beta`, list-item-leads.ts).
  */
 const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: number | undefined): boolean =>
   index === 0 &&
@@ -235,7 +238,12 @@ function lazyQuoteSource(source: string, prefixes: string, delim: string): { can
  * they do (see the note at the top), otherwise the serializer's single line.
  */
 function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: PMNode | Fragment, index?: number): void {
-  if (emptyLead(node, parent, index)) return;
+  // A list item's lead before a quote, heading or list (list-item-leads.ts) writes nothing.
+  if (emptyLead(node, parent, index) || isItemLead(node, parent, index)) return;
+  if (node.content.size > 0 && index === 0 && parent && 'type' in parent && parent.type.name === 'listItem' && isBlankItemParagraph(node)) {
+    state.closeBlock(node);
+    return;
+  }
   const [source = '', prefixes] = String(node.attrs.sourceParagraph ?? '').split('\0');
   const lazyQuote = prefixes ? lazyQuoteSource(source, prefixes, state.delim) : null;
   const joined = lazyQuote?.canonical ?? (source ? joinedSourceLines(source) : null);
@@ -297,6 +305,7 @@ export const SourceParagraph = Paragraph.extend({
         parse: {
           setup(markdownit) {
             if (paragraphParsers.has(markdownit)) return;
+            leadListItems(markdownit);
             markdownit.core.ruler.after('block', 'nibleaf_paragraph_source', (state) => annotateParagraphs(state));
             // Reads markdown-it's tight lists before a hidden paragraph is shown (tight-lists.ts).
             markdownit.core.ruler.before('nibleaf_paragraph_source', 'nibleaf_tight_lists', (state) => markTightLists(state));

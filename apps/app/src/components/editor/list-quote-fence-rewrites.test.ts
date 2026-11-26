@@ -63,6 +63,13 @@ describe('a tight list item keeps the text after its fence tight (#605)', () => 
 });
 
 describe('a lazy quoted continuation keeps its authored prefixes and breaks (#638)', () => {
+  it('records only authored lines when quoted component markup spans several lines', () => {
+    save('Intro.\n\n> Some <Icon icon="a\n>  \u00a0\n> b" data-x={1}\n> \n>  /> more text.\n\nOutro.');
+    const paragraph = editor.state.doc.child(1).firstChild;
+    expect(paragraph?.type.name).toBe('paragraph');
+    expect(paragraph?.attrs.sourceParagraph).not.toContain('\0');
+  });
+
   for (const { locale, a, b, c } of LOCALES) {
     it.each([
       ['soft', ''],

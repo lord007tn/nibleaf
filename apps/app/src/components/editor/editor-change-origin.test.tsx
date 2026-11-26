@@ -102,16 +102,6 @@ describe('the trailing paragraph on a redraw', () => {
     return editor;
   };
 
-  it('was appended to an empty transaction, and reported as an update (the trigger)', () => {
-    const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions(), content: '<pre><code>a</code></pre>' });
-    cleanups.push(() => editor.destroy());
-    const onUpdate = vi.fn();
-    editor.on('update', onUpdate);
-    editor.view.dispatch(editor.state.tr);
-    expect(onUpdate).toHaveBeenCalledOnce();
-    expect(editor.state.doc.lastChild?.type.name).toBe('paragraph');
-  });
-
   it('is not added on a redraw any more, and a redraw is never an update', () => {
     const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions(), content: '<pre><code>a</code></pre>' });
     cleanups.push(() => editor.destroy());
