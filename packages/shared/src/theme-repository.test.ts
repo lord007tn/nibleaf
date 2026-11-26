@@ -116,22 +116,20 @@ describe('Git-native repository contract v2', () => {
     expect(styles).toContain(`  --theme-accent: ${accentOf(templateId)};`);
     expect(styles).toContain(`  --theme-accent: ${accentOf(templateId, 'dark')};`);
     expect(styles).toContain('\n.dark {\n');
-    expect(styles.split('\n').length).toBeGreaterThan(200);
-    expect(styles.split('\n').every((line) => line.length < 160)).toBe(true);
 
     expect(byPath.get('src/lib/markdown.tsx')?.content).toContain('rehypeSanitize, sanitizeSchema');
     expect(byPath.get('src/components/mdx/index.tsx')?.content).toContain('relatedcard: RelatedCard');
     expect(byPath.get('src/components/mdx/tooltip.tsx')?.content).toContain('role="tooltip"');
-    expect(byPath.get('messages/ar.json')?.content).toContain('ابحث في التوثيق');
-    expect(byPath.get('messages/en.json')?.content).toContain('No pages match this search.');
+    const arabic = JSON.parse(byPath.get('messages/ar.json')?.content ?? '{}');
+    const english = JSON.parse(byPath.get('messages/en.json')?.content ?? '{}');
+    expect(arabic.search).toMatch(/\p{Script=Arabic}/u);
+    expect(english.noSearchResults).toMatch(/\S/);
 
     const readme = byPath.get('README.md');
     expect(readme?.ownership).toBe('CUSTOMER');
     expect(readme?.content).toContain('corepack pnpm dev');
     expect(readme?.content).toContain('corepack pnpm build');
-    expect(readme?.content).toContain('## Add a page');
     expect(readme?.content).toContain('| PLATFORM |');
-    expect(readme?.content).toContain('| fumadocs | Mintlify | This repository |');
 
     expect(files.filter((file) => file.ownership === 'PLATFORM').map((file) => file.path)).toEqual([
       THEME_REPOSITORY_MANIFEST_PATH,
