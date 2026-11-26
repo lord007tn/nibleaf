@@ -83,13 +83,21 @@ export function AppearancePage({ project, host, initialGroup }: { project: Proje
   return (
     <AppearanceDraftsProvider>
       <SaveRegionProvider>
-        <div className="@container/appearance flex min-w-0 flex-col gap-8" data-appearance-host={host} ref={rootRef}>
+        <div
+          className={cn(
+            '@container/appearance flex min-w-0 flex-col gap-8',
+            // Fields focused by Tab (or by the phone keyboard) scroll clear of the header and the sticky part bar.
+            '[&_:is(input,textarea,button,[role=combobox],[role=radio],[role=switch])]:scroll-mt-32 @3xl/appearance:[&_:is(input,textarea,button,[role=combobox],[role=radio],[role=switch])]:scroll-mt-16',
+          )}
+          data-appearance-host={host}
+          ref={rootRef}
+        >
           <PageHeader description={t('settings.appearance.summary')} title={t('settings.tab.appearance')} />
           {/* Below the two-column width the page is long (eight screens on a phone): the parts and the
               preview stay one tap away while scrolling, in a bar that sticks under the dashboard header. */}
           <div
             className={cn(
-              'sticky z-10 -mt-4 flex min-w-0 items-center gap-2 rounded-b-xl border border-border border-t-0 bg-background/95 p-1.5 shadow-sm backdrop-blur @3xl/appearance:hidden',
+              'sticky z-10 -mt-4 flex min-w-0 items-center gap-2 rounded-xl border border-border bg-background/95 p-1.5 shadow-sm backdrop-blur @3xl/appearance:hidden',
               // Flush under the header, so nothing scrolls into a gap above it.
               plain ? 'top-0' : 'top-12',
             )}
@@ -100,7 +108,7 @@ export function AppearancePage({ project, host, initialGroup }: { project: Proje
                 {GROUPS.map((group) => (
                   <li key={group.id}>
                     <a
-                      className="inline-flex h-9 items-center whitespace-nowrap rounded-lg px-3 text-muted-foreground text-sm outline-none hover:bg-muted hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50 pointer-coarse:h-11"
+                      className="inline-flex h-9 items-center whitespace-nowrap rounded-lg px-3 text-muted-foreground text-sm outline-none hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset pointer-coarse:h-11"
                       href={`#${appearanceAnchor(group.id)}`}
                       onClick={jumpTo(group.id)}
                     >
