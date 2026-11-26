@@ -57,7 +57,7 @@ describe('rewriteMintlifyInternalLinks', () => {
     expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source);
   });
 
-  it('retains inline and HTML rewrites above the reference-definition parse limit', () => {
+  it('rewrites inline, HTML and reference links on both sides of the small-page parse limit', () => {
     const links = '[Inline](/topic/next) <Card href="/topic/next" /> [Reference][r]';
     const definition = '\n\n[r]: /topic/next "Title"\n\n';
     const routes = new Map([['topic/next', '/topic-2/next']]);
@@ -67,13 +67,36 @@ describe('rewriteMintlifyInternalLinks', () => {
       rewrittenLinks + definition.replace('/topic/next', '/topic-2/next') + withinLimit,
     );
     const overLimit = `${withinLimit}a`;
-    expect(rewriteMintlifyInternalLinks(links + definition + overLimit, 'intro', routes)).toBe(rewrittenLinks + definition + overLimit);
+    expect(rewriteMintlifyInternalLinks(links + definition + overLimit, 'intro', routes)).toBe(
+      rewrittenLinks + definition.replace('/topic/next', '/topic-2/next') + overLimit,
+    );
   });
 
   it('keeps footnotes, empty destinations and definitions shared with images unchanged', () => {
     const source = '[^note] [Empty][empty] [Page][shared] ![Image][shared]\n\n[^note]: /topic/next\n[empty]: <>\n[shared]: /topic/next';
     const routes = new Map([['topic/next', '/topic-2/next']]);
     expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source);
+  });
+
+  it.each([0, 4096])('leaves titles literal while rewriting footnote and HTML links with %i characters of padding', (length) => {
+    const padding = 'x'.repeat(length);
+    const routes = new Map([['topic/next', '/topic-2/next']]);
+    const title = `'Keep [literal](/topic/next) and href="/topic/next"'`;
+    const source = [
+      '[Inline](/topic/next) [Reference][r] [^note]',
+      `[r]: /topic/next ${title}`,
+      '[^note]: [Footnote](/topic/next)',
+      '<Card href="/topic/next" />',
+      padding,
+    ].join('\n\n');
+    const expected = [
+      '[Inline](/topic-2/next) [Reference][r] [^note]',
+      `[r]: /topic-2/next ${title}`,
+      '[^note]: [Footnote](/topic-2/next)',
+      '<Card href="/topic-2/next" />',
+      padding,
+    ].join('\n\n');
+    expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(expected);
   });
 
   it('does not discover or rewrite page links inside code examples', () => {
