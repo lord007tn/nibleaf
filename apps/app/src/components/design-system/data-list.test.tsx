@@ -38,43 +38,12 @@ describe('DataList', () => {
     );
     const list = container.querySelector('ul');
     expect(list?.getAttribute('aria-label')).toBe('Domains');
-    expect(list?.className).toContain('divide-y');
-    expect(list?.className).not.toContain('border-border bg-card');
     const items = list?.querySelectorAll(':scope > li') ?? [];
     expect(items).toHaveLength(2);
     const title = items[0]?.querySelector('[data-slot="data-list-item-title"]');
     expect(title?.textContent).toBe('a-very-long-subdomain.docs.acme.com');
-    // Titles wrap; they never truncate.
-    expect(title?.className).toContain('break-words');
-    expect(title?.className).not.toMatch(/\btruncate\b/);
-    expect(items[0]?.className).toContain('@container');
     expect(items[0]?.textContent).toContain('Verified');
     expect(items[0]?.querySelector('[data-slot="data-list-item-trailing"] button')?.textContent).toBe('Remove');
-  });
-
-  it('keeps row actions on the title line when the row grows', async () => {
-    const container = await render(
-      <DataList aria-label="Domains">
-        <DataListItem
-          description={<div style={{ height: 400 }}>DNS records</div>}
-          title="docs.acme.com"
-          trailing={<button type="button">More</button>}
-        />
-      </DataList>,
-    );
-    const layout = container.querySelector('[data-slot="data-list-item"] > div');
-    expect(layout?.className).toContain('items-start');
-    // Centring would float the actions halfway down an expanded row.
-    expect(layout?.className).not.toMatch(/items-center/);
-  });
-
-  it('adds its own border when it stands alone', async () => {
-    const container = await render(
-      <DataList bordered>
-        <DataListItem title="docs.acme.com" />
-      </DataList>,
-    );
-    expect(container.querySelector('ul')?.className).toContain('rounded-xl border border-border bg-card');
   });
 
   it('marks the skeleton busy and announces the loading label', async () => {

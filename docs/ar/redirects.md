@@ -4,7 +4,7 @@ description: 'أرسل القرّاء من العنوان القديم لصفح�
 audience: 'مشرفو المواقع الذين يخططون لتغيير عناوين الصفحات'
 content_type: 'reference'
 last_reviewed: '2026-11-07'
-verified_against: 'apps/app/src/components/project-settings/redirects-section.tsx, apps/app/src/components/project/publish-modal.tsx, packages/shared/src/redirects.ts, packages/validators/src/redirects.ts, and apps/server/src/actions/deployments.ts'
+verified_against: 'apps/app/src/features/site-redirects/components/redirects-settings.tsx, apps/app/src/components/project/publish-modal.tsx, packages/shared/src/redirects.ts, packages/validators/src/redirects.ts, and apps/server/src/actions/deployments.ts'
 lang: 'ar'
 dir: 'rtl'
 translation_key: 'redirects'

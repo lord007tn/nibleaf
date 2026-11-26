@@ -19,7 +19,7 @@ const hooks = vi.hoisted(() => {
 
 vi.mock('@nibleaf/i18n/react', () => ({ useT: () => (key: string) => key }));
 vi.mock('@tanstack/react-router', () => ({ useNavigate: () => vi.fn() }));
-vi.mock('@/components/project-settings/analytics-section', () => ({ AnalyticsSection: () => null }));
+vi.mock('@/features/site-analytics-settings/components/analytics-settings', () => ({ AnalyticsSettings: () => null }));
 vi.mock('@/features/site-integrations/components/use-webhook-integration-save-command', () => ({
   useWebhookIntegrationSaveCommand: () => hooks.save,
 }));

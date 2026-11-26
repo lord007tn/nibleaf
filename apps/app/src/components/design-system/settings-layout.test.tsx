@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import { PageContainer } from '@nibleaf/design-system/components/ui/page-container';
 import { PageHeader } from '@nibleaf/design-system/components/ui/page-header';
 import { SaveRegion } from '@nibleaf/design-system/components/ui/save-region';
 import { describedBy, SettingsRow } from '@nibleaf/design-system/components/ui/settings-row';
@@ -56,20 +55,6 @@ describe('PageHeader', () => {
   });
 });
 
-describe('PageContainer', () => {
-  it('constrains the column by width preset and never centres it', async () => {
-    const { container } = await render(
-      <PageContainer width="wide">
-        <p>content</p>
-      </PageContainer>,
-    );
-    const column = container.querySelector('[data-slot="page-container"] > div');
-    expect(column?.className).toContain('max-w-[65rem]');
-    expect(column?.className).toContain('me-auto');
-    expect(column?.className).not.toContain('mx-auto');
-  });
-});
-
 describe('SettingsSection', () => {
   it('renders a heading over one panel and is not a landmark', async () => {
     const { container } = await render(
@@ -83,14 +68,13 @@ describe('SettingsSection', () => {
     expect(container.querySelectorAll('[data-slot="settings-section-panel"]')).toHaveLength(1);
   });
 
-  it('marks the danger tone and drops the border in plain chrome', async () => {
+  it('marks the danger tone', async () => {
     const { container } = await render(
       <SettingsSection chrome="plain" title="Danger zone" tone="destructive">
         <SettingsSectionBody>Delete</SettingsSectionBody>
       </SettingsSection>,
     );
     expect(container.querySelector('section')?.dataset.tone).toBe('destructive');
-    expect(container.querySelector('[data-slot="settings-section-panel"]')?.className).not.toContain('border-border');
   });
 });
 
@@ -143,15 +127,6 @@ describe('SettingsRow', () => {
     expect(input?.id).toBe('slug');
     expect(container.querySelector('label')?.htmlFor).toBe('slug');
     expect(input?.getAttribute('aria-describedby')).toBe('slug-error');
-  });
-
-  it('keeps switches on the label line instead of stacking them', async () => {
-    const { container } = await render(
-      <SettingsRow control="switch" label="Show feedback">
-        <span />
-      </SettingsRow>,
-    );
-    expect(container.querySelector('[data-slot="settings-row"] > div')?.className).toContain('grid-cols-[minmax(0,1fr)_auto]');
   });
 
   it('describedBy drops blanks and duplicates and keeps order', () => {

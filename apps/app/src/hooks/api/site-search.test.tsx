@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ search: vi.fn() }));
 vi.mock('@/functions/site-search', () => ({ searchSiteFn: mocks.search }));
 
-import { queryKeys } from './query-keys';
+import { siteQueryKeys } from './site-query-keys';
 import { useSiteSearch } from './site-search';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
@@ -158,9 +158,21 @@ describe('the reader language preference', () => {
     ]);
     // Neither request narrows the search to one language.
     expect(mocks.search.mock.calls.every(([input]) => !('language' in (input as { data: object }).data))).toBe(true);
-    expect(client.getQueryData(queryKeys.site.search('docs', 'export', undefined, undefined, undefined, 'ar'))).toEqual([]);
-    expect(queryKeys.site.search('docs', 'export', undefined, undefined, undefined, 'ar')).not.toEqual(
-      queryKeys.site.search('docs', 'export', undefined, undefined, undefined, 'en'),
+    expect(client.getQueryData(siteQueryKeys.search('docs', 'export', undefined, undefined, undefined, 'ar'))).toEqual([]);
+    expect(siteQueryKeys.search('docs', 'export', undefined, undefined, undefined, 'ar')).not.toEqual(
+      siteQueryKeys.search('docs', 'export', undefined, undefined, undefined, 'en'),
     );
+  });
+});
+
+describe('the search query key', () => {
+  it('sits under the prefix the dashboard invalidates, so a search-settings change refreshes open results', async () => {
+    const key = siteQueryKeys.search('docs', 'export', 'ar', 'v2', 8, 'ar');
+    const prefix = siteQueryKeys.allSearch('docs');
+    expect(key.slice(0, prefix.length)).toEqual([...prefix]);
+    const client = new QueryClient();
+    client.setQueryData(key, []);
+    await client.invalidateQueries({ queryKey: prefix });
+    expect(client.getQueryState(key)?.isInvalidated).toBe(true);
   });
 });
