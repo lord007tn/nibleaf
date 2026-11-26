@@ -473,7 +473,7 @@ describe('component children retain main link destinations', () => {
       expect(pageContentFacts(page.content).links).not.toContain('/next');
       assertExactTarget('intro', '/topic/next', 'topic/next');
     });
-    it(`${kind}: retargets reference links to the imported page after deduplication`, async () => {
+    it.each([false, true])(`${kind}: retargets reference links after deduplication (long=%s)`, async (long) => {
       const mintlify = kind === 'mintlify';
       seed('topic', mintlify ? 'PAGE' : 'GROUP');
       if (mintlify) mem.files.set('docs.json', JSON.stringify({ navigation: { pages: ['intro', { group: 'Topic', pages: ['next'] }] } }));
@@ -481,7 +481,8 @@ describe('component children retain main link destinations', () => {
         mem.files.set('SUMMARY.md', '* [Intro](intro.md)\n* [Topic](topic.md)\n  * [Next](next.md)');
         mem.files.set('topic.md', 'Topic.');
       }
-      const source = '[Go][r]\n\n[r]: /topic/next "Title"';
+      const tail = long ? `\n\n${'An ordinary paragraph.\n\n'.repeat(200).trimEnd()}` : '';
+      const source = `[Go][r]\n\n[r]: /topic/next "Title"${tail}`;
       mem.files.set(`intro.${mintlify ? 'mdx' : 'md'}`, source);
       mem.files.set(`next.${mintlify ? 'mdx' : 'md'}`, 'Destination.');
       await run(mintlify ? mintlifyImporter : gitbookImporter);
@@ -495,7 +496,7 @@ describe('component children retain main link destinations', () => {
         ]),
       );
       expect(main).toBe(source);
-      expect(stored).toBe('[Go][r]\n\n[r]: /topic-2/next "Title"');
+      expect(stored).toBe(source.replace('/topic/next', '/topic-2/next'));
       expect(mem.rows.find((row) => row.path === 'topic-2/next')?.content).toBe('Destination.');
       expect(pageContentFacts(stored ?? '').links).toEqual(['/topic-2/next']);
       expect(findBrokenInternalLinks(snapshot())).toHaveLength(0);

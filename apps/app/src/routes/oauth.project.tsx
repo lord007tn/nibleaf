@@ -11,7 +11,7 @@ export const Route = createFileRoute('/oauth/project')({
   loader: async ({ preload }) => {
     await loadRouteDashboardLocale(preload);
   },
-  head: () => ({ meta: [{ title: 'Connect an AI app — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
+  head: () => ({ meta: [{ title: 'Connect an AI app · Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: () => (
     <AuthProviders>
       <McpOAuthProjectStep />

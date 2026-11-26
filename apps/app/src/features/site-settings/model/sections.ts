@@ -7,10 +7,14 @@ import type { SectionId } from './ids';
  * comes last, on its own, without a group label.
  */
 export const SETTINGS_GROUPS = [
-  { id: 'website', labelKey: 'settings.group.website', sections: ['general', 'appearance', 'languages', 'domain', 'authentication', 'addons'] },
+  {
+    id: 'website',
+    labelKey: 'settings.group.website',
+    sections: ['general', 'appearance', 'languages', 'domain', 'authentication', 'addons', 'integrations'],
+  },
   { id: 'content', labelKey: 'settings.group.content', sections: ['seo', 'redirects', 'variables', 'search'] },
   { id: 'publishing', labelKey: 'settings.group.publishing', sections: ['git', 'openapi', 'contentImport', 'exports'] },
-  { id: 'ai', labelKey: 'settings.group.ai', sections: ['ai', 'apiKeys', 'integrations'] },
+  { id: 'ai', labelKey: 'settings.group.ai', sections: ['ai', 'apiKeys'] },
   { id: 'team', labelKey: 'settings.group.team', sections: ['members'] },
   { id: 'usage', labelKey: 'settings.group.usage', sections: ['usage'] },
   { id: 'danger', labelKey: null, sections: ['danger'] },
