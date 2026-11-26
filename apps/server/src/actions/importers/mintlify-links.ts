@@ -1,7 +1,6 @@
 import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
 import { importSiteHref } from '@nibleaf/shared/site-links';
-import { randomUUID } from '@nibleaf/shared/uuid';
 import { stableHash } from './content';
 import { safeDecodeUri as safeDecode } from './gitbook-markdown';
 import { decodeImportEntities } from './import-fidelity';
@@ -251,25 +250,32 @@ export const rewriteMintlifyInternalLinks = (
         return !definition || reference.end <= definition.start;
       })
     : references;
-  const byStart = new Map(definitions.map((definition) => [definition.start, definition]));
-  const definitionReferences = definitions.map(({ start, end }) => ({ start, end, value: protectedCode.content.slice(start, end), image: false }));
+  const definitionReferences = definitions.flatMap(({ destination }) => (destination ? [destination] : []));
   const destinations = definitions.length ? [...inline, ...definitionReferences].sort((a, b) => a.start - b.start) : inline;
-  let prefix = definitions.length ? `\uE002${randomUUID()}:` : '';
-  while (prefix && protectedCode.content.includes(prefix)) prefix = `\uE002${randomUUID()}:`;
-  const protectedDefinitions: string[] = [];
+  const shifts: Array<{ end: number; difference: number }> = [];
   const markdown = replaceImportReferences(protectedCode.content, destinations, (reference) => {
-    const definition = byStart.get(reference.start);
-    if (!definition) return rewrite(reference.value);
-    const { destination } = definition;
-    const value = destination
-      ? reference.value.slice(0, destination.start - reference.start) +
-        rewrite(destination.value) +
-        reference.value.slice(destination.end - reference.start)
-      : reference.value;
-    protectedDefinitions.push(value);
-    return `${prefix}${protectedDefinitions.length - 1}\uE003`;
+    const value = rewrite(reference.value);
+    const difference = value.length - (reference.end - reference.start);
+    if (definitions.length && difference) shifts.push({ end: reference.end, difference });
+    return value;
   });
-  const html = markdown.replace(HREF_ATTRIBUTE, (match, before: string, reference: string, after: string) => {
+  let shiftIndex = 0;
+  let difference = 0;
+  // Both edits and definition boundaries arrive in source order.
+  const rewrittenOffset = (offset: number) => {
+    let shift = shifts[shiftIndex];
+    while (shift && shift.end <= offset) {
+      difference += shift.difference;
+      shift = shifts[++shiftIndex];
+    }
+    return offset + difference;
+  };
+  const protectedDefinitions = definitions.map(({ start, end }) => ({ start: rewrittenOffset(start), end: rewrittenOffset(end) }));
+  let definitionIndex = 0;
+  const html = markdown.replace(HREF_ATTRIBUTE, (match, before: string, reference: string, after: string, offset: number) => {
+    let definition = protectedDefinitions[definitionIndex];
+    while (definition && definition.end <= offset) definition = protectedDefinitions[++definitionIndex];
+    if (definition && definition.start < offset + match.length) return match;
     const decoded = decodeImportEntities(reference);
     const rewritten = rewrite(decoded);
     if (rewritten === decoded) return match;
@@ -281,8 +287,5 @@ export const rewriteMintlifyInternalLinks = (
       .replaceAll('>', '&gt;');
     return `${before}${escaped}${after}`;
   });
-  const restored = prefix
-    ? html.replace(new RegExp(`${prefix}(\\d+)\uE003`, 'g'), (match, index: string) => protectedDefinitions[Number(index)] ?? match)
-    : html;
-  return protectedCode.restore(restored);
+  return protectedCode.restore(html);
 };

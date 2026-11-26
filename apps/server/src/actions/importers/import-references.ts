@@ -154,15 +154,20 @@ interface DefinitionEdit {
 
 const definitionEdits = (definitions: Definition[], { links, images }: ReferenceUses): DefinitionEdit[] => {
   const seen = new Set<string>();
-  return definitions.map(({ start, end, label, destination }) => {
+  const edits: DefinitionEdit[] = [];
+  for (const { start, end, label, destination } of definitions) {
+    // The importer's Markdown supports footnotes. CommonMark alone may report
+    // their first line as a definition, but its prose still contains links.
+    if (label.startsWith('^')) continue;
     const first = !seen.has(label);
     seen.add(label);
-    return {
+    edits.push({
       start,
       end,
-      destination: first && destination?.value && !label.startsWith('^') && links.has(label) && !images.has(label) ? destination : undefined,
-    };
-  });
+      destination: first && destination?.value && links.has(label) && !images.has(label) ? destination : undefined,
+    });
+  }
+  return edits;
 };
 
 const reader = new MarkdownIt('commonmark', { html: true });
@@ -261,6 +266,8 @@ const longPageDefinitionEdits = (source: string): DefinitionEdit[] => {
     return '\n';
   });
   const captureDefinition: NonNullable<ReferenceScanEnv['captureDefinition']> = (state, from, to, firstLabel) => {
+    const firstStart = (state.bMarks[from] ?? 0) + (state.tShift[from] ?? 0);
+    if (state.src.startsWith('[^', firstStart)) return;
     const parts: string[] = [];
     const offsets: Array<{ relative: number; absolute: number }> = [];
     let length = 0;
@@ -270,7 +277,7 @@ const longPageDefinitionEdits = (source: string): DefinitionEdit[] => {
       if (length + end - start > MAX_DEFINITION_PARSE_LENGTH) {
         // Its title is still literal, and the block parser has already
         // recorded the label for duplicate detection.
-        const first = (state.bMarks[from] ?? 0) + (state.tShift[from] ?? 0) + (removedCr[from] ?? 0);
+        const first = firstStart + (removedCr[from] ?? 0);
         const last = (state.eMarks[to - 1] ?? end) + (removedCr[to - 1] ?? 0);
         definitions.push({ label: firstLabel ?? '', start: first, end: last });
         return;

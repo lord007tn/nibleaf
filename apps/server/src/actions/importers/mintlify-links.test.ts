@@ -78,6 +78,27 @@ describe('rewriteMintlifyInternalLinks', () => {
     expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(source);
   });
 
+  it.each([0, 4096])('leaves titles literal while rewriting footnote and HTML links with %i characters of padding', (length) => {
+    const padding = 'x'.repeat(length);
+    const routes = new Map([['topic/next', '/topic-2/next']]);
+    const title = `'Keep [literal](/topic/next) and href="/topic/next"'`;
+    const source = [
+      '[Inline](/topic/next) [Reference][r] [^note]',
+      `[r]: /topic/next ${title}`,
+      '[^note]: [Footnote](/topic/next)',
+      '<Card href="/topic/next" />',
+      padding,
+    ].join('\n\n');
+    const expected = [
+      '[Inline](/topic-2/next) [Reference][r] [^note]',
+      `[r]: /topic-2/next ${title}`,
+      '[^note]: [Footnote](/topic-2/next)',
+      '<Card href="/topic-2/next" />',
+      padding,
+    ].join('\n\n');
+    expect(rewriteMintlifyInternalLinks(source, 'intro', routes)).toBe(expected);
+  });
+
   it('does not discover or rewrite page links inside code examples', () => {
     const literal = ['~~~mdx', '[Hidden](./hidden)', '<Card href="./quickstart" />', '~~~', '`[Inline](./hidden)`'].join('\n');
     const input = `${literal}\n[Start](./quickstart)`;
