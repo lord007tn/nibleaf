@@ -35,6 +35,7 @@ import { selectionMenuApplies, selectionMenuRequest } from './extensions/selecti
 import { embedLinkedVideo, VIDEO_EMBED_NODE } from './extensions/video-embed';
 import { isEmbeddableVideoLink } from './extensions/video-embed-url';
 import { isPageQuery, normalizeLinkUrl, type PageLinkMatch } from './link-utils';
+import { withShortcut } from './shortcut-label';
 import { currentTurnIntoKind, TURN_INTO_OPTIONS, type TurnIntoKind, turnInto } from './turn-into';
 
 const PageLinkPicker = lazy(() => import('./extensions/page-link-picker'));
@@ -287,8 +288,6 @@ export function LinkEditorPanel({
   );
 }
 
-const isApplePlatform = () => typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
-
 /** The text menu's bubble plugin; it also reads a 'hide' meta under this key. */
 const TEXT_MENU_KEY = 'nibleaf-text-menu';
 
@@ -416,14 +415,25 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
     [],
   );
 
-  const modifier = isApplePlatform() ? '⌘' : 'Ctrl+';
-  const withShortcut = (labelKey: MessageKey, shortcut?: string) => `${t(labelKey)}${shortcut ? ` (${modifier}${shortcut})` : ''}`;
+  const labelled = (labelKey: MessageKey, shortcut?: string) => withShortcut(t(labelKey), shortcut);
   const buttons: MarkButton[] = [
     { labelKey: 'editor.format.bold', icon: Bold, active: state.bold, shortcut: 'B', run: () => editor.chain().focus().toggleBold().run() },
     { labelKey: 'editor.format.italic', icon: Italic, active: state.italic, shortcut: 'I', run: () => editor.chain().focus().toggleItalic().run() },
-    { labelKey: 'editor.format.strikethrough', icon: Strikethrough, active: state.strike, run: () => editor.chain().focus().toggleStrike().run() },
-    { labelKey: 'editor.format.code', icon: Code, active: state.code, run: () => editor.chain().focus().toggleCode().run() },
-    { labelKey: 'editor.format.highlight', icon: Highlighter, active: state.highlight, run: () => editor.chain().focus().toggleHighlight().run() },
+    {
+      labelKey: 'editor.format.strikethrough',
+      icon: Strikethrough,
+      active: state.strike,
+      shortcut: 'Shift+S',
+      run: () => editor.chain().focus().toggleStrike().run(),
+    },
+    { labelKey: 'editor.format.code', icon: Code, active: state.code, shortcut: 'E', run: () => editor.chain().focus().toggleCode().run() },
+    {
+      labelKey: 'editor.format.highlight',
+      icon: Highlighter,
+      active: state.highlight,
+      shortcut: 'Shift+H',
+      run: () => editor.chain().focus().toggleHighlight().run(),
+    },
   ];
 
   // Roving tabindex: the toolbar is one Tab stop, on the control last focused
@@ -504,7 +514,7 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
                 className={iconButton(button.active)}
                 {...rovingProps(button.labelKey)}
                 key={button.labelKey}
-                label={withShortcut(button.labelKey, button.shortcut)}
+                label={labelled(button.labelKey, button.shortcut)}
                 onClick={button.run}
                 onMouseDown={(event) => event.preventDefault()}
                 size="icon-xs"
@@ -520,7 +530,7 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
             aria-pressed={state.link}
             className={iconButton(state.link)}
             {...rovingProps('link')}
-            label={withShortcut('editor.format.link', 'K')}
+            label={labelled('editor.format.link', 'K')}
             onClick={() => setLinkOpen((open) => !open)}
             onMouseDown={(event) => event.preventDefault()}
             size="icon-xs"
