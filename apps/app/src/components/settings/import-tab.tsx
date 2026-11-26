@@ -272,21 +272,21 @@ export function ImportTab({ projectId }: { projectId?: string }) {
                 onValueChange={(value) => chooseSource(value as ImportSource)}
                 value={source ?? ''}
               >
-                {IMPORT_SOURCES.map((option) => (
+                {IMPORT_SOURCES.map((choice) => (
                   <RadioField
                     className={cn(
                       'min-w-0 rounded-lg border border-border px-3 py-3 transition-colors',
                       'has-data-checked:border-primary/60 has-data-checked:bg-primary/5 not-has-data-checked:hover:bg-muted/50',
                     )}
-                    description={t(option.description)}
-                    key={option.id}
+                    description={t(choice.description)}
+                    key={choice.id}
                     label={
                       <span className="inline-flex items-center gap-2">
-                        <option.icon aria-hidden className="size-4 text-muted-foreground" />
-                        {t(option.label)}
+                        <choice.icon aria-hidden className="size-4 text-muted-foreground" />
+                        {t(choice.label)}
                       </span>
                     }
-                    value={option.id}
+                    value={choice.id}
                   />
                 ))}
               </RadioGroup>
