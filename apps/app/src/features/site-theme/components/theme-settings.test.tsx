@@ -16,7 +16,7 @@ import { Activity, act, type ComponentProps, type ReactNode, StrictMode, useCall
 import { createRoot } from 'react-dom/client';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ThemeSection } from '@/components/project-settings/theme-section';
+import { ThemeSettings as ThemeSection } from '@/features/site-theme/components/theme-settings';
 import type { Project } from '@/hooks/api';
 import { projectQueryOptions } from '@/hooks/api/query-options';
 import { useSaveRegionForm } from '@/lib/forms/save-region';

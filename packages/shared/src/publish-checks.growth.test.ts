@@ -1,5 +1,6 @@
 import { growthMs, growthMsAsync, growthTestsEnabled, linearGrowthLimit } from '@nibleaf/shared/testing/growth';
 import { describe, expect, it } from 'vitest';
+import { markdownParseBudget } from './page-limits';
 import {
   buildInboundPageLinkMap,
   buildInboundPageLinkMapAsync,
@@ -122,6 +123,48 @@ describe.runIf(growthTestsEnabled)('inbound draft page links: repeat-open cost',
     // cold with the page index (1/45 without it).
     expect(warmMs).toBeLessThanOrEqual(coldMs / 4 + 20);
   }, 60_000);
+});
+
+describe.runIf(growthTestsEnabled)('publish facts on pages beyond the Markdown budget', () => {
+  it('checks the rest of the page, never parsing the blocks over budget', () => {
+    const small = `[Guide](/guide)\n\n${'*a* '.repeat(600)}\n\n`.repeat(8);
+    const large = small.repeat(4);
+    const [smallMs, largeMs] = growthMs((body) => pageContentFacts(body, false), small, large);
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+    const facts = pageContentFacts(large, false);
+    expect(facts.parseLimit).toMatchObject({ limit: 'syntaxMarkers', line: 3 });
+    expect(facts.links).toHaveLength(32);
+  });
+
+  it.each([
+    // Each within the size and line caps, so the scan reads all of it.
+    [
+      'backtick runs of many lengths',
+      (size: number) => Array.from({ length: size }, (_, index) => `${'`'.repeat((index % 40) + 1)}x${index % 200 === 199 ? '\n' : ' '}`).join(''),
+    ],
+    ['complete and unfinished tags', (size: number) => `${'<a b="1" c=\'2\' d=e> <a b="'.repeat(20)}\n`.repeat(size / 20)],
+    ['deep tags', (size: number) => `${'<div>\n'.repeat(size)}${'</div>\n'.repeat(size)}`],
+    ['quotes and lists', (size: number) => `${'> - '.repeat(80)}x\n`.repeat(size / 40)],
+    // Round two of the review: emphasis over the lines of one paragraph (no blank line between them).
+    ['emphasis over many lines of one paragraph', (size: number) => `${'*a'.repeat(1000)}\n`.repeat(size / 100)],
+    // Too deep, then closing tags that match nothing open, so each one used to walk the whole stack.
+    [
+      'deep tags, then closing tags that match none',
+      (size: number) => `${'<span>'.repeat(65)}\n${`${'<span></i>'.repeat(100)}\n`.repeat(size / 50)}`,
+    ],
+    [
+      'open tags, then as many closing tags that match none',
+      (size: number) => `${`${'<span>'.repeat(100)}\n`.repeat(size / 100)}${`${'</i>'.repeat(100)}\n`.repeat(size / 100)}`,
+    ],
+    ['a one-line HTML table', (size: number) => `<table>${'<tr><td>a</td><td>b</td></tr>'.repeat(size / 2)}</table>\n`],
+  ])('reads %s against the budget in linear time', (_name, shape) => {
+    expect(shape(16_000).length).toBeLessThan(512 * 1024);
+    // A new string each run: the budget remembers the last pages it read.
+    let run = 0;
+    const read = (text: string) => markdownParseBudget(`${text}${run++}`);
+    const [smallMs, largeMs] = growthMs(read, shape(4000), shape(16_000));
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+  });
 });
 
 describe.runIf(growthTestsEnabled)('publish checks on a site larger than the shared facts cache', () => {

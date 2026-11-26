@@ -14,12 +14,14 @@ import type { Root } from 'mdast';
 import { type DefaultTreeAdapterTypes, parseFragment } from 'parse5';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import remarkMdx from 'remark-mdx';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import { unified } from 'unified';
 import { documentationComponentContractEntries, documentationReaderTag } from './documentation-component-contract';
 import { matchTags } from './markup-scan';
+import { type MarkdownParseOverflow, markdownParseBudget } from './page-limits';
 import { READER_EMBED_TAG } from './reader-embeds';
 import { normalizeMdxBlocks } from './reader-markdown';
 import { isAllowedMediaUrl, isSiteMediaPath, videoEmbedFrom, videoPageUrl } from './video-embeds';
@@ -44,6 +46,9 @@ type MarkdownNode = {
 
 /** What one page renders that the checks look at. */
 export interface PageContentFacts {
+  /** The first parse limit the page exceeds. The reader shows the blocks over it as
+   *  plain text (the whole page past the size cap), and the checks skip them too. */
+  parseLimit?: MarkdownParseOverflow;
   /** Destinations of links that render, in document order. */
   links: string[];
   /** Sources of images that render without alt text. */
@@ -68,18 +73,18 @@ type EmbedFacts = Pick<PageContentFacts, 'untitledEmbeds' | 'embedsAsLinks' | 'i
 // remark-mdx). GFM is left out on purpose: it roughly doubles the cost and
 // changes nothing the checks read (links in table cells parse the same, its
 // autolink literals are external), except footnotes, handled below.
-const mdxParser = unified().use(remarkParse).use(remarkMdx);
+const mdxParser = unified().use(remarkParse).use(remarkMdx).use(remarkMath);
 // The reader renders CommonMark (+ GFM): what it treats as code (indented code
 // included, which MDX disables) comes from this parse, and invalid MDX is read
 // with it entirely, where JSX and comments are raw HTML.
-const markdownParser = unified().use(remarkParse);
+const markdownParser = unified().use(remarkParse).use(remarkMath);
 // Invalid MDX is read for images and stray text as the reader reads it.
-const htmlParser = unified().use(remarkParse).use(remarkGfm);
+const htmlParser = unified().use(remarkParse).use(remarkGfm).use(remarkMath);
 // Links use the reader's CommonMark -> HAST -> parse5 (rehype-raw) pipeline.
 // GFM is left out for speed: of what it adds, only footnotes render links, and
 // those are in-page (their labels are filtered below); table cells, task lists
 // and strikethrough parse links the same, and its autolink literals are external.
-const readerLinkParser = unified().use(remarkParse).use(remarkRehype, { allowDangerousHtml: true }).use(rehypeRaw);
+const readerLinkParser = unified().use(remarkParse).use(remarkMath).use(remarkRehype, { allowDangerousHtml: true }).use(rehypeRaw);
 /** Without GFM a footnote (`[^1]` with `[^1]: text`) parses as a reference
  *  link; the reader renders it as an in-page footnote, never a page link. */
 const isFootnoteLabel = (identifier: string | undefined): boolean => identifier?.startsWith('^') === true;
@@ -302,7 +307,23 @@ const htmlImagesWithoutAlt = (html: string): string[] =>
   });
 
 /** What one page renders that the checks look at, read as the reader reads it (not cached). */
-export const collectPageContentFacts = (content: string): PageContentFacts => {
+export const collectPageContentFacts = (source: string): PageContentFacts => {
+  const facts: PageContentFacts = {
+    links: [],
+    imagesWithoutAlt: [],
+    strayText: [],
+    untitledEmbeds: [],
+    embedsAsLinks: [],
+    insecureVideos: [],
+    unclosedEmbeds: [],
+    hiddenPosters: [],
+  };
+  const budget = markdownParseBudget(source);
+  if (budget.overflow) facts.parseLimit = budget.overflow;
+  if (budget.whole) return facts;
+  // Blocks over budget are plain-text fences here, as they are for the reader.
+  const { content } = budget;
+
   let tree: MarkdownNode;
   let isMdx = true;
   try {
@@ -347,16 +368,6 @@ export const collectPageContentFacts = (content: string): PageContentFacts => {
   };
   collectDefinitions(tree);
 
-  const facts: PageContentFacts = {
-    links: [],
-    imagesWithoutAlt: [],
-    strayText: [],
-    untitledEmbeds: [],
-    embedsAsLinks: [],
-    insecureVideos: [],
-    unclosedEmbeds: [],
-    hiddenPosters: [],
-  };
   const visit = (node: MarkdownNode) => {
     if (inCode(node) || NON_LINK_CONTEXTS.has(node.name?.toLowerCase() ?? '')) return;
     if (SILENT.has(node.type)) {
