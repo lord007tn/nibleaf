@@ -7,9 +7,10 @@ import { CellSelection } from '@tiptap/pm/tables';
 import { useEditorState } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { ArrowDownToLine, ArrowLeftToLine, ArrowRightToLine, ArrowUpToLine, Columns3, PanelTop, Rows3, Trash2, X } from 'lucide-react';
-import { type ComponentType, type ReactNode, useMemo } from 'react';
+import { type ComponentType, type ReactNode, useMemo, useState } from 'react';
 import { alignTableColumns, type ColumnAlignment } from './extensions/aligned-table';
 import { blockAnchor, MENU_EDGE_PADDING } from './menu-anchor';
+import { scrollFadeStyle, useScrollEdges } from './scroll-edges';
 
 function AlignmentGlyph({ align }: { align: ColumnAlignment }) {
   const start = align === 'left' ? 3 : align === 'right' ? 9 : 6;
@@ -66,6 +67,9 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
   });
 
   const anchor = useMemo(() => blockAnchor(editor, '.tableWrapper', 'table'), [editor]);
+  // On a phone the row is wider than the screen: it scrolls, and a fade at the edge says so.
+  const [row, setRow] = useState<HTMLDivElement | null>(null);
+  const edges = useScrollEdges(row, 'x');
   const actions: TableAction[] = [
     {
       labelKey: 'editor.table.alignDefault',
@@ -177,34 +181,41 @@ export function TableBubbleMenu({ editor, dir = 'ltr' }: { editor: Editor; dir?:
         const { selection } = current.state;
         return selection.empty || selection instanceof CellSelection;
       }}
-      className="flex max-w-[calc(100vw-2rem)] items-center gap-0.5 overflow-x-auto rounded-lg border border-border bg-card p-1 shadow-lg"
+      className="max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-card p-1 shadow-lg"
       dir={dir}
     >
-      {actions.map((action) => {
-        const label = t(action.labelKey);
-        return (
-          <span key={action.labelKey} className="flex shrink-0 items-center gap-0.5">
-            {action.separatorBefore ? <span className="mx-0.5 h-5 w-px bg-border" /> : null}
-            <Button
-              aria-label={label}
-              aria-pressed={action.pressed}
-              className={cn(
-                'size-8 text-foreground/80 pointer-coarse:size-11',
-                action.destructive && 'hover:bg-destructive/10 hover:text-destructive',
-              )}
-              disabled={!action.enabled}
-              onClick={action.run}
-              onMouseDown={(event) => event.preventDefault()}
-              size="icon-xs"
-              title={label}
-              type="button"
-              variant="ghost"
-            >
-              {action.content}
-            </Button>
-          </span>
-        );
-      })}
+      <div
+        className="flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none]"
+        data-scroll-edges={[edges.start && 'start', edges.end && 'end'].filter(Boolean).join(' ') || undefined}
+        ref={setRow}
+        style={scrollFadeStyle(edges, 'x', dir === 'rtl')}
+      >
+        {actions.map((action) => {
+          const label = t(action.labelKey);
+          return (
+            <span key={action.labelKey} className="flex shrink-0 items-center gap-0.5">
+              {action.separatorBefore ? <span className="mx-0.5 h-5 w-px bg-border" /> : null}
+              <Button
+                aria-label={label}
+                aria-pressed={action.pressed}
+                className={cn(
+                  'size-8 text-foreground/80 pointer-coarse:size-11',
+                  action.destructive && 'hover:bg-destructive/10 hover:text-destructive',
+                )}
+                disabled={!action.enabled}
+                onClick={action.run}
+                onMouseDown={(event) => event.preventDefault()}
+                size="icon-xs"
+                title={label}
+                type="button"
+                variant="ghost"
+              >
+                {action.content}
+              </Button>
+            </span>
+          );
+        })}
+      </div>
     </BubbleMenu>
   );
 }
