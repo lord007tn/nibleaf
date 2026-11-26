@@ -136,6 +136,7 @@ describe('AUTH-16 editor save lifecycle', () => {
     mocks.pages = [page];
     mocks.role = 'member';
     mocks.update.mockReset();
+    mocks.navigate.mockReset();
     container = document.createElement('div');
     document.body.append(container);
     root = createRoot(container);
@@ -188,6 +189,78 @@ describe('AUTH-16 editor save lifecycle', () => {
     expect(drawerOpen()).toBe('false');
     const title = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="editor.pageTitlePlaceholder"]');
     expect(document.activeElement).toBe(title);
+  });
+  it('names a page the writer creates in the address, in place, so a reload or a copied address reopens it', async () => {
+    type Navigation = {
+      replace?: boolean;
+      hash?: unknown;
+      search?: (previous: Record<string, unknown>) => Record<string, unknown>;
+      state?: (previous: Record<string, unknown>) => Record<string, unknown>;
+    };
+    const named = (id: string) =>
+      mocks.navigate.mock.calls
+        .map(([options]) => options as Navigation)
+        .filter((options) => typeof options?.search === 'function' && options.search({}).page === id);
+    // Opening the editor writes nothing: an address that changed by itself already names its page.
+    expect(named('page-1')).toEqual([]);
+    const created = { ...page, id: 'page-new', title: '', slug: 'untitled', path: 'untitled' };
+    mocks.create.mockImplementation((_body, callbacks) => {
+      mocks.page = created;
+      mocks.pages = [page, created];
+      callbacks.onSuccess(created);
+      callbacks.onSettled();
+    });
+    const newPage = [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('editor.newPage'));
+    if (!newPage) throw new Error('Missing new page action');
+    await act(async () => newPage.click());
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    const [navigation, ...more] = named('page-new');
+    expect(more).toEqual([]);
+    expect(navigation?.replace).toBe(true);
+    // No section of the page before (no hash), other parameters kept, a Fix for another page dropped.
+    expect(navigation?.hash).toBeUndefined();
+    expect(navigation?.search?.({ publish: true, fix: 'missing-alt', fixTarget: 'x' })).toEqual({
+      publish: true,
+      page: 'page-new',
+      fix: undefined,
+      fixTarget: undefined,
+    });
+    // The page before's scroll position doesn't come along.
+    expect(navigation?.state?.({ editorScroll: 640, editorKeepScroll: true, other: 1 })).toEqual({
+      editorScroll: undefined,
+      editorKeepScroll: undefined,
+      other: 1,
+    });
+  });
+  it('keeps a title, Enter and body typed before the new page shows: the title gets the title, the body the rest', async () => {
+    const created = { ...page, id: 'page-new', title: '', slug: 'untitled', path: 'untitled', content: '' };
+    mocks.create.mockImplementation((_body, callbacks) => {
+      // Created, but the new page itself loads later (as over a real network).
+      mocks.pages = [page, created];
+      callbacks.onSuccess(created);
+      callbacks.onSettled();
+    });
+    const newPage = [...container.querySelectorAll('button')].find((item) => item.textContent?.includes('editor.newPage'));
+    if (!newPage) throw new Error('Missing new page action');
+    await act(async () => {
+      newPage.focus();
+      newPage.click();
+    });
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
+    // Typed into whatever has focus meanwhile (the New page button), as a fast writer does.
+    const type = (key: string) => document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    await act(async () => {
+      for (const key of [...'Setup', 'Enter', ...'Hi']) type(key);
+    });
+    expect(mocks.create).toHaveBeenCalledOnce();
+    // The page arrives; its title takes focus.
+    mocks.page = created;
+    await act(async () => root.render(<Editor />));
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(container.querySelector<HTMLTextAreaElement>('textarea[data-page-title]')?.value).toBe('Setup');
+    const body = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]');
+    expect(document.activeElement).toBe(body);
+    expect(body?.value).toBe('Hi');
   });
   it('AUTH-07: failed creation clears the pending canvas and restores the action focus', async () => {
     mocks.page = undefined;
