@@ -71,6 +71,11 @@ afterEach(async () => {
 });
 
 describe('dashboard name step', () => {
+  it('names the browser tab in the interface language (PUBLIC-21)', async () => {
+    await act(async () => root.render(<Page />));
+    expect(document.title).toBe('auth.name.title · Nibleaf');
+  });
+
   it('opens for an empty name and keeps the original destination', async () => {
     await expect(beforeLoad({ search: { redirect: '/app/projects/p1?lang=ar#members' } })).resolves.toEqual({
       nameDestination: '/app/projects/p1?lang=ar#members',

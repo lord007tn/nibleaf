@@ -130,7 +130,7 @@ describe('accept invitation page', () => {
     expect(host.textContent).not.toContain('auth.invite.subtitle');
     expect(buttons()).toEqual(expect.arrayContaining(['people.admission.logIn', 'people.admission.createAccount']));
     expect(buttons()).not.toContain('auth.backToSignIn');
-    expect(document.title).toBe('people.admission.invalidInvitation — Nibleaf');
+    expect(document.title).toBe('people.admission.invalidInvitation · Nibleaf');
   });
 
   it('shows the access once (no duplicated "Member · site (Viewer)" line) and accepts', async () => {
