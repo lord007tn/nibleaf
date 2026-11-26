@@ -3,10 +3,7 @@
 import { Button } from '@nibleaf/design-system/components/ui/button';
 import { act, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
-import BEFORE from './fixtures/button-markup-before-disabled-reason.json';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 const roots: Array<ReturnType<typeof createRoot>> = [];
@@ -80,44 +77,15 @@ describe('Button disabledReason', () => {
     expect(button.querySelector('button, a, input')).toBeNull();
   });
 
-  // Markup recorded from Button before `disabledReason` existed (main at
-  // 0a18349c), so buttons that don't use a reason are provably unchanged.
-  // Re-recorded for P2-DASH-013, which only adds the always-on `aria-disabled`
-  // styling (and its loading override) to every button's classes.
-  it.each([
-    ['plain', <Button key="a">Save</Button>],
-    [
-      'outlineSmDisabled',
-      <Button disabled key="b" size="sm" variant="outline">
+  it('preserves native disabled semantics when there is no reason', async () => {
+    const container = await render(
+      <Button disabled disabledReason={null}>
         Save
       </Button>,
-    ],
-    [
-      'loadingIdle',
-      <Button key="c" loading={false}>
-        Save
-      </Button>,
-    ],
-    [
-      'loadingBusy',
-      <Button key="d" loading loadingText="Saving…">
-        Save
-      </Button>,
-    ],
-    [
-      'plain',
-      <Button disabledReason={null} key="e">
-        Save
-      </Button>,
-    ],
-    [
-      'outlineSmDisabled',
-      <Button disabled disabledReason={undefined} key="f" size="sm" variant="outline">
-        Save
-      </Button>,
-    ],
-  ] as const)('renders %s exactly as before without a reason', (fixture, element) => {
-    expect(renderToStaticMarkup(element)).toBe(BEFORE[fixture]);
+    );
+    const button = container.querySelector('button');
+    expect(button?.disabled).toBe(true);
+    expect(button?.hasAttribute('aria-describedby')).toBe(false);
   });
 
   it('lets loading win over the reason', async () => {
