@@ -6,7 +6,9 @@ import { useT } from '@nibleaf/i18n/react';
 import { useRouter } from '@tanstack/react-router';
 import { useState } from 'react';
 import { AuthProviders } from '@/components/auth-providers';
+import { usePageTitle } from '@/hooks/use-page-title';
 import { AuthLayout } from '@/layouts/auth';
+import { pageTitle } from '@/lib/page-title';
 import { authClient } from '@/services/auth-client';
 
 /** The "What should we call you?" step. Kept out of the route file so the
@@ -22,6 +24,8 @@ export default function WelcomeNamePage({ nameDestination }: { nameDestination: 
 
 function NamePage({ nameDestination }: { nameDestination: string }) {
   const t = useT();
+  // The route's static head title is English; the tab follows the interface language once rendered.
+  usePageTitle(pageTitle(t('auth.name.title')));
   const router = useRouter();
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);

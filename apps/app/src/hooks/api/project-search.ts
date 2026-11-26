@@ -11,6 +11,7 @@ import { api } from '@/services/api';
 import { getData, mutateData } from './client-helpers';
 import { friendlyErrorMessage } from './errors';
 import { queryKeys } from './query-keys';
+import { siteQueryKeys } from './site-query-keys';
 
 /*
  * Site search settings and index diagnostics. The factories live here, not in
@@ -71,8 +72,8 @@ export const useUpdateProjectSearchConfiguration = (projectId: string) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.projects.detail(projectId) });
       // The published reader's shell carries the search settings; its search
       // results follow the result limit and version filter.
-      queryClient.invalidateQueries({ queryKey: queryKeys.site.shell(projectId) });
-      queryClient.invalidateQueries({ queryKey: queryKeys.site.allSearch(projectId) });
+      queryClient.invalidateQueries({ queryKey: siteQueryKeys.shell(projectId) });
+      queryClient.invalidateQueries({ queryKey: siteQueryKeys.allSearch(projectId) });
     },
   });
 };

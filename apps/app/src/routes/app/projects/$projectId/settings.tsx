@@ -32,15 +32,7 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { ConfigSection, EDITOR_CONFIG_SECTIONS } from '@/components/editor/site-config-panel';
-import { AddonsSection } from '@/components/project-settings/addons-section';
-import { AuthenticationSection } from '@/components/project-settings/authentication-section';
-import { DangerSection } from '@/components/project-settings/danger-section';
-import { DomainSection } from '@/components/project-settings/domain-section';
 import { ExportsSection } from '@/components/project-settings/exports-section';
-import { GeneralSection } from '@/components/project-settings/general-section';
-import { LanguagesSection } from '@/components/project-settings/languages-section';
-import { OpenApiSection } from '@/components/project-settings/openapi-section';
-import { SearchSection } from '@/components/project-settings/search-section';
 import {
   ConfigDirtyProvider,
   DirtyStateReporter,
@@ -53,12 +45,19 @@ import { QueryErrorState } from '@/components/query-error-state';
 import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
-import { UsageTab } from '@/components/settings/usage-tab';
 import { SectionTabs, sectionTabClassName } from '@/components/ui/section-tabs';
+import { AddonsSettings as AddonsSection } from '@/features/addons/components/addons-settings';
 import { AiAssistantsPage } from '@/features/ai-assistants/components/ai-assistants-page';
 import { SiteTeamPage } from '@/features/people/components/site-team-page';
+import { ReaderAccessSettings as AuthenticationSection } from '@/features/reader-access/components/reader-access-settings';
 import { siteAiQueryOptions } from '@/features/site-ai/api/query-options';
 import { AiAnswersPage } from '@/features/site-ai/components/ai-answers-page';
+import { DangerZone as DangerSection } from '@/features/site-danger/components/danger-zone';
+import { DomainSettings as DomainSection } from '@/features/site-domains/components/domain-settings';
+import { GeneralSettings as GeneralSection } from '@/features/site-general/components/general-settings';
+import { LanguagesSettings as LanguagesSection } from '@/features/site-languages/components/languages-settings';
+import { OpenApiSettings as OpenApiSection } from '@/features/site-openapi/components/openapi-settings';
+import { SearchSettings as SearchSection } from '@/features/site-search/components/search-settings';
 import {
   APPEARANCE_SECTION_IDS,
   type AppearanceSectionId,
@@ -68,6 +67,7 @@ import {
   type SectionId,
 } from '@/features/site-settings/model/ids';
 import { type SettingsAccess, sectionAllowed, sectionLabelKey, settingsNav, WIDE_SECTIONS } from '@/features/site-settings/model/sections';
+import { UsageTab } from '@/features/usage/components/usage-overview';
 import type { Project } from '@/hooks/api';
 import { type SwitcherOrganization, useOrganizationOfProject, useProject, useProjectMembers } from '@/hooks/api';
 import {
@@ -121,7 +121,7 @@ const SECTION_ICONS: Record<SectionId, LucideIcon> = {
 };
 
 export const Route = createFileRoute('/app/projects/$projectId/settings')({
-  // Old links keep working: Analytics opens Integrations, and Appearance's former
+  // Old links keep working: Analytics opens Integrations → Analytics, and Appearance's former
   // SEO, Redirects, Variables and Search subsections open their own pages.
   validateSearch: parseSettingsSearch,
   loaderDeps: ({ search }) => ({ section: search.section }),
@@ -197,7 +197,7 @@ export const Route = createFileRoute('/app/projects/$projectId/settings')({
 function ProjectSettingsPage() {
   const reportDirty = useSettingsDirtyGuard();
   const { projectId } = Route.useParams();
-  const { section: requestedOrMoved, appearanceSection } = Route.useSearch();
+  const { section: requestedOrMoved, appearanceSection, integration } = Route.useSearch();
   // Plan and Notifications moved to the organization: an old link shows a pointer under Usage.
   const movedSection = isMovedSectionId(requestedOrMoved) ? requestedOrMoved : undefined;
   const requestedSection = isMovedSectionId(requestedOrMoved) ? 'usage' : requestedOrMoved;
@@ -384,6 +384,7 @@ function ProjectSettingsPage() {
                 key={place}
                 canCreateExports={access.canEditContent}
                 canManageSchedules={access.canManage}
+                integration={integration}
                 movedSection={movedSection}
                 organization={organization}
                 project={project}
@@ -407,6 +408,7 @@ function ActiveSection({
   canCreateExports,
   role,
   appearanceSection,
+  integration,
   movedSection,
   organization,
 }: {
@@ -419,6 +421,7 @@ function ActiveSection({
   canCreateExports: boolean;
   role: string;
   appearanceSection?: AppearanceSectionId;
+  integration?: string;
 }) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {
@@ -447,7 +450,7 @@ function ActiveSection({
         />
       </>
     ),
-    integrations: <IntegrationsTab key={`integrations-${projectId}`} projectId={projectId} project={project} />,
+    integrations: <IntegrationsTab integration={integration} key={`integrations-${projectId}`} project={project} projectId={projectId} />,
     ai: <AiAnswersPage key={`ai-${projectId}`} project={project} />,
     exports: (
       <ExportsSection canCreate={canCreateExports} canManageSchedules={canManageSchedules} key={`exports-${projectId}`} projectId={projectId} />

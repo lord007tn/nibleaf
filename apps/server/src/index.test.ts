@@ -1,5 +1,10 @@
 import { Hono } from 'hono';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Keep the real OpenAPI and docs implementations. Vitest caches the factory
+// results even when a storage scenario resets the startup module.
+vi.mock(import('@scalar/hono-api-reference'), (importOriginal) => importOriginal());
+vi.mock(import('hono-openapi'), (importOriginal) => importOriginal());
 
 const mocks = vi.hoisted(() => ({
   ensureBucket: vi.fn(),
@@ -38,13 +43,25 @@ type Listener = (...args: unknown[]) => void;
 const listenersOf = (event: (typeof events)[number]) => (process.listeners as (name: string) => Listener[])(event);
 let previousListeners: Map<(typeof events)[number], Listener[]>;
 
+beforeAll(async () => {
+  await Promise.all([import('@scalar/hono-api-reference'), import('hono-openapi')]);
+});
+
 beforeEach(() => {
+  vi.clearAllMocks();
+  stubStartupEnv();
+});
+afterEach(() => vi.unstubAllEnvs());
+
+function stubStartupEnv() {
+  vi.stubEnv('INTERNAL_API_SECRET', 'synthetic-health-secret');
+  vi.stubEnv('NIBLEAF_REVISION', 'synthetic-revision');
+}
+
+function prepareStartup() {
   vi.resetModules();
   vi.doMock('./routes', () => ({ default: new Hono() }));
   vi.useFakeTimers();
-  vi.clearAllMocks();
-  vi.stubEnv('INTERNAL_API_SECRET', 'synthetic-health-secret');
-  vi.stubEnv('NIBLEAF_REVISION', 'synthetic-revision');
   mocks.analytics.mockResolvedValue({ configured: true, provider: 'internal-provider', endpoint: 'https://internal.example.test' });
   mocks.autoCors = true;
   mocks.requiredForHealth = false;
@@ -53,17 +70,17 @@ beforeEach(() => {
   mocks.schedule.mockResolvedValue(undefined);
   previousListeners = new Map(events.map((event) => [event, listenersOf(event)]));
   vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
-});
-afterEach(() => {
+}
+
+function restoreStartup() {
   for (const event of events) {
     for (const listener of listenersOf(event)) {
       if (!previousListeners.get(event)?.includes(listener)) process.removeListener(event, listener);
     }
   }
-  vi.unstubAllEnvs();
   vi.useRealTimers();
   vi.restoreAllMocks();
-});
+}
 
 async function boot() {
   await import('./index');
@@ -75,12 +92,61 @@ const internalHeaders = { 'x-nibleaf-internal': 'synthetic-health-secret' };
 const details = (app: Awaited<ReturnType<typeof boot>>) => app.request('/health/details', { headers: internalHeaders });
 
 describe('public and internal health contracts', () => {
+  let app: Awaited<ReturnType<typeof boot>>;
+
+  beforeAll(async () => {
+    stubStartupEnv();
+    prepareStartup();
+    try {
+      app = await boot();
+    } finally {
+      restoreStartup();
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('advertises the package build version in OpenAPI', async () => {
-    const app = await boot();
     const { version } = await import('../package.json');
     const response = await app.request('/openapi.json');
     expect(await response.json()).toMatchObject({ info: { version } });
   });
+  it.each([undefined, 'wrong-secret', 'synthetic-health-secreu', 'synthetic-health-secret-extra'])(
+    'rejects detailed health without the exact internal proof (%s)',
+    async (proof) => {
+      const response = await app.request('/health/details', { headers: proof ? { 'x-nibleaf-internal': proof } : {} });
+      expect(response.status).toBe(401);
+      expect(await response.json()).toEqual({ status: 'unauthorized' });
+      expect(response.headers.get('cache-control')).toBe('private, no-store');
+      expect(mocks.analytics).not.toHaveBeenCalled();
+    },
+  );
+
+  it('returns storage and analytics details only with the configured internal secret', async () => {
+    const response = await details(app);
+    expect(response.status).toBe(200);
+    expect(response.headers.get('cache-control')).toBe('private, no-store');
+    expect(await response.json()).toMatchObject({
+      status: 'ok',
+      revision: 'synthetic-revision',
+      analytics: { configured: true },
+      storage: { ready: true, cors: true, requiredForHealth: false },
+    });
+    expect(mocks.analytics).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('startup with environment and storage changes', () => {
+  beforeEach(prepareStartup);
+  afterEach(restoreStartup);
+
+  it.each([undefined, ''])('disables detailed health when INTERNAL_API_SECRET is unset (%s)', async (secret) => {
+    vi.stubEnv('INTERNAL_API_SECRET', secret);
+    const app = await boot();
+    expect((await details(app)).status).toBe(401);
+    expect((await app.request('/health')).status).toBe(200);
+    expect(mocks.analytics).not.toHaveBeenCalled();
+  });
+
   it('publishes only status and the existing revision, without invoking detailed diagnostics', async () => {
     mocks.ensureBucket.mockRejectedValue(new Error('private bucket at internal.example.test'));
     mocks.configureUploadCors.mockRejectedValue(new Error('private provider details'));
@@ -96,42 +162,6 @@ describe('public and internal health contracts', () => {
     );
   });
 
-  it.each([undefined, 'wrong-secret', 'synthetic-health-secreu', 'synthetic-health-secret-extra'])(
-    'rejects detailed health without the exact internal proof (%s)',
-    async (proof) => {
-      const app = await boot();
-      const response = await app.request('/health/details', { headers: proof ? { 'x-nibleaf-internal': proof } : {} });
-      expect(response.status).toBe(401);
-      expect(await response.json()).toEqual({ status: 'unauthorized' });
-      expect(response.headers.get('cache-control')).toBe('private, no-store');
-      expect(mocks.analytics).not.toHaveBeenCalled();
-    },
-  );
-
-  it.each([undefined, ''])('disables detailed health when INTERNAL_API_SECRET is unset (%s)', async (secret) => {
-    vi.stubEnv('INTERNAL_API_SECRET', secret);
-    const app = await boot();
-    expect((await details(app)).status).toBe(401);
-    expect((await app.request('/health')).status).toBe(200);
-    expect(mocks.analytics).not.toHaveBeenCalled();
-  });
-
-  it('returns storage and analytics details only with the configured internal secret', async () => {
-    const app = await boot();
-    const response = await details(app);
-    expect(response.status).toBe(200);
-    expect(response.headers.get('cache-control')).toBe('private, no-store');
-    expect(await response.json()).toMatchObject({
-      status: 'ok',
-      revision: 'synthetic-revision',
-      analytics: { configured: true },
-      storage: { ready: true, cors: true, requiredForHealth: false },
-    });
-    expect(mocks.analytics).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('storage bootstrap readiness', () => {
   it.each([
     { $metadata: { httpStatusCode: 401 } },
     { $metadata: { httpStatusCode: 403 } },

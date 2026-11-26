@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Toaster } from 'sonner';
 import { TiptapEditor } from '../src/components/editor/tiptap-editor';
-import { DomainSection } from '../src/components/project-settings/domain-section';
+import { DomainSettings as DomainSection } from '../src/features/site-domains/components/domain-settings';
 import { usePage, useProject, useUpdatePage } from '../src/hooks/api';
 import { createQueryClient } from '../src/integrations/tanstack-query/query-client';
 import { Route as overview } from '../src/routes/app/projects/$projectId/index';

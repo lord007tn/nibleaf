@@ -39,7 +39,6 @@
     "settings_plan_tier_team_name",
     "auth_field_name",
     "settings_git_pipeline_title",
-    "settings_git_workflow_step_repository",
     "settings_usage_meter_build",
     "settings_usage_unit_byte",
     "settings_usage_unit_mib",
@@ -90,13 +89,6 @@
     "admin_user_details",
     "settings_integrations_provider_publicgit",
     "settings_integrations_provider_plausible",
-    "settings_integrations_provider_qdrant",
-    "settings_integrations_provider_postmark",
-    "settings_integrations_provider_maxio",
-    "settings_integrations_provider_minio",
-    "settings_integrations_provider_amazons3",
-    "settings_integrations_provider_cloudflarer2",
-    "settings_integrations_provider_backblazeb2",
     "settings_integrations_placeholder_slack",
     "settings_integrations_placeholder_discord",
     "settings_integrations_placeholder_zapier",
@@ -141,7 +133,8 @@
     "pagestatus_live",
     "settings_git_productionbranch",
     "settings_import_mintlify_branch",
-    "settings_import_summary_branch"
+    "settings_import_summary_branch",
+    "shortcuts_editor_text"
   ],
   "pending": []
 }

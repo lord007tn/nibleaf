@@ -4,7 +4,7 @@ description: 'Limit who can read your published docs, invite readers into audien
 audience: 'site admins and customer-portal developers'
 content_type: 'how-to'
 last_reviewed: '2026-11-07'
-verified_against: 'apps/app/src/components/project-settings/authentication-section.tsx, apps/server/src/actions/reader-access.ts, apps/server/src/lib/reader-jwt.ts, apps/server/src/env.ts, apps/server/src/middlewares/app.ts, and packages/i18n/messages'
+verified_against: 'apps/app/src/features/reader-access/components/reader-access-settings.tsx, apps/server/src/actions/reader-access.ts, apps/server/src/lib/reader-jwt.ts, apps/server/src/env.ts, apps/server/src/middlewares/app.ts, and packages/i18n/messages'
 lang: 'en'
 dir: 'ltr'
 translation_key: 'private-reader-access'

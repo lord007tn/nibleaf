@@ -76,6 +76,7 @@ describe('Sol council #582 regressions (a164b695)', () => {
   });
   it.each(converters)('P1: %s preserves indented and container code byte for byte', (_name, convert) => {
     for (const source of [
+      '    [Tour](https://youtu.be/abcdefghijk)',
       'Example:\n\n    [Demo](https://youtu.be/abcdefghijk)\n    /\n    \\---',
       '- Example:\n\n      [Demo](https://youtu.be/abcdefghijk)\n      /\n      \\---',
       '> Example:\n>\n>     [Demo](https://youtu.be/abcdefghijk)\n>     /\n>     \\---',

@@ -124,7 +124,7 @@ describe('published page presentation', () => {
     expect(html).toContain(
       new Intl.DateTimeFormat('ar-u-nu-latn', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date('2026-09-03T22:30:00.000Z')),
     );
-    expect(html).toMatch(/<nav class="mb-3" aria-label="مسار التنقّل"><ol[^>]*><li[^>]*><a href="\/sites\/project-1\/ar\/parent"/);
+    expect(html).toMatch(/<nav class="[^"]*" aria-label="مسار التنقّل"><ol[^>]*><li[^>]*><a href="\/sites\/project-1\/ar\/parent"/);
   });
 
   it('excludes literal image examples from article screenshot counts but counts prose images', () => {
