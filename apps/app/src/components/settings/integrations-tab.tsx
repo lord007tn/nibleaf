@@ -41,8 +41,8 @@ import {
 import { type ComponentType, type FormEvent, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { GithubIcon, SlackIcon } from '@/components/icons/brand';
-import { AnalyticsSection } from '@/components/project-settings/analytics-section';
 import { NO_AUTOFILL_PROPS, SecretInput } from '@/components/secret-input';
+import { AnalyticsSettings as AnalyticsSection } from '@/features/site-analytics-settings/components/analytics-settings';
 import { useWebhookIntegrationSaveCommand } from '@/features/site-integrations/components/use-webhook-integration-save-command';
 import {
   type Project,
