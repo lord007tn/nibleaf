@@ -32,15 +32,7 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { ConfigSection, EDITOR_CONFIG_SECTIONS } from '@/components/editor/site-config-panel';
-import { AddonsSettings as AddonsSection } from '@/features/addons/components/addons-settings';
-import { ReaderAccessSettings as AuthenticationSection } from '@/features/reader-access/components/reader-access-settings';
-import { DangerZone as DangerSection } from '@/features/site-danger/components/danger-zone';
-import { DomainSettings as DomainSection } from '@/features/site-domains/components/domain-settings';
 import { ExportsSection } from '@/components/project-settings/exports-section';
-import { GeneralSettings as GeneralSection } from '@/features/site-general/components/general-settings';
-import { LanguagesSettings as LanguagesSection } from '@/features/site-languages/components/languages-settings';
-import { OpenApiSettings as OpenApiSection } from '@/features/site-openapi/components/openapi-settings';
-import { SearchSettings as SearchSection } from '@/features/site-search/components/search-settings';
 import {
   ConfigDirtyProvider,
   DirtyStateReporter,
@@ -54,11 +46,18 @@ import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
 import { SectionTabs, sectionTabClassName } from '@/components/ui/section-tabs';
+import { AddonsSettings as AddonsSection } from '@/features/addons/components/addons-settings';
 import { AiAssistantsPage } from '@/features/ai-assistants/components/ai-assistants-page';
 import { SiteTeamPage } from '@/features/people/components/site-team-page';
+import { ReaderAccessSettings as AuthenticationSection } from '@/features/reader-access/components/reader-access-settings';
 import { siteAiQueryOptions } from '@/features/site-ai/api/query-options';
-import { UsageTab } from '@/features/usage/components/usage-overview';
 import { AiAnswersPage } from '@/features/site-ai/components/ai-answers-page';
+import { DangerZone as DangerSection } from '@/features/site-danger/components/danger-zone';
+import { DomainSettings as DomainSection } from '@/features/site-domains/components/domain-settings';
+import { GeneralSettings as GeneralSection } from '@/features/site-general/components/general-settings';
+import { LanguagesSettings as LanguagesSection } from '@/features/site-languages/components/languages-settings';
+import { OpenApiSettings as OpenApiSection } from '@/features/site-openapi/components/openapi-settings';
+import { SearchSettings as SearchSection } from '@/features/site-search/components/search-settings';
 import {
   APPEARANCE_SECTION_IDS,
   type AppearanceSectionId,
@@ -68,6 +67,7 @@ import {
   type SectionId,
 } from '@/features/site-settings/model/ids';
 import { type SettingsAccess, sectionAllowed, sectionLabelKey, settingsNav, WIDE_SECTIONS } from '@/features/site-settings/model/sections';
+import { UsageTab } from '@/features/usage/components/usage-overview';
 import type { Project } from '@/hooks/api';
 import { type SwitcherOrganization, useOrganizationOfProject, useProject, useProjectMembers } from '@/hooks/api';
 import {

@@ -2,7 +2,6 @@ import { translateFn } from '@nibleaf/i18n';
 import { contrastRatio, readableAccentText } from '@nibleaf/shared/themes';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { ThemePreview } from '@/features/site-theme/components/theme-preview';
 import {
   DOCUMENTATION_THEME_TEMPLATES,
   DocumentationPageLayout,
@@ -11,6 +10,7 @@ import {
   DocumentationStudioPreviewLayout,
   DocumentationThemeProvider,
 } from '@/components/site/documentation-theme-provider';
+import { ThemePreview } from '@/features/site-theme/components/theme-preview';
 import { projectThemeCss, projectThemeStyle, projectThemeVariables, resolveProjectTheme, siteAppearance, siteThemeNoFlashScript } from './site-theme';
 
 /** Contrast of `color` on a `weight` tint of itself over `background`, worked
