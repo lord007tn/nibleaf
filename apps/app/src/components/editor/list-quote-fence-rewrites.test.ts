@@ -78,6 +78,21 @@ describe('a paragraph added after an unclosed fence stays out of its code (#649)
     expectCodeKept('- ~~~js\n  a\n   \n   ');
   });
 
+  it.each([
+    ['- ~~~js\n  a', '  ~~~'],
+    ['- Top\n  - ~~~js\n    a', '    ~~~'],
+    ['1. Top\n\n    ~~~js\n     a', '   ~~~'],
+  ])('closes %j before the newly appended paragraph without adding code whitespace (#864)', (source, closer) => {
+    editor.commands.setContent(source, { emitUpdate: false });
+    const before = codes();
+    expect(before).toHaveLength(1);
+    editor.commands.insertContentAt(editor.state.doc.content.size, paragraph);
+    const saved = getMarkdown(editor);
+    expect(saved).toBe(`${source}\n${closer}\n\nAppended`);
+    expect(save(saved)).toBe(saved);
+    expect(codes()).toEqual(before);
+  });
+
   it('keeps the code of a fence ending a quoted list item, with a paragraph added in the quote', () => {
     expectCodeKept('> - ~~~js\n>   a\n>    \n>    ', true);
   });

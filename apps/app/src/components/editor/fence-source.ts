@@ -331,7 +331,7 @@ function codeLine(line: string, containers: readonly FenceContainer[], indent: n
  * needs a container's `>` or indent it lacks, or differs once the fence's own
  * indent is taken off, means the containers changed; then null.
  */
-function sourceLinesFor(node: PMNode, open: string, delim: string, first: string, endsHere: boolean): string[] | null {
+function sourceLinesFor(node: PMNode, open: string, delim: string, first: string, preserveUnclosedSource: boolean): string[] | null {
   const lines = String(node.attrs.sourceFenceLines ?? '').split('\n');
   const close = String(node.attrs.sourceFenceClose ?? '');
   const closing = close === '' ? 0 : 1;
@@ -341,9 +341,7 @@ function sourceLinesFor(node: PMNode, open: string, delim: string, first: string
   const code = node.textContent ? node.textContent.split('\n') : lines.slice(1, lines.length - closing).map(() => '');
   const containers = serializedContainers(delim, first);
   const indent = /^ */.exec(open)?.[0].length ?? 0;
-  // An unclosed fence (no closing line) keeps its source only where it still ends
-  // with its container; anything after it there would read as code.
-  if (!containers || (!closing && !endsHere) || lines.length !== code.length + 1 + closing || open[indent] === '\t') return null;
+  if (!containers || (!closing && !preserveUnclosedSource) || lines.length !== code.length + 1 + closing || open[indent] === '\t') return null;
   const read = (line: string, at: number) => withoutContainers(line, at, containers, true);
   const opening = read(lines[0] ?? '', first ? 0 : 1);
   if (opening?.text !== open || nonSpace(lines[0] ?? '') !== nonSpace(first || delim) + nonSpace(open)) return null;
@@ -358,8 +356,8 @@ const FENCE_MARKER = /^[ \t]*(`{3,}|~{3,})/;
 /** The nodes CommonMark ends a fence with: the page, a quote, a list item. */
 const FENCE_ENDING_CONTAINERS: ReadonlySet<string> = new Set(['doc', 'blockquote', 'listItem', 'taskItem']);
 
-/** Where an unclosed fence ends, written without a closing line (`unclosedFenceEnd`). */
-type FenceEnd = 'page' | 'container' | null;
+/** How the source of an unclosed fence can be reused (`unclosedFenceEnd`). */
+type FenceEnd = 'page' | 'container' | 'withCloser' | null;
 
 /** The lists a list item sits in, which end with their last item. */
 const LISTS: ReadonlySet<string> = new Set(['bulletList', 'orderedList', 'taskList']);
@@ -398,9 +396,9 @@ function endsBeforeNext(lines: string, delim: string): boolean {
 /**
  * Where an unclosed fence still ends if it is written without a closing line:
  * `page` as the last block of the page, `container` as the last block of a quote or
- * list item that ends it with nothing taken into its code, and null anywhere else
- * (it gets a closing line). It must be the last block of its quote or list item,
- * and what comes after that container must not add to its code:
+ * list item that ends it with nothing taken into its code. `withCloser` adds a closing
+ * line to the authored source. Null writes the fence from its model. An unclosed
+ * fence must end its quote or list item, and what follows must stay outside its code:
  * - after a quote, a line without its `>` (a blank line, or the next block) ends it;
  * - after list items only, see `endsBeforeNext`.
  * Null for a closed fence, and on the clipboard, whose slice may be pasted anywhere.
@@ -418,6 +416,10 @@ function unclosedFenceEnd(state: FenceSerializeState, node: PMNode, parent: PMNo
     if (!('type' in container)) return null;
     const name = container.type.name;
     const next = writtenAfter(container, at);
+    // A separator before a block outside the list is still part of an unclosed
+    // fence's code. If there is no final empty source line to use, close the
+    // fence so the separator stays outside it (#864).
+    if (next && !quoted && !LISTS.has(name) && !lines.endsWith('\n')) return 'withCloser';
     if (next) return quoted || endsBeforeNext(lines, state.delim) ? 'container' : null;
     if (name === 'doc') return 'page';
     if (name === 'blockquote') quoted = true;
@@ -447,10 +449,12 @@ export function writeFence(state: FenceSerializeState, node: PMNode, parent: PMN
   const unchanged = open !== '' && open === String(node.attrs.sourceFenceOpen ?? '');
   const end = unclosedFenceEnd(state, node, parent, index);
   const lines = unchanged ? sourceLinesFor(node, open, state.delim, first, end !== null) : null;
+  const marker = FENCE_MARKER.exec(open)?.[1] ?? '```';
   if (lines) {
     state.flushClose();
     // The source's first line has its own markers in place of the ones written.
     if (first) output.truncate(output.length - first.length);
+    if (end === 'withCloser') lines.push(state.delim + marker);
     // An unclosed fence's whitespace after it at the end of the page (see
     // `annotateFence`) goes with it while it still ends the page; written before
     // anything else, it would be read as more of the fence's code (#649).
@@ -464,6 +468,6 @@ export function writeFence(state: FenceSerializeState, node: PMNode, parent: PMN
   state.ensureNewLine();
   // A fence read without a closing line gets one that closes it: the opener's own
   // marker run, since a shorter one (``` after ````) is code, not a closer.
-  state.write(String(node.attrs.sourceFenceClose ?? '') || (FENCE_MARKER.exec(open)?.[1] ?? '```'));
+  state.write(String(node.attrs.sourceFenceClose ?? '') || marker);
   state.closeBlock(node);
 }
