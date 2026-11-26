@@ -23,6 +23,7 @@ import { markTightLists } from './tight-lists';
 
 /** The HTML attribute the markdown-it rule leaves on a paragraph's `<p>`. */
 const SOURCE_ATTRIBUTE = 'data-md-paragraph-source';
+const QUOTE_PREFIXES_ATTRIBUTE = 'data-md-paragraph-quote-prefixes';
 
 const isSpaceOrTab = (character: string | undefined): boolean => character === ' ' || character === '\t';
 
@@ -56,17 +57,36 @@ interface MarkdownToken {
   tag: string;
   content: string;
   hidden: boolean;
+  map: [number, number] | null;
   children: MarkdownToken[] | null;
   attrSet(name: string, value: string): void;
 }
 
 interface MarkdownCoreState<T extends MarkdownToken> {
+  src: string;
   tokens: T[];
 }
 
 const LIST_OPEN = new Set(['bullet_list_open', 'ordered_list_open']);
 const LIST_CLOSE = new Set(['bullet_list_close', 'ordered_list_close']);
 const TASK_ITEM = /^\[[ xX]\][ \t]/;
+
+/** Count the authored quote markers on each line when a continuation omits some. */
+function lazyQuotePrefixes(raw: readonly string[], token: MarkdownToken, content: string, depth: number): number[] | null {
+  if (!token.map) return null;
+  const [start, end] = token.map;
+  const lines = content.split('\n');
+  if (lines.length !== end - start) return null;
+  const counts: number[] = [];
+  for (const [index, line] of lines.entries()) {
+    const original = raw[start + index] ?? '';
+    const prefix = /^(?:> )*/.exec(original)?.[0] ?? '';
+    const count = prefix.length / 2;
+    if (count > depth || (index === 0 && count !== depth) || original.slice(prefix.length) !== line) return null;
+    counts.push(count);
+  }
+  return counts.some((count) => count < depth) ? counts : null;
+}
 
 /**
  * A markdown-it core rule, run after the block rules, in one forward pass over the
@@ -85,7 +105,11 @@ function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>
   /** Open lists, innermost last: whether they hold a paragraph shown in the source,
    *  and one shown here. A list hands both to the list around it when it closes. */
   const lists: Array<{ token: T; shown: boolean; revealed: boolean }> = [];
+  let quoteDepth = 0;
+  let rawLines: string[] | undefined;
   for (const [index, token] of tokens.entries()) {
+    if (token.type === 'blockquote_open') quoteDepth++;
+    else if (token.type === 'blockquote_close') quoteDepth--;
     if (LIST_OPEN.has(token.type)) lists.push({ token, shown: false, revealed: false });
     const list = lists[lists.length - 1];
     if (list && LIST_CLOSE.has(token.type)) {
@@ -103,7 +127,12 @@ function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>
     if (inline?.type !== 'inline' || close?.type !== 'paragraph_close') continue;
     // An empty paragraph is a fence's lead (fence-source.ts), which handles its list.
     if (list && !token.hidden && inline.content !== '') list.shown = true;
-    if (joinedSourceLines(inline.content) === null) continue;
+    let quotePrefixes: number[] | null = null;
+    if (quoteDepth > 0 && inline.content.includes('\n')) {
+      rawLines ??= state.src.split('\n');
+      quotePrefixes = lazyQuotePrefixes(rawLines, token, inline.content, quoteDepth);
+    }
+    if (joinedSourceLines(inline.content) === null && !quotePrefixes) continue;
     if (token.hidden) {
       // A task item's checkbox is read from the start of its text by a later rule.
       if (!list || TASK_ITEM.test(inline.content)) continue;
@@ -112,6 +141,7 @@ function annotateParagraphs<T extends MarkdownToken>(state: MarkdownCoreState<T>
       list.revealed = true;
     }
     token.attrSet(SOURCE_ATTRIBUTE, encodeMdxSource(inline.content));
+    if (quotePrefixes) token.attrSet(QUOTE_PREFIXES_ATTRIBUTE, quotePrefixes.join(','));
   }
 }
 
@@ -143,6 +173,7 @@ function softBreaksAsSpaces<T extends MarkdownToken>(state: MarkdownCoreState<T>
 /** The parts of prosemirror-markdown's serializer state a paragraph is written with. */
 interface ParagraphSerializeState {
   output: MarkdownOutput;
+  delim: string;
   write: (content?: string) => void;
   text: (text: string, escapeText?: boolean) => void;
   renderInline: (node: PMNode) => void;
@@ -170,14 +201,38 @@ const emptyLead = (node: PMNode, parent: PMNode | Fragment | undefined, index: n
   parent.childCount > 1 &&
   parent.child(1).type.name === 'paragraph';
 
+/** Keep a lazy quote's source only while it is still in the original quote depth. */
+function lazyQuoteSource(source: string, prefixes: string, delim: string): { canonical: string; authored: string } | null {
+  if (!/^(?:> )+$/.test(delim)) return null;
+  const lines = source.split('\n');
+  const counts = prefixes.split(',').map(Number);
+  const depth = delim.length / 2;
+  if (counts[0] !== depth || counts.length !== lines.length || counts.some((count) => !Number.isInteger(count) || count < 0 || count > depth))
+    return null;
+  const canonical =
+    joinedSourceLines(source) ??
+    lines
+      .map((text, index) => {
+        const line = index === 0 ? text : text.replace(/^[ \t]+/, '');
+        if (index === lines.length - 1) return line;
+        if (line.endsWith('\\')) return `${line}\n${delim}`;
+        if (line.endsWith('  ')) return `${line.trimEnd()}\\\n${delim}`;
+        return `${line.trimEnd()} `;
+      })
+      .join('');
+  const authored = lines.map((line, index) => (index === 0 ? line : `${'> '.repeat(counts[index] ?? 0)}${line}`)).join('\n');
+  return { canonical, authored };
+}
+
 /**
  * Write a paragraph: its source lines when the paragraph still reads the same as
  * they do (see the note at the top), otherwise the serializer's single line.
  */
 function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: PMNode | Fragment, index?: number): void {
   if (emptyLead(node, parent, index)) return;
-  const source = String(node.attrs.sourceParagraph ?? '');
-  const joined = source ? joinedSourceLines(source) : null;
+  const [source = '', prefixes] = String(node.attrs.sourceParagraph ?? '').split('\0');
+  const lazyQuote = prefixes ? lazyQuoteSource(source, prefixes, state.delim) : null;
+  const joined = lazyQuote?.canonical ?? (source ? joinedSourceLines(source) : null);
   if (joined === null) {
     state.renderInline(node);
     state.closeBlock(node);
@@ -192,7 +247,8 @@ function writeParagraph(state: ParagraphSerializeState, node: PMNode, parent?: P
   if (output.length - start === joined.length && output.sliceFrom(start) === joined) {
     output.truncate(start);
     // Unescaped: these lines are the source, already valid Markdown here.
-    state.text(source, false);
+    if (lazyQuote) output.append(lazyQuote.authored);
+    else state.text(source, false);
   }
   state.closeBlock(node);
 }
@@ -210,7 +266,11 @@ export const SourceParagraph = Paragraph.extend({
         // copies it to both halves; neither reads as the source any more, so neither
         // writes it.)
         keepOnSplit: false,
-        parseHTML: (element) => decodeMdxSource(element.getAttribute(SOURCE_ATTRIBUTE)),
+        parseHTML: (element) => {
+          const source = decodeMdxSource(element.getAttribute(SOURCE_ATTRIBUTE));
+          const prefixes = element.getAttribute(QUOTE_PREFIXES_ATTRIBUTE);
+          return source && prefixes ? `${source}\0${prefixes}` : source;
+        },
         rendered: false,
       },
     };

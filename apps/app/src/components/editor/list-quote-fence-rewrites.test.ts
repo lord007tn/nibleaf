@@ -62,6 +62,19 @@ describe('a tight list item keeps the text after its fence tight (#605)', () => 
   });
 });
 
+describe('a lazy quoted continuation keeps its authored prefixes and breaks (#638)', () => {
+  for (const { locale, a, b, c } of LOCALES) {
+    it.each([
+      ['soft', ''],
+      ['two-space hard', '  '],
+      ['backslash hard', '\\'],
+    ])(`preserves the %s break in ${locale}`, (_shape, marker) => {
+      expectTenIdenticalSaves(`> ${a}${marker}\n${b}\n\n${c}`);
+      expectTenIdenticalSaves(`> > ${a}${marker}\n> ${b}\n\n${c}`);
+    });
+  }
+});
+
 describe('a paragraph added after an unclosed fence stays out of its code (#649)', () => {
   const codes = () => {
     const found: string[] = [];
