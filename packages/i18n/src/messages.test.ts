@@ -424,13 +424,14 @@ it('uses the glossary Admin role in English settings permission guidance', () =>
   expect(loadCatalog('en').settings_permissions_body).not.toContain('administrator');
 });
 
-it('gives Cloud and self-hosted users the right contact when conversation saving is unavailable', () => {
-  const english = loadCatalog('en').dashboard_ai_captureinstance;
-  expect(english).toContain('Questions are not being saved');
-  expect(english).toContain('Nibleaf support on Cloud');
-  expect(english).toContain('server administrator if you self-host');
-  expect(english).not.toContain('encryption key');
-  expect(loadCatalog('ar').dashboard_ai_captureinstance).toContain('دعم Nibleaf');
+it('says in product words when reader questions are unavailable or not saved, on Cloud and self-hosted alike (WORKSPACE-02)', () => {
+  const english = loadCatalog('en');
+  for (const id of ['dashboard_ai_unavailabletitle', 'dashboard_ai_unavailablebody', 'dashboard_ai_notsavingyet']) {
+    expect(english[id]).toBeTruthy();
+    expect(english[id]).not.toMatch(/server|operator|administrator|self-host|encryption key|ClickHouse/i);
+  }
+  expect(english.dashboard_ai_captureinstance).toBeUndefined();
+  expect(loadCatalog('ar').dashboard_ai_notsavingyet).toMatch(/\p{Script=Arabic}/u);
 });
 
 it('localizes the compact checklist permission failure in Arabic and uses English for fallback locales', () => {
