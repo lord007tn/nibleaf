@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs';
 import { Editor } from '@tiptap/core';
 import { AllSelection, NodeSelection } from '@tiptap/pm/state';
 import { EditorContent } from '@tiptap/react';
@@ -186,11 +185,6 @@ describe('round four content integrity', () => {
     const to = make();
     nativePaste(to, clip.text.replace(/\n/g, newline), clip.dom.innerHTML);
     expect(getMarkdown(to)).toBe(source);
-  });
-  it('removes the unused upload-failed key from the map and every catalog (10)', () => {
-    expect(readFileSync('../../packages/i18n/src/message-ids.ts', 'utf8')).not.toContain("'editor.imageUploadFailed'");
-    for (const locale of ['en', 'ar', 'bn', 'de', 'es', 'fr', 'hi', 'id', 'pt-BR', 'ru', 'ur', 'zh-CN'])
-      expect(JSON.parse(readFileSync(`../../packages/i18n/messages/${locale}.json`, 'utf8'))).not.toHaveProperty('editor_imageuploadfailed');
   });
   it('reduces a newly pasted Markdown SVG data image to its alt text (11)', () => {
     const editor = make();

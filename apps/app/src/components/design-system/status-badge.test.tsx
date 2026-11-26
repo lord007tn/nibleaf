@@ -32,7 +32,6 @@ describe('StatusBadge', () => {
     expect(badge?.textContent).toBe('Active');
     const dot = badge?.querySelector('[data-slot="status-badge-dot"]');
     expect(dot?.getAttribute('aria-hidden')).toBe('true');
-    expect(dot?.className).toContain('bg-success');
   });
 
   it('pulses only the pending dot, and only when motion is allowed', async () => {

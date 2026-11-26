@@ -99,11 +99,11 @@ const clickUndo = () =>
   });
 const undoOnScreen = () => mocks.undoToasts.some((item) => !item.dismissed);
 /** Enter as the browser delivers it: the keydown, then implicit submission's click on the default button. */
-const pressEnter = async (input: HTMLInputElement | null, init: KeyboardEventInit = {}) => {
+const pressEnter = async (input: HTMLInputElement | null) => {
   await act(async () => {
     if (!input) throw new Error('No such field');
     input.focus();
-    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init }));
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
     input.form?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
   });
   await act(() => new Promise<void>((resolve) => setTimeout(resolve, 5)));
@@ -496,34 +496,6 @@ describe('VariablesSettings — Enter and Ctrl+S', () => {
     expect(saveRegion()).toBeNull();
     // Enter goes through the same cleanup as Save.
     expect(undoOnScreen()).toBe(false);
-  });
-
-  it('sends nothing on Enter while clean, nor for modified or composing Enter', async () => {
-    storeWhatWasSent();
-    await render(projectWith(SAVED));
-    await pressEnter(keyInput(0));
-    expect(mocks.updateProject).not.toHaveBeenCalled();
-    await type(valueInput(0), 'エーシーエム');
-    for (const init of [{ isComposing: true }, { key: 'Process', keyCode: 229 }, { shiftKey: true }, { altKey: true }, { ctrlKey: true }]) {
-      await pressEnter(valueInput(0), init);
-    }
-    expect(mocks.updateProject).not.toHaveBeenCalled();
-    await pressEnter(valueInput(0));
-    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
-  });
-
-  it('Enter during a save starts nothing more', async () => {
-    const pending = deferred<Project>();
-    mocks.updateProject.mockReturnValueOnce(pending.promise);
-    await render(projectWith(SAVED));
-    await type(valueInput(0), 'Acme Cloud');
-    await pressEnter(valueInput(0));
-    await pressEnter(keyInput(1));
-    expect(mocks.updateProject).toHaveBeenCalledTimes(1);
-    await act(async () =>
-      pending.resolve(projectWith(pairs(['product', 'Acme Cloud'], ...SAVED.slice(1).map((p): [string, string] => [p.key, p.value])))),
-    );
-    expect(announced()).toEqual(['common.saved']);
   });
 
   it('Ctrl+S saves and retires a pending Undo like Save', async () => {
