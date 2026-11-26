@@ -5044,5 +5044,14 @@
   "editor_fix_explain_blogrootgroup": "读者会在侧边栏顶部看到这个名称。请按其页面内容重命名该栏目，例如“指南”。",
   "editor_fix_placed": "已高亮 {total} 个中的 {placed} 个",
   "editor_fix_previous": "上一个",
-  "editor_fix_insideblock": "位于按原样保留的区块中。请在 Markdown 中修复。"
+  "editor_fix_insideblock": "位于按原样保留的区块中。请在 Markdown 中修复。",
+  "shortcuts_editor_description": "无需离开键盘即可书写和设置格式。在 Mac 上，请用 ⌘ 代替 Ctrl。",
+  "shortcuts_editor_text": "文本",
+  "shortcuts_editor_blocks": "块",
+  "shortcuts_editor_page": "页面",
+  "shortcuts_editor_savedraft": "立即保存草稿",
+  "shortcuts_editor_moveup": "上移块",
+  "shortcuts_editor_movedown": "下移块",
+  "shortcuts_editor_formattingmenu": "转到所选文本的格式菜单",
+  "shortcuts_editor_show": "显示键盘快捷键"
 }

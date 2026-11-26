@@ -285,6 +285,58 @@ describe('AUTH-16 editor save lifecycle', () => {
     expect(mocks.update).not.toHaveBeenCalled();
     expect(container.textContent).not.toContain('editor.savingShort');
   });
+  /** Ctrl/⌘+S, as a writer presses it in the page body. */
+  async function pressSave(init: KeyboardEventInit = { ctrlKey: true }) {
+    const input = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]');
+    if (!input) throw new Error('Missing editor input');
+    const event = new KeyboardEvent('keydown', { key: 's', bubbles: true, cancelable: true, ...init });
+    await act(async () => {
+      input.dispatchEvent(event);
+    });
+    return event;
+  }
+  it.each([
+    ['Ctrl+S', { ctrlKey: true }],
+    ['⌘S', { metaKey: true }],
+  ])('%s saves the draft now, instead of the browser saving the web page', async (_name, init) => {
+    mocks.update.mockImplementation(async ({ body }: { body: { content: string } }) => ({ ...page, content: body.content, updatedAt: 'revision-2' }));
+    await edit('Written just now');
+    const event = await pressSave(init);
+    // The browser's "Save page as" dialog never opens.
+    expect(event.defaultPrevented).toBe(true);
+    // Sent at once, not after the autosave pause.
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.update).toHaveBeenCalledOnce();
+    expect(mocks.update).toHaveBeenCalledWith(expect.objectContaining({ body: expect.objectContaining({ content: 'Written just now' }) }));
+    expect(container.textContent).toContain('editor.savedShort');
+    // The autosave that was waiting doesn't send the same draft again.
+    await pace();
+    expect(mocks.update).toHaveBeenCalledOnce();
+  });
+  it('Ctrl+S with nothing to save says the draft is saved, without a request', async () => {
+    const event = await pressSave();
+    expect(event.defaultPrevented).toBe(true);
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(mocks.update).not.toHaveBeenCalled();
+    expect(container.textContent).toContain('editor.savedShort');
+  });
+  it('Ctrl+/ lists the keyboard shortcuts', async () => {
+    const input = container.querySelector<HTMLTextAreaElement>('textarea[aria-label="Test document"]');
+    if (!input) throw new Error('Missing editor input');
+    const event = new KeyboardEvent('keydown', { key: '/', ctrlKey: true, bubbles: true, cancelable: true });
+    await act(async () => {
+      input.dispatchEvent(event);
+    });
+    expect(event.defaultPrevented).toBe(true);
+    const dialog = document.querySelector('[role="dialog"]');
+    expect(dialog?.textContent).toContain('shortcuts.title');
+    expect(dialog?.textContent).toContain('shortcuts.editor.saveDraft');
+    expect(dialog?.textContent).toContain('Ctrl+S');
+  });
+  it('leaves Ctrl+Shift+S and Alt+S to the browser', async () => {
+    expect((await pressSave({ ctrlKey: true, shiftKey: true })).defaultPrevented).toBe(false);
+    expect((await pressSave({ ctrlKey: true, altKey: true })).defaultPrevented).toBe(false);
+  });
   it('unmounts mid-save and reopens without a stuck status or React warnings', async () => {
     let resolve!: (value: unknown) => void;
     mocks.update.mockReturnValue(

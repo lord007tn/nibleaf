@@ -5131,5 +5131,14 @@
   "editor_fix_explain_blogrootgroup": "Los lectores ven este nombre en la parte superior de la barra lateral. Cambia el nombre de la sección por lo que contienen sus páginas, como Guías.",
   "editor_fix_placed": "Resaltados {placed} de {total}",
   "editor_fix_previous": "Anterior",
-  "editor_fix_insideblock": "Dentro de un bloque que se conserva tal como se escribió. Corrígelo en Markdown."
+  "editor_fix_insideblock": "Dentro de un bloque que se conserva tal como se escribió. Corrígelo en Markdown.",
+  "shortcuts_editor_description": "Escribe y da formato sin soltar el teclado. En un Mac, usa ⌘ en lugar de Ctrl.",
+  "shortcuts_editor_text": "Texto",
+  "shortcuts_editor_blocks": "Bloques",
+  "shortcuts_editor_page": "Página",
+  "shortcuts_editor_savedraft": "Guardar el borrador ahora",
+  "shortcuts_editor_moveup": "Subir el bloque",
+  "shortcuts_editor_movedown": "Bajar el bloque",
+  "shortcuts_editor_formattingmenu": "Ir al menú de formato del texto seleccionado",
+  "shortcuts_editor_show": "Mostrar los atajos de teclado"
 }

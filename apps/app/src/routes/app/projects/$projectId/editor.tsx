@@ -6,6 +6,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@nibleaf/design-system/components/ui/dropdown-menu';
 import { ScrollArea } from '@nibleaf/design-system/components/ui/scroll-area';
@@ -26,6 +27,7 @@ import {
   Eye,
   FolderPlus,
   History,
+  Keyboard,
   Languages,
   Layers,
   MessageSquare,
@@ -40,7 +42,19 @@ import {
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
-import { type CSSProperties, lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import {
+  type CSSProperties,
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { toast } from 'sonner';
 import { ActiveBranchContext } from '@/components/editor/active-branch-context';
 import { AddLanguageDialog } from '@/components/editor/add-language-dialog';
@@ -75,6 +89,7 @@ import { resolveEditorLayout } from '@/components/editor/editor-layout';
 import { type EditorLinks, EditorLinksContext, editorLinkResolver, editorSiteSnapshot } from '@/components/editor/editor-links';
 import { createEditorSaveQueue, isSupersededWrite, type PageDraft, type QueuedWrite, samePageDraft } from '@/components/editor/editor-save-queue';
 import { useSaveThrottle } from '@/components/editor/editor-save-throttle';
+import { EditorShortcutsDialog } from '@/components/editor/editor-shortcuts-dialog';
 import type { UploadedImage } from '@/components/editor/extensions/image-upload';
 import { LanguageSettingsDialog } from '@/components/editor/language-settings-dialog';
 import { useLinkedPageHistory } from '@/components/editor/linked-page-history';
@@ -87,6 +102,7 @@ import { PageTrashButton } from '@/components/editor/page-trash-button';
 import { isSwitchSettled, messageInLanguage, type PendingSwitch, subtreeIds, titleSlugToFollow } from '@/components/editor/page-tree-utils';
 import { type PublishFixArrival, PublishFixBar } from '@/components/editor/publish-fix-bar';
 import { NeverPublishedBanner, PagePublishStateBar, type SaveState, SaveStatus } from '@/components/editor/save-status';
+import { modShortcut } from '@/components/editor/shortcut-label';
 import { type ConfigSectionId, ConfigSectionList } from '@/components/editor/site-config-panel';
 import { LanguageDropTarget, PageTreeDndProvider, SortablePageTree, shownRowName } from '@/components/editor/sortable-page-tree';
 import { type EditorDraftHandle, TiptapEditor } from '@/components/editor/tiptap-editor';
@@ -1127,6 +1143,36 @@ function EditorPage() {
     return configIsSaved();
   };
 
+  // Ctrl/⌘+S, the key writers press out of habit: save the draft now and say so,
+  // instead of the browser offering to save the web page. A failed save already
+  // shows its own banner and status, so nothing more is said here.
+  const saveNow = useEffectEvent(async () => {
+    try {
+      await flushCurrentDraft();
+      setStatus((current) => (current === 'idle' ? 'saved' : current));
+    } catch {
+      // The save banner or the conflict review says what happened.
+    }
+  });
+  // Ctrl/⌘+/ lists the editor's shortcuts (as in Google Docs).
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  useEffect(() => {
+    if (view !== 'content' || !page || !canEditContent) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+      const key = event.key.toLowerCase();
+      if ((key !== 's' && key !== '/') || event.isComposing || event.defaultPrevented) return;
+      // A dialog over the page (page settings, a confirm) owns its own keys.
+      if (event.target instanceof Element && event.target.closest('[role="dialog"], [role="alertdialog"]')) return;
+      event.preventDefault();
+      if (event.repeat) return;
+      if (key === 's') void saveNow();
+      else setShortcutsOpen(true);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [view, page, canEditContent]);
+
   const openDraftPreview = async () => {
     if (!configIsSaved()) return;
     // Open synchronously so browsers treat this as a user-initiated popup. We
@@ -1838,6 +1884,11 @@ function EditorPage() {
                   <DropdownMenuItem onClick={() => void runAfterSavingDraft({ action: () => setHistoryForId(page.id) })}>
                     <History /> {t('editor.history.title')}
                   </DropdownMenuItem>
+                  {canEditContent ? (
+                    <DropdownMenuItem onClick={() => setShortcutsOpen(true)}>
+                      <Keyboard /> {t('shortcuts.title')}
+                    </DropdownMenuItem>
+                  ) : null}
                   <DropdownMenuCheckboxItem
                     checked={effectiveMode === 'wysiwyg'}
                     disabled={effectiveMode === 'markdown'}
@@ -2155,6 +2206,7 @@ function EditorPage() {
               <PageTrashButton branchId={activeBranchId ?? undefined} canEdit={canEditContent} languages={orderedLanguages} projectId={projectId} />
             </div>
           )}
+          <EditorShortcutsDialog onOpenChange={setShortcutsOpen} open={shortcutsOpen} />
           {historyForId && page?.id === historyForId ? (
             <Suspense fallback={null}>
               <PageHistoryPanel
@@ -2442,6 +2494,11 @@ function EditorPage() {
                   <DropdownMenuContent align="end" className="w-64">
                     <DropdownMenuItem onClick={() => void runAfterSavingDraft({ action: () => setHistoryForId(page.id) })}>
                       <History /> {t('editor.history.title')}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setShortcutsOpen(true)}>
+                      <Keyboard />
+                      <span className="flex-1">{t('shortcuts.title')}</span>
+                      <DropdownMenuShortcut>{modShortcut('/')}</DropdownMenuShortcut>
                     </DropdownMenuItem>
                     <DropdownMenuCheckboxItem
                       checked={effectiveMode === 'wysiwyg'}
