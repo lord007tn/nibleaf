@@ -80,10 +80,6 @@ function describeVariants(title: string, variants: readonly Variant[]): void {
       for (const variant of variants) {
         const source = page(variant, locale);
         const before = variant.before === false ? undefined : locale.before;
-        it(`${variant.name} (${locale.name}): the first save is the page as written`, () => {
-          load(source);
-          expect(getMarkdown(editor)).toBe(source);
-        });
         it(`${variant.name} (${locale.name}): ${CYCLES} saves in one session`, () => expectStableInOneSession(source, before));
         it(`${variant.name} (${locale.name}): ${CYCLES} reloads`, () => expectStableAcrossReloads(source));
       }

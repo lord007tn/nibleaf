@@ -296,45 +296,6 @@ describe('closing the menu', () => {
     expect(editor.state.doc.textContent).toBe('/xyz and more');
   });
 
-  // A second "/" ends a slash command, as on main: paths and URLs stay text.
-  it.each(['See /code/block ', '/code/block', '/api/example', 'a /b/c d', '/usr/local/bin', '/docs/getting-started'])(
-    'keeps "%s" exactly as typed: the menu closes and Enter only starts a paragraph',
-    async (text) => {
-      const editor = await make(doc(paragraph()));
-      await caretIn(editor);
-      await typeText(editor, text);
-      expect(isSlashMenuOpen(editor.state)).toBe(false);
-      expect(menu()).toBeNull();
-      await press(editor, 'Enter');
-      expect(editor.state.doc.childCount).toBe(2);
-      expect(editor.state.doc.child(0).type.name).toBe('paragraph');
-      expect(editor.state.doc.child(0).textContent).toBe(text);
-      expect(editor.state.doc.child(1).type.name).toBe('paragraph');
-      expect(editor.state.doc.child(1).textContent).toBe('');
-      expect(nodesOf(editor, 'codeBlock')).toHaveLength(0);
-    },
-  );
-
-  // A character no block name holds means the text after the slash is not a
-  // command: punctuation is matched literally, never treated as a word break.
-  it.each(['/?', '/!', '/code\\block', '/a\\b c', '/code?', '/!code', '/*', '/#', '/@', '/(code)', '/؟', '/،'])(
-    'keeps "%s" exactly as typed: no menu, nothing inserted, and Enter only starts a paragraph',
-    async (text) => {
-      const editor = await make(doc(paragraph()));
-      await caretIn(editor);
-      await typeText(editor, text);
-      expect(isSlashMenuOpen(editor.state)).toBe(false);
-      expect(menu()).toBeNull();
-      await press(editor, 'Enter');
-      expect(editor.state.doc.childCount).toBe(2);
-      expect(editor.state.doc.child(0).type.name).toBe('paragraph');
-      expect(editor.state.doc.child(0).textContent).toBe(text);
-      expect(editor.state.doc.child(1).type.name).toBe('paragraph');
-      expect(editor.state.doc.child(1).textContent).toBe('');
-      expect(nodesOf(editor, 'codeBlock')).toHaveLength(0);
-    },
-  );
-
   /** Type `text`, check no menu, press Enter, and check the text stayed exactly and only a paragraph was added. */
   const keepsAsText = async (text: string) => {
     const editor = await make(doc(paragraph()));
@@ -351,6 +312,10 @@ describe('closing the menu', () => {
     expect(nodesOf(editor, 'codeBlock')).toHaveLength(0);
   };
 
+  // Paths still end the command. The differential suite covers the broader punctuation matrix.
+  it.each(['See /code/block ', '/code/block', '/usr/local/bin'])('keeps path text such as %j', keepsAsText);
+  it.each(['/?', '/code\\block', '/code?', '/(code)', '/؟'])('keeps punctuation in %j', keepsAsText);
+
   // Invisible characters and marks are built from code points, so none is written raw here.
   const ch = (code: number) => String.fromCodePoint(code);
   const ACUTE = ch(0x03_01);
@@ -361,13 +326,8 @@ describe('closing the menu', () => {
   // of marks (or tatweel) can't vanish and leave a blank or shorter query.
   it.each([
     ['a combining acute alone', `/${ACUTE}`],
-    ['a fatha alone', `/${FATHA}`],
-    ['a tatweel alone', `/${TATWEEL}`],
     ['two mark-only words', `/${ACUTE} ${FATHA}`],
     ['"code" then an acute-only word', `/code ${ACUTE}`],
-    ['"code" then a fatha-only word', `/code ${FATHA}`],
-    ['"code" then a tatweel-only word', `/code ${TATWEEL}`],
-    ['an acute before "code"', `/${ACUTE}code`],
     ['a tatweel before "code"', `/${TATWEEL}code`],
   ])('keeps %s exactly as typed: no menu, nothing inserted, and Enter only starts a paragraph', async (_name, text) => {
     await keepsAsText(text);
@@ -377,39 +337,17 @@ describe('closing the menu', () => {
   // here it is not a command either: it neither splits words nor disappears.
   it.each([
     ['a no-break space', 0xa0],
-    ['an em space', 0x20_03],
-    ['a hair space', 0x20_0a],
-    ['an ideographic space', 0x30_00],
     ['a tab', 0x09],
   ])('keeps "code", %s, "block" exactly as typed: no menu, nothing inserted', async (_name, code) => {
     await keepsAsText(`/code${ch(code)}block`);
   });
 
-  // Zero-width and direction marks were already not commands at 19de7b53 (no
-  // block name holds them); kept here so they stay that way.
+  // Exercise the editor handoff for a zero-width space and a combining grapheme joiner.
+  // slash-differential.test.ts covers the full set of default-ignorable characters.
   it.each([
     ['a zero-width space', `/code${ch(0x20_0b)}block`],
-    ['a zero-width non-joiner', `/code${ch(0x20_0c)}`],
-    ['a zero-width joiner', `/code${ch(0x20_0d)}`],
-    ['a left-to-right mark', `/${ch(0x20_0e)}code`],
-    ['a right-to-left mark', `/code${ch(0x20_0f)}`],
-  ])('keeps "code" with %s exactly as typed: no menu, nothing inserted', async (_name, text) => {
-    await keepsAsText(text);
-  });
-
-  // Default-ignorable code points are never folded, even after a letter (the
-  // combining grapheme joiner sits inside the accent block but is not an
-  // accent), and never count as letters: the text after the slash is not a
-  // command, as on main.
-  it.each([
-    ['a combining grapheme joiner after "code"', `/code${ch(0x03_4f)}`],
-    ['a combining grapheme joiner inside "code"', `/co${ch(0x03_4f)}de`],
-    ['a combining grapheme joiner inside "code block"', `/co${ch(0x03_4f)}de block`],
-    ['a Mongolian variation selector after "code"', `/code${ch(0x18_0b)}`],
-    ['a word joiner after "code"', `/code${ch(0x20_60)}`],
-    ['a variation selector after "code"', `/code${ch(0xfe_00)}`],
-    ['a supplementary variation selector after "code"', `/code${ch(0xe_01_00)}`],
-  ])('keeps %s exactly as typed: no menu, nothing inserted, and Enter only starts a paragraph', async (_name, text) => {
+    ['a combining grapheme joiner', `/co${ch(0x03_4f)}de`],
+  ])('keeps a query with %s as text', async (_name, text) => {
     await keepsAsText(text);
   });
 
