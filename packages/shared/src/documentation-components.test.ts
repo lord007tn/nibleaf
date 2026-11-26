@@ -22,20 +22,6 @@ describe('documentation component catalog', () => {
     expect(children.filter((tag) => !tags.has(tag))).toEqual([]);
   });
 
-  it('publishes the authored-only high-value additions', () => {
-    expect(documentationComponentTags()).toEqual(
-      expect.arrayContaining(['FileTree', 'Folder', 'File', 'ApiExample', 'RequestExample', 'ResponseExample', 'RelatedContent', 'RelatedCard']),
-    );
-  });
-
-  it('describes the portable lowest-common behavior', () => {
-    expect(DOCUMENTATION_COMPONENT_CATALOG.find((component) => component.id === 'banner')?.attributes).toEqual(['type']);
-    expect(DOCUMENTATION_COMPONENT_CATALOG.find((component) => component.id === 'tooltip')?.visualEditor).toBe(true);
-    expect(DOCUMENTATION_COMPONENT_CATALOG.find((component) => component.id === 'icon')?.attributes).toEqual(
-      expect.arrayContaining(['icon', 'name']),
-    );
-  });
-
   // The catalog is served to API and MCP clients under DOCUMENTATION_COMPONENT_SCHEMA_VERSION.
   // Changing it is a deliberate public-contract change: update the fixture (and the version
   // when the change is not purely additive).

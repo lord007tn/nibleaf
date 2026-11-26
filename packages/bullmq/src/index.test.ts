@@ -24,6 +24,7 @@ describe('BullMQ 6 job schedulers', () => {
 
   it('upserts analytics schedulers with stable ids and UTC cron definitions', async () => {
     await scheduleAnalyticsRollup();
+    expect(queueMocks.analytics.upsertJobScheduler).toHaveBeenCalledTimes(2);
 
     expect(queueMocks.analytics.upsertJobScheduler).toHaveBeenNthCalledWith(
       1,

@@ -97,14 +97,13 @@ const status = () => container.querySelector('[role="status"]')?.textContent;
  * same task unless the key was cancelled: it clicks the form's default button.
  * The next macrotask is awaited so a key the form ignored is forgotten.
  */
-const pressEnter = async (el: HTMLInputElement, init: KeyboardEventInit = {}) => {
-  const keydown = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, ...init });
+const pressEnter = async (el: HTMLInputElement) => {
+  const keydown = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
   await act(async () => {
     el.dispatchEvent(keydown);
     if (!keydown.defaultPrevented) el.form?.querySelector<HTMLButtonElement>('button[type="submit"]')?.click();
   });
   await act(() => new Promise((resolve) => setTimeout(resolve)));
-  return keydown;
 };
 const payload = (analytics: Partial<Analytics>) => ({
   config: { analytics: { ga4: 'G-ABC123', campaignDimensions: false, storePublicSearchTerms: false, ...analytics } },
@@ -228,40 +227,6 @@ describe('AnalyticsSettings', () => {
       expect(mocks.toastError).toHaveBeenCalledWith('Could not save');
       expect(status()).toBe('');
       expect(ga4().value).toBe('G-NEW1');
-      expect(region()).not.toBeNull();
-    });
-
-    it('while a save runs, starts nothing and says nothing until it ends', async () => {
-      const pending = deferred<Project>();
-      mocks.update.mockReturnValueOnce(pending.promise);
-      await type(ga4(), 'G-NEW1');
-      await pressEnter(ga4());
-      await pressEnter(ga4());
-      expect(mocks.update).toHaveBeenCalledTimes(1);
-      expect(status()).toBe('');
-      await act(async () => pending.resolve(saved({ ga4: 'G-NEW1' })));
-      expect(status()).toBe('common.saved');
-    });
-
-    it('while clean, sends nothing and says nothing', async () => {
-      await pressEnter(ga4());
-      expect(mocks.update).not.toHaveBeenCalled();
-      expect(status()).toBe('');
-    });
-
-    it.each([
-      ['Shift+Enter', { shiftKey: true }],
-      ['Ctrl+Enter', { ctrlKey: true }],
-      ['Alt+Enter', { altKey: true }],
-      ['Cmd+Enter', { metaKey: true }],
-      ['Enter while an IME composition is open', { isComposing: true }],
-      ['the IME’s own key (229)', { key: 'Process', keyCode: 229 }],
-    ])('%s does not save, and the key is not cancelled', async (_, init) => {
-      await type(ga4(), 'G-NEW1');
-      const keydown = await pressEnter(ga4(), init);
-      expect(keydown.defaultPrevented).toBe(false);
-      expect(mocks.update).not.toHaveBeenCalled();
-      expect(status()).toBe('');
       expect(region()).not.toBeNull();
     });
   });

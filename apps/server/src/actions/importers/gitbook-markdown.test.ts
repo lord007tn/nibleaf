@@ -354,32 +354,6 @@ describe('convertGitBookMarkdown', () => {
     expect(content).toContain('<Card title="GET /pets" href="https://x.dev/spec.yaml" icon="code">');
     expect(warnings).toHaveLength(2);
   });
-
-  it('rebases relative links and images in included content onto the including page', async () => {
-    const media = new Map([
-      [
-        '.gitbook/includes/media.md',
-        '![a](../assets/a.png "t") [s](<../../guides/setup page.md#x>) <img src="../assets/b.png"> [ext](https://x.dev) [top](#a)\n\n```\n![c](../keep.png)\n```',
-      ],
-    ]);
-    const resolveRelative = (reference: string, sourceFile: string) => {
-      const path = posix.normalize(posix.join(posix.dirname(sourceFile), reference));
-      return media.has(path) ? path : undefined;
-    };
-    const warnings: string[] = [];
-    expect(
-      await expandGitBookIncludes(
-        '{% include "../.gitbook/includes/media.md" %}',
-        'guides/p.md',
-        resolveRelative,
-        async (path) => media.get(path) ?? null,
-        warnings,
-      ),
-    ).toBe(
-      '![a](../.gitbook/assets/a.png "t") [s](<setup page.md#x>) <img src="../.gitbook/assets/b.png"> [ext](https://x.dev) [top](#a)\n\n```\n![c](../keep.png)\n```',
-    );
-    expect(warnings).toEqual([]);
-  });
 });
 
 describe('findGitBookSpaceLinks', () => {

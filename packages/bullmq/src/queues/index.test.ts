@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { QueueNames } from '../constants';
-import { ERASURE_JOB_OPTIONS } from '../jobs/erasure';
 
 const mocks = vi.hoisted(() => ({ close: vi.fn(async () => undefined), queueConstructed: vi.fn(), queueEventsConstructed: vi.fn() }));
 
@@ -28,6 +27,11 @@ vi.mock('bullmq', () => ({
 import { closeQueues, getQueue, queues } from './index';
 import '../index';
 
+const createdOnImport = {
+  queues: mocks.queueConstructed.mock.calls.length,
+  queueEvents: mocks.queueEventsConstructed.mock.calls.length,
+};
+
 describe('producer queue lifecycle', () => {
   beforeEach(async () => {
     await closeQueues();
@@ -35,8 +39,7 @@ describe('producer queue lifecycle', () => {
   });
 
   it('does not connect to Redis merely because the queue module is imported', () => {
-    expect(mocks.queueConstructed).not.toHaveBeenCalled();
-    expect(mocks.queueEventsConstructed).not.toHaveBeenCalled();
+    expect(createdOnImport).toEqual({ queues: 0, queueEvents: 0 });
   });
 
   it('creates one producer on first use and closes only owned producers', async () => {
@@ -54,7 +57,13 @@ describe('producer queue lifecycle', () => {
     getQueue(QueueNames.ERASURE);
     expect(mocks.queueConstructed).toHaveBeenCalledExactlyOnceWith(
       expect.stringContaining('erasure'),
-      expect.objectContaining({ defaultJobOptions: expect.objectContaining(ERASURE_JOB_OPTIONS) }),
+      expect.objectContaining({
+        defaultJobOptions: expect.objectContaining({
+          attempts: 16,
+          backoff: { type: 'exponential', delay: 5000 },
+          removeOnFail: false,
+        }),
+      }),
     );
   });
 });

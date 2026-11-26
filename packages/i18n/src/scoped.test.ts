@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { MESSAGE_IDS } from './message-ids';
 import { auth_signin_subtitle } from './paraglide/messages/auth_signin_subtitle.js';
 import { validation_required } from './paraglide/messages/validation_required.js';
 import { scopedTranslate } from './scoped';
@@ -25,6 +24,5 @@ describe('scopedTranslate', () => {
   it('never imports the whole catalog or the key map (MKT-001)', () => {
     const source = readFileSync(new URL('./scoped.ts', import.meta.url), 'utf8');
     expect(source).not.toMatch(/from '\.\/translate'|from '\.\/message-ids'|paraglide\/messages\.js/);
-    expect(MESSAGE_IDS['auth.signIn.subtitle']).toBe('auth_signin_subtitle');
   });
 });

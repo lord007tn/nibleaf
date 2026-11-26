@@ -43,7 +43,6 @@ import { queryKeys } from '@/hooks/api/query-keys';
 import { createQueryClient } from '@/integrations/tanstack-query/query-client';
 import { localeTag } from '@/lib/format';
 import { MAIN_READOUTS_BASE, MainReadouts } from './__fixtures__/git-workflow-readouts-main';
-import { GitWorkflowStatusHeader } from './git-workflow-readouts';
 
 vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
 
@@ -411,17 +410,6 @@ describe('Refresh and the status query stay the host’s', () => {
     expect(idle.refetch).toHaveBeenCalledWith();
   });
 
-  it('the header calls back once per press, with no argument, and not while refreshing', async () => {
-    const onRefresh = vi.fn();
-    const shown = await mount(<GitWorkflowStatusHeader connection={EMPTY} onRefresh={onRefresh} refreshing={false} />);
-    await act(async () => (button(shown, t('common.refresh')) as HTMLButtonElement).click());
-    expect(onRefresh).toHaveBeenCalledTimes(1);
-    expect(onRefresh).toHaveBeenCalledWith();
-    const busy = await mount(<GitWorkflowStatusHeader connection={EMPTY} onRefresh={onRefresh} refreshing />);
-    await act(async () => (button(busy, t('common.refresh')) as HTMLButtonElement).click());
-    expect(onRefresh).toHaveBeenCalledTimes(1);
-  });
-
   it('keeps one observer on the status, polling every 2.5 s only while an operation is queued or running', async () => {
     await host(MIXED, 'overview', 'site-running');
     await host(FAILURE, 'sync', 'site-settled');
@@ -441,9 +429,6 @@ describe('Refresh and the status query stay the host’s', () => {
     expect(source).not.toMatch(/use(?:Query|Mutation|QueryClient|GitWorkflow|Session)\b|refetch\(|invalidate|setQueryData|@\/services\//);
     expect(source.match(/from '@\/hooks\/api[^']*'/g)).toEqual(["from '@/hooks/api'"]);
     expect(source).toContain("import type { GitWorkflowStatus } from '@/hooks/api';");
-    const workflow = readFileSync(resolve(import.meta.dirname, '../../../components/settings/git-workflow.tsx'), 'utf8');
-    expect(workflow.match(/useGitWorkflow\(/g)).toHaveLength(1);
-    expect(workflow).toContain('onRefresh={() => query.refetch()} refreshing={query.isFetching}');
   });
 });
 

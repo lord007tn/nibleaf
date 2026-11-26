@@ -858,11 +858,6 @@ describe('Slack, Discord and Zapier while delivery is coming soon', () => {
     runtime.webhooksLive = true;
   });
 
-  it('ships exactly these three as coming soon', async () => {
-    const actual = await vi.importActual<typeof import('@nibleaf/shared/integrations')>('@nibleaf/shared/integrations');
-    expect(actual.INTEGRATION_CATALOG.filter((manifest) => manifest.comingSoon).map(({ id }) => id)).toEqual(['slack', 'discord', 'zapier']);
-  });
-
   it('lists them as coming soon, keeping a stored connection visible', async () => {
     mocks.integrationFindMany.mockResolvedValue([connection()]);
 

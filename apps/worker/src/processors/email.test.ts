@@ -77,8 +77,10 @@ describe('handleEmailJobs', () => {
     expect(mocks.postmarkSend).toHaveBeenCalledOnce();
   });
 
-  it('fails a required delivery when no provider is configured', async () => {
+  it('fails a required delivery when provider configuration is blank', async () => {
     mocks.env.EMAIL_DELIVERY_REQUIRED = true;
+    mocks.env.POSTMARK_API_KEY = ' ';
+    mocks.env.SMTP_URL = '';
 
     await expect(handleEmailJobs(job)).rejects.toThrow('neither POSTMARK_API_KEY nor SMTP_URL');
     expect(mocks.log.error).toHaveBeenCalledWith({ jobId: 'email-job-1', provider: 'none' }, 'email delivery failed');

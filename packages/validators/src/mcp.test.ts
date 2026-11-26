@@ -20,8 +20,9 @@ describe('MCP API-key contracts', () => {
     },
   );
 
-  it.each(MCP_SCOPES)('accepts current discoverable scope %s', (scope) => {
-    expect(createApiKeyBody.safeParse({ name: 'Reader', scopes: ['mcp:connect', scope], expiresInDays: 30 }).success).toBe(true);
+  it('accepts a key with every discoverable scope', () => {
+    const body = createApiKeyBody.parse({ name: 'Full access', scopes: MCP_SCOPES, expiresInDays: 30 });
+    expect(body.scopes).toEqual([...MCP_SCOPES]);
   });
 
   it('requires explicit closed scopes during rotation', () => {
