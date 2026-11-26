@@ -32,15 +32,15 @@ import {
 } from 'lucide-react';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { ConfigSection, EDITOR_CONFIG_SECTIONS } from '@/components/editor/site-config-panel';
-import { AddonsSection } from '@/components/project-settings/addons-section';
-import { AuthenticationSection } from '@/components/project-settings/authentication-section';
-import { DangerSection } from '@/components/project-settings/danger-section';
-import { DomainSection } from '@/components/project-settings/domain-section';
+import { AddonsSettings as AddonsSection } from '@/features/addons/components/addons-settings';
+import { ReaderAccessSettings as AuthenticationSection } from '@/features/reader-access/components/reader-access-settings';
+import { DangerZone as DangerSection } from '@/features/site-danger/components/danger-zone';
+import { DomainSettings as DomainSection } from '@/features/site-domains/components/domain-settings';
 import { ExportsSection } from '@/components/project-settings/exports-section';
-import { GeneralSection } from '@/components/project-settings/general-section';
-import { LanguagesSection } from '@/components/project-settings/languages-section';
-import { OpenApiSection } from '@/components/project-settings/openapi-section';
-import { SearchSection } from '@/components/project-settings/search-section';
+import { GeneralSettings as GeneralSection } from '@/features/site-general/components/general-settings';
+import { LanguagesSettings as LanguagesSection } from '@/features/site-languages/components/languages-settings';
+import { OpenApiSettings as OpenApiSection } from '@/features/site-openapi/components/openapi-settings';
+import { SearchSettings as SearchSection } from '@/features/site-search/components/search-settings';
 import {
   ConfigDirtyProvider,
   DirtyStateReporter,
@@ -53,11 +53,11 @@ import { QueryErrorState } from '@/components/query-error-state';
 import { GitTab } from '@/components/settings/git-tab';
 import { ImportTab } from '@/components/settings/import-tab';
 import { IntegrationsTab } from '@/components/settings/integrations-tab';
-import { UsageTab } from '@/components/settings/usage-tab';
 import { SectionTabs, sectionTabClassName } from '@/components/ui/section-tabs';
 import { AiAssistantsPage } from '@/features/ai-assistants/components/ai-assistants-page';
 import { SiteTeamPage } from '@/features/people/components/site-team-page';
 import { siteAiQueryOptions } from '@/features/site-ai/api/query-options';
+import { UsageTab } from '@/features/usage/components/usage-overview';
 import { AiAnswersPage } from '@/features/site-ai/components/ai-answers-page';
 import {
   APPEARANCE_SECTION_IDS,

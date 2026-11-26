@@ -2,7 +2,7 @@ import { translateFn } from '@nibleaf/i18n';
 import { contrastRatio, readableAccentText } from '@nibleaf/shared/themes';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { ThemePreview } from '@/components/project-settings/theme-section';
+import { ThemePreview } from '@/features/site-theme/components/theme-preview';
 import {
   DOCUMENTATION_THEME_TEMPLATES,
   DocumentationPageLayout,
