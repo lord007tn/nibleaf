@@ -429,7 +429,8 @@ describe('the request', () => {
     await type('slack-url', URL_A);
     await press(submit());
     expect(catalogReads('site-a')).toBe(before + 1);
-    expect(container.textContent).toContain(k('settings.integrations.statusTitle'));
+    // The new connection's page: its status badge and the Save it now offers.
+    expect(container.textContent).toContain(k('settings.integrations.connected'));
     expect(button('common.save')).toBeDefined();
   });
 });
@@ -557,7 +558,7 @@ describe('ownership of the answer', () => {
     const write = holdWrite();
     await press(submit());
     mocks.locale = 'ar';
-    await tab();
+    await open();
     await write.answer(echoed());
     expect(errors()).toEqual(['ar:settings.integrations.actionError']);
   });
