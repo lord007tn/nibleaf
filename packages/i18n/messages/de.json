@@ -5132,7 +5132,7 @@
   "editor_fix_placed": "{placed} von {total} hervorgehoben",
   "editor_fix_previous": "Vorherige",
   "editor_fix_insideblock": "In einem Block, der wie geschrieben bleibt. In Markdown beheben.",
-  "settings_appearance_group_theme": "Theme",
+  "settings_appearance_group_theme": "Design",
   "settings_appearance_group_themehint": "Akzentfarbe, Ecken, Layout und Komponenten, so wie Leser sie sehen.",
   "settings_appearance_group_chrome": "Kopfzeile, Fußzeile und Banner",
   "settings_appearance_group_chromehint": "Was jede Seite umgibt: die Navigationsleiste, die Fußzeile und ein Hinweisbanner.",
