@@ -12,7 +12,7 @@
     "typecheck": "cf workers types && tsc --noEmit"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "2.0.0-beta.v.17",
+    "@cloudflare/vite-plugin": "2.0.0-rc.3",
     "@nibleaf/tsconfig": "workspace:*",
     "cf": "1.0.0-rc.4",
     "typescript": "^7.0.2",
