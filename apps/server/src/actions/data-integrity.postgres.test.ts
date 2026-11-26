@@ -140,7 +140,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     return { project, group, first, second, snapshot, request };
   };
 
-  it('council P1: two editors moving from one stale tree preserve both intents in PostgreSQL', async () => {
+  it('two editors moving from one stale tree preserve both intents in PostgreSQL', async () => {
     const { project, group, first, second, request } = await staleTreeFixture();
     const outcomes = await whileLocked(
       (tx) => tx.$queryRaw`SELECT id FROM project WHERE id = ${project.id} FOR NO KEY UPDATE`,
@@ -153,7 +153,7 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('action data integr
     expect(new Set(moved.map((page) => page.path))).toEqual(new Set(['group/first', 'group/second']));
   });
 
-  it('council P1: a stale structure revision returns a typed 409 after the current-state lock', async () => {
+  it('a stale structure revision returns a typed 409 after the current-state lock', async () => {
     const { project, group, first, second, snapshot, request } = await staleTreeFixture();
     // Public revision protocol: SHA-256 of the ID-sorted structural tuples.
     const revision = createHash('sha256')

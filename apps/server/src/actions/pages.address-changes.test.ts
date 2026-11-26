@@ -188,7 +188,7 @@ const seed = (initial: Row[], published = true) => {
 };
 
 describe('page address preservation through page actions', () => {
-  it('council: stale REST autosave cannot undo a rename link rewrite', async () => {
+  it('stale REST autosave cannot undo a rename link rewrite', async () => {
     const state = seed([pageFixture('target', 'old'), { ...pageFixture('source'), content: '[link](/old)' }]);
     const base = state.pages()[1]?.updatedAt.toISOString();
     await updatePage('project', 'target', { slug: 'new' });
@@ -201,7 +201,7 @@ describe('page address preservation through page actions', () => {
     expect(state.pages()[1]?.content).toBe('Legacy caller without precondition');
   });
 
-  it('council: conflicting locale destinations roll back instead of letting the last language win', async () => {
+  it('conflicting locale destinations roll back instead of letting the last language win', async () => {
     const initial = [
       pageFixture('english', 'old'),
       pageFixture('arabic', 'old', 'main', 'ar'),
@@ -220,7 +220,7 @@ describe('page address preservation through page actions', () => {
     expect(state.pages()).toEqual(initial);
   });
 
-  it('council: a user redirect is never replaced by a generated redirect', async () => {
+  it('a user redirect is never replaced by a generated redirect', async () => {
     const state = seed([pageFixture('target', 'old')]);
     state.config().redirects.push({ from: '/old', to: 'https://example.com/custom' });
     await expect(updatePage('project', 'target', { slug: 'new' })).rejects.toMatchObject({
@@ -231,7 +231,7 @@ describe('page address preservation through page actions', () => {
     expect(state.config().redirects[0]?.to).toBe('https://example.com/custom');
   });
 
-  it('council: sequential language moves cannot redirect both published locales to the last destination', async () => {
+  it('sequential language moves cannot redirect both published locales to the last destination', async () => {
     const state = seed([
       pageFixture('english', 'old'),
       pageFixture('arabic', 'old', 'main', 'ar'),
@@ -246,7 +246,7 @@ describe('page address preservation through page actions', () => {
     expect(state.pages().find((page) => page.id === 'arabic')?.path).toBe('old');
   });
 
-  it('council: generated provenance survives validation and a sequential slug swap', async () => {
+  it('generated provenance survives validation and a sequential slug swap', async () => {
     const state = seed([pageFixture('target', 'a')]);
     await updatePage('project', 'target', { slug: 'b' });
     expect(state.config().redirects[0]).toMatchObject({ from: '/a', to: '/b', generated: true });
@@ -256,7 +256,7 @@ describe('page address preservation through page actions', () => {
     expect(validateSnapshotRedirects(state.snapshot()).issues).toEqual([]);
   });
 
-  it('council: relative and reference destinations resolve against a moving source old address', async () => {
+  it('relative and reference destinations resolve against a moving source old address', async () => {
     const state = seed([
       pageFixture('parent', 'old'),
       {
@@ -271,7 +271,7 @@ describe('page address preservation through page actions', () => {
     expect(state.pages()[1]?.content).toBe('[inline](/new/target?x=1#part) [reference][dest]\n\n[dest]: /new/target#section');
   });
 
-  it('council: redirect validation returns structured issues for a localized remedy', async () => {
+  it('redirect validation returns structured issues for a localized remedy', async () => {
     const state = seed([pageFixture('target', 'old')]);
     state.config().redirects.push(...Array.from({ length: 100 }, (_, index) => ({ from: `/legacy-${index}`, to: '/old' })));
     await expect(updatePage('project', 'target', { slug: 'new' })).rejects.toMatchObject({
@@ -280,14 +280,14 @@ describe('page address preservation through page actions', () => {
     });
   });
 
-  it('council: document parsing never runs under the structural transaction lock', async () => {
+  it('document parsing never runs under the structural transaction lock', async () => {
     const state = seed([pageFixture('target', 'old'), { ...pageFixture('source'), content: '[link](/old)' }]);
     await updatePage('project', 'target', { slug: 'new' });
     expect(database.parsesUnderLock).toBe(0);
     expect(state.tx.$executeRaw).toHaveBeenCalledOnce();
   });
 
-  it('council: a document changed after preparation aborts safely instead of applying stale patches', async () => {
+  it('a document changed after preparation aborts safely instead of applying stale patches', async () => {
     const state = seed([pageFixture('target', 'old'), { ...pageFixture('source'), content: '[link](/old)' }]);
     const transaction = database.transaction.getMockImplementation();
     database.transaction.mockImplementationOnce(async (work) => {
@@ -305,7 +305,7 @@ describe('page address preservation through page actions', () => {
     expect(state.pages()[1]?.content).toContain('Concurrent edit');
   });
 
-  it('council: failed MDX documents are counted and left untouched', async () => {
+  it('failed MDX documents are counted and left untouched', async () => {
     const content = '[link](/old)\n\n{not valid javascript';
     const state = seed([pageFixture('target', 'old'), { ...pageFixture('source'), content }]);
     expect(await updatePage('project', 'target', { slug: 'new' })).toMatchObject({ documentsSkipped: 1, linksUpdated: 0 });

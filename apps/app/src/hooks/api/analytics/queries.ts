@@ -10,6 +10,9 @@ export const useProjectAnalytics = (projectId: string | undefined, range: Analyt
   return useQuery({
     ...projectAnalyticsQueryOptions(projectId, range, options?.timezone ?? analyticsTimezone()),
     enabled: options?.enabled ?? true,
+    // A new range keeps the shown one on screen until it arrives (no skeleton flash, no chart
+    // remount), but only for the same site: another site's numbers would mislead.
+    placeholderData: (previous, previousQuery) => (previousQuery?.queryKey[2] === projectId ? previous : undefined),
     meta: { errorMessage: t('analytics.projectSummary.loadFailed') },
   });
 };

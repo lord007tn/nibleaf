@@ -208,7 +208,7 @@ describe('OpenRouter cost reporting', () => {
   });
 });
 
-describe("a site's own key follows what its requests get (#566 council)", () => {
+describe('request outcomes update only the site’s own key', () => {
   beforeEach(() => vi.clearAllMocks());
   const runtime = (overrides = {}) => ({
     providerId: 'openai' as const,
@@ -312,7 +312,7 @@ describe("a site's own key follows what its requests get (#566 council)", () => 
   });
 });
 
-describe('a refusal rests the key, then readers try it again (#566 council)', () => {
+describe('reader retries after a provider refusal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('INTEGRATION_CREDENTIAL_ENCRYPTION_KEY', key);
@@ -365,7 +365,7 @@ describe('a refusal rests the key, then readers try it again (#566 council)', ()
   });
 });
 
-describe('a request blocked by the provider says nothing about the key (CodeRabbit on #566)', () => {
+describe('provider content blocks leave the key’s health unchanged', () => {
   beforeEach(() => vi.clearAllMocks());
   it('a moderation 403 leaves the key healthy and answering', async () => {
     const runtime = {

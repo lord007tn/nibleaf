@@ -15,7 +15,7 @@ export const Route = createFileRoute('/join/$token')({
   },
   // The URL is a live credential: never crawl or index it. The page sets a
   // title for the state it shows.
-  head: () => ({ meta: [{ title: 'Join link — Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
+  head: () => ({ meta: [{ title: 'Join link · Nibleaf' }, { name: 'robots', content: 'noindex, nofollow' }] }),
   component: JoinPage,
 });
 

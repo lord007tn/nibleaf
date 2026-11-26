@@ -35,6 +35,7 @@ import { selectionMenuApplies, selectionMenuRequest } from './extensions/selecti
 import { embedLinkedVideo, VIDEO_EMBED_NODE } from './extensions/video-embed';
 import { isEmbeddableVideoLink } from './extensions/video-embed-url';
 import { isPageQuery, normalizeLinkUrl, type PageLinkMatch } from './link-utils';
+import { useMenuScrollTarget } from './menu-anchor';
 import { withShortcut } from './shortcut-label';
 import { currentTurnIntoKind, TURN_INTO_OPTIONS, type TurnIntoKind, turnInto } from './turn-into';
 
@@ -403,9 +404,11 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
       current.isEditable && (view.hasFocus() || inMenu(element, document.activeElement)) && selectionMenuApplies(current.state),
     [],
   );
+  const scrollTarget = useMenuScrollTarget();
   const options = useMemo<BubbleMenuProps['options']>(
     () => ({
       placement: 'bottom',
+      scrollTarget,
       // Never flush against the edge of a phone screen (MENU_EDGE_PADDING in menu-anchor.ts).
       shift: { padding: 8 },
       onShow: () => setVisible(true),
@@ -414,7 +417,7 @@ export function EditorBubbleMenu({ editor, onComment }: EditorBubbleMenuProps) {
         setPendingFocus(null);
       },
     }),
-    [],
+    [scrollTarget],
   );
 
   const labelled = (labelKey: MessageKey, shortcut?: string) => withShortcut(t(labelKey), shortcut);

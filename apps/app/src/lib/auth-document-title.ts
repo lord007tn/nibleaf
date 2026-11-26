@@ -1,3 +1,5 @@
+import { pageTitle } from '@/lib/page-title';
+
 const authTitleKey = (pathname: string) => {
   if (pathname === '/sign-in') return 'auth.signIn.submit' as const;
   if (pathname === '/sign-up') return 'auth.signUp.submit' as const;
@@ -10,5 +12,5 @@ type AuthTitleKey = NonNullable<ReturnType<typeof authTitleKey>>;
 
 export const authDocumentTitle = (pathname: string, translate: (key: AuthTitleKey) => string): string | null => {
   const key = authTitleKey(pathname);
-  return key ? `${translate(key)} — Nibleaf` : null;
+  return key ? pageTitle(translate(key)) : null;
 };

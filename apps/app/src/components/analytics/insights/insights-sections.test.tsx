@@ -247,27 +247,22 @@ describe('Overview', () => {
     expect([...view.querySelectorAll('button')].some((button) => text(button) === 'Try again')).toBe(false);
   });
 
-  it('explains how to enable ClickHouse analytics when it is not configured', async () => {
-    mocks.overview.mockReturnValue(ready(emptyOverview('not_configured')));
-    const view = await render(<OverviewSection />);
-    const guide = view.querySelector<HTMLAnchorElement>('a[href="https://docs.nibleaf.com/self-hosting/clickhouse-analytics"]');
-    expect(guide).not.toBeNull();
-    expect(text(view)).toContain('ClickHouse');
-    expect(view.querySelectorAll('[data-slot="card-title"]')).toHaveLength(0);
-  });
-
-  it('explains that reports are off without rendering unknown figures as zero', async () => {
-    mocks.overview.mockReturnValue(ready(emptyOverview('reads_disabled')));
-    const view = await render(<OverviewSection />);
-    expect(text(view)).toContain("Reports aren't switched on for this server yet");
-    // P2-DASH-017: site owners get plain words, never an environment variable.
-    expect(text(view)).toContain('Whoever runs this server can turn them on');
-    // Collection depends on the hash salt and raw retention, so promise neither.
-    expect(text(view)).not.toMatch(/being collected|nothing is lost/);
-    expect(text(view)).not.toContain('ANALYTICS_MODE');
-    expect(view.querySelector('a[target="_blank"]')).not.toBeNull();
-    expect(view.querySelectorAll('[data-slot="card-title"]')).toHaveLength(0);
-  });
+  it.each(['not_configured', 'reads_disabled'] as const)(
+    'says once, in product words, that detailed analytics is off (%s), and points to the Overview (WORKSPACE-01)',
+    async (availability) => {
+      mocks.overview.mockReturnValue(ready(emptyOverview(availability)));
+      const view = await render(<OverviewSection />);
+      expect(view.querySelectorAll('[data-slot="empty-state"]')).toHaveLength(1);
+      expect(view.querySelector('[data-reason="notConfigured"] h2')?.textContent).toBe("Detailed analytics isn't turned on yet");
+      expect(text(view)).toContain('Page views are still counted');
+      // The same screen shows on Cloud: no infrastructure, operator or setup-variable words.
+      expect(text(view)).not.toMatch(/ClickHouse|server|self-host|operator|ANALYTICS_MODE/i);
+      expect(view.querySelector('a[href="/app/projects/p1"]')?.textContent).toBe('Go to Overview');
+      expect(view.querySelector<HTMLAnchorElement>('a[target="_blank"]')?.href).toBe('https://docs.nibleaf.com/product/analytics');
+      // Unknown figures are never drawn as zero.
+      expect(view.querySelectorAll('[data-slot="card-title"]')).toHaveLength(0);
+    },
+  );
 
   it('flags incomplete data without hiding what is known', async () => {
     mocks.overview.mockReturnValue(ready(overviewFixture('partial')));

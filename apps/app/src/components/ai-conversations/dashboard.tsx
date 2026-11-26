@@ -1,5 +1,6 @@
 import { Alert, AlertDescription } from '@nibleaf/design-system/components/ui/alert';
 import { Button } from '@nibleaf/design-system/components/ui/button';
+import { EmptyState } from '@nibleaf/design-system/components/ui/empty-state';
 import { Input } from '@nibleaf/design-system/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@nibleaf/design-system/components/ui/select';
 import { SkeletonCard, SkeletonListRow, SkeletonStatTile, SkeletonTableRows } from '@nibleaf/design-system/components/ui/skeleton';
@@ -7,16 +8,19 @@ import { Switch } from '@nibleaf/design-system/components/ui/switch';
 import { Tabs, TabsList, TabsTrigger } from '@nibleaf/design-system/components/ui/tabs';
 import { useLocale, useT } from '@nibleaf/i18n/react';
 import { Link } from '@tanstack/react-router';
+import { Bot, ExternalLink, MessagesSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { RangeTabs } from '@/components/analytics/range-tabs';
+import { FeatureUnavailable } from '@/components/ui/feature-unavailable';
 import { useLanguages } from '@/hooks/api';
 import { conversationFilters, useAiContentGaps, useAiConversationSummary, useAiConversations } from '@/hooks/api/ai-conversations';
+import { docsUrl } from '@/lib/docs-url';
 import { languageName } from '@/lib/language-name';
 import { ConversationList } from './conversation-list';
 import { ConversationDetail } from './detail';
-import { searchAiDocsUrl } from './docs';
 import { ContentGaps } from './gaps';
 import { Overview } from './overview';
+import { aiPageNotice } from './page-notice';
 import type { AiDashboardSearch } from './search';
 
 const SKELETON_TILES = ['questions', 'answered', 'helpful', 'gaps'];
@@ -79,7 +83,6 @@ export function AiDashboard({
   const t = useT();
   const [text, setText] = useState(search.q ?? '');
   const { locale } = useLocale();
-  const setupDocsUrl = searchAiDocsUrl(locale);
   const [previousQuery, setPreviousQuery] = useState(search.q);
   if (previousQuery !== search.q) {
     setPreviousQuery(search.q);
@@ -99,8 +102,12 @@ export function AiDashboard({
   const gaps = useAiContentGaps(projectId, search.range, search.language, search.tab === 'gaps');
   const active = search.tab === 'overview' ? summary : search.tab === 'gaps' ? gaps : list;
   const state = search.tab === 'conversations' ? list.data?.pages[0] : search.tab === 'gaps' ? gaps.data : summary.data;
-  const disabled = state?.availability === 'disabled';
-  const unavailable = active.isError || state?.availability === 'unavailable';
+  const notice = aiPageNotice({
+    availability: state?.availability,
+    failed: active.isError,
+    captureEnabled: state?.captureEnabled,
+    captureOffReason: state?.captureOffReason,
+  });
   const items = list.data?.pages.flatMap((page) => page.items) ?? [];
   const empty =
     search.tab === 'overview' ? summary.data?.totals.questions === 0 : search.tab === 'gaps' ? gaps.data?.items.length === 0 : items.length === 0;
@@ -111,132 +118,155 @@ export function AiDashboard({
           <h1 className="font-semibold text-2xl tracking-tight">{t('dashboard.ai.title')}</h1>
           <p className="mt-1 text-muted-foreground text-sm">{t('dashboard.ai.subtitle')}</p>
         </div>
-        <RangeTabs
-          ranges={['7d', '30d', '90d']}
-          value={search.range}
-          onValueChange={(range) => {
-            if (range !== '24h') onChange({ range });
-          }}
-        />
+        {notice?.kind === 'unavailable' ? null : (
+          <RangeTabs
+            ranges={['7d', '30d', '90d']}
+            value={search.range}
+            onValueChange={(range) => {
+              if (range !== '24h') onChange({ range });
+            }}
+          />
+        )}
       </div>
-      <Tabs value={search.tab} onValueChange={(tab) => onChange({ tab: tab as AiDashboardSearch['tab'] })}>
-        <TabsList className="max-w-full">
-          {(['overview', 'conversations', 'gaps'] as const).map((tab) => (
-            <TabsTrigger key={tab} value={tab}>
-              {t(`dashboard.ai.${tab}`)}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-      <div className="flex flex-wrap items-center gap-3">
-        <Select value={search.language ?? ''} onValueChange={(language) => onChange({ language: language || undefined })}>
-          <SelectTrigger aria-label={t('dashboard.ai.language')} className="w-44">
-            <SelectValue>{search.language ? nameOf(search.language) : t('dashboard.ai.allLanguages')}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="">{t('dashboard.ai.allLanguages')}</SelectItem>
-            {[
-              ...new Set([...(languageSummary.data?.languages.map((item) => item.language) ?? []), ...(search.language ? [search.language] : [])]),
-            ].map((language) => (
-              <SelectItem value={language} key={language}>
-                {nameOf(language)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {search.tab === 'conversations' && (
-          <>
-            <Select
-              value={search.rating ?? ''}
-              onValueChange={(rating) => onChange({ rating: rating ? (rating as AiDashboardSearch['rating']) : undefined })}
+      {notice?.kind === 'unavailable' ? (
+        // Nothing on this page can work without question history: one notice instead of filters, tabs and empty figures.
+        <FeatureUnavailable
+          description={t('dashboard.ai.unavailableBody')}
+          icon={<Bot />}
+          reason="notConfigured"
+          secondaryAction={
+            <Button
+              nativeButton={false}
+              render={<a href={docsUrl(locale, 'product/ai-assistant')} rel="noreferrer" target="_blank" />}
+              size="sm"
+              variant="ghost"
             >
-              <SelectTrigger aria-label={t('dashboard.ai.rating')} className="w-44">
-                <SelectValue>{search.rating ? t(`dashboard.ai.${search.rating}`) : t('dashboard.ai.allRatings')}</SelectValue>
+              {t('dashboard.ai.learnMore')}
+              <ExternalLink aria-hidden className="size-3.5 rtl:-scale-x-100" />
+            </Button>
+          }
+          title={t('dashboard.ai.unavailableTitle')}
+        />
+      ) : (
+        <>
+          <Tabs value={search.tab} onValueChange={(tab) => onChange({ tab: tab as AiDashboardSearch['tab'] })}>
+            <TabsList className="max-w-full">
+              {(['overview', 'conversations', 'gaps'] as const).map((tab) => (
+                <TabsTrigger key={tab} value={tab}>
+                  {t(`dashboard.ai.${tab}`)}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
+          <div className="flex flex-wrap items-center gap-3">
+            <Select value={search.language ?? ''} onValueChange={(language) => onChange({ language: language || undefined })}>
+              <SelectTrigger aria-label={t('dashboard.ai.language')} className="w-44">
+                <SelectValue>{search.language ? nameOf(search.language) : t('dashboard.ai.allLanguages')}</SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">{t('dashboard.ai.allRatings')}</SelectItem>
-                {(['up', 'down', 'unrated'] as const).map((rating) => (
-                  <SelectItem value={rating} key={rating}>
-                    {t(`dashboard.ai.${rating}`)}
+                <SelectItem value="">{t('dashboard.ai.allLanguages')}</SelectItem>
+                {[
+                  ...new Set([
+                    ...(languageSummary.data?.languages.map((item) => item.language) ?? []),
+                    ...(search.language ? [search.language] : []),
+                  ]),
+                ].map((language) => (
+                  <SelectItem value={language} key={language}>
+                    {nameOf(language)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            <label htmlFor="ai-unanswered" className="flex items-center gap-2 text-sm">
-              <Switch
-                id="ai-unanswered"
-                checked={search.status === 'no_answer'}
-                onCheckedChange={(checked) => onChange({ status: checked ? 'no_answer' : undefined })}
-              />
-              {t('dashboard.ai.unanswered')}
-            </label>
-            <Input
-              className="w-full sm:w-64"
-              aria-label={t('dashboard.ai.search')}
-              placeholder={t('dashboard.ai.search')}
-              maxLength={120}
-              value={text}
-              onChange={(event) => setText(event.target.value)}
-            />
-          </>
-        )}
-      </div>
-      {state?.captureEnabled === false && (
-        <Alert variant="info">
-          {state.captureOffReason === 'instance' ? (
-            // Only the instance operator can add the encryption key.
-            <AlertDescription>
-              {t('dashboard.ai.captureInstance')}{' '}
-              <a className="underline" href={setupDocsUrl}>
-                {t('dashboard.ai.selfHosting')}
-              </a>
-            </AlertDescription>
-          ) : (
-            <AlertDescription>
-              {t('dashboard.ai.captureOff')}{' '}
-              <Link className="underline" to="/app/projects/$projectId/settings" params={{ projectId }} search={{ section: 'search' }}>
-                {t('dashboard.ai.settings')}
-              </Link>
-            </AlertDescription>
-          )}
-        </Alert>
-      )}
-      {disabled ? (
-        <Alert variant="info">
-          <AlertDescription>
-            {t('dashboard.ai.disabled')}{' '}
-            <a className="underline" href={setupDocsUrl}>
-              {t('dashboard.ai.selfHosting')}
-            </a>
-          </AlertDescription>
-        </Alert>
-      ) : unavailable ? (
-        <Alert variant="warning">
-          <AlertDescription>
-            {t('dashboard.ai.unavailable')}{' '}
-            <Button variant="link" onClick={() => void active.refetch()}>
-              {t('common.retry')}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      ) : active.isPending ? (
-        <DashboardSkeleton tab={search.tab} />
-      ) : (
-        <>
-          {empty && <p className="rounded-xl border bg-card p-6 text-muted-foreground text-sm">{t('dashboard.ai.empty')}</p>}
-          {search.tab === 'overview' && summary.data && <Overview data={summary.data} />}{' '}
-          {search.tab === 'conversations' && (
-            <>
-              <ConversationList items={items} onOpen={(conversation) => onChange({ conversation })} />
-              {list.hasNextPage && (
-                <Button variant="outline" loading={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>
-                  {t('dashboard.ai.loadMore')}
+            {search.tab === 'conversations' && (
+              <>
+                <Select
+                  value={search.rating ?? ''}
+                  onValueChange={(rating) => onChange({ rating: rating ? (rating as AiDashboardSearch['rating']) : undefined })}
+                >
+                  <SelectTrigger aria-label={t('dashboard.ai.rating')} className="w-44">
+                    <SelectValue>{search.rating ? t(`dashboard.ai.${search.rating}`) : t('dashboard.ai.allRatings')}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">{t('dashboard.ai.allRatings')}</SelectItem>
+                    {(['up', 'down', 'unrated'] as const).map((rating) => (
+                      <SelectItem value={rating} key={rating}>
+                        {t(`dashboard.ai.${rating}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <label htmlFor="ai-unanswered" className="flex items-center gap-2 text-sm">
+                  <Switch
+                    id="ai-unanswered"
+                    checked={search.status === 'no_answer'}
+                    onCheckedChange={(checked) => onChange({ status: checked ? 'no_answer' : undefined })}
+                  />
+                  {t('dashboard.ai.unanswered')}
+                </label>
+                <Input
+                  className="w-full sm:w-64"
+                  aria-label={t('dashboard.ai.search')}
+                  placeholder={t('dashboard.ai.search')}
+                  maxLength={120}
+                  value={text}
+                  onChange={(event) => setText(event.target.value)}
+                />
+              </>
+            )}
+          </div>
+          {notice?.kind === 'notSaving' ? (
+            <Alert variant="info">
+              <AlertDescription>
+                {notice.reason === 'site' ? (
+                  <>
+                    {t('dashboard.ai.captureOff')}{' '}
+                    <Link className="underline" to="/app/projects/$projectId/settings" params={{ projectId }} search={{ section: 'search' }}>
+                      {t('dashboard.ai.settings')}
+                    </Link>
+                  </>
+                ) : (
+                  t('dashboard.ai.notSavingYet')
+                )}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+          {notice?.kind === 'outage' ? (
+            <Alert variant="warning">
+              <AlertDescription>
+                {t('dashboard.ai.unavailable')}{' '}
+                <Button variant="link" onClick={() => void active.refetch()}>
+                  {t('common.retry')}
                 </Button>
+              </AlertDescription>
+            </Alert>
+          ) : active.isPending ? (
+            <DashboardSkeleton tab={search.tab} />
+          ) : (
+            <>
+              {empty && (
+                <EmptyState
+                  className="rounded-xl border bg-card"
+                  description={t('dashboard.ai.emptyBody')}
+                  headingLevel={2}
+                  icon={<MessagesSquare />}
+                  title={t('dashboard.ai.emptyTitle')}
+                />
+              )}
+              {search.tab === 'overview' && summary.data && <Overview data={summary.data} />}{' '}
+              {search.tab === 'conversations' && (
+                <>
+                  <ConversationList items={items} onOpen={(conversation) => onChange({ conversation })} />
+                  {list.hasNextPage && (
+                    <Button variant="outline" loading={list.isFetchingNextPage} onClick={() => void list.fetchNextPage()}>
+                      {t('dashboard.ai.loadMore')}
+                    </Button>
+                  )}
+                </>
+              )}
+              {search.tab === 'gaps' && gaps.data && (
+                <ContentGaps projectId={projectId} items={gaps.data.items} onOpen={(conversation) => onChange({ conversation })} />
               )}
             </>
-          )}
-          {search.tab === 'gaps' && gaps.data && (
-            <ContentGaps projectId={projectId} items={gaps.data.items} onOpen={(conversation) => onChange({ conversation })} />
           )}
         </>
       )}

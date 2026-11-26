@@ -24,9 +24,15 @@ const matrices = {
   corpus: () => export664Corpus(fileURLToPath(new URL('../../..', import.meta.url))).approved.map(([, source]) => source),
 };
 
-it.each(Object.keys(matrices) as Array<keyof typeof matrices>)(
-  'renders every output and preserves inert main bytes, visible author text and outside structure: %s',
-  (name) => {
+const descriptions: Partial<Record<keyof typeof matrices, string>> = {
+  review: 'mixed HTML and container boundaries',
+  round7: 'URL, attribute and element combinations',
+  round12: 'inert contexts, containers and mixed line endings',
+};
+
+it.each((Object.keys(matrices) as Array<keyof typeof matrices>).map((name) => ({ name, description: descriptions[name] ?? name })))(
+  'renders every output and preserves inert main bytes, visible author text and outside structure: $description',
+  ({ name }) => {
     const report = checkHazardMatrix(matrices[name]());
     console.info(JSON.stringify({ matrix: name, ...report.totals, inactiveHash: report.inactiveHash }));
     const ceiling = limits.matrices[name];
