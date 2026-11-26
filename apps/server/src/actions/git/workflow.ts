@@ -215,6 +215,32 @@ const remoteThemeRepositoryIssues = (files: RemoteFile[], snapshot: Awaited<Retu
   );
 };
 
+/**
+ * Removes a site's Git connection, with its ledger, operations and audit (by
+ * cascade). The removal is audited first and mirrored to the durable platform
+ * event table, which outlives the connection. The revision it had reached is
+ * kept on the site as `gitSettingsRevisionFloor`, in the same transaction as the
+ * delete and read from the row the delete removed, so a save committed just
+ * before it still counts: the next connection starts past it (#915).
+ */
+export const disconnectGitHub = async (projectId: string, actorUserId: string) => {
+  await prisma.$transaction(async (tx) => {
+    const connection = await tx.gitConnection.findUnique({ where: { projectId } });
+    if (!connection) return;
+    await tx.gitAuditEvent.create({ data: { connectionId: connection.id, projectId, actorUserId, action: 'connection.disconnected' } });
+    await tx.platformEvent.create({
+      data: { type: 'git_connection_disconnected', userId: actorUserId, projectId, metadata: { repository: connection.repository } },
+    });
+    const removed = await tx.$queryRaw<Array<{ settingsRevision: number }>>`
+      DELETE FROM "git_connection" WHERE "id" = ${connection.id} AND "projectId" = ${projectId} RETURNING "settingsRevision"`;
+    const revision = removed[0]?.settingsRevision;
+    if (revision === undefined) return;
+    // Raw, so the site's updatedAt doesn't move for a Git disconnect.
+    await tx.$executeRaw`
+      UPDATE "project" SET "gitSettingsRevisionFloor" = GREATEST("gitSettingsRevisionFloor", ${revision}) WHERE "id" = ${projectId}`;
+  });
+};
+
 export const connectGitHub = async (projectId: string, actorUserId: string, input: ConnectGitInput) => {
   const repository = normalizeRepository(input.repository);
   const baseBranch = normalizeGitBranch(input.baseBranch, 'Base branch');
@@ -289,10 +315,14 @@ export const connectGitHub = async (projectId: string, actorUserId: string, inpu
         if (locked.length === 0) throw changed();
         saved = await tx.gitConnection.update({ where: { id: existing.id, projectId }, data: { ...update, settingsRevision: { increment: 1 } } });
       } else {
+        // A reconnect carries the revision on past the last disconnected connection's (#915), so a form left open
+        // from before the disconnect (which still shows that connection's revision) is refused, never accepted.
+        const site = await tx.project.findUnique({ where: { id: projectId }, select: { gitSettingsRevisionFloor: true } });
         try {
           saved = await tx.gitConnection.create({
             data: {
               ...update,
+              settingsRevision: (site?.gitSettingsRevisionFloor ?? 0) + 1,
               projectId,
               provider: 'github',
               credentialEncrypted: update.credentialEncrypted as string,

@@ -23,6 +23,7 @@ const mocks = vi.hoisted(() => {
       gitFileState: { deleteMany: vi.fn(), upsert: vi.fn() },
       language: { findFirst: vi.fn() },
       page: { findMany: vi.fn() },
+      project: { findUnique: vi.fn() },
     },
     provider,
     providerTokens: [] as string[],
@@ -127,6 +128,7 @@ beforeEach(() => {
     typeof work === 'function' ? work(mocks.prisma) : Promise.all(work as Promise<unknown>[]),
   );
   mocks.prisma.gitFileState.upsert.mockResolvedValue({});
+  mocks.prisma.project.findUnique.mockResolvedValue({ gitSettingsRevisionFloor: 0 });
   mocks.prisma.gitFileState.deleteMany.mockResolvedValue({ count: 1 });
   mocks.prisma.gitAuditEvent.create.mockResolvedValue({});
   mocks.prisma.page.findMany.mockResolvedValue([]);
@@ -383,10 +385,18 @@ describe('a connection save checks the revision its form was loaded with', () =>
     expect(mocks.prisma.gitAuditEvent.create).toHaveBeenCalledTimes(1);
   });
 
-  it('creates a first connection that expected none', async () => {
+  it('creates a first connection that expected none, at revision 1 for a site that never disconnected one', async () => {
     installConnection(null);
     await connectGitHub('project-1', 'user-1', { ...body, token: NEW_TOKEN, expectedRevision: null });
-    expect(firstInput<{ data: Record<string, unknown> }>(mocks.prisma.gitConnection.create).data).not.toHaveProperty('settingsRevision');
+    expect(firstInput<{ data: Record<string, unknown> }>(mocks.prisma.gitConnection.create).data).toHaveProperty('settingsRevision', 1);
+  });
+
+  it('starts a reconnect past the revision the disconnected connection reached (#915)', async () => {
+    installConnection(null);
+    mocks.prisma.project.findUnique.mockResolvedValue({ gitSettingsRevisionFloor: 7 });
+    await connectGitHub('project-1', 'user-1', { ...body, token: NEW_TOKEN, expectedRevision: null });
+    expect(firstInput<{ where: unknown }>(mocks.prisma.project.findUnique).where).toEqual({ id: 'project-1' });
+    expect(firstInput<{ data: Record<string, unknown> }>(mocks.prisma.gitConnection.create).data).toHaveProperty('settingsRevision', 8);
   });
 
   it('accepts the revision through the real validator, and only a positive whole number or null', () => {

@@ -39,7 +39,8 @@ const sanitized = (error: unknown) => {
  *
  * `connect(projectId, body)` sends `body` exactly as given. On success it
  * refreshes that site's status, whatever the page shows by then, and resolves
- * after that read. It resolves to null, sending, refreshing or reporting
+ * after that read. A 409 (someone else connected the site meanwhile) refreshes
+ * it too before rejecting, so the wizard gives way to that connection (#915). It resolves to null, sending, refreshing or reporting
  * nothing (more), while another write of the site's connection is in flight
  * (checked in the same tick, so presses in one tick send once), or once the
  * session this hook was mounted in has ended (AppGuard remounts the dashboard
@@ -69,7 +70,13 @@ export function useGitFirstConnect(projectId: string) {
           );
         } catch (error) {
           if (!current()) return null;
-          throw sanitized(error);
+          const refused = sanitized(error);
+          // A 409: another first Connect (or save) committed since this site's status showed it unconnected. Read the
+          // status again, as a settings save does, so the screen shows that connection before the person tries again.
+          if (refused instanceof ApiResponseError && refused.status === 409) {
+            await client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail(site) }).catch(() => undefined);
+          }
+          throw refused;
         }
         if (!current()) return null;
         await client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail(site) });

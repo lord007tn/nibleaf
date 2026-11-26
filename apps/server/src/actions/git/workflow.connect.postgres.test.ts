@@ -401,4 +401,56 @@ describe.skipIf(process.env.DATA_INTEGRITY_POSTGRES !== '1')('Git connection sav
     await db.prisma.gitConnection.update({ where: { projectId: setup.project.id }, data: { lastSyncStatus: 'RUNNING' } });
     expect((await read(setup.project.id)).settingsRevision).toBe(3);
   });
+
+  it('refuses a form left open from before a disconnect once the site reconnects (#915): the revision carries on', async () => {
+    const setup = await fixture();
+    const name = `fictional-lane915-user-${randomUUID()}`;
+    const user = await db.prisma.user.create({ data: { name, email: `${name}@example.invalid` } });
+    users.push(user.id);
+    await db.prisma.member.create({ data: { userId: user.id, organizationId: setup.project.organizationId, role: 'admin' } });
+    const app = routeFor(user);
+    const put = (body: Record<string, unknown>) =>
+      app.request(`/projects/${setup.project.id}/git/connection`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+    const disconnect = () => app.request(`/projects/${setup.project.id}/git/connection`, { method: 'DELETE' });
+    const site = () => db.prisma.project.findUniqueOrThrow({ where: { id: setup.project.id } });
+    // A form loaded the connection at revision 1; one save moves it to 2, which a second form shows.
+    expect((await put({ ...input('fictional/original'), expectedRevision: 1 })).status).toBe(200);
+    expect((await read(setup.project.id)).settingsRevision).toBe(2);
+    const before = await site();
+    expect((await disconnect()).status).toBe(200);
+    expect(await db.prisma.gitConnection.count({ where: { projectId: setup.project.id } })).toBe(0);
+    // The site keeps the revision the connection reached, and only that: its updatedAt doesn't move.
+    expect(await site()).toEqual({ ...before, gitSettingsRevisionFloor: 2 });
+    // A form still open from before the disconnect is refused while the site has no connection.
+    expect((await put({ ...input('fictional/stale'), token, expectedRevision: 2 })).status).toBe(409);
+    // Someone reconnects: the new connection starts past every revision the old one used.
+    const reconnected = await put({ ...input('fictional/reconnected'), token: replacement, expectedRevision: null });
+    expect(reconnected.status).toBe(200);
+    const fresh = await read(setup.project.id);
+    expect(fresh).toMatchObject({ repository: 'fictional/reconnected', settingsRevision: 3 });
+    // Both forms from before the disconnect are refused, keeping the new connection exactly as it is.
+    for (const expectedRevision of [1, 2]) {
+      const stale = await put({ ...input('fictional/stale'), headBranch: 'nibleaf/stale', expectedRevision });
+      expect(stale.status).toBe(409);
+    }
+    expect(await read(setup.project.id)).toEqual(fresh);
+    expect(crypto.decryptGitSecret(fresh.credentialEncrypted ?? '') === replacement).toBe(true);
+    // A form that loaded the new connection saves.
+    expect((await put({ ...input('fictional/reconnected'), expectedRevision: 3 })).status).toBe(200);
+    expect((await read(setup.project.id)).settingsRevision).toBe(4);
+    // A second disconnect and reconnect carries on again.
+    expect((await disconnect()).status).toBe(200);
+    expect((await site()).gitSettingsRevisionFloor).toBe(4);
+    expect((await put({ ...input('fictional/again'), token, expectedRevision: null })).status).toBe(200);
+    expect((await read(setup.project.id)).settingsRevision).toBe(5);
+    // Disconnecting a site with no connection changes nothing.
+    await db.prisma.gitConnection.delete({ where: { projectId: setup.project.id } });
+    const unconnected = await site();
+    expect((await disconnect()).status).toBe(200);
+    expect(await site()).toEqual(unconnected);
+  });
 });
