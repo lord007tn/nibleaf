@@ -25,7 +25,7 @@ function movingBlock(state: EditorState): { parentDepth: number; index: number }
  * the selection where it was in the moved text. Null when there is nothing to
  * move or it is already first or last.
  */
-export function moveBlockTransaction(state: EditorState, direction: 'up' | 'down'): Transaction | null {
+function moveBlockTransaction(state: EditorState, direction: 'up' | 'down'): Transaction | null {
   const block = movingBlock(state);
   if (!block) return null;
   const { $from } = state.selection;

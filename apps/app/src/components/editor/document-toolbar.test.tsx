@@ -25,6 +25,10 @@ beforeEach(() => {
     },
   );
   Element.prototype.scrollIntoView = vi.fn();
+  // Focusing the text scrolls the caret into view; jsdom ranges have no layout.
+  const empty = () => Object.assign([], { item: () => null }) as unknown as DOMRectList;
+  Range.prototype.getClientRects = empty;
+  Range.prototype.getBoundingClientRect = () => new DOMRect();
 });
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
