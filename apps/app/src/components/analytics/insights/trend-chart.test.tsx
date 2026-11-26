@@ -81,4 +81,11 @@ describe('TrendChart draws without motion or layout jumps (WORKSPACE-14)', () =>
     const tick = drawn.yAxes.at(-1)?.tickFormatter as (value: number) => string;
     expect(tick(4_500_000).length).toBeLessThanOrEqual(5);
   });
+
+  it('keeps sub-cent spend apart on the axis instead of rounding every tick to $0', async () => {
+    await render(1, 'usd');
+    const tick = drawn.yAxes.at(-1)?.tickFormatter as (value: number) => string;
+    expect(tick(0.001)).not.toBe(tick(0.002));
+    expect(tick(4_500_000).length).toBeLessThanOrEqual(6);
+  });
 });

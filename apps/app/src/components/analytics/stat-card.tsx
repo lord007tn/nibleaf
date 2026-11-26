@@ -68,9 +68,14 @@ export function StatCard({
       {/* The change sits on the footer line with its "vs. previous period", not in the header's
           corner, where a narrow tile (two per row on a phone) laid it over the label (WORKSPACE-23). */}
       {(delta || hint) && !loading ? (
-        // Above the tile's stretched link, so the change badge's spoken text still shows on hover.
-        <CardFooter className="relative z-10 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
-          {delta ? <DeltaBadge delta={delta} polarity="higher_is_better" /> : null}
+        <CardFooter className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+          {/* Only the badge sits above the tile's stretched link (its spoken text shows on hover);
+              the rest of the footer still opens the tile's page. */}
+          {delta ? (
+            <span className="relative z-10">
+              <DeltaBadge delta={delta} polarity="higher_is_better" />
+            </span>
+          ) : null}
           {hint ? <span>{hint}</span> : null}
         </CardFooter>
       ) : null}

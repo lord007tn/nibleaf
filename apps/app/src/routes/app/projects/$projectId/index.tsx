@@ -772,8 +772,9 @@ function PublishNudge({
 }) {
   const t = useT();
   // A dismissal also holds in memory, for when storage can't be written (private mode, quota, blocked storage).
-  const [dismissedHere, setDismissedHere] = useState(false);
-  const dismissed = useNudgeDismissed(projectId) || dismissedHere;
+  // Keyed by site: dismissing one site's checklist leaves the next site's alone.
+  const [dismissedHere, setDismissedHere] = useState<string | null>(null);
+  const dismissed = useNudgeDismissed(projectId) || dismissedHere === projectId;
   const { count } = useFormatters();
   const content = usePendingChanges(projectId, { enabled: !dismissed });
   const domains = useDomains(projectId);
@@ -786,7 +787,7 @@ function PublishNudge({
     return null;
   }
   const dismiss = () => {
-    setDismissedHere(true);
+    setDismissedHere(projectId);
     try {
       window.localStorage.setItem(nudgeDismissKey(projectId), '1');
     } catch {

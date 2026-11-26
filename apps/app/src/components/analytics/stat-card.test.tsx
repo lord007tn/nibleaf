@@ -40,4 +40,21 @@ describe('StatCard change badge (WORKSPACE-23)', () => {
     expect(card?.getAttribute('aria-busy')).toBe('true');
     expect(card?.className).toContain('opacity-60');
   });
+
+  it('lets the footer pass clicks to the tile link; only the change badge sits above it', async () => {
+    await act(async () =>
+      root.render(
+        <StatCard
+          delta={{ mode: 'percent', amount: 207, direction: 'up' }}
+          hint="vs. previous period"
+          label="Page views"
+          link={<a className="absolute inset-0" href="/analytics" aria-label="Page views" />}
+          value={2522}
+        />,
+      ),
+    );
+    const footer = container.querySelector('[data-slot="card-footer"]');
+    expect(footer?.className).not.toContain('z-10');
+    expect(container.querySelector('[data-testid="delta"]')?.parentElement?.className).toContain('z-10');
+  });
 });

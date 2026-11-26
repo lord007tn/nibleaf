@@ -11,6 +11,7 @@ const analytics = vi.hoisted(() => ({ hook: vi.fn(), chart: vi.fn() }));
 const queries = vi.hoisted(() => ({}) as Record<'project' | 'pages' | 'members' | 'deployments' | 'domains' | 'session' | 'content', unknown>);
 const clipboard = vi.hoisted(() => ({ copy: vi.fn(), success: vi.fn(), error: vi.fn() }));
 const translation = vi.hoisted(() => ({ real: false }));
+const routeParams = vi.hoisted(() => ({ projectId: 'project-1' }));
 /** The settings-access tests' name for the same mocked members and publishes. */
 const navigation = queries;
 /** Signed in as the `viewer` the settings-access tests give a role to. */
@@ -29,7 +30,7 @@ vi.mock('@nibleaf/i18n/react', async (importOriginal) => {
 vi.mock('@/lib/invitations', () => ({ copyToClipboard: clipboard.copy }));
 vi.mock('sonner', () => ({ toast: { success: clipboard.success, error: clipboard.error } }));
 vi.mock('@tanstack/react-router', () => ({
-  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useParams: () => ({ projectId: 'project-1' }) }),
+  createFileRoute: () => (options: Record<string, unknown>) => ({ options, useParams: () => ({ projectId: routeParams.projectId }) }),
   Link: ({
     children,
     className,
@@ -408,7 +409,25 @@ describe('first-publish checklist and reserved address', () => {
   it('keeps a dismissed checklist hidden', async () => {
     window.localStorage.setItem('nibleaf.publishNudge.project-1', '1');
     await act(async () => root.render(<SiteOverviewPage />));
-    expect(container.textContent).not.toContain('overview.nudge.title');
+    expect(container.textContent).not.toContain('Your docs are not live yet');
+    expect(container.querySelector('ol')).toBeNull();
+  });
+
+  it('keeps a dismissal to its own site when another site opens in the same page', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    try {
+      await act(async () => root.render(<SiteOverviewPage />));
+      await act(async () => container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]')?.click());
+      expect(container.textContent).not.toContain('Your docs are not live yet');
+      routeParams.projectId = 'project-2';
+      await act(async () => root.render(<SiteOverviewPage />));
+      expect(container.textContent).toContain('Your docs are not live yet');
+    } finally {
+      routeParams.projectId = 'project-1';
+      setItem.mockRestore();
+    }
   });
 
   it('reports a failed copy without a success toast', async () => {

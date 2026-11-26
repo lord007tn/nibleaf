@@ -117,7 +117,9 @@ export function TrendChart({
   };
   const axisTick = (value: number) => {
     if (valueKind === 'ms') return format.ms(value);
-    return format.compact(value, valueKind === 'usd' ? 'USD' : undefined);
+    // Small spend keeps its precision ($0.001, $0.002); compact notation would round it all to $0.
+    if (valueKind === 'usd') return Math.abs(value) < 1 ? format.usd(value) : format.compact(value, 'USD');
+    return format.compact(value);
   };
   const showDots = rows.length <= 2;
 
