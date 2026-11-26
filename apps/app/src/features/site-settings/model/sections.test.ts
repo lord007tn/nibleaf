@@ -74,17 +74,9 @@ describe('parseSettingsSearch', () => {
     expect(parseSettingsSearch({ section: 'general', appearanceSection: 'redirects' })).toEqual({ section: 'general' });
   });
 
-  // B5: Appearance was seven tabs; a link to one opens the one page at the part that holds it now.
-  it.each([
-    ['branding', 'brand'],
-    ['themes', 'theme'],
-    ['styling', 'theme'],
-    ['typography', 'typography'],
-    ['navbar', 'chrome'],
-    ['footer', 'chrome'],
-    ['banner', 'chrome'],
-  ])('opens an old %s tab link at the %s part', (tab, part) => {
-    expect(parseSettingsSearch({ section: 'appearance', appearanceSection: tab })).toEqual({ section: 'appearance', appearanceSection: part });
+  // B5: an old tab link stays valid; the Appearance page opens it at its part (site-appearance/model/parts).
+  it.each(['branding', 'themes', 'styling', 'navbar', 'footer', 'banner'])('keeps an old %s tab link for the page to map', (tab) => {
+    expect(parseSettingsSearch({ section: 'appearance', appearanceSection: tab })).toEqual({ section: 'appearance', appearanceSection: tab });
   });
 
   // Council #456: an inherited property passed as a section left a blank page.

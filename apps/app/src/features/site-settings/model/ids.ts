@@ -42,18 +42,15 @@ export type MovedSectionId = (typeof MOVED_SECTION_IDS)[number];
  * corners and the theme), Typography, and the header, footer and banner.
  * SEO, Redirects, Variables and Search are pages of their own.
  */
-export const APPEARANCE_SECTION_IDS = ['brand', 'theme', 'typography', 'chrome'] as const;
-export type AppearanceSectionId = (typeof APPEARANCE_SECTION_IDS)[number];
+export type AppearanceSectionId = 'brand' | 'theme' | 'typography' | 'chrome';
 
-/** Appearance's former tabs: an old `appearanceSection=…` link opens the page at the part that holds it now. */
-const FORMER_APPEARANCE_TABS: Readonly<Record<string, AppearanceSectionId>> = {
-  branding: 'brand',
-  themes: 'theme',
-  styling: 'theme',
-  navbar: 'chrome',
-  footer: 'chrome',
-  banner: 'chrome',
-};
+/**
+ * What `appearanceSection` may name: a part, or one of Appearance's seven
+ * former tabs, which the page maps to the part that holds it now (outside this
+ * eager chunk: `site-appearance/model/parts`).
+ */
+const APPEARANCE_LINKS = ['brand', 'theme', 'typography', 'chrome', 'branding', 'themes', 'styling', 'navbar', 'footer', 'banner'] as const;
+export type AppearanceLink = (typeof APPEARANCE_LINKS)[number];
 
 /** Appearance subsections that became pages: old `?section=appearance&appearanceSection=…` links open the page. */
 const PROMOTED_APPEARANCE_SECTIONS = { seo: 'seo', redirects: 'redirects', variables: 'variables', search: 'search' } as const satisfies Record<
@@ -67,15 +64,9 @@ const RENAMED_SECTIONS: Readonly<Record<string, SectionId>> = { analytics: 'inte
 const includes = <T extends string>(list: readonly T[], value: unknown): value is T => (list as readonly unknown[]).includes(value);
 export const isSectionId = (value: unknown): value is SectionId => includes(SECTION_IDS, value);
 export const isMovedSectionId = (value: unknown): value is MovedSectionId => includes(MOVED_SECTION_IDS, value);
-const isAppearanceSectionId = (value: unknown): value is AppearanceSectionId => includes(APPEARANCE_SECTION_IDS, value);
-const appearancePart = (value: unknown): AppearanceSectionId | undefined =>
-  isAppearanceSectionId(value)
-    ? value
-    : typeof value === 'string' && Object.hasOwn(FORMER_APPEARANCE_TABS, value)
-      ? FORMER_APPEARANCE_TABS[value]
-      : undefined;
+const isAppearanceLink = (value: unknown): value is AppearanceLink => includes(APPEARANCE_LINKS, value);
 
-export type SettingsSearch = { section?: SectionId | MovedSectionId; appearanceSection?: AppearanceSectionId };
+export type SettingsSearch = { section?: SectionId | MovedSectionId; appearanceSection?: AppearanceLink };
 
 /**
  * The route's search params. An absent section stays absent (the default
@@ -90,6 +81,8 @@ export function parseSettingsSearch(search: Record<string, unknown>): SettingsSe
   // Own keys only: `toString`, `constructor` or `__proto__` must not resolve to something inherited.
   const renamed = typeof section === 'string' && Object.hasOwn(RENAMED_SECTIONS, section) ? RENAMED_SECTIONS[section] : undefined;
   const parsed: SettingsSearch['section'] = isSectionId(section) || isMovedSectionId(section) ? section : renamed;
-  const part = parsed === 'appearance' ? appearancePart(appearanceSection) : undefined;
-  return { section: parsed, ...(part ? { appearanceSection: part } : {}) };
+  return {
+    section: parsed,
+    ...(parsed === 'appearance' && isAppearanceLink(appearanceSection) ? { appearanceSection } : {}),
+  };
 }

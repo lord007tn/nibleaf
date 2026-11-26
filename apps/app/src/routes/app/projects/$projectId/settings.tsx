@@ -57,13 +57,7 @@ import { SiteTeamPage } from '@/features/people/components/site-team-page';
 import { siteAiQueryOptions } from '@/features/site-ai/api/query-options';
 import { AiAnswersPage } from '@/features/site-ai/components/ai-answers-page';
 import { AppearancePage } from '@/features/site-appearance/components/appearance-page';
-import {
-  type AppearanceSectionId,
-  isMovedSectionId,
-  type MovedSectionId,
-  parseSettingsSearch,
-  type SectionId,
-} from '@/features/site-settings/model/ids';
+import { type AppearanceLink, isMovedSectionId, type MovedSectionId, parseSettingsSearch, type SectionId } from '@/features/site-settings/model/ids';
 import { type SettingsAccess, sectionAllowed, sectionLabelKey, settingsNav, WIDE_SECTIONS } from '@/features/site-settings/model/sections';
 import type { Project } from '@/hooks/api';
 import { type SwitcherOrganization, useOrganizationOfProject, useProject, useProjectMembers } from '@/hooks/api';
@@ -416,7 +410,7 @@ function ActiveSection({
   canManageSchedules: boolean;
   canCreateExports: boolean;
   role: string;
-  appearanceSection?: AppearanceSectionId;
+  appearanceSection?: AppearanceLink;
 }) {
   // `key` forces a fresh form instance (with the right defaults) per project/section.
   const sections: Record<SectionId, ReactNode> = {
@@ -495,7 +489,7 @@ function ConfigPage({ project, section }: { project: Project; section: 'seo' | '
 }
 
 /** Settings → Appearance: the one page (§5.7), its unsaved changes reported to the route's leave guard. */
-function SiteAppearance({ project, initialGroup }: { project: Project; initialGroup?: AppearanceSectionId }) {
+function SiteAppearance({ project, initialGroup }: { project: Project; initialGroup?: AppearanceLink }) {
   const { sources, report } = useDirtySources();
   return (
     <>

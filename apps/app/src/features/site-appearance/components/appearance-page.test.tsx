@@ -65,7 +65,7 @@ let root: ReturnType<typeof createRoot>;
 let container: HTMLDivElement;
 let dirty: Map<string, boolean>;
 
-const render = (project: Project, host: AppearanceHost = 'settings', initialGroup?: 'chrome') =>
+const render = (project: Project, host: AppearanceHost = 'settings', initialGroup?: 'navbar') =>
   act(async () =>
     root.render(
       <QueryClientProvider client={new QueryClient()}>
@@ -192,8 +192,22 @@ describe('Appearance as one page', () => {
     for (const panel of panels) expect(panel.className).not.toContain('border-border bg-card');
   });
 
+  // Review: a hash link went through the route's unsaved-changes guard (a popstate), and could reload the page.
+  it('jumps to a part from "On this page" without navigating, focusing its heading', async () => {
+    await render(site());
+    const link = container.querySelector<HTMLAnchorElement>('nav a[href="#appearance-chrome"]') as HTMLAnchorElement;
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true });
+    await act(async () => link.dispatchEvent(event));
+    expect(event.defaultPrevented).toBe(true);
+    expect(window.location.hash).toBe('');
+    expect(document.activeElement?.textContent).toBe('settings.appearance.group.chrome');
+    const scrolled = vi.mocked(Element.prototype.scrollIntoView).mock.contexts as Element[];
+    expect(scrolled.map((el) => el.id)).toContain('appearance-chrome');
+  });
+
   it('opens an old tab link at the part that holds it now', async () => {
-    await render(site(), 'settings', 'chrome');
+    await render(site(), 'settings', 'navbar');
+    await act(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
     const scrolled = vi.mocked(Element.prototype.scrollIntoView).mock.contexts as Element[];
     expect(scrolled.map((el) => el.id)).toContain('appearance-chrome');
   });

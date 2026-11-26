@@ -50,11 +50,9 @@ vi.mock('@tanstack/react-router', () => ({
   ),
 }));
 vi.mock('@nibleaf/design-system/components/ui/confirm', () => ({ useConfirm: () => mocks.confirm }));
-vi.mock('@/components/editor/site-config-panel', async (importOriginal) => {
+vi.mock('@/components/editor/site-config-panel', async () => {
   const { DirtyStateReporter } = await import('@/components/project-settings/shared');
-  const actual = await importOriginal<typeof import('@/components/editor/site-config-panel')>();
   return {
-    EDITOR_CONFIG_SECTIONS: actual.EDITOR_CONFIG_SECTIONS,
     ConfigSection: ({ section }: { section: string }) => (
       <div data-testid="appearance-subsection">
         {section}
@@ -197,7 +195,7 @@ describe('site settings permissions', () => {
   it('sends an old Appearance → Redirects link to the Redirects page and ignores unsupported subsections', () => {
     const validate = Route.options.validateSearch as (search: Record<string, unknown>) => Record<string, unknown>;
     expect(validate({ section: 'appearance', appearanceSection: 'redirects' })).toEqual({ section: 'redirects' });
-    expect(validate({ section: 'appearance', appearanceSection: 'navbar' })).toEqual({ section: 'appearance', appearanceSection: 'chrome' });
+    expect(validate({ section: 'appearance', appearanceSection: 'navbar' })).toEqual({ section: 'appearance', appearanceSection: 'navbar' });
     expect(validate({ section: 'appearance', appearanceSection: 'arbitrary' })).toEqual({ section: 'appearance' });
     expect(validate({ section: 'general', appearanceSection: 'redirects' })).toEqual({ section: 'general' });
   });

@@ -16,7 +16,7 @@ import type { Project } from '@/hooks/api';
  * footer and banner) and the Content pages. Administration (domain, members,
  * billing, integrations, danger) stays in the Settings hub.
  */
-export const EDITOR_CONFIG_SECTIONS = [
+const EDITOR_CONFIG_SECTIONS = [
   { id: 'appearance', labelKey: 'settings.tab.appearance', icon: Palette },
   { id: 'seo', labelKey: 'settings.seo', icon: SearchCheck },
   { id: 'search', labelKey: 'settings.search', icon: Search },

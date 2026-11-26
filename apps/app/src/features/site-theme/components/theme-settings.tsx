@@ -308,7 +308,8 @@ function ThemeForm({ project }: { project: Project }) {
   const leave = (key: string) => setLeft((previous) => (previous.has(key) ? previous : new Set(previous).add(key)));
 
   return (
-    <form noValidate {...formProps}>
+    // Its grids follow the form's own width: beside the live preview it is narrower than the viewport suggests.
+    <form className="@container/theme" noValidate {...formProps}>
       <SaveRegionSubmit />
       <SectionHeader icon={<LayoutTemplate className="size-4" />} title={t('settings.theme.title')} />
       <div className="mb-6 rounded-xl border border-primary/25 bg-primary/5 p-4 text-sm">
@@ -353,7 +354,7 @@ function ThemeForm({ project }: { project: Project }) {
       ) : null}
 
       <Field hint={t('settings.theme.galleryHint')} label={t('settings.theme.gallery')}>
-        <div className="grid gap-3 lg:grid-cols-3">
+        <div className="grid gap-3 @2xl/theme:grid-cols-3">
           {THEME_PRESET_IDS.map((presetId) => {
             const active = resolved.id === presetId;
             return (
@@ -391,7 +392,7 @@ function ThemeForm({ project }: { project: Project }) {
       </Field>
 
       <Field hint={t('settings.theme.layoutHint')} label={t('settings.theme.layout')}>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 @md/theme:grid-cols-2 @2xl/theme:grid-cols-3">
           {(
             [
               ['shell', 'settings.theme.shell', ['reference', 'editorial', 'console']],
@@ -414,7 +415,7 @@ function ThemeForm({ project }: { project: Project }) {
       </Field>
 
       <Field hint={t('settings.theme.componentsHint')} label={t('settings.theme.components')}>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 @md/theme:grid-cols-2 @2xl/theme:grid-cols-3">
           {(
             [
               ['codeBlocks', 'settings.theme.code', ['system', 'dim', 'vivid']],
@@ -445,7 +446,7 @@ function ThemeForm({ project }: { project: Project }) {
           ]}
           value={colorMode}
         />
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 @md/theme:grid-cols-2 @2xl/theme:grid-cols-3">
           {THEME_COLOR_KEYS.map((key) => {
             const invalid = invalidToken(key);
             return (

@@ -6,19 +6,20 @@ import { useTheme } from '@nibleaf/design-system/theme';
 import type { MessageKey } from '@nibleaf/i18n';
 import { useLocale } from '@nibleaf/i18n/react';
 import { Eye } from 'lucide-react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type MouseEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { type SectionScope, SectionScopeProvider } from '@/components/project-settings/shared';
 import { BannerSettings } from '@/features/site-banner/components/banner-settings';
 import { BrandingSettings } from '@/features/site-branding/components/branding-settings';
 import { FooterSettings } from '@/features/site-footer/components/footer-settings';
 import { NavbarSettings } from '@/features/site-navbar/components/navbar-settings';
-import type { AppearanceSectionId as AppearanceGroupId } from '@/features/site-settings/model/ids';
+import type { AppearanceSectionId as AppearanceGroupId, AppearanceLink } from '@/features/site-settings/model/ids';
 import { StylingSettings } from '@/features/site-styling/components/styling-settings';
 import { LivePreview } from '@/features/site-theme/components/live-preview';
 import { ThemeSettings } from '@/features/site-theme/components/theme-settings';
 import { TypographySettings } from '@/features/site-typography/components/typography-settings';
 import type { Project } from '@/hooks/api';
 import { SaveRegionProvider } from '@/lib/forms/save-region';
+import { appearancePart } from '../model/parts';
 import { previewWithDrafts } from '../model/preview-config';
 import { AppearanceDraftsProvider, useAppearanceDrafts } from './preview-drafts';
 
@@ -46,17 +47,38 @@ const GROUPS: ReadonlyArray<{ id: AppearanceGroupId; label: MessageKey }> = [
  * otherwise behind a Preview button. The same page renders in the editor's
  * Configuration tab, with plain panels.
  */
-export function AppearancePage({ project, host, initialGroup }: { project: Project; host: AppearanceHost; initialGroup?: AppearanceGroupId }) {
+export function AppearancePage({ project, host, initialGroup }: { project: Project; host: AppearanceHost; initialGroup?: AppearanceLink }) {
   const { t } = useLocale();
   const plain = host === 'editor';
   const chrome: SectionScope['chrome'] = plain ? 'plain' : 'panel';
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // An old link to one of the former tabs (`appearanceSection=navbar`) opens the page at that section.
+  // An old link to one of the former tabs (`appearanceSection=navbar`) opens the page at that section,
+  // after the route has focused the page heading (its effect runs after this one).
   useEffect(() => {
     if (!initialGroup) return;
-    rootRef.current?.querySelector(`#${appearanceAnchor(initialGroup)}`)?.scrollIntoView({ block: 'start' });
+    const frame = requestAnimationFrame(() =>
+      rootRef.current?.querySelector(`#${appearanceAnchor(appearancePart(initialGroup))}`)?.scrollIntoView({ block: 'start' }),
+    );
+    return () => cancelAnimationFrame(frame);
   }, [initialGroup]);
+
+  /**
+   * "On this page" jumps within the page without changing the URL: a hash
+   * navigation would go through the route's unsaved-changes guard. Focus moves
+   * to the part's heading, so keyboard and screen reader users land there too.
+   */
+  const jumpTo = (id: AppearanceGroupId) => (event: MouseEvent<HTMLAnchorElement>) => {
+    const part = rootRef.current?.querySelector<HTMLElement>(`#${appearanceAnchor(id)}`);
+    if (!part) return;
+    event.preventDefault();
+    part.scrollIntoView({ block: 'start' });
+    const heading = part.querySelector<HTMLElement>('h2');
+    if (heading) {
+      if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+      heading.focus({ preventScroll: true });
+    }
+  };
 
   return (
     <AppearanceDraftsProvider>
@@ -95,7 +117,12 @@ export function AppearancePage({ project, host, initialGroup }: { project: Proje
             </div>
             <aside aria-label={t('settings.appearance.preview.title')} className="hidden min-w-0 @4xl/appearance:block">
               {/* Sticks below the dashboard's 3rem header on the settings page; the editor's canvas scrolls on its own. */}
-              <div className={cn('sticky flex flex-col gap-6', plain ? 'top-4' : 'top-16')}>
+              <div
+                className={cn(
+                  'sticky flex flex-col gap-6 overflow-y-auto overscroll-contain',
+                  plain ? 'top-4 max-h-[calc(100dvh-2rem)]' : 'top-16 max-h-[calc(100dvh-5rem)]',
+                )}
+              >
                 <nav aria-label={t('settings.appearance.sections')}>
                   <p className="mb-2 font-medium text-muted-foreground text-xs">{t('settings.appearance.onThisPage')}</p>
                   <ul className="flex flex-col gap-0.5 border-border border-s">
@@ -104,6 +131,7 @@ export function AppearancePage({ project, host, initialGroup }: { project: Proje
                         <a
                           className="-ms-px block border-transparent border-s-2 py-1 ps-3 text-muted-foreground text-sm outline-none hover:border-border hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/50"
                           href={`#${appearanceAnchor(group.id)}`}
+                          onClick={jumpTo(group.id)}
                         >
                           {t(group.label)}
                         </a>
