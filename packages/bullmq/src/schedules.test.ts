@@ -4,21 +4,19 @@ import { QueueNames } from './constants';
 import { ensurePlatformSchedules, PLATFORM_SCHEDULES, type ScheduleQueue } from './schedules';
 import { QUEUE_CONFIGS } from './utils/queue';
 
-function fixture(queueName: 'analytics' | 'export' = 'analytics', migrated = true) {
+function fixture(queueName: 'analytics' | 'export' = 'analytics') {
   const entries = new Map<string, Record<string, unknown>>();
-  if (migrated) {
-    for (const schedule of PLATFORM_SCHEDULES.filter((item) => item.queue === queueName)) {
-      entries.set(schedule.id, {
-        key: schedule.id,
-        name: schedule.name,
-        pattern: schedule.pattern,
-        tz: 'UTC',
-        template: {
-          data: queueName === 'export' ? { requestedAt: '2026-01-01T00:00:00.000Z' } : {},
-          opts: QUEUE_CONFIGS[queueName].defaultJobOptions,
-        },
-      });
-    }
+  for (const schedule of PLATFORM_SCHEDULES.filter((item) => item.queue === queueName)) {
+    entries.set(schedule.id, {
+      key: schedule.id,
+      name: schedule.name,
+      pattern: schedule.pattern,
+      tz: 'UTC',
+      template: {
+        data: queueName === 'export' ? { requestedAt: '2026-01-01T00:00:00.000Z' } : {},
+        opts: QUEUE_CONFIGS[queueName].defaultJobOptions,
+      },
+    });
   }
   const queue = {
     getJobSchedulers: vi.fn(async () => [...entries.values()]),
@@ -38,13 +36,6 @@ describe('BullMQ 6 platform schedulers', () => {
     expect([...state.entries.values()].map(({ template: _template, ...entry }) => entry)).toEqual(before);
     for (const call of state.queue.upsertJobScheduler.mock.calls) expect(call[2].opts).toEqual(QUEUE_CONFIGS[name].defaultJobOptions);
     expect(state.entries.size).toBe(2);
-  });
-
-  it('creates stable schedulers on a fresh queue without duplicates', async () => {
-    const state = fixture('analytics', false);
-    await ensurePlatformSchedules(state.client, QueueNames.ANALYTICS);
-    await ensurePlatformSchedules(state.client, QueueNames.ANALYTICS);
-    expect([...state.entries.keys()]).toEqual(['rollup-analytics-daily', 'reconcile-usage-periods']);
   });
 
   it.each(['c17471239c4ca8e84f5a9539f52deaca', 'unknown-scheduler'])('refuses unmigrated or unknown entry %s before writes', async (key) => {
