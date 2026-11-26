@@ -281,6 +281,7 @@ interface StateInternals {
   delim: string;
   closed: PMNode | null;
   atBlockStart: boolean;
+  inTightList: boolean;
   flushClose(size?: number): void;
   atBlank(): boolean;
 }
@@ -393,6 +394,13 @@ class LinearMarkdownSerializerState extends SerializerState {
 
   // tiptap-markdown's MarkdownSerializerState (src/serialize/state.js) from here on.
   override render(node: PMNode, parent: PMNode, index: number): void {
+    const previous = this.closed;
+    if (this.inTightList && parent.type?.name === 'listItem' && previous) {
+      const opensFence =
+        node.type.name === 'codeBlock' && node.attrs.sourceFenceOpen && previous.type.name === 'paragraph' && previous.content.size > 0;
+      const followsFence = previous.type.name === 'codeBlock' && previous.attrs.sourceFenceOpen && node.type.name === 'paragraph';
+      if (opensFence || followsFence) this.flushClose(1);
+    }
     const previousOwner = this.output.owner;
     let position = -1;
     if (this.output.tracksLines && node.isBlock) {

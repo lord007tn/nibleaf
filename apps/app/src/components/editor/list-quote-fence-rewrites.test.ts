@@ -48,6 +48,20 @@ describe('a tight list holding a loose list stays tight (#638)', () => {
   }
 });
 
+describe('a tight list item keeps the text after its fence tight (#605)', () => {
+  it.each([
+    ['bullet', '- Step:\n  ```sh\n  npm i\n  ```\n  After.\n- Next'],
+    ['ordered', '1. Step:\n   ```sh\n   npm i\n   ```\n   After.\n2. Next'],
+    ['nested', '- Setup\n  - Step:\n    ```sh\n    npm i\n    ```\n    After.\n  - Next\n- Done'],
+  ])('preserves the authored %s list', (_shape, source) => {
+    expectTenIdenticalSaves(source);
+  });
+
+  it('preserves the blank lines in a loose item', () => {
+    expectTenIdenticalSaves('- Step:\n\n  ```sh\n  npm i\n  ```\n\n  After.\n\n- Next');
+  });
+});
+
 describe('a paragraph added after an unclosed fence stays out of its code (#649)', () => {
   const codes = () => {
     const found: string[] = [];
