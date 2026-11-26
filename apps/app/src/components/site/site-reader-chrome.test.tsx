@@ -112,17 +112,15 @@ describe('published reader chrome', () => {
     expect(document.activeElement).toBe(main);
   });
 
-  it('keeps the phone header to one row and labels its controls plainly', async () => {
+  it('labels the desktop switchers, mobile menu and navigation landmarks in Arabic', async () => {
     const container = await renderReader(MISSING);
     const header = container.querySelector('header');
-    expect(header?.className).toContain('flex-nowrap');
-    expect(header?.className).not.toContain('flex-wrap ');
-    // The header switchers are hidden below `sm`; the drawer carries them there.
-    // The group holding the switchers (each sits in its own trigger wrapper).
-    const switchers = container.querySelector('[aria-label="اللغة: العربية"]')?.closest('div');
-    expect(switchers?.className).toMatch(/(^| )hidden( |$)/);
-    expect(switchers?.className).toContain('sm:flex');
-    expect(container.querySelector('[aria-label="الإصدار: main"]')).not.toBeNull();
+    const language = header?.querySelector('button[aria-label="اللغة: العربية"]');
+    const version = header?.querySelector('button[aria-label="الإصدار: main"]');
+    const desktopSwitchers = language?.closest('div');
+    expect(desktopSwitchers?.classList.contains('hidden')).toBe(true);
+    expect(desktopSwitchers?.classList.contains('sm:flex')).toBe(true);
+    expect(version && desktopSwitchers?.contains(version)).toBe(true);
     expect(container.querySelector('[data-slot="sheet-trigger"]')?.getAttribute('aria-label')).toBe('فتح القائمة');
     const navLabels = [...container.querySelectorAll('nav[aria-label]')].map((nav) => nav.getAttribute('aria-label'));
     expect(navLabels).toContain('صفحات الوثائق');

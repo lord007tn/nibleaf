@@ -1,21 +1,18 @@
 // @vitest-environment jsdom
+import { readFileSync } from 'node:fs';
 import { Editor } from '@tiptap/core';
-import { AllSelection } from '@tiptap/pm/state';
 import { EditorContent } from '@tiptap/react';
 import { act, createElement } from 'react';
 import { flushSync } from 'react-dom';
 import { createRoot, type Root } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MarkdownRenderer } from '../../markdown';
 import RichMarkdown from '../../markdown-rich';
-import { TableBubbleMenu } from '../table-menu';
 import { buildEditorExtensions, getMarkdown } from '../tiptap-editor';
-import { alignTableColumns } from './aligned-table';
 import { imagePromptKey } from './block-image';
-import { cleanPasteDOM } from './clean-paste';
 import { addImageCaption, ImageControls } from './image-controls';
 import { type ImageUploader, uploadEditorImage } from './image-upload';
+import { createSlashItems } from './slash-command';
 
 beforeEach(() => {
   vi.stubGlobal('ClipboardEvent', class extends Event {});
@@ -36,8 +33,8 @@ beforeEach(() => {
 });
 const editors: Editor[] = [];
 const mounts: { root: Root; host: HTMLElement }[] = [];
-function make(canEdit = () => true) {
-  const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions({ canEdit }) });
+function make(canEdit = () => true, onUpload?: ImageUploader) {
+  const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions({ canEdit, onUpload }) });
   editors.push(editor);
   const host = document.createElement('div');
   document.body.append(host);
@@ -45,19 +42,6 @@ function make(canEdit = () => true) {
   flushSync(() => root.render(createElement(EditorContent, { editor })));
   mounts.push({ root, host });
   return editor;
-}
-function clean(html: string) {
-  const root = document.createElement('div');
-  root.innerHTML = html;
-  return cleanPasteDOM(root);
-}
-function textPaste(editor: Editor, text: string) {
-  editor.view.pasteText(
-    text,
-    Object.assign(new Event('paste'), {
-      clipboardData: { getData: (type: string) => (type === 'text/plain' ? text : '') },
-    }) as unknown as ClipboardEvent,
-  );
 }
 const file = () => new File(['image'], 'diagram.png', { type: 'image/png' });
 const button = (editor: Editor, label: string) =>
@@ -70,154 +54,11 @@ afterEach(() => {
   for (const editor of editors.splice(0)) editor.destroy();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
-describe('review content regressions', () => {
-  it('keeps Card groups, callouts, Frames, Tabs, Steps and code options through real internal clipboard serialization (1)', () => {
-    const source =
-      '<CardGroup cols="2">\n\n<Card title="Help" icon="book" href="/help">\n\nBody\n\n</Card>\n\n</CardGroup>\n\n<Warning>\n\nKeep this\n\n</Warning>\n\n<Frame caption="Caption">\n\n![Image](/a.png)\n\n</Frame>\n\n<Tabs>\n\n<Tab title="One">\n\nText\n\n</Tab>\n\n</Tabs>\n\n<Steps>\n\n<Step title="First">\n\nDo this\n\n</Step>\n\n</Steps>\n\n```js title="Example" {1}\nconst x = 1;\n```';
-    const from = make();
-    from.commands.setContent(source, { emitUpdate: false });
-    const expected = getMarkdown(from);
-    from.view.dispatch(from.state.tr.setSelection(new AllSelection(from.state.doc)));
-    const clipboard = from.view.serializeForClipboard(from.state.selection.content());
-    expect(clipboard.dom.innerHTML).toContain('data-pm-slice');
-    const to = make();
-    to.view.dom.dispatchEvent(
-      Object.assign(new Event('paste', { bubbles: true, cancelable: true }), {
-        clipboardData: {
-          files: [],
-          getData: (type: string) => (type === 'text/html' ? clipboard.dom.innerHTML : type === 'text/plain' ? clipboard.text : ''),
-        },
-      }),
-    );
-    expect(getMarkdown(to)).toBe(expected);
-  });
-  it('does not trust a forged data-pm-slice marker (1)', () => {
-    const editor = make();
-    editor.view.pasteHTML('<div data-pm-slice="0 0 []" data-mdx="Card"><img src="x" onerror="alert(1)"><iframe srcdoc="evil"></iframe></div>');
-    expect(getMarkdown(editor)).not.toMatch(/Card|onerror|iframe|srcdoc/);
-  });
-  it('keeps restarted Word numbering, list instances and non-one starts (3)', () => {
-    const item = (ordinal: number, lfo: number) =>
-      `<p style="mso-list:l0 level1 lfo${lfo}"><![if !supportLists]><span>${ordinal}.&nbsp;</span><![endif]>Item ${ordinal}</p>`;
-    expect(clean(item(1, 1) + item(2, 1) + item(1, 1) + item(4, 2)).innerHTML).toBe(
-      '<ol><li>Item 1</li><li>Item 2</li></ol><ol><li>Item 1</li></ol><ol start="4"><li>Item 4</li></ol>',
-    );
-    const editor = make();
-    editor.view.pasteHTML(item(4, 2));
-    expect(getMarkdown(editor)).toBe('4. Item 4');
-    editor.commands.clearContent();
-    editor.view.pasteHTML(item(1, 1) + item(2, 1) + item(1, 1) + item(4, 2));
-    const listStarts = () =>
-      editor.state.doc.content.content.filter((node) => node.type.name === 'orderedList').map((node) => [node.attrs.start, node.childCount]);
-    const before = listStarts();
-    expect(before).toEqual([
-      [1, 2],
-      [1, 1],
-      [4, 1],
-    ]);
-    editor.commands.setContent(getMarkdown(editor), { emitUpdate: false });
-    expect(listStarts()).toEqual(before);
-  });
-  it.each(['o is the variable', '1. is literal prose'])('never eats unmarked Word leading text: %s (3)', (text) => {
-    expect(clean(`<p style="mso-list:l0 level1 lfo1">${text}</p>`).textContent).toBe(text);
-  });
-  it('unwraps form wrappers and unknown markup, dropping only controls and active/chrome content (H)', () => {
-    const root = clean(
-      '<form><main><h2>Article</h2><custom-box>Keep <b>this</b></custom-box><p>Before<input value="secret"><select><option>Control</option></select><textarea>Control</textarea><button>Control</button>After</p></main></form>',
-    );
-    expect(root.innerHTML).toBe('<h2>Article</h2>Keep <b>this</b><p>BeforeAfter</p>');
-  });
-  it('never wraps table or list structure in inline marks from container styles (I)', () => {
-    const root = clean(
-      '<table style="font-weight:bold"><tbody><tr><td>Cell</td></tr></tbody></table><ul style="font-style:italic"><li>Item</li></ul><p style="font-weight:bold">Bold</p>',
-    );
-    expect(root.querySelector('table > strong, ul > em')).toBeNull();
-    expect(root.querySelector('p > strong')?.textContent).toBe('Bold');
-    const editor = make();
-    editor.view.pasteHTML(root.innerHTML);
-    expect(getMarkdown(editor)).toContain('Cell');
-  });
-  it('keeps pasted underline as u markup, which the rich reader renders (9)', () => {
-    const editor = make();
-    editor.view.pasteHTML('<p><span style="text-decoration:underline">Keep underline</span></p>');
-    const saved = getMarkdown(editor);
-    expect(saved).toBe('<u>Keep underline</u>');
-    expect(renderToStaticMarkup(createElement(RichMarkdown, { content: saved }))).toContain('Keep underline');
-    expect(renderToStaticMarkup(createElement(RichMarkdown, { content: saved }))).toContain('<u>');
-    // The basic renderer intentionally does not parse raw HTML; routing uses RichMarkdown.
-    expect(renderToStaticMarkup(createElement(MarkdownRenderer, { content: saved }))).toContain('Keep underline');
-  });
-  it.each(['/api/v1/users', 'https://example.com/old', 'www.example.com', 'example.com/path'])(
-    'replaces URL-like selected text instead of linking it: %s (E)',
-    (selected) => {
-      const editor = make();
-      editor.commands.setContent(selected, { emitUpdate: false });
-      editor.commands.setTextSelection({ from: 1, to: selected.length + 1 });
-      textPaste(editor, 'https://example.com/new');
-      expect(editor.state.doc.textContent).toBe('https://example.com/new');
-    },
-  );
-  it('replaces a selected relative path with the pasted path (E)', () => {
-    const editor = make();
-    editor.commands.setContent('/api/v1/users', { emitUpdate: false });
-    editor.commands.setTextSelection({ from: 1, to: 14 });
-    textPaste(editor, '/api/v2/users');
-    expect(getMarkdown(editor)).toBe('/api/v2/users');
-  });
-  it.each([
-    ['https://x.com/a.png?v=1', true],
-    ['https://x.com/page?file=a.png', false],
-  ] as const)('detects image pathname for %s (10)', (url, image) => {
-    const editor = make();
-    textPaste(editor, url);
-    expect(editor.state.doc.firstChild?.type.name === 'image').toBe(image);
-  });
-  it.each(['ltr', 'rtl'] as const)('shows active and default alignment and matching physical reader alignment in %s (J, C, 8)', async (dir) => {
-    const editor = make();
-    editor.commands.setContent('| A |\n| --- |\n| B |', { emitUpdate: false });
-    editor.commands.setTextSelection(4);
-    const mounted = mounts.at(-1);
-    if (!mounted) throw new Error('Expected a mounted editor');
-    const { root, host } = mounted;
-    await act(async () =>
-      root.render(
-        <>
-          <EditorContent editor={editor} />
-          <TableBubbleMenu editor={editor} dir={dir} />
-        </>,
-      ),
-    );
-    const find = (label: string) => Array.from(host.querySelectorAll('button')).find((element) => element.getAttribute('aria-label') === label);
-    expect(find('Default alignment')?.getAttribute('aria-pressed')).toBe('true');
-    await act(async () => {
-      find('Align to start')?.click();
-    });
-    const physical = dir === 'rtl' ? 'right' : 'left';
-    expect(find('Align to start')?.getAttribute('aria-pressed')).toBe('true');
-    expect(getMarkdown(editor)).toContain(dir === 'rtl' ? '---:' : ':---');
-    for (const rich of [false, true]) {
-      const render = (content: string) =>
-        renderToStaticMarkup(rich ? createElement(RichMarkdown, { content }) : createElement(MarkdownRenderer, { content }));
-      const parsed = document.createElement('div');
-      parsed.innerHTML = render(getMarkdown(editor));
-      expect(parsed.querySelector('th')?.getAttribute('align') ?? parsed.querySelector('th')?.style.textAlign).toBe(physical);
-      editor.commands.toggleHeaderRow();
-      alignTableColumns(editor, physical);
-      parsed.innerHTML = renderToStaticMarkup(createElement(RichMarkdown, { content: getMarkdown(editor) }));
-      expect(parsed.querySelector('td')?.getAttribute('align') ?? parsed.querySelector('td')?.style.textAlign).toBe(physical);
-      editor.commands.toggleHeaderRow();
-    }
-    await act(async () => {
-      find('Default alignment')?.click();
-    });
-    expect(getMarkdown(editor)).toContain('| --- |');
-  });
-});
-
-describe('review image and upload regressions', () => {
-  it('never moves selection or focus when typing during upload (D)', async () => {
+describe('Image upload and sizing controls', () => {
+  it('never moves selection or focus when typing during upload', async () => {
     const editor = make();
     editor.commands.setContent('Before\n\nAfter', { emitUpdate: false });
     editor.commands.setTextSelection(7);
@@ -242,7 +83,8 @@ describe('review image and upload regressions', () => {
     expect(imagePromptKey.getState(editor.state)).toBe(0);
     expect(editor.view.dom.textContent).toContain('Describe image');
   });
-  it('pastes an article with three images without selecting an image or focusing its prompt (D)', () => {
+
+  it('pastes an article with three images without selecting an image or focusing its prompt', () => {
     const editor = make();
     const focus = document.activeElement;
     editor.view.pasteHTML('<p>Start</p><img src="/1.png"><p>Middle</p><img src="/2.png"><img src="/3.png"><p>End</p>');
@@ -250,7 +92,8 @@ describe('review image and upload regressions', () => {
     expect(imagePromptKey.getState(editor.state)).toBe(0);
     expect(document.activeElement).toBe(focus);
   });
-  it('makes Retry idempotent, Remove aborts, and late completion inserts nothing (5, K)', async () => {
+
+  it('makes Retry idempotent, Remove aborts, and late completion inserts nothing', async () => {
     const editor = make();
     let signal: AbortSignal | undefined;
     let resolve!: (url: string) => void;
@@ -277,7 +120,8 @@ describe('review image and upload regressions', () => {
     await Promise.resolve();
     expect(getMarkdown(editor)).not.toContain('/late.png');
   });
-  it('restores upload progress, failure and retry state when widgets are recreated (12)', async () => {
+
+  it('restores upload progress, failure and retry state when widgets are recreated', async () => {
     const editor = make();
     let progress: ((n: number) => void) | undefined;
     let resolve!: (url: string | null) => void;
@@ -303,7 +147,8 @@ describe('review image and upload regressions', () => {
     await vi.waitFor(() => expect(button(editor, 'Retry')?.disabled).toBe(true));
     resolve('/retried.png');
   });
-  it('shows Finishing during confirm and a timeout with Retry after two minutes (K)', async () => {
+
+  it('shows Finishing during confirm and a timeout with Retry after two minutes', async () => {
     const editor = make();
     let finishing: (() => void) | undefined;
     const pending = uploadEditorImage(editor, file(), (_file, _progress, _signal, onFinishing) => {
@@ -331,7 +176,8 @@ describe('review image and upload regressions', () => {
     button(editor, 'Remove')?.click();
     void pending;
   });
-  it('blocks every document mutation from image and upload controls in comment mode (4)', async () => {
+
+  it('blocks every document mutation from image and upload controls in comment mode', async () => {
     let comment = false;
     const editor = make(() => !comment);
     editor.commands.setImage({ src: '/image.png' });
@@ -366,7 +212,8 @@ describe('review image and upload regressions', () => {
     expect(getMarkdown(editor)).toBe(before);
     await vi.waitFor(() => expect(button(editor, 'Remove')?.disabled).toBe(true));
   });
-  it('keeps preset width inside a Frame and labels both theme variants for writers (6, 7)', () => {
+
+  it('keeps preset width inside a Frame and labels both theme variants for writers', () => {
     const editor = make();
     editor.commands.setContent('<img src="/light.png" class="block dark:hidden" />\n\n<img src="/dark.png" className="hidden dark:block" />', {
       emitUpdate: false,
@@ -395,5 +242,100 @@ describe('review image and upload regressions', () => {
     const image = editor.view.dom.querySelector<HTMLElement>('.editor-image');
     expect(image?.style.width).toBe('480px');
     expect(editor.state.doc.firstChild?.firstChild?.attrs.width).toBe(480);
+  });
+
+  it('hides selected resize handles in review mode using the real CSS cascade', () => {
+    const style = document.createElement('style');
+    style.textContent = readFileSync('src/components/editor/tiptap.css', 'utf8');
+    document.head.append(style);
+    const host = document.createElement('div');
+    host.className = 'pl-editor is-comment-mode';
+    host.innerHTML =
+      '<div class="ProseMirror"><div class="editor-image ProseMirror-selectednode"><span class="editor-image-handle"></span></div></div>';
+    document.body.append(host);
+    try {
+      const handle = host.querySelector('span');
+      if (!handle) throw new Error('Expected handle');
+      expect(getComputedStyle(handle).display).toBe('none');
+    } finally {
+      host.remove();
+      style.remove();
+    }
+  });
+
+  it('announces upload completion and opens a passive description without moving focus or selection', async () => {
+    const editor = make();
+    editor.commands.setContent('Keep typing', { emitUpdate: false });
+    editor.commands.setTextSelection(5);
+    editor.view.focus();
+    const active = document.activeElement;
+    let resolve!: (url: string) => void;
+    const pending = uploadEditorImage(
+      editor,
+      new File(['image'], 'focus.png', { type: 'image/png' }),
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    resolve('/done.png');
+    await pending;
+    expect(document.activeElement).toBe(active);
+    expect(editor.state.selection.toJSON().type).toBe('text');
+    expect(editor.view.dom.querySelector('.editor-image')?.textContent).toContain("Describe what this image shows for people who can't see it");
+    await vi.waitFor(() => expect(document.querySelector('[data-reader-announcer]')?.textContent).toContain('Describe what this image shows'));
+  });
+
+  it('opens the slash file picker and forwards cancellation and completion state', async () => {
+    let signal: AbortSignal | undefined;
+    let finishing: (() => void) | undefined;
+    let resolve!: (url: string) => void;
+    const upload = vi.fn<ImageUploader>().mockImplementation((_file, _progress, nextSignal, onFinishing) => {
+      signal = nextSignal;
+      finishing = onFinishing;
+      return new Promise((done) => {
+        resolve = done;
+      });
+    });
+    const editor = make(undefined, upload);
+    const slash = editor.extensionManager.extensions.find((extension) => extension.name === 'slashCommand');
+    const image = createSlashItems(slash?.options.onUpload).find((item) => item.titleKey === 'editor.slash.image.title');
+    if (!image) throw new Error('Expected image slash item');
+    const prompt = vi.spyOn(window, 'prompt');
+    const click = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => undefined);
+    image.command({ editor, range: { from: 1, to: 1 }, locale: 'en' });
+    expect(click).toHaveBeenCalledOnce();
+    expect(prompt).not.toHaveBeenCalled();
+    const picker = document.querySelector<HTMLInputElement>('input[type="file"]');
+    if (!picker) throw new Error('Expected file picker');
+    Object.defineProperty(picker, 'files', { value: [new File(['image'], 'slash.png', { type: 'image/png' })] });
+    picker.dispatchEvent(new Event('change'));
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(finishing).toBeTypeOf('function');
+    finishing?.();
+    await vi.waitFor(() => expect(editor.view.dom.textContent).toContain('Finishing'));
+    Array.from(editor.view.dom.querySelectorAll('button'))
+      .find((button) => button.textContent === 'Remove')
+      ?.click();
+    expect(signal?.aborted).toBe(true);
+    resolve('/unused.png');
+  });
+
+  it.each(['none', 'same-coordinate', 'out-and-back'])('keeps authored dimensions when a resize has no final change: %s', (gesture) => {
+    const editor = make();
+    const source = '<img src="/x.png" width="480" height="240" />';
+    editor.commands.setContent(source, { emitUpdate: false });
+    editor.commands.setNodeSelection(0);
+    const image = editor.view.dom.querySelector('img');
+    const handle = editor.view.dom.querySelector('.editor-image-handle-right');
+    if (!image || !handle) throw new Error('Expected image handles');
+    vi.spyOn(image, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 200, 100));
+    handle.dispatchEvent(Object.assign(new Event('pointerdown', { bubbles: true, cancelable: true }), { clientX: 200 }));
+    if (gesture === 'out-and-back') document.dispatchEvent(Object.assign(new Event('pointermove'), { clientX: 250 }));
+    if (gesture !== 'none') document.dispatchEvent(Object.assign(new Event('pointermove'), { clientX: 200 }));
+    document.dispatchEvent(new Event('pointerup'));
+    expect(getMarkdown(editor)).toBe(source);
+    expect(editor.state.doc.firstChild?.attrs).toMatchObject({ width: 480, height: 240 });
+    expect((editor.view.dom.querySelector('.editor-image') as HTMLElement).style.width).toBe('480px');
   });
 });

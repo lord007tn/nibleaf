@@ -15,7 +15,7 @@ describe('friendlyErrorMessage', () => {
       { reason: 'user_redirect_conflict', from: '/old', to: 'https://example.com' },
       'editor.pageSettings.addressUserRuleConflict',
     ],
-  ])('council: exposes the localized address remedy for %s %s', (code, details, key) => {
+  ])('exposes the localized address remedy for %s %s', (code, details, key) => {
     const error = new ApiResponseError('Technical failure', 422, code, undefined, undefined, undefined, undefined, details);
     expect(friendlyErrorMessage(t, error, 'editor.pageSettings.saveError')).toBe(`t:${key}`);
   });
