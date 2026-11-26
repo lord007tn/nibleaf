@@ -1,4 +1,5 @@
 import { posix } from 'node:path';
+import { markdownLineKinds } from '@nibleaf/shared/markdown-code';
 import { scanAuthoredEmbeds } from '@nibleaf/shared/reader-embeds';
 import MarkdownIt from 'markdown-it';
 import { describe, expect, it } from 'vitest';
@@ -125,17 +126,21 @@ describe('containers around GitBook embeds (#597)', () => {
     ['heading outside quote', `> Step\n> ${embed}\n# ${following}`],
   ])('keeps media and following text in their source container after %s', (_shape, source) => {
     const before = outline(source);
-    const after = outline(convert(source).content);
+    const content = convert(source).content;
+    const after = outline(content);
     expect(before.media).toHaveLength(1);
     expect(before.next).toHaveLength(1);
     expect(after.media).toEqual(before.media);
     expect(after.next).toEqual(before.next);
     expect(after.links).toBeGreaterThanOrEqual(before.links);
     expect(after.images).toBeGreaterThanOrEqual(before.images);
+    const lines = content.split('\n');
+    expect(markdownLineKinds(lines)[lines.findIndex((line) => line.includes('Then continue'))]).toBe('prose');
   });
 
   it.each([
     ['quote marker with link', '', '> ', '', '[After](https://example.test/after)', 1, 1, 0],
+    ['quote marker with leading plain prose', '', '> ', 'Before', '', 1, 0, 0],
     ['nested quote with image', '> > Step\n', '> > ', '', '![x](y)', 2, 0, 1],
     ['list marker with prose on both sides', '', '- ', 'Step', '[After](https://example.test/after) ![x](y)', 2, 1, 1],
     ['ordered continuation with link and image', '1. Step\n', '   ', '', '[After](/after) ![x](y)', 2, 1, 1],
