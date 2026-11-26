@@ -471,7 +471,10 @@ function ThemeForm({ project }: { project: Project }) {
               <label className="grid gap-1.5 text-xs" key={key}>
                 <span className="font-medium">{t(`settings.theme.color.${key}`)}</span>
                 <span
-                  className={cn('flex items-center gap-2 rounded-md border bg-background p-1.5', invalid ? 'border-destructive' : 'border-input-edge')}
+                  className={cn(
+                    'flex items-center gap-2 rounded-md border bg-background p-1.5',
+                    invalid ? 'border-destructive' : 'border-input-edge',
+                  )}
                 >
                   <input
                     aria-describedby={invalid ? contrastId : undefined}
