@@ -35,7 +35,7 @@ pnpm --filter @nibleaf/custom-domain-edge run upload --dry-run
 pnpm --filter @nibleaf/custom-domain-edge run upload --message "Reviewed proxy release"
 ```
 
-The Vite build writes ignored `.cloudflare/output/v0/`. Uploading creates a
+The Vite build writes ignored `.cloudflare/output/v1/`. Uploading creates a
 version without changing live traffic.
 
 ### 2. Inspect the uploaded version
