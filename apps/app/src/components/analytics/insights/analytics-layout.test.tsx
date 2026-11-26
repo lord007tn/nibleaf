@@ -59,6 +59,12 @@ describe('Analytics with detailed analytics off (WORKSPACE-01)', () => {
     expect(container.querySelector('h1')?.textContent).toBe('analytics.title');
   });
 
+  it('brings the controls back when the same site later has figures (a refetch after setup)', async () => {
+    await draw('p1', off);
+    await draw('p1', on);
+    expect(container.querySelector('[data-testid="filters"]')).not.toBeNull();
+  });
+
   it('asks again for another site', async () => {
     await draw('p1', off);
     await draw('p2', on);

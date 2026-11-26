@@ -29,7 +29,7 @@ export function AnalyticsLayout({
   const t = useT();
   // Keyed by site, so switching to another site asks again.
   const [offFor, setOffFor] = useState<string | null>(null);
-  const reportAnalyticsOff = useCallback(() => setOffFor(projectId), [projectId]);
+  const reportAnalyticsOff = useCallback((off: boolean) => setOffFor(off ? projectId : null), [projectId]);
   const analyticsOff = offFor === projectId;
   return (
     // `contain: inline-size` keeps wide tables from widening the dashboard shell's

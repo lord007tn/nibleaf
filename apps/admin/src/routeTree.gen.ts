@@ -64,20 +64,20 @@ const dashboardUsersUserIdRoute = dashboardUsersUserIdRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof dashboardIndexRoute
   '/sign-in': typeof authSignInRoute
   '/operations': typeof dashboardOperationsRoute
   '/sites': typeof dashboardSitesRouteWithChildren
   '/users': typeof dashboardUsersRouteWithChildren
+  '/': typeof dashboardIndexRoute
   '/sites/$siteId': typeof dashboardSitesSiteIdRoute
   '/users/$userId': typeof dashboardUsersUserIdRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof dashboardIndexRoute
   '/sign-in': typeof authSignInRoute
   '/operations': typeof dashboardOperationsRoute
   '/sites': typeof dashboardSitesRouteWithChildren
   '/users': typeof dashboardUsersRouteWithChildren
+  '/': typeof dashboardIndexRoute
   '/sites/$siteId': typeof dashboardSitesSiteIdRoute
   '/users/$userId': typeof dashboardUsersUserIdRoute
 }
@@ -96,20 +96,20 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/sign-in'
     | '/operations'
     | '/sites'
     | '/users'
+    | '/'
     | '/sites/$siteId'
     | '/users/$userId'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/sign-in'
     | '/operations'
     | '/sites'
     | '/users'
+    | '/'
     | '/sites/$siteId'
     | '/users/$userId'
   id:
@@ -135,14 +135,14 @@ declare module '@tanstack/react-router' {
     '/(auth)': {
       id: '/(auth)'
       path: ''
-      fullPath: '/'
+      fullPath: ''
       preLoaderRoute: typeof authRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(dashboard)': {
       id: '/(dashboard)'
       path: ''
-      fullPath: '/'
+      fullPath: ''
       preLoaderRoute: typeof dashboardRouteRouteImport
       parentRoute: typeof rootRouteImport
     }

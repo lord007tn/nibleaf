@@ -33,4 +33,11 @@ describe('StatCard change badge (WORKSPACE-23)', () => {
     await act(async () => root.render(<StatCard delta={{ mode: 'percent', amount: 3, direction: 'up' }} label="Views" loading value={null} />));
     expect(container.querySelector('[data-slot="card-footer"]')).toBeNull();
   });
+
+  it('dims and marks busy a figure that belongs to the previous range', async () => {
+    await act(async () => root.render(<StatCard label="Page views" refreshing value={10} />));
+    const card = container.querySelector('[data-slot="card"]');
+    expect(card?.getAttribute('aria-busy')).toBe('true');
+    expect(card?.className).toContain('opacity-60');
+  });
 });

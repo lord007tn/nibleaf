@@ -397,6 +397,7 @@ function SiteOverviewPage() {
           hint={viewsDelta ? t('analytics.vsPrevious') : undefined}
           link={<TileLink label={t('overview.stats.pageviews')} params={{ projectId }} to="/app/projects/$projectId/analytics" />}
           loading={analyticsPending}
+          refreshing={analyticsQuery.isPlaceholderData}
         />
       </div>
 
@@ -489,8 +490,7 @@ function SiteOverviewPage() {
                   const status = pageLiveStatus(page.id, pendingChanges);
                   return (
                     <TableRow key={page.id} className="relative">
-                      {/* The title's own direction sets its alignment: an Arabic title sits right in an English table (AUTH-39). */}
-                      <TableCell dir="auto">
+                      <TableCell>
                         {/* A real link to this page in the editor: keyboard, middle-click and
                           screen readers all work, and the whole row stays clickable. */}
                         <Link
@@ -500,7 +500,9 @@ function SiteOverviewPage() {
                           to="/app/projects/$projectId/editor"
                         >
                           <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate font-medium" dir="auto">
+                          {/* The icon stays on the interface's side; the title takes its own direction and
+                              alignment, so an Arabic title sits right in an English table (AUTH-39). */}
+                          <span className="min-w-0 flex-1 truncate text-start font-medium" dir="auto">
                             {page.config?.sidebarTitle?.trim() || page.title}
                           </span>
                         </Link>
@@ -764,7 +766,9 @@ function PublishNudge({
   permissionError?: React.ReactNode;
 }) {
   const t = useT();
-  const dismissed = useNudgeDismissed(projectId);
+  // A dismissal also holds in memory, for when storage can't be written (private mode, quota, blocked storage).
+  const [dismissedHere, setDismissedHere] = useState(false);
+  const dismissed = useNudgeDismissed(projectId) || dismissedHere;
   const { count } = useFormatters();
   const content = usePendingChanges(projectId, { enabled: !dismissed });
   const domains = useDomains(projectId);
@@ -777,6 +781,7 @@ function PublishNudge({
     return null;
   }
   const dismiss = () => {
+    setDismissedHere(true);
     try {
       window.localStorage.setItem(nudgeDismissKey(projectId), '1');
     } catch {

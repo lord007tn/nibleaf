@@ -71,7 +71,7 @@ export function InsightsRegion({ loading, children }: { loading: boolean; childr
  * it drops the range, comparison and section controls: they could change
  * nothing (operations/ui-overhaul.md §6.6, WORKSPACE-01).
  */
-const AnalyticsSetupReporter = createContext<(() => void) | null>(null);
+const AnalyticsSetupReporter = createContext<((off: boolean) => void) | null>(null);
 export const AnalyticsSetupProvider = AnalyticsSetupReporter.Provider;
 
 /**
@@ -84,7 +84,7 @@ export const AnalyticsSetupProvider = AnalyticsSetupReporter.Provider;
 function AnalyticsSetupNotice({ projectId }: { projectId: string }) {
   const { t, locale } = useLocale();
   const report = useContext(AnalyticsSetupReporter);
-  useEffect(() => report?.(), [report]);
+  useEffect(() => report?.(true), [report]);
   return (
     <FeatureUnavailable
       action={
@@ -109,6 +109,13 @@ function AnalyticsSetupNotice({ projectId }: { projectId: string }) {
       title={t('analytics.setup.title')}
     />
   );
+}
+
+/** Figures arrived: tell the layout analytics is on (it may have been off earlier), then show their freshness. */
+function AnalyticsOn({ projectId, lastEventAt }: { projectId: string; lastEventAt: string | null | undefined }) {
+  const report = useContext(AnalyticsSetupReporter);
+  useEffect(() => report?.(false), [report]);
+  return <FreshnessNotice lastEventAt={lastEventAt} projectId={projectId} />;
 }
 
 /** The availability notice for a section: unavailable, partial, or the analytics-off notice. */
@@ -141,11 +148,11 @@ export function InsightsStatus({ state, projectId, retry }: { state: InsightsSta
           <AlertTitle>{t('analytics.status.partial.title')}</AlertTitle>
           <AlertDescription>{t('analytics.status.partial.body')}</AlertDescription>
         </Alert>
-        <FreshnessNotice lastEventAt={state.lastEventAt} projectId={projectId} />
+        <AnalyticsOn lastEventAt={state.lastEventAt} projectId={projectId} />
       </>
     );
   }
-  if (state.availability === 'complete') return <FreshnessNotice lastEventAt={state.lastEventAt} projectId={projectId} />;
+  if (state.availability === 'complete') return <AnalyticsOn projectId={projectId} lastEventAt={state.lastEventAt} />;
   if (state.availability === 'not_configured' || state.availability === 'reads_disabled') return <AnalyticsSetupNotice projectId={projectId} />;
   return null;
 }

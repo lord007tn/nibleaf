@@ -21,6 +21,7 @@ export function StatCard({
   hint,
   loading,
   link,
+  refreshing,
 }: {
   label: string;
   value: number | null;
@@ -37,12 +38,16 @@ export function StatCard({
    * tile itself stays a plain card for assistive tech.
    */
   link?: ReactNode;
+  /** The figure is the previous range's while a new range loads: dimmed and marked busy. */
+  refreshing?: boolean;
 }) {
   const { number } = useFormatters();
   return (
     <Card
+      aria-busy={refreshing || undefined}
       className={cn(
-        '@container/card min-w-0 gap-3',
+        '@container/card min-w-0 gap-3 transition-opacity',
+        refreshing && 'opacity-60',
         link && 'relative transition-colors focus-within:ring-3 focus-within:ring-ring/50 hover:bg-muted/40 [&_a]:outline-none',
       )}
     >
@@ -63,7 +68,8 @@ export function StatCard({
       {/* The change sits on the footer line with its "vs. previous period", not in the header's
           corner, where a narrow tile (two per row on a phone) laid it over the label (WORKSPACE-23). */}
       {(delta || hint) && !loading ? (
-        <CardFooter className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+        // Above the tile's stretched link, so the change badge's spoken text still shows on hover.
+        <CardFooter className="relative z-10 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
           {delta ? <DeltaBadge delta={delta} polarity="higher_is_better" /> : null}
           {hint ? <span>{hint}</span> : null}
         </CardFooter>

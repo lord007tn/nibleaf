@@ -393,6 +393,18 @@ describe('first-publish checklist and reserved address', () => {
     expect(html).toContain('Your docs are not live yet');
   });
 
+  it('closes the checklist for the session even when storage writes fail', async () => {
+    const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new Error('blocked');
+    });
+    await act(async () => root.render(<SiteOverviewPage />));
+    const dismiss = container.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
+    expect(dismiss).not.toBeNull();
+    await act(async () => dismiss?.click());
+    expect(container.textContent).not.toContain('Your docs are not live yet');
+    setItem.mockRestore();
+  });
+
   it('keeps a dismissed checklist hidden', async () => {
     window.localStorage.setItem('nibleaf.publishNudge.project-1', '1');
     await act(async () => root.render(<SiteOverviewPage />));
@@ -624,11 +636,17 @@ describe('site overview when something fails or is still connecting', () => {
       expect(statuses).toEqual(['changed', 'draft', 'live']);
     });
 
-    it('lets each page title cell take its own direction, so an Arabic title aligns right in an English table (AUTH-39)', async () => {
+    it('lets each page title take its own direction and alignment, with the icon kept on the interface side (AUTH-39)', async () => {
       await act(async () => root.render(<SiteOverviewPage />));
-      const cells = [...container.querySelectorAll('tbody tr')].map((row) => row.querySelector('td'));
-      expect(cells).toHaveLength(3);
-      for (const cell of cells) expect(cell?.getAttribute('dir')).toBe('auto');
+      const rows = [...container.querySelectorAll('tbody tr')];
+      expect(rows).toHaveLength(3);
+      for (const row of rows) {
+        const cell = row.querySelector('td');
+        expect(cell?.hasAttribute('dir')).toBe(false);
+        const title = cell?.querySelector('a span[dir="auto"]');
+        // Fills the row after the icon and aligns to its own start: an Arabic title sits right in an English table.
+        expect(title?.className.split(' ')).toEqual(expect.arrayContaining(['flex-1', 'text-start']));
+      }
     });
 
     it('offers Viewers the state without a publish action', async () => {
