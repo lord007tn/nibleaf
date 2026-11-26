@@ -1637,6 +1637,7 @@
   "settings_git_workflow_loaderrorhint": "Coba lagi atau periksa koneksi server.",
   "settings_git_workflow_connected": "GitHub koneksi disimpan.",
   "settings_git_workflow_connecterror": "Tidak dapat menghubungkan GitHub.",
+  "settings_git_workflow_savedelsewhere": "Orang lain menyimpan pengaturan ini setelah Anda membukanya. Perubahannya kini ditampilkan. Periksa, lalu simpan lagi.",
   "settings_git_workflow_disconnected": "GitHub terputus dan kredensial terenkripsi dihapus.",
   "settings_git_workflow_disconnecterror": "Tidak dapat memutuskan sambungan GitHub.",
   "settings_git_workflow_operationerror": "Tidak dapat mengantri operasi Git.",

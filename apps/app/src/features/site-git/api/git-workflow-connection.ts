@@ -10,8 +10,12 @@ import { api } from '@/services/api';
 import { type GitWorkflowConnectionValues, gitWorkflowConnectionPayload, type StoredGitWorkflowConnection } from '../model/git-workflow-connection';
 import { isWritingConnection, startConnectionWrite, useWritingConnection } from './git-connection-writes';
 
-/** A connection save: the site it is for and the settings as typed. The token goes beside it, never in it. */
-export type GitWorkflowConnectionSave = { projectId: string; values: GitWorkflowConnectionValues };
+/**
+ * A connection save: the site it is for, the settings as typed, and the
+ * `settingsRevision` of the connection the form shows (what those settings
+ * were edited from). The token goes beside it, never in it.
+ */
+export type GitWorkflowConnectionSave = { projectId: string; values: GitWorkflowConnectionValues; expectedRevision?: number };
 
 /** What `PUT /git/connection` answers: the stored connection (redacted) and a webhook secret only when it made one. */
 export type GitWorkflowConnectionResult = { connection: StoredGitWorkflowConnection; webhookSecret: string | null };
@@ -109,9 +113,13 @@ const sanitized = (error: unknown) => {
  * - sends the import branch and language as the site's latest confirmed status
  *   holds them (`latestConfirmedStatus`);
  * - sends the token only when one was typed;
+ * - sends the form's revision, so a save another person committed after the
+ *   form loaded is refused (409) instead of replaced (#876). That refusal
+ *   refreshes the site's status, so the form shows the other save (its
+ *   changed fields, or a conflict where both changed one) before a new try;
  * - on success, refreshes the status of the site the request was for, whatever
  *   the page shows by then, and resolves after that read with the PUT's
- *   answer; a failure refreshes nothing;
+ *   answer; any other failure refreshes nothing;
  * - is never retried; once the session this hook belongs to has ended, it
  *   reads, sends and refreshes nothing.
  *
@@ -143,12 +151,16 @@ export function useSaveGitWorkflowConnection(projectId: string) {
           result = await mutateData<GitWorkflowConnectionResult>(
             await api.app.projects[':projectId'].git.connection.$put({
               param: { projectId: request.projectId },
-              json: gitWorkflowConnectionPayload(request.values, status, token),
+              json: gitWorkflowConnectionPayload(request.values, status, token, request.expectedRevision),
             }),
             FAILED,
           );
         } catch (error) {
-          throw sanitized(error);
+          const refused = sanitized(error);
+          if (refused instanceof ApiResponseError && refused.status === 409 && current()) {
+            await client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail(request.projectId) }).catch(() => undefined);
+          }
+          throw refused;
         }
         await client.invalidateQueries({ queryKey: queryKeys.gitWorkflow.detail(request.projectId) });
         return result;

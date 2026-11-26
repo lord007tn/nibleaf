@@ -7,6 +7,7 @@ import type { EditorProps, EditorView } from '@tiptap/pm/view';
 import { allowedURL, escapeImageAttribute, IMAGE_UPLOAD_PLACEHOLDER_PREFIX, imageClasses, imageDimension, normalizedURL } from './html-safety';
 import { imageAttributeNames } from './image-source';
 import { canEditImages, type ImageUploader, uploadEditorImage } from './image-upload';
+import { pasteFileRows } from './mdx/file-tree';
 import { fileFromPastedImage } from './pasted-image';
 import { pastedVideoEmbedAttributes, VIDEO_EMBED_CLIPBOARD_ATTRIBUTES, VIDEO_EMBED_NODE, type VideoEmbedAttributes } from './video-embed';
 import { embedTargetFor } from './video-embed-url';
@@ -393,9 +394,12 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
           return clean.content.textBetween(0, clean.content.size) ? [editor.schema.text(clean.content.textBetween(0, clean.content.size))] : [];
         return Array.from(clean.content.content);
       }
-      const marks = node.marks.filter((mark) => mark.type.name !== 'link' || safePasteHref(String(mark.attrs.href ?? '')));
+      const marks = node.marks
+        .filter((mark) => mark.type.name !== 'link' || safePasteHref(String(mark.attrs.href ?? '')))
+        .map((mark) => (mark.attrs.sourceStructuredHtml ? mark.type.create({ ...mark.attrs, sourceStructuredHtml: undefined }) : mark));
       if (node.isText) return [node.mark(marks)];
       const attrs = { ...node.attrs };
+      delete attrs.sourceStructuredHtml;
       if (typeof attrs.href === 'string' && !safePasteHref(attrs.href)) attrs.href = '';
       // Clipboard nodes cannot carry a raw-source cache around the allow list.
       if (!internal || unsafeSourceOpener(String(attrs.sourceOpen ?? '')))
@@ -495,7 +499,8 @@ export const CleanPaste = Extension.create<{ getUpload: () => ImageUploader | un
               uploads.clear();
               const slice = sanitizedSlice(Slice.fromJSON(editor.schema, record.slice.toJSON()), true);
               event.preventDefault();
-              insertWithUploads(view, view.state.tr.replaceSelection(slice).setMeta('uiEvent', 'paste'));
+              // Whole File or Folder rows are rows of the tree, never text in a File's name (#870).
+              insertWithUploads(view, (pasteFileRows(view.state, slice) ?? view.state.tr.replaceSelection(slice)).setMeta('uiEvent', 'paste'));
               return true;
             },
           },

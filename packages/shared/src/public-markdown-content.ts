@@ -1,4 +1,5 @@
 import { type ExportFallbackContext, escapeDisallowedExportHtml } from './export-html';
+import { closesMarkdownFence, openingMarkdownFence } from './markdown-code';
 import { markdownCodeSpans } from './markup-scan';
 import { buildMdxTree, type MdxNode, tokenizeMdx } from './mdx-tokens';
 
@@ -301,12 +302,38 @@ const renderNodes = (nodes: readonly MdxNode[], target: Target): Segment[] =>
 
 const projectMdx = (source: string, target: Target): Segment[] => renderNodes(buildMdxTree(tokenizeMdx(source, COMPONENT_NAMES)), target);
 
+/**
+ * Marked expands leading tabs in quoted code. For a closed fence at the quote's
+ * content column, keep literal tabs that remain after consuming the quote's
+ * one optional column. A renderer can carry that code past Marked's lexer as
+ * an out-of-band value, while the projected Markdown keeps a fenced block.
+ */
+function portableQuotedFence(source: string, storeCode: (code: string) => string): string {
+  if (!source.includes('>\t') && !source.includes('> \t')) return source;
+  const lines = source.split('\n');
+  const opening = lines[0] ?? '';
+  const closing = lines.at(-1) ?? '';
+  if (!opening.startsWith('> ') || !closing.startsWith('> ')) return source;
+  const fence = openingMarkdownFence(opening.slice(2), 0);
+  if (!fence || !closesMarkdownFence(closing.slice(2), fence)) return source;
+  const body: string[] = [];
+  for (const line of lines.slice(1, -1)) {
+    if (line === '>') body.push('');
+    else if (line.startsWith('> ')) body.push(line.slice(2));
+    else if (line.startsWith('>\t')) body.push(`  ${line.slice(2)}`);
+    else return source;
+  }
+  if (!body.some((line) => /^ *\t/.test(line)) || body.some((line) => closesMarkdownFence(line, fence))) return source;
+  return `${opening}\n> ${storeCode(body.join('\n'))}\n${closing}`;
+}
+
 /** Convert supported authored MDX to inert Markdown for the HTML and PDF exports, with the same
- *  tokenizer and projection as `.md`. Code is never rewritten; `marked` escapes raw HTML. */
-export const portablePublicMdxMarkdown = (source: string, context?: ExportFallbackContext): string =>
+ *  tokenizer and projection as `.md`. A renderer can preserve quoted code through
+ *  its lexer by supplying a temporary token for each affected block. */
+export const portablePublicMdxMarkdown = (source: string, context?: ExportFallbackContext, storeQuotedCode?: (code: string) => string): string =>
   escapeDisallowedExportHtml(
     projectMdx(source, 'export')
-      .map((segment) => segment.value)
+      .map(({ kind, value }) => (kind === 'code' && storeQuotedCode ? portableQuotedFence(value, storeQuotedCode) : value))
       .join(''),
     context,
   );

@@ -48,6 +48,18 @@ const site = (pages: SnapshotPage[]): SiteSnapshot => ({
   generatedAt: '2026-11-01T00:00:00.000Z',
 });
 
+describe.runIf(growthTestsEnabled)('publish facts on many raw HTML fragments', () => {
+  it('retains all links with linear growth across four times as many fragments', () => {
+    const block = '<a href="/guide" title="Guide">Guide</a>\n\n';
+    const count = 3000;
+    const small = block.repeat(count);
+    const large = block.repeat(count * 4);
+    const [smallMs, largeMs] = growthMs((content) => pageContentFacts(content, false), small, large, { budgetMs: 20_000 });
+    expect(largeMs).toBeLessThanOrEqual(linearGrowthLimit(smallMs));
+    expect(pageContentFacts(large, false).links).toHaveLength(count * 4);
+  }, 120_000);
+});
+
 describe.runIf(growthTestsEnabled)('cold inbound page map: growth', () => {
   const run = Math.random().toString(36).slice(2);
   const coldSite = ({ count, rep, mode }: { count: number; rep: number; mode: string }) =>

@@ -1,4 +1,7 @@
 import { protectMarkdownCode } from '@nibleaf/shared/markdown-code';
+import { type CompileContext, type Extension, fromMarkdown } from 'mdast-util-from-markdown';
+import { mdxFromMarkdown } from 'mdast-util-mdx';
+import { mdxjs } from 'micromark-extension-mdxjs';
 export interface ImportReference {
   value: string;
   start: number;
@@ -79,6 +82,54 @@ export const markdownReferences = (source: string): ImportReference[] => {
     if (destination.end > destination.start) references.push({ value: source.slice(destination.start, destination.end), ...destination, image });
   }
   return references;
+};
+
+// micromark's inline resolution can be quadratic in paragraph length. Bound the
+// entire parse, since a reference and its definition can be anywhere on the page.
+const MAX_DEFINITION_PARSE_LENGTH = 4096;
+
+/** Read valid destination spans from the parser while keeping source spelling,
+ * including escapes. Only the first definition of an actual link qualifies.
+ * A definition shared with an image keeps the image's destination. */
+export const markdownLinkDefinitions = (source: string): ImportReference[] => {
+  if (source.length > MAX_DEFINITION_PARSE_LENGTH || !source.includes(']:')) return [];
+  const collect = (mdx: boolean): ImportReference[] => {
+    const destinations = new Map<string, ImportReference>();
+    const spans: Extension = {
+      exit: {
+        definitionDestination(token) {
+          const node = this.stack.at(-1);
+          const from = token.start.offset;
+          const to = token.end.offset;
+          if (node?.type !== 'definition' || from === undefined || to === undefined || destinations.has(node.identifier)) return;
+          const bracketed = source[from] === '<';
+          const start = from + Number(bracketed);
+          const end = to - Number(bracketed);
+          destinations.set(node.identifier, { value: source.slice(start, end), start, end, image: false });
+        },
+      },
+    };
+    const tree = fromMarkdown(source, mdx ? { extensions: [mdxjs()], mdastExtensions: [mdxFromMarkdown(), spans] } : { mdastExtensions: [spans] });
+    const links = new Set<string>();
+    const images = new Set<string>();
+    const pending: CompileContext['stack'] = [tree];
+    for (const node of pending) {
+      if (node.type === 'linkReference' && !node.identifier.startsWith('^')) links.add(node.identifier);
+      if (node.type === 'imageReference') images.add(node.identifier);
+      if ('children' in node) for (const child of node.children) pending.push(child);
+    }
+    return [...destinations].flatMap(([label, span]) => (span.value && links.has(label) && !images.has(label) ? [span] : []));
+  };
+  // CommonMark handles raw HTML. MDX syntax additionally recognizes a
+  // definition immediately inside a component's opening and closing lines.
+  if (/<[A-Z]/.test(source)) {
+    try {
+      return collect(true);
+    } catch {
+      return collect(false);
+    }
+  }
+  return collect(false);
 };
 
 export const replaceImportReferences = (

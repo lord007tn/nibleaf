@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { STARTER_PAGE_CONTENTS } from '@nibleaf/auth/starter-content';
 import { Editor, type JSONContent } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import {
   applyCorpusEdits,
@@ -101,6 +102,19 @@ function seededPages(): string[] {
 const corpus = serializerCorpus();
 /** Where the serializer corpus's pages start in `pages`. */
 const CORPUS_START = SEEDED_PAGES;
+// The LF suite has nine additional seeded pages with adjacent component tags.
+const LF_COMPONENT_LAYOUT_PAGES = new Set([
+  27,
+  87,
+  107,
+  115,
+  140,
+  142,
+  189,
+  332,
+  580,
+  ...COMPONENT_LAYOUT_CORPUS_PAGES.map((index) => CORPUS_START + index),
+]);
 const pages: Array<{ page: string; edits: readonly CorpusEdit[] }> = [
   ...seededPages().map((page) => ({ page, edits: [{ kind: 'insert', at: 3, text: 'x' }] as CorpusEdit[] })),
   ...corpus.map(({ source, edits }) => ({ page: source, edits })),
@@ -109,20 +123,28 @@ const pages: Array<{ page: string; edits: readonly CorpusEdit[] }> = [
   ),
 ];
 
-/** Project only #670's duplicated File name text to the historical atom shape.
- * The name attribute, every other node, and all Markdown remain in the digest. */
-const mainFileShape = (node: JSONContent): JSONContent => {
+/** Project #670's duplicated File text and #575's unused metadata slot to the
+ * historical shape. Authored values, every other node, and all Markdown remain
+ * in the digest. */
+const mainNodeShape = (node: JSONContent): JSONContent => {
   if (node.type === 'mdxFile') {
     expect(node.content?.map((child) => child.text ?? '').join('') ?? '').toBe(node.attrs?.name ?? '');
     const { content: _name, ...atom } = node;
     return atom;
   }
-  return node.content ? { ...node, content: node.content.map(mainFileShape) } : node;
+  let projected = node;
+  if (node.attrs && Object.hasOwn(node.attrs, 'sourceStructuredHtml') && node.attrs.sourceStructuredHtml === undefined) {
+    const { attrs, ...rest } = node;
+    const { sourceStructuredHtml: _empty, ...existing } = attrs;
+    projected = Object.keys(existing).length === 0 ? rest : { ...node, attrs: existing };
+  }
+  return node.content ? { ...projected, content: node.content.map(mainNodeShape) } : projected;
 };
 
 describe('pages with LF only save as on main (#702)', () => {
   const editor = new Editor({ element: document.createElement('div'), extensions: buildEditorExtensions() });
   afterAll(() => editor.destroy());
+  let componentLayouts = 0;
 
   /** The page's nodes, its save, its save after `edits` (run through `edit`, the
    *  editor itself by default), and the Markdown the editor emits for that. */
@@ -130,9 +152,11 @@ describe('pages with LF only save as on main (#702)', () => {
     page: string,
     edits: readonly CorpusEdit[],
     edit: (target: Editor) => DifferentialEditor = (target) => target as unknown as DifferentialEditor,
+    replayLayout = false,
   ): string => {
     editor.commands.setContent(page, { emitUpdate: false });
-    const nodes = JSON.stringify(mainFileShape(editor.state.doc.toJSON()));
+    if (replayLayout && replayMainComponentLayout(editor)) componentLayouts++;
+    const nodes = JSON.stringify(mainNodeShape(editor.state.doc.toJSON()));
     const saved = getMarkdown(editor);
     applyCorpusEdits(edit(editor), edits);
     const edited = getMarkdown(editor);
@@ -145,7 +169,10 @@ describe('pages with LF only save as on main (#702)', () => {
   });
 
   it(`gives main’s nodes, save, edited save and emitted Markdown for all ${pages.length} pages, but #660’s`, () => {
-    const digests = pages.map(({ page, edits }) => digest(page, edits));
+    const digests = pages.map(({ page, edits }, index) =>
+      digest(page, edits, undefined, !process.env.WRITE_LF_MAIN && LF_COMPONENT_LAYOUT_PAGES.has(index)),
+    );
+    if (!process.env.WRITE_LF_MAIN) expect(componentLayouts).toBe(177);
     if (process.env.WRITE_LF_MAIN) {
       writeFileSync(FIXTURE, `${JSON.stringify({ pages: pages.length, digests }, null, 2)}\n`);
       return;
@@ -157,14 +184,14 @@ describe('pages with LF only save as on main (#702)', () => {
     const keptLink = CODE_TOGGLE_KEEPS_LINK_PAGES.map((index) => CORPUS_START + index);
     const differences = changed.filter((index) => !keptLink.includes(index)).map((index) => pages[index]?.page);
     console.info(
-      `[lf-main-differential] ${pages.length} pages, ${differences.length} differences, ${changed.length - differences.length} kept links by #660`,
+      `[lf-main-differential] ${pages.length} pages, ${differences.length} differences, ${changed.length - differences.length} kept links by #660, ${componentLayouts} replayed with main's #625 layout`,
     );
     expect(differences.slice(0, 3)).toEqual([]);
     expect(changed).toEqual(keptLink);
     expect(changed).toHaveLength(14);
     const withMainToggle = keptLink.map((index) => {
       const { page, edits } = pages[index] as (typeof pages)[number];
-      return digest(page, edits, (target) => withMainCodeToggle(target as unknown as MarkEditor));
+      return digest(page, edits, (target) => withMainCodeToggle(target as unknown as MarkEditor), LF_COMPONENT_LAYOUT_PAGES.has(index));
     });
     expect(withMainToggle).toEqual(keptLink.map((index) => main.digests[index]));
   }, 600_000);

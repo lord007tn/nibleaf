@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { isDashboardLocaleRouteId } from './dashboard-locale-routes';
 
@@ -12,11 +12,28 @@ import { isDashboardLocaleRouteId } from './dashboard-locale-routes';
 const src = resolve(import.meta.dirname, '..');
 const routesDir = join(src, 'routes');
 
+/*
+ * Each route's import walk revisits most of the app. The walks used to stat and read
+ * every file again, ~37k synchronous fs calls per run, which took over 5 s per test
+ * under a full-suite load (#913). Now the tree is listed once, and each file is read
+ * and its imports resolved once.
+ */
 const walk = (directory: string): string[] =>
   readdirSync(directory).flatMap((name) => {
     const path = join(directory, name);
     return statSync(path).isDirectory() ? walk(path) : [path];
   });
+const memo = <T>(compute: (key: string) => T) => {
+  const cache = new Map<string, T>();
+  return (key: string): T => {
+    if (!cache.has(key)) cache.set(key, compute(key));
+    return cache.get(key) as T;
+  };
+};
+const allFiles = walk(src);
+const filesInSrc = new Set(allFiles);
+const isFile = memo((path) => (path.startsWith(src + sep) ? filesInSrc.has(path) : existsSync(path) && statSync(path).isFile()));
+const sourceOf = memo((file) => readFileSync(file, 'utf8'));
 const isSource = (file: string) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file) && !/[\\/]test-setup[\\/]/.test(file);
 const display = (file: string) => relative(src, file).replaceAll('\\', '/');
 
@@ -24,14 +41,17 @@ const IMPORTS =
   /(?:^|\n)\s*(?:import|export)\s+(type\s+)?[^'";]*?from\s*['"]([^'"]+)['"]|(?:^|\n)\s*import\s*['"]([^'"]+)['"]|import\(\s*['"]([^'"]+)['"]\s*\)/g;
 const FULL_TRANSLATOR = /^@nibleaf\/i18n(?:\/react)?$/;
 
+const resolved = new Map<string, string | undefined>();
 function resolveImport(from: string, specifier: string): string | undefined {
   const base = specifier.startsWith('@/') ? join(src, specifier.slice(2)) : specifier.startsWith('.') ? resolve(dirname(from), specifier) : undefined;
   if (!base) return undefined;
-  return ['', '.ts', '.tsx', '/index.ts', '/index.tsx'].map((suffix) => base + suffix).find((path) => existsSync(path) && statSync(path).isFile());
+  if (!resolved.has(base)) resolved.set(base, ['', '.ts', '.tsx', '/index.ts', '/index.tsx'].map((suffix) => resolve(base + suffix)).find(isFile));
+  return resolved.get(base);
 }
 
-const importsOf = (file: string) =>
-  [...readFileSync(file, 'utf8').matchAll(IMPORTS)].filter((match) => !match[1]).map((match) => (match[2] ?? match[3] ?? match[4]) as string);
+const importsOf = memo((file) =>
+  [...sourceOf(file).matchAll(IMPORTS)].filter((match) => !match[1]).map((match) => (match[2] ?? match[3] ?? match[4]) as string),
+);
 
 /** The first import chain from `route` to the full translator, static or lazy. */
 function chainToTranslator(route: string): string[] | undefined {
@@ -55,10 +75,11 @@ function chainToTranslator(route: string): string[] | undefined {
 }
 
 /** The id a route file declares; the root route declares none. */
-const routeIdOf = (file: string): string | undefined => /createFileRoute\('([^']+)'\)/.exec(readFileSync(file, 'utf8'))?.[1];
+const routeIdOf = (file: string): string | undefined => /createFileRoute\('([^']+)'\)/.exec(sourceOf(file))?.[1];
 
-const routeFiles = walk(routesDir).filter(
+const routeFiles = allFiles.filter(
   (file) =>
+    file.startsWith(routesDir + sep) &&
     isSource(file) &&
     !relative(routesDir, file)
       .split(/[\\/]/)
@@ -96,13 +117,11 @@ describe('dashboard catalog boundary', () => {
   });
 
   it('never passes a locale to translateFn in application code', () => {
-    const offenders = walk(src)
-      .filter(isSource)
-      .flatMap((file) =>
-        translateFnCalls(readFileSync(file, 'utf8'))
-          .filter((call) => call.argumentCount > 2)
-          .map((call) => `${display(file)}: ${call.text}`),
-      );
+    const offenders = allFiles.filter(isSource).flatMap((file) =>
+      translateFnCalls(sourceOf(file))
+        .filter((call) => call.argumentCount > 2)
+        .map((call) => `${display(file)}: ${call.text}`),
+    );
     expect(offenders).toEqual([]);
   });
 

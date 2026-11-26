@@ -2217,6 +2217,7 @@ export const MESSAGE_IDS = {
   'settings.git.workflow.loadErrorHint': 'settings_git_workflow_loaderrorhint',
   'settings.git.workflow.connected': 'settings_git_workflow_connected',
   'settings.git.workflow.connectError': 'settings_git_workflow_connecterror',
+  'settings.git.workflow.savedElsewhere': 'settings_git_workflow_savedelsewhere',
   'settings.git.workflow.disconnected': 'settings_git_workflow_disconnected',
   'settings.git.workflow.disconnectError': 'settings_git_workflow_disconnecterror',
   'settings.git.workflow.operationError': 'settings_git_workflow_operationerror',

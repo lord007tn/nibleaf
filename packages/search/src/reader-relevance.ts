@@ -43,35 +43,54 @@ export const readerRelevanceScore = (query: ReadonlySet<string>, fields: ReturnT
   return (score / query.size) * (covered / query.size);
 };
 
-/** Linear one-edit check, without allocating a Levenshtein matrix. */
+/** Letters in a word: code points, so a character outside the Basic
+ * Multilingual Plane (two UTF-16 units) counts once (#831). */
+const letterCount = (word: string): number => {
+  let count = 0;
+  for (const _ of word) count += 1;
+  return count;
+};
+
+/** Linear one-edit check over letters (code points), without allocating a
+ * Levenshtein matrix: inserting, deleting or replacing one astral character is
+ * one edit, not two (#831). */
 const oneEditApart = (left: string, right: string): boolean => {
-  if (Math.abs(left.length - right.length) > 1) return false;
+  // One letter changes the UTF-16 length by at most 2: most words are ruled out before counting.
+  if (Math.abs(left.length - right.length) > 2) return false;
+  const leftLetters = letterCount(left);
+  const rightLetters = letterCount(right);
+  if (Math.abs(leftLetters - rightLetters) > 1) return false;
   let edits = 0;
   let l = 0;
   let r = 0;
   while (l < left.length && r < right.length) {
-    if (left[l] === right[r]) {
-      l += 1;
-      r += 1;
+    const a = left.codePointAt(l) ?? 0;
+    const b = right.codePointAt(r) ?? 0;
+    const aWidth = a > 0xff_ff ? 2 : 1;
+    const bWidth = b > 0xff_ff ? 2 : 1;
+    if (a === b) {
+      l += aWidth;
+      r += bWidth;
       continue;
     }
     edits += 1;
     if (edits > 1) return false;
-    if (left.length >= right.length) l += 1;
-    if (right.length >= left.length) r += 1;
+    if (leftLetters >= rightLetters) l += aWidth;
+    if (rightLetters >= leftLetters) r += bWidth;
   }
   return edits + (l < left.length || r < right.length ? 1 : 0) <= 1;
 };
 
 /** Typo-only candidates must cover every query word; only words of 5+ letters
- * may use one insertion, deletion or substitution. Lexical hits keep their lane. */
+ * (code points, after normalization and Arabic light stemming) may use one
+ * insertion, deletion or substitution. Lexical hits keep their lane. */
 export const readerTypoRelevanceScore = (query: ReadonlySet<string>, fields: ReturnType<typeof readerSearchFields>): number => {
   if (query.size === 0) return 0;
   let score = 0;
   let typo = false;
   for (const term of query) {
     let best = readerTermScore(term, fields);
-    if (best === 0 && term.length >= 5) {
+    if (best === 0 && letterCount(term) >= 5) {
       for (const field of fields) {
         for (const word of field.terms) {
           if (!oneEditApart(term, word)) continue;

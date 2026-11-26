@@ -1741,6 +1741,7 @@
   "settings_git_workflow_loaderrorhint": "أعد المحاولة أو تحقّق من اتصال الخادم.",
   "settings_git_workflow_connected": "تم حفظ اتصال GitHub.",
   "settings_git_workflow_connecterror": "تعذّر الاتصال بـ GitHub.",
+  "settings_git_workflow_savedelsewhere": "حفظ شخص آخر هذه الإعدادات بعد أن فتحتها. تظهر تغييراته الآن. راجعها ثم احفظ مرة أخرى.",
   "settings_git_workflow_disconnected": "تم قطع اتصال GitHub وإزالة بيانات الاعتماد المشفّرة.",
   "settings_git_workflow_disconnecterror": "تعذّر قطع اتصال GitHub.",
   "settings_git_workflow_operationerror": "تعذّر وضع عملية Git في قائمة الانتظار.",

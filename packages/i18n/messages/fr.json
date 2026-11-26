@@ -1692,6 +1692,7 @@
   "settings_git_workflow_loaderrorhint": "Réessayez ou vérifiez la connexion au serveur.",
   "settings_git_workflow_connected": "Connexion GitHub enregistrée.",
   "settings_git_workflow_connecterror": "Impossible de connecter GitHub.",
+  "settings_git_workflow_savedelsewhere": "Quelqu’un d’autre a enregistré ces paramètres après que vous les avez ouverts. Ses modifications sont maintenant affichées. Vérifiez-les, puis enregistrez à nouveau.",
   "settings_git_workflow_disconnected": "GitHub identifiants déconnectés et chiffrés supprimés.",
   "settings_git_workflow_disconnecterror": "Impossible de déconnecter GitHub.",
   "settings_git_workflow_operationerror": "Impossible de mettre l'opération Git en file d'attente.",

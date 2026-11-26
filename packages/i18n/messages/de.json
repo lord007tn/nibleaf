@@ -1692,6 +1692,7 @@
   "settings_git_workflow_loaderrorhint": "Versuchen Sie es erneut oder überprüfen Sie die Serververbindung.",
   "settings_git_workflow_connected": "GitHub Verbindung gespeichert.",
   "settings_git_workflow_connecterror": "GitHub konnte nicht verbunden werden.",
+  "settings_git_workflow_savedelsewhere": "Jemand anderes hat diese Einstellungen gespeichert, nachdem Sie sie geöffnet haben. Die Änderungen werden jetzt angezeigt. Prüfen Sie sie und speichern Sie erneut.",
   "settings_git_workflow_disconnected": "GitHub getrennt und verschlüsselte Anmeldeinformationen entfernt.",
   "settings_git_workflow_disconnecterror": "GitHub konnte nicht getrennt werden.",
   "settings_git_workflow_operationerror": "Der Git-Vorgang konnte nicht in die Warteschlange gestellt werden.",

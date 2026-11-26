@@ -1706,6 +1706,7 @@
   "settings_git_workflow_loaderrorhint": "Попробуйте еще раз или проверьте соединение с сервером.",
   "settings_git_workflow_connected": "Соединение GitHub сохранено.",
   "settings_git_workflow_connecterror": "Не удалось подключить GitHub.",
+  "settings_git_workflow_savedelsewhere": "Кто-то другой сохранил эти настройки после того, как вы их открыли. Теперь показаны его изменения. Проверьте их и сохраните снова.",
   "settings_git_workflow_disconnected": "GitHub отключен, а зашифрованные учетные данные удалены.",
   "settings_git_workflow_disconnecterror": "Не удалось отключить GitHub.",
   "settings_git_workflow_operationerror": "Не удалось поставить в очередь операцию Git.",

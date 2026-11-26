@@ -23,6 +23,15 @@ describe.runIf(growthTestsEnabled)('raw HTML preparation growth', () => {
   const parse = (source: string) => parser.md.parse(source, {});
   afterAll(() => editor.destroy());
 
+  it.each([
+    ['at the end of a page', 'Prose.\n', '  \t \n'],
+    ['under a list item', '- Prose.\n', '  \t \n'],
+    ['inside a quote', '> Prose.\n', '> \t \n'],
+  ])('parses trailing whitespace %s in linear time (#647)', (_name, start, blank) => {
+    const [small, large] = growthMs(parse, start + blank.repeat(3000), start + blank.repeat(12_000), { budgetMs: 10_000 });
+    expect(large).toBeLessThanOrEqual(linearGrowthLimit(small));
+  });
+
   it('prepares a page of embeds in one pass', () => {
     // 4x the embeds costs about 4x; comparing every range with every other would be 16x.
     const [small, large] = growthMs(parse, embeds(1000), embeds(4000), { budgetMs: 10_000 });

@@ -1683,6 +1683,7 @@
   "settings_git_workflow_loaderrorhint": "دوبارہ کوشش کریں یا سرور کنکشن چیک کریں۔",
   "settings_git_workflow_connected": "GitHub کنکشن محفوظ ہو گیا۔",
   "settings_git_workflow_connecterror": "GitHub کو مربوط نہیں کیا جا سکا۔",
+  "settings_git_workflow_savedelsewhere": "آپ کے کھولنے کے بعد کسی اور نے یہ ترتیبات محفوظ کر دیں۔ ان کی تبدیلیاں اب دکھائی دے رہی ہیں۔ انہیں دیکھیں، پھر دوبارہ محفوظ کریں۔",
   "settings_git_workflow_disconnected": "GitHub منقطع اور خفیہ کردہ اسناد ہٹا دی گئیں۔",
   "settings_git_workflow_disconnecterror": "GitHub کو منقطع نہیں کیا جا سکا۔",
   "settings_git_workflow_operationerror": "Git آپریشن کو قطار میں نہیں لگایا جا سکا۔",

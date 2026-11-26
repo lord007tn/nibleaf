@@ -466,7 +466,7 @@ describe('over-long links', () => {
   });
 });
 
-describe('offsets inside skipped HTML ranges', () => {
+describe('offsets inside skipped ranges', () => {
   const everyRange = (ranges: { start: number; end: number }[], offset: number) =>
     ranges.some((range) => offset >= range.start && offset < range.end);
 
@@ -501,6 +501,18 @@ describe('offsets inside skipped HTML ranges', () => {
 
   it('finds nothing when there are no ranges', () => {
     expect(offsetInRanges([])(0)).toBe(false);
+  });
+
+  it('checks the complete node span without crossing separate code ranges', () => {
+    const inRange = offsetInRanges([
+      { start: 9, end: 16 },
+      { start: 1, end: 8 },
+      { start: 3, end: 5 },
+    ]);
+    expect(inRange(4, 8)).toBe(true);
+    expect(inRange(4, 9)).toBe(false);
+    expect(inRange(8, 10)).toBe(false);
+    expect(inRange(9, 16)).toBe(true);
   });
 });
 
