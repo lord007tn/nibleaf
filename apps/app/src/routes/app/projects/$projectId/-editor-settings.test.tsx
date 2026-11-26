@@ -245,6 +245,17 @@ describe('editor site settings permissions', () => {
     expect(mocks.prefetch).toHaveBeenCalledWith({}, { queryKey: ['workspace-ai', 'project-1', 'draft-capability'] });
   });
 
+  it('prefetches a deep-linked page without making ?page= a loader dependency', async () => {
+    // A loader dependency change makes a new route match, which suspends and hides
+    // the whole editor (dropping focus mid-typing) whenever the address names another page.
+    expect(Route.options.loaderDeps).toBeUndefined();
+    const { pageQueryOptions, commentsQueryOptions } = await import('@/hooks/api/query-options');
+    const loader = Route.options.loader as (args: unknown) => void;
+    loader({ context: { queryClient: {} }, params: { projectId: 'project-1' }, location: { search: { page: 'page-9' } } });
+    expect(pageQueryOptions).toHaveBeenCalledWith('project-1', 'page-9');
+    expect(commentsQueryOptions).toHaveBeenCalledWith('project-1', 'page-9');
+  });
+
   it('never requests Trash when the editor opens', () => {
     const loader = Route.options.loader as (args: unknown) => void;
     loader({ context: { queryClient: {} }, params: { projectId: 'project-1' }, deps: {} });
