@@ -418,6 +418,7 @@ function SiteOverviewPage() {
           range={range}
           onRangeChange={setRange}
           loading={analyticsPending}
+          refreshing={analyticsQuery.isPlaceholderData}
           unavailable={analyticsUnknown}
           // "Publish a site and share it" reads wrong once the site is live.
           empty={overview.publishing === 'live' ? t('overview.viewsEmptyLive') : undefined}

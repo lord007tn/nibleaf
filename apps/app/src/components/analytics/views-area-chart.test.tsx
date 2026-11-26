@@ -24,7 +24,7 @@ afterEach(async () => {
   await act(async () => root.render(null));
 });
 
-const render = (props: { unavailable?: boolean; data?: Array<{ date: string; views: number }> }) =>
+const render = (props: { unavailable?: boolean; refreshing?: boolean; data?: Array<{ date: string; views: number }> }) =>
   act(async () =>
     root.render(
       <ViewsAreaChart
@@ -33,6 +33,7 @@ const render = (props: { unavailable?: boolean; data?: Array<{ date: string; vie
         onRangeChange={() => undefined}
         range="30d"
         title="t"
+        refreshing={props.refreshing}
         unavailable={props.unavailable}
       />,
     ),
@@ -61,5 +62,13 @@ describe('ViewsAreaChart empty states', () => {
     const figure = container.querySelector('[role="img"]');
     expect(figure?.getAttribute('aria-label')).toBe('analytics.chart.summary');
     expect(container.textContent).not.toContain('analytics.empty.traffic');
+  });
+
+  it('dims and marks busy the shown range while another range loads (WORKSPACE-14)', async () => {
+    await render({ refreshing: true, data: [{ date: '2026-11-01', views: 3 }] });
+    const region = container.querySelector('[aria-busy="true"]');
+    expect(region?.className).toContain('opacity-60');
+    await render({ data: [{ date: '2026-11-01', views: 3 }] });
+    expect(container.querySelector('[aria-busy]')).toBeNull();
   });
 });

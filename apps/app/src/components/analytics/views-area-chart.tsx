@@ -1,4 +1,5 @@
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
+import { cn } from '@nibleaf/design-system/lib/utils';
 import type { AnalyticsRange } from '@/hooks/api';
 import { RangeTabs } from './range-tabs';
 import { type ViewsPoint, ViewsTimeseriesChart } from './views-timeseries-chart';
@@ -19,6 +20,7 @@ export function ViewsAreaChart({
   loading,
   unavailable,
   empty,
+  refreshing,
 }: {
   title: string;
   description: string;
@@ -30,6 +32,8 @@ export function ViewsAreaChart({
   unavailable?: boolean;
   /** What an empty plot says, when the page knows better than "no traffic yet" (e.g. a site that is already live). */
   empty?: string;
+  /** The shown range stays on screen while another loads: dimmed and marked busy, so it never reads as the new one. */
+  refreshing?: boolean;
 }) {
   return (
     <Card className="@container/chart">
@@ -40,7 +44,7 @@ export function ViewsAreaChart({
           <RangeTabs value={range} onValueChange={onRangeChange} ranges={RANGES} className="w-full sm:w-fit" />
         </CardAction>
       </CardHeader>
-      <div className="px-2 pb-4 sm:px-6">
+      <div aria-busy={refreshing || undefined} className={cn('px-2 pb-4 transition-opacity sm:px-6', refreshing && 'opacity-60')}>
         <ViewsTimeseriesChart data={data} empty={empty} loading={loading} unknown={unavailable} />
       </div>
     </Card>
