@@ -1,4 +1,4 @@
-import { Card, CardAction, CardDescription, CardFooter, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
+import { Card, CardDescription, CardFooter, CardHeader, CardTitle } from '@nibleaf/design-system/components/ui/card';
 import { Skeleton } from '@nibleaf/design-system/components/ui/skeleton';
 import { cn } from '@nibleaf/design-system/lib/utils';
 import type { ReactNode } from 'react';
@@ -59,13 +59,15 @@ export function StatCard({
             {value === null ? '—' : (display ?? number(value))}
           </CardTitle>
         )}
-        {delta && !loading ? (
-          <CardAction>
-            <DeltaBadge delta={delta} polarity="higher_is_better" />
-          </CardAction>
-        ) : null}
       </CardHeader>
-      {hint && !loading ? <CardFooter className={cn('text-muted-foreground text-xs')}>{hint}</CardFooter> : null}
+      {/* The change sits on the footer line with its "vs. previous period", not in the header's
+          corner, where a narrow tile (two per row on a phone) laid it over the label (WORKSPACE-23). */}
+      {(delta || hint) && !loading ? (
+        <CardFooter className="flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+          {delta ? <DeltaBadge delta={delta} polarity="higher_is_better" /> : null}
+          {hint ? <span>{hint}</span> : null}
+        </CardFooter>
+      ) : null}
       {link}
     </Card>
   );
