@@ -104,7 +104,9 @@ describe('maintenance responses', () => {
     expect(response.headers.get('strict-transport-security')).toBe('max-age=63072000; includeSubDomains');
     const html = await response.text();
     expect(html).toContain('docs.customer.com');
-    expect(html).toContain('temporarily unavailable');
+    const main = html.match(/<main>([\s\S]*?)<\/main>/)?.[1];
+    expect(main).toMatch(/<h1>[^<]+<\/h1>/);
+    expect(main).toMatch(/<a\b[^>]*href=""[^>]*>[^<]+<\/a>/);
     expect(html).not.toContain('no available server');
     expect(html).not.toMatch(/<script/i);
   });
