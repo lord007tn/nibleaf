@@ -98,7 +98,7 @@ export interface SiteOverview<D extends OverviewDeployment> {
   /** A failed page-views request or an analytics outage: unknown, never "no traffic". */
   analyticsUnknown: boolean;
   totalViews: number | null;
-  /** This window against the equal window before it; null when analytics is unknown. */
+  /** This window against the equal window before it; null when analytics is unknown, or there were no views in either (nothing to compare). */
   viewsComparison: { value: number | null; previous: number | null } | null;
 }
 
@@ -145,7 +145,10 @@ export function siteOverview<D extends OverviewDeployment>(input: SiteOverviewIn
     connectingDomain: primaryDomain ? undefined : domains?.[0]?.domain,
     analyticsUnknown,
     totalViews: analytics?.totalViews ?? null,
-    viewsComparison: analyticsUnknown ? null : { value: analytics?.comparableTotalViews ?? null, previous: analytics?.previousTotalViews ?? null },
+    viewsComparison:
+      analyticsUnknown || (analytics?.comparableTotalViews === 0 && analytics?.previousTotalViews === 0)
+        ? null
+        : { value: analytics?.comparableTotalViews ?? null, previous: analytics?.previousTotalViews ?? null },
   };
 }
 

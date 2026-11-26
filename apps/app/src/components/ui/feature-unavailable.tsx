@@ -14,12 +14,14 @@ export function FeatureUnavailable({
   title,
   description,
   action,
+  secondaryAction,
 }: {
   reason: 'notConfigured' | 'notOnPlan' | 'needsAdmin' | 'comingSoon';
   icon?: ReactNode;
   title: ReactNode;
   description?: ReactNode;
   action?: ReactNode;
+  secondaryAction?: ReactNode;
 }) {
-  return <EmptyState action={action} data-reason={reason} description={description} headingLevel={2} icon={icon} title={title} />;
+  return <EmptyState action={action} data-reason={reason} secondaryAction={secondaryAction} description={description} headingLevel={2} icon={icon} title={title} />;
 }

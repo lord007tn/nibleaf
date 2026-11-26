@@ -25,7 +25,7 @@ import {
   Users,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { compareDelta } from '@/components/analytics/insights/metrics';
@@ -59,6 +59,7 @@ import { deploymentStatusLabel, deploymentStatusVariant } from '@/lib/deployment
 import { useFormatters } from '@/lib/format';
 import { copyToClipboard } from '@/lib/invitations';
 import type { SiteAdminState } from '@/lib/project-settings-access';
+import { dismissNudge, isNudgeDismissed, subscribeNudgeDismissal } from '@/lib/publish-nudge-dismissal';
 import { canonicalSiteBase } from '@/lib/site-seo';
 
 const DEFAULT_ANALYTICS_RANGE: AnalyticsRange = '30d';
@@ -218,8 +219,15 @@ function SiteOverviewPage() {
               <div className="font-semibold text-sm">{t('overview.live.title')}</div>
               {overview.liveCard === 'live' ? (
                 <>
-                  <a className="block truncate font-mono text-primary text-sm hover:underline" href={liveHref} target="_blank" rel="noreferrer">
-                    <bdi dir="ltr">{liveDomain ?? liveHref}</bdi>
+                  {/* An address reads left to right and loses its end, not its "https://", when it is too long, in an RTL page too. */}
+                  <a
+                    className="block truncate text-left font-mono text-primary text-sm hover:underline rtl:text-right"
+                    dir="ltr"
+                    href={liveHref}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {liveDomain ?? liveHref}
                   </a>
                   {connectingDomain ? (
                     <p className="mt-1 break-words text-muted-foreground text-xs">
@@ -358,22 +366,44 @@ function SiteOverviewPage() {
           label={t('overview.stats.pages')}
           value={overview.pageCount}
           icon={<FileText className="size-4" />}
+          link={<Link className={TILE_LINK} aria-label={t('overview.stats.pages')} params={{ projectId }} to="/app/projects/$projectId/editor" />}
           loading={pagesPending && !pagesFailed}
         />
         <StatCard
           label={t('overview.stats.members')}
           value={overview.memberCount}
           icon={<Users className="size-4" />}
+          link={
+            <Link
+              className={TILE_LINK}
+              aria-label={t('overview.stats.members')}
+              params={{ projectId }}
+              search={{ section: 'members' }}
+              to="/app/projects/$projectId/settings"
+            />
+          }
           loading={membersPending && !membersFailed}
         />
-        <StatCard label={t('overview.stats.deploys')} value={overview.publishCount} icon={<Rocket className="size-4" />} loading={projectPending} />
+        <StatCard
+          label={t('overview.stats.deploys')}
+          value={overview.publishCount}
+          icon={<Rocket className="size-4" />}
+          link={
+            <Link className={TILE_LINK} aria-label={t('overview.stats.deploys')} params={{ projectId }} to="/app/projects/$projectId/publishes" />
+          }
+          loading={projectPending}
+        />
         <StatCard
           label={t('overview.stats.pageviews')}
           value={overview.totalViews}
           icon={<BarChart3 className="size-4" />}
           delta={viewsDelta}
           hint={viewsDelta ? t('analytics.vsPrevious') : undefined}
+          link={
+            <Link className={TILE_LINK} aria-label={t('overview.stats.pageviews')} params={{ projectId }} to="/app/projects/$projectId/analytics" />
+          }
           loading={analyticsPending}
+          refreshing={analyticsQuery.isPlaceholderData}
         />
       </div>
 
@@ -395,7 +425,10 @@ function SiteOverviewPage() {
           range={range}
           onRangeChange={setRange}
           loading={analyticsPending}
+          refreshing={analyticsQuery.isPlaceholderData}
           unavailable={analyticsUnknown}
+          // "Publish a site and share it" reads wrong once the site is live.
+          empty={overview.publishing === 'live' ? t('overview.viewsEmptyLive') : undefined}
         />
       </div>
 
@@ -473,7 +506,9 @@ function SiteOverviewPage() {
                           to="/app/projects/$projectId/editor"
                         >
                           <FileText className="size-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate font-medium" dir="auto">
+                          {/* The icon stays on the interface's side; the title takes its own direction and
+                              alignment, so an Arabic title sits right in an English table (AUTH-39). */}
+                          <span className="min-w-0 flex-1 truncate text-start font-medium" dir="auto">
                             {page.config?.sidebarTitle?.trim() || page.title}
                           </span>
                         </Link>
@@ -694,7 +729,19 @@ function PublishFailureCard({
   );
 }
 
-const nudgeDismissKey = (projectId: string) => `nibleaf.publishNudge.${projectId}`;
+/**
+ * Whether this site's checklist was dismissed, read during render. It used to
+ * start hidden and appear after an effect, which pushed the whole page down on
+ * every visit. The server render shows it (most new sites haven't dismissed it);
+ * a dismissed one is hidden at hydration. A dismissal in another tab applies here too.
+ */
+function useNudgeDismissed(projectId: string) {
+  return useSyncExternalStore(
+    subscribeNudgeDismissal,
+    () => isNudgeDismissed(projectId),
+    () => false,
+  );
+}
 
 /** First-publish checklist: shown until the site has a READY deployment. */
 function PublishNudge({
@@ -707,7 +754,7 @@ function PublishNudge({
   permissionError?: React.ReactNode;
 }) {
   const t = useT();
-  const [dismissed, setDismissed] = useState(true);
+  const dismissed = useNudgeDismissed(projectId);
   const { count } = useFormatters();
   const content = usePendingChanges(projectId, { enabled: !dismissed });
   const domains = useDomains(projectId);
@@ -716,24 +763,10 @@ function PublishNudge({
   const domainConnecting = domainDone && !pickLiveDomain(domains.data ?? []);
   const progressKnown = content.data?.hasRealContent !== undefined && domains.data !== undefined;
   const doneCount = Number(editDone) + Number(domainDone);
-  useEffect(() => {
-    try {
-      setDismissed(window.localStorage.getItem(nudgeDismissKey(projectId)) === '1');
-    } catch {
-      setDismissed(false);
-    }
-  }, [projectId]);
   if (dismissed) {
     return null;
   }
-  const dismiss = () => {
-    setDismissed(true);
-    try {
-      window.localStorage.setItem(nudgeDismissKey(projectId), '1');
-    } catch {
-      // ignore storage failures (private mode etc.)
-    }
-  };
+  const dismiss = () => dismissNudge(projectId);
 
   return (
     <div className="relative mt-6 rounded-xl border border-primary/30 bg-primary/5 p-5">
@@ -841,6 +874,9 @@ function NudgeStep({
     </li>
   );
 }
+
+/** A KPI tile's link: stretched over the tile, named after it. */
+const TILE_LINK = 'absolute inset-0 rounded-xl';
 
 function ManageRow({ icon: Icon, title, desc, children }: { icon: LucideIcon; title: string; desc: string; children: React.ReactNode }) {
   return (
