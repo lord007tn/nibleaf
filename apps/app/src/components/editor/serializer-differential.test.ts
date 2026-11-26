@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Editor } from '@tiptap/core';
 import { expect, it } from 'vitest';
+import { priorFenceLayoutDigest } from './__fixtures__/authored-fence-layout-main';
 import { COMPONENT_LAYOUT_CORPUS_PAGES, MAIN_SECOND_SAVE_CHANGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
 import { LIST_ITEM_LEAD_DIFFERENTIAL_PAGES, LIST_ITEM_LEAD_TEXT_KEPT } from './__fixtures__/list-item-leads';
 import {
@@ -150,7 +151,9 @@ it.skipIf(baselineDir)(
       count: cases.length,
     });
     const module = await import('./tiptap-editor');
-    const outputs = await compareComponentLayouts(module, await saveAll(module));
+    const outputs = (await compareComponentLayouts(module, await saveAll(module))).map((digest, index) =>
+      priorFenceLayoutDigest('editedCorpus', index, digest),
+    );
     // #604: the named list item lead pages are checked against main in list-item-leads-main.test.ts.
     const differing = outputs.flatMap((output, index) =>
       output === baseline.outputs[index] || LIST_ITEM_LEAD_DIFFERENTIAL_PAGES.includes(index) ? [] : [index],

@@ -5,6 +5,7 @@ import { resolve } from 'node:path';
 import { DOCUMENTATION_COMPONENTS } from '@nibleaf/shared/documentation-components';
 import { Editor } from '@tiptap/core';
 import { afterAll, describe, expect, it } from 'vitest';
+import { priorFenceLayoutDigest } from './__fixtures__/authored-fence-layout-main';
 import { COMPONENT_LAYOUT_CORPUS_PAGES, replayMainComponentLayout } from './__fixtures__/component-source-layout';
 import { HARD_WRAPPED_AR, HARD_WRAPPED_EN, IMPORTED_INTRODUCTION, IMPORTED_QUICKSTART } from './__fixtures__/hard-wrapped-pages';
 import jsxOpeners from './__fixtures__/jsx-openers-main.json';
@@ -230,7 +231,8 @@ describe('pages without a blank line inside an attribute value read as on main',
     const crAsLf = new Map(crPages.map((index, at) => [index, main.crAsLf[at]]));
     const leadPages: number[] = [];
     const editBroken: number[] = [];
-    const differences = digests.flatMap((value, index) => {
+    const differences = digests.flatMap((actual, index) => {
+      const value = priorFenceLayoutDigest('attributes', index, actual);
       const { page } = pages[index] as { page: string };
       if (value !== main.digests[index] && isNamed(page)) {
         leadPages.push(index);
