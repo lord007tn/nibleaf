@@ -1,6 +1,7 @@
 import { posix } from 'node:path';
 import { slugify } from '@nibleaf/shared';
 import { importSiteHref } from '@nibleaf/shared/site-links';
+import { randomUUID } from '@nibleaf/shared/uuid';
 import { stableHash } from './content';
 import { safeDecodeUri as safeDecode } from './gitbook-markdown';
 import { decodeImportEntities } from './import-fidelity';
@@ -240,8 +241,8 @@ export const rewriteMintlifyInternalLinks = (
   };
   const references = markdownReferences(protectedCode.content).filter((reference) => !reference.image);
   const definitions = markdownLinkDefinitions(protectedCode.content);
-  // The legacy inline scan can see link-shaped text inside an angle destination.
-  // Prefer the parser's complete definition span so patches never overlap.
+  // Leave a valid definition's title and surrounding syntax literal, including
+  // link- or attribute-shaped text the legacy passes would otherwise rewrite.
   let index = 0;
   const inline = definitions.length
     ? references.filter((reference) => {
@@ -250,20 +251,38 @@ export const rewriteMintlifyInternalLinks = (
         return !definition || reference.end <= definition.start;
       })
     : references;
-  const destinations = definitions.length ? [...inline, ...definitions].sort((a, b) => a.start - b.start) : inline;
-  const markdown = replaceImportReferences(protectedCode.content, destinations, (reference) => rewrite(reference.value));
-  return protectedCode.restore(
-    markdown.replace(HREF_ATTRIBUTE, (match, before: string, reference: string, after: string) => {
-      const decoded = decodeImportEntities(reference);
-      const rewritten = rewrite(decoded);
-      if (rewritten === decoded) return match;
-      const escaped = rewritten
-        .replaceAll('&', '&amp;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-      return `${before}${escaped}${after}`;
-    }),
-  );
+  const byStart = new Map(definitions.map((definition) => [definition.start, definition]));
+  const definitionReferences = definitions.map(({ start, end }) => ({ start, end, value: protectedCode.content.slice(start, end), image: false }));
+  const destinations = definitions.length ? [...inline, ...definitionReferences].sort((a, b) => a.start - b.start) : inline;
+  let prefix = definitions.length ? `\uE002${randomUUID()}:` : '';
+  while (prefix && protectedCode.content.includes(prefix)) prefix = `\uE002${randomUUID()}:`;
+  const protectedDefinitions: string[] = [];
+  const markdown = replaceImportReferences(protectedCode.content, destinations, (reference) => {
+    const definition = byStart.get(reference.start);
+    if (!definition) return rewrite(reference.value);
+    const { destination } = definition;
+    const value = destination
+      ? reference.value.slice(0, destination.start - reference.start) +
+        rewrite(destination.value) +
+        reference.value.slice(destination.end - reference.start)
+      : reference.value;
+    protectedDefinitions.push(value);
+    return `${prefix}${protectedDefinitions.length - 1}\uE003`;
+  });
+  const html = markdown.replace(HREF_ATTRIBUTE, (match, before: string, reference: string, after: string) => {
+    const decoded = decodeImportEntities(reference);
+    const rewritten = rewrite(decoded);
+    if (rewritten === decoded) return match;
+    const escaped = rewritten
+      .replaceAll('&', '&amp;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#39;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;');
+    return `${before}${escaped}${after}`;
+  });
+  const restored = prefix
+    ? html.replace(new RegExp(`${prefix}(\\d+)\uE003`, 'g'), (match, index: string) => protectedDefinitions[Number(index)] ?? match)
+    : html;
+  return protectedCode.restore(restored);
 };
